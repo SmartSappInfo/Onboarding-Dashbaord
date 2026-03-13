@@ -39,7 +39,8 @@ import {
     CheckCircle2,
     Clock,
     UserCheck,
-    Gauge
+    Gauge,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
-import type { School, Task, UserProfile, Zone, MessageLog } from '@/lib/types';
+import type { School, Task, UserProfile, Zone, MessageLog, TaskCategory } from '@/lib/types';
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,7 +63,6 @@ const CHART_COLORS = [
 
 export default function ReportsClient() {
     const firestore = useFirestore();
-    const { user } = useUser();
     
     // Subscriptions
     const schoolsCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools')) : null, [firestore]);
@@ -72,10 +72,10 @@ export default function ReportsClient() {
 
     const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCol);
-    const { data: zones } = useCollection<Zone>(zonesCol);
-    const { data: logs } = useCollection<MessageLog>(logsCol);
+    const { data: zones, isLoading: isLoadingZones } = useCollection<Zone>(zonesCol);
+    const { data: logs, isLoading: isLoadingLogs } = useCollection<MessageLog>(logsCol);
 
-    const isLoading = isLoadingSchools || isLoadingTasks;
+    const isLoading = isLoadingSchools || isLoadingTasks || isLoadingZones || isLoadingLogs;
 
     // 1. Onboarding Velocity (Last 6 Months)
     const velocityData = React.useMemo(() => {
@@ -120,16 +120,15 @@ export default function ReportsClient() {
     const taskMetrics = React.useMemo(() => {
         if (!tasks) return { total: 0, completed: 0, overdue: 0, efficiency: 0, avgResolutionDays: 0 };
         const total = tasks.length;
-        const completedTasks = tasks.filter(t => t.status === 'completed');
+        const completedTasks = tasks.filter(t => t.status === 'done');
         const completedCount = completedTasks.length;
-        const overdue = tasks.filter(t => t.status !== 'completed' && new Date(t.dueDate) < new Date()).length;
+        const overdue = tasks.filter(t => t.status !== 'done' && new Date(t.dueDate) < new Date()).length;
         const efficiency = total > 0 ? Math.round((completedCount / total) * 100) : 100;
         
-        // Resolution Days Math
         let totalDays = 0;
         completedTasks.forEach(t => {
             if (t.completedAt && t.createdAt) {
-                totalDays += differenceInDays(new Date(t.completedAt), new Date(t.createdAt));
+                totalDays += Math.max(0, differenceInDays(new Date(t.completedAt), new Date(t.createdAt)));
             }
         });
         const avgResolutionDays = completedCount > 0 ? Math.round(totalDays / completedCount) : 0;
@@ -137,7 +136,27 @@ export default function ReportsClient() {
         return { total, completed: completedCount, overdue, efficiency, avgResolutionDays };
     }, [tasks]);
 
-    // 4. Task Resolution Trend
+    // 4. Lead-Time per Category (CRM Analysis)
+    const categoryMetrics = React.useMemo(() => {
+        if (!tasks) return [];
+        const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];
+        return categories.map(cat => {
+            const completedInCat = tasks.filter(t => t.category === cat && t.status === 'done');
+            let totalDays = 0;
+            completedInCat.forEach(t => {
+                if (t.completedAt && t.createdAt) {
+                    totalDays += Math.max(0, differenceInDays(new Date(t.completedAt), new Date(t.createdAt)));
+                }
+            });
+            return {
+                name: cat.charAt(0).toUpperCase() + cat.slice(1),
+                avgDays: completedInCat.length > 0 ? Math.round(totalDays / completedInCat.length) : 0,
+                count: completedInCat.length
+            };
+        }).filter(c => c.count > 0).sort((a, b) => b.avgDays - a.avgDays);
+    }, [tasks]);
+
+    // 5. Task Resolution Trend (Last 7 Days)
     const taskVelocityData = React.useMemo(() => {
         if (!tasks) return [];
         const daily = Array.from({ length: 7 }).map((_, i) => {
@@ -163,32 +182,6 @@ export default function ReportsClient() {
         return daily;
     }, [tasks]);
 
-    // 5. Messaging Throughput
-    const messagingData = React.useMemo(() => {
-        if (!logs) return [];
-        const daily = Array.from({ length: 7 }).map((_, i) => {
-            const date = subDays(new Date(), i);
-            return {
-                day: format(date, 'EEE'),
-                fullDate: date,
-                sent: 0,
-                failed: 0
-            };
-        }).reverse();
-
-        logs.forEach(log => {
-            const logDate = new Date(log.sentAt);
-            daily.forEach(d => {
-                if (logDate.toDateString() === d.fullDate.toDateString()) {
-                    if (log.status === 'sent') d.sent++;
-                    else if (log.status === 'failed') d.failed++;
-                }
-            });
-        });
-
-        return daily;
-    }, [logs]);
-
     if (isLoading) {
         return (
             <div className="p-8 space-y-8">
@@ -211,27 +204,26 @@ export default function ReportsClient() {
                     <div>
                         <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
                             <BarChart3 className="h-10 w-10 text-primary" />
-                            Network Intelligence
+                            Intelligence Hub
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">Institutional health audits and CRM performance analytics.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">Cross-regional institutional health and operational CRM performance.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
-                            <FileText className="h-4 w-4" />
-                            System Report
+                            <FileText className="h-4 w-4" /> System Audit
                         </Button>
                         <Button className="rounded-xl font-black h-11 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs">
-                            Deep Audit
+                            Executive Export
                         </Button>
                     </div>
                 </div>
 
-                {/* Key Performance Indicators */}
+                {/* KPI Tier */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard label="Network Growth" value={`+${velocityData[velocityData.length-1].count}`} sub="New Signups (30D)" icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
                     <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard label="Resolution Speed" value={`${taskMetrics.avgResolutionDays}d`} sub="Avg. Time to Close" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Student Footprint" icon={Users} color="text-purple-600" bg="bg-purple-50" />
+                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Mission Closure" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Roll" icon={Users} color="text-purple-600" bg="bg-purple-50" />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -239,9 +231,9 @@ export default function ReportsClient() {
                     <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                <Gauge className="h-4 w-4" /> CRM Resolution Velocity (7D)
+                                <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Intervention creation vs. resolution volume.</CardDescription>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Intervention creation vs. successful closure.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 h-[350px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -252,9 +244,9 @@ export default function ReportsClient() {
                                     <Tooltip 
                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase', paddingTop: '20px' }} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontBlack: true, textTransform: 'uppercase', paddingTop: '20px' }} />
                                     <Bar dataKey="created" fill="hsl(var(--muted-foreground)/0.2)" radius={[4, 4, 0, 0]} name="Protocol Opened" />
-                                    <Bar dataKey="resolved" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Intervention Resolved" />
+                                    <Bar dataKey="resolved" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Protocol Resolved" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -264,9 +256,9 @@ export default function ReportsClient() {
                     <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                <MapPin className="h-4 w-4" /> Strategic Zone Density
+                                <MapPin className="h-4 w-4" /> Regional Strategic Density
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Campus distribution by region.</CardDescription>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Campus distribution by geographic zone.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 h-[350px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -287,42 +279,46 @@ export default function ReportsClient() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Growth Chart */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                <Zap className="h-4 w-4" /> Institutional Expansion (6M)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-8 h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={velocityData}>
-                                    <defs>
-                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 'bold' }} />
-                                    <YAxis axisLine={false} tickLine={false} fontSize={10} />
-                                    <Tooltip />
-                                    <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={4} fillOpacity={1} fill="url(#colorCount)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-
-                    {/* Operational Effectiveness */}
+                    {/* Functional Lead-Time Analysis */}
                     <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
                         <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
                             <CardTitle className="text-lg font-black uppercase tracking-tight">Lead-Time Analysis</CardTitle>
-                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Identifying network friction points.</CardDescription>
+                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Average days to resolution per mission category.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
-                            <InsightRow icon={Target} title="Top Performing Region" value={zoneHealth[0]?.name || 'N/A'} desc="Highest operational density and onboarding speed." />
-                            <InsightRow icon={ShieldCheck} title="Service Level Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of CRM tasks resolved within lifecycle target." />
-                            <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} High Priority`} desc="Tasks requiring immediate regional manager intervention." />
+                            {categoryMetrics.length > 0 ? categoryMetrics.map((cat, i) => (
+                                <div key={cat.name} className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-muted rounded-xl transition-transform group-hover:scale-110">
+                                            {cat.name.includes('Doc') ? <FileText className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black uppercase tracking-tight">{cat.name}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{cat.count} Missions Resolved</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xl font-black text-primary tabular-nums">{cat.avgDays}d</p>
+                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Mean Duration</p>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="py-20 text-center opacity-20 italic text-sm">Insufficent historical data for analysis.</div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Operational Insights */}
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/10 border-b p-8">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
+                                <Zap className="h-5 w-5 text-primary" /> Executive Snapshot
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-8">
+                            <InsightRow icon={Target} title="Top Zone Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and mission speed." />
+                            <InsightRow icon={CheckCircle2} title="Service Level Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of protocols resolved within institutional targets." />
+                            <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} High Priority`} desc="Tasks requiring immediate cross-regional manager intervention." />
                         </CardContent>
                     </Card>
                 </div>
@@ -338,9 +334,9 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />
                 </div>
-                <div>
+                <div className="text-left">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter">{value}</p>
+                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none">{value}</p>
                     <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1">{sub}</p>
                 </div>
             </CardContent>
@@ -350,12 +346,12 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
 
 function InsightRow({ icon: Icon, title, value, desc }: { icon: any, title: string, value: string, desc: string }) {
     return (
-        <div className="flex gap-4 group">
+        <div className="flex gap-4 group text-left">
             <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform"><Icon className="h-4 w-4" /></div>
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none">{title}</p>
-                <p className="text-base font-black uppercase tracking-tight">{value}</p>
-                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">{desc}</p>
+                <p className="text-base font-black uppercase tracking-tight text-foreground truncate">{value}</p>
+                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2">{desc}</p>
             </div>
         </div>
     );

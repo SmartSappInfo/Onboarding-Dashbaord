@@ -1,7 +1,7 @@
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task } from '@/lib/types';
 import { format, isAfter, startOfToday, subDays } from 'date-fns';
 
 function getDb() {
@@ -36,6 +36,7 @@ export async function getDashboardData() {
     activitiesSnapshot,
     zonesSnapshot,
     logsSnapshot,
+    tasksSnapshot
   ] = await Promise.all([
     safeGetDocs(collection(db, 'schools')),
     safeGetDocs(collection(db, 'meetings')),
@@ -46,11 +47,13 @@ export async function getDashboardData() {
     safeGetDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
     safeGetDocs(collection(db, 'zones')),
     safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
+    safeGetDocs(collection(db, 'tasks')),
   ]); 
 
   const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
   const zones = zonesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Zone));
   const logs = logsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as MessageLog));
+  const tasks = tasksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Task));
   
   const now = startOfToday();
   const totalSchools = schools.length;
@@ -74,11 +77,6 @@ export async function getDashboardData() {
     totalResponses: totalResponsesCount,
   };
 
-  const surveyResponseCounts = await Promise.all(surveysSnapshot.docs.map(async (doc: any) => {
-    const responsesSnapshot = await safeGetDocs(collection(db, 'surveys', doc.id, 'responses'));
-    return { id: doc.id, responseCount: responsesSnapshot.size };
-  }));
-  const surveyResponseCountMap = new Map(surveyResponseCounts.map(item => [item.id, item.responseCount]));
   const latestSurveys = surveysSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Survey))
     .sort((a, b) => {
@@ -86,11 +84,7 @@ export async function getDashboardData() {
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
     })
-    .slice(0, 3)
-    .map(survey => ({
-      ...survey,
-      responseCount: surveyResponseCountMap.get(survey.id) || 0,
-    }));
+    .slice(0, 3);
 
   const upcomingMeetings = meetingsSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
@@ -186,22 +180,23 @@ export async function getDashboardData() {
     };
   });
 
-  // Calculate Messaging Metrics
+  // Messaging Metrics
   const emailLogs = logs.filter(l => l.channel === 'email');
   const smsLogs = logs.filter(l => l.channel === 'sms');
-  
-  const emailSuccess = emailLogs.length > 0 
-    ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 
-    : 100;
-    
-  const smsSuccess = smsLogs.length > 0 
-    ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 
-    : 100;
+  const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;
+  const smsSuccess = smsLogs.length > 0 ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 : 100;
 
   const messagingMetrics = {
     emailSuccess: Math.round(emailSuccess),
     smsSuccess: Math.round(smsSuccess),
     recentLogs: logs.slice(0, 5)
+  };
+
+  // Task Force Performance (Main Dashboard)
+  const taskPerformance = {
+      total: tasks.length,
+      completed: tasks.filter(t => t.status === 'done').length,
+      overdue: tasks.filter(t => t.status !== 'done' && isAfter(new Date(), new Date(t.dueDate))).length
   };
   
   return {
@@ -216,6 +211,7 @@ export async function getDashboardData() {
     allUsers: users,
     allSchools: schools,
     zoneDistribution,
-    messagingMetrics
+    messagingMetrics,
+    taskPerformance
   };
 }
