@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -30,7 +29,8 @@ import {
     Globe,
     CheckSquare,
     X,
-    ListChecks
+    ListChecks,
+    RotateCcw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,10 +122,10 @@ export default function AgreementsClient() {
         });
     };
 
-    const handleSelectAllUninitiated = () => {
-        const uninitiated = filteredList.filter(item => !item.contract || item.contract.status === 'no_contract' || item.contract.status === 'draft');
-        setSelectedSchools(uninitiated);
-        toast({ title: 'Batch Selected', description: `${uninitiated.length} uninitiated schools identified.` });
+    const handleSelectAllUnprepared = () => {
+        const unprepared = filteredList.filter(item => !item.contract || item.contract.status === 'no_contract' || item.contract.status === 'draft');
+        setSelectedSchools(unprepared);
+        toast({ title: 'Batch Selected', description: `${unprepared.length} unprepared schools identified.` });
     };
 
     const handleCopyLink = (item: any) => {
@@ -163,6 +163,12 @@ export default function AgreementsClient() {
         }
     };
 
+    const clearFilters = () => {
+        setSearchTerm('');
+        setStatusFilter('all');
+        setSelectedSchools([]);
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'signed': return <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-black gap-1"><ShieldCheck className="h-2.5 w-2.5" /> Signed</Badge>;
@@ -173,6 +179,8 @@ export default function AgreementsClient() {
         }
     };
 
+    const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
+
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left relative">
             <div className="max-w-7xl mx-auto space-y-10 pb-32">
@@ -182,18 +190,50 @@ export default function AgreementsClient() {
                     <div>
                         <h1 className="text-3xl font-black tracking-tight text-foreground uppercase flex items-center gap-3">
                             <FileCheck className="h-8 w-8 text-primary" />
-                            Agreements Command
+                            Agreements & Contracts
                         </h1>
-                        <p className="text-muted-foreground font-medium mt-1">Audit institutional compliance and manage legal execution.</p>
+                        <p className="text-muted-foreground font-medium mt-1">Manage all agreements and legal contracts executions.</p>
                     </div>
                 </div>
 
                 {/* Dashboard Metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Network Coverage" value={`${stats.coverage}%`} sub="Compliance Velocity" icon={Target} color="text-primary" bg="bg-primary/10" />
-                    <StatCard label="Legally Executed" value={stats.signed} sub="Completed Contracts" icon={ShieldCheck} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard label="Awaiting Signature" value={stats.pending} sub="Pending in Inbox" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard label="Action Required" value={stats.actionRequired} sub="Missing or Drafts" icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" />
+                    <StatCard 
+                        label="% Signed" 
+                        value={`${stats.coverage}%`} 
+                        sub="Compliance Velocity" 
+                        icon={Target} 
+                        color="text-primary" 
+                        bg="bg-primary/10" 
+                        onClick={() => setStatusFilter('all')}
+                    />
+                    <StatCard 
+                        label="Doc Signed" 
+                        value={stats.signed} 
+                        sub="Completed Contracts" 
+                        icon={ShieldCheck} 
+                        color="text-emerald-600" 
+                        bg="bg-emerald-50" 
+                        onClick={() => setStatusFilter('signed')}
+                    />
+                    <StatCard 
+                        label="Awaiting Signature" 
+                        value={stats.pending} 
+                        sub="Pending in Inbox" 
+                        icon={Clock} 
+                        color="text-blue-600" 
+                        bg="bg-blue-50" 
+                        onClick={() => setStatusFilter('sent')}
+                    />
+                    <StatCard 
+                        label="Unassigned" 
+                        value={stats.actionRequired} 
+                        sub="Missing or Drafts" 
+                        icon={AlertCircle} 
+                        color="text-rose-600" 
+                        bg="bg-rose-50" 
+                        onClick={() => setStatusFilter('no_contract')}
+                    />
                 </div>
 
                 {/* Search & Filters */}
@@ -214,14 +254,29 @@ export default function AgreementsClient() {
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
                                 <SelectItem value="all">Global Compliance</SelectItem>
-                                <SelectItem value="signed">Signed Only</SelectItem>
+                                <SelectItem value="signed">Doc Signed</SelectItem>
                                 <SelectItem value="sent">Awaiting Sign</SelectItem>
                                 <SelectItem value="draft">Draft Protocol</SelectItem>
-                                <SelectItem value="no_contract">Uninitiated</SelectItem>
+                                <SelectItem value="no_contract">Unassigned</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" onClick={handleSelectAllUninitiated} className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95">
-                            <ListChecks className="h-4 w-4" /> Select All Uninitiated
+                        
+                        {hasActiveFilters && (
+                            <Button 
+                                variant="ghost" 
+                                onClick={clearFilters} 
+                                className="rounded-xl font-bold h-11 gap-2 text-muted-foreground hover:text-primary transition-all"
+                            >
+                                <RotateCcw className="h-4 w-4" /> Show All
+                            </Button>
+                        )}
+
+                        <Button 
+                            variant="outline" 
+                            onClick={handleSelectAllUnprepared} 
+                            className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95"
+                        >
+                            <ListChecks className="h-4 w-4" /> Select All Unprepared
                         </Button>
                     </CardContent>
                 </Card>
@@ -378,41 +433,41 @@ export default function AgreementsClient() {
                 </div>
             </div>
 
-            {/* Bulk Actions Floating Bar */}
+            {/* Bulk Actions Floating Bar - Minimalist Redesign */}
             <AnimatePresence>
                 {selectedSchools.length > 0 && (
                     <motion.div 
                         initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 100, opacity: 0 }}
-                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-2xl px-4"
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-fit min-w-[320px]"
                     >
-                        <Card className="bg-slate-900 text-white border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
-                            <CardContent className="p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-4 pl-4">
-                                    <div className="flex items-center justify-center h-10 w-10 bg-primary/20 rounded-xl">
-                                        <ShieldCheck className="h-5 w-5 text-primary" />
+                        <Card className="bg-slate-900/95 backdrop-blur-md text-white border-none shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
+                            <CardContent className="p-2 flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-3 pl-4 pr-2">
+                                    <div className="flex items-center justify-center h-8 w-8 bg-primary/20 rounded-lg">
+                                        <ShieldCheck className="h-4 w-4 text-primary" />
                                     </div>
-                                    <div className="flex flex-col text-left">
-                                        <span className="text-sm font-black uppercase tracking-tight">{selectedSchools.length} Institutions Selected</span>
-                                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Bulk Signing Initialization</span>
-                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-tight whitespace-nowrap">
+                                        {selectedSchools.length} Selection{selectedSchools.length !== 1 ? 's' : ''}
+                                    </span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl">
                                     <Button 
                                         onClick={() => setIsWizardOpen(true)}
-                                        className="rounded-xl font-black uppercase text-[10px] tracking-widest h-11 px-8 bg-primary hover:bg-primary/90 shadow-xl"
+                                        size="sm"
+                                        className="rounded-lg font-black uppercase text-[10px] tracking-widest h-9 px-6 bg-primary hover:bg-primary/90 transition-all"
                                     >
-                                        <Zap className="h-4 w-4 mr-2" />
-                                        Initiate Bulk
+                                        <Zap className="h-3 w-3 mr-2" />
+                                        Prep Bulk
                                     </Button>
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
                                         onClick={() => setSelectedSchools([])}
-                                        className="h-11 w-11 rounded-xl text-white/40 hover:text-white hover:bg-white/10"
+                                        className="h-9 w-9 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
                                     >
-                                        <X className="h-5 w-5" />
+                                        <X className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </CardContent>
@@ -435,9 +490,15 @@ export default function AgreementsClient() {
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string, onClick?: () => void }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
+        <Card 
+            className={cn(
+                "rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left",
+                onClick && "cursor-pointer active:scale-95"
+            )}
+            onClick={onClick}
+        >
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />
