@@ -292,7 +292,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full flex flex-col">
-                                            <ScrollArea className="w-full h-[400px] border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
+                                            <ScrollArea className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
                                                 <SignatureCanvas 
                                                     ref={sigPadRef} 
                                                     penColor="black" 
@@ -359,25 +359,25 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
                                 <div className="space-y-4 px-2">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <Sun className="h-3 w-3" /> Ink Density
+                                                    <Sun className="h-3 w-3" /> Density
                                                 </Label>
                                                 <span className="text-[9px] font-mono opacity-40">{inkSensitivity}</span>
                                             </div>
                                             <Slider value={[inkSensitivity]} onValueChange={([v]) => setInkSensitivity(v)} min={50} max={230} step={1} className="py-1" />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <Wand2 className="h-3 w-3" /> Stroke Weight
+                                                    <Wand2 className="h-3 w-3" /> Weight
                                                 </Label>
-                                                <span className="text-[9px] font-mono opacity-40">+{strokeWeight}px</span>
+                                                <span className="text-[9px] font-mono opacity-40">+{strokeWeight}</span>
                                             </div>
                                             <Slider value={[strokeWeight]} onValueChange={([v]) => setStrokeWeight(v)} min={0} max={4} step={0.5} className="py-1" />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                                                     <Sparkles className="h-3 w-3" /> Smoothing
@@ -386,16 +386,16 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             </div>
                                             <Slider value={[smoothing]} onValueChange={([v]) => setSmoothing(v)} min={0} max={5} step={1} className="py-1" />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <RotateCcw className="h-3 w-3" /> Fine Rotation
+                                                    <RotateCcw className="h-3 w-3" /> Rotation
                                                 </Label>
                                                 <span className="text-[9px] font-mono opacity-40">{rotation}°</span>
                                             </div>
                                             <Slider value={[rotation]} onValueChange={([v]) => setRotation(v)} min={-180} max={180} step={1} className="py-1" />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5 sm:col-span-2">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                                                     <ZoomIn className="h-3 w-3" /> Zoom
@@ -420,7 +420,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             <img 
                                                 src={processedResult} 
                                                 alt="Final Processed Identity" 
-                                                className="max-w-[70%] max-h-[70%] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.2)] transition-transform duration-700 hover:scale-110" 
+                                                className="max-w-[95%] max-h-[95%] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.2)] transition-transform duration-700 hover:scale-110" 
                                             />
                                         </div>
                                     ) : (
