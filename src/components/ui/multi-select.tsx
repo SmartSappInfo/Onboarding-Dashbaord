@@ -85,16 +85,28 @@ export function MultiSelect({
                       className="mr-1 mb-1 font-bold text-[10px] uppercase tracking-tighter rounded-sm animate-in fade-in zoom-in-95"
                     >
                       {option?.label || val}
-                      <button
-                        type="button"
+                      <span
+                        role="button"
+                        tabIndex={0}
                         className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemove(val);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRemove(val);
+                          }
+                        }}
                       >
                         <X className="h-3 w-3" />
-                      </button>
+                      </span>
                     </Badge>
                   );
                 })}
