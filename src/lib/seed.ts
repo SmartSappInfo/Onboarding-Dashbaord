@@ -609,24 +609,22 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
     const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
     const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
 
-    const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
+    const priorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
     const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];
-    const statuses: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+    const statuses: TaskStatus[] = ['todo', 'in_progress', 'waiting', 'review', 'done'];
 
     let count = 0;
     schools.forEach((school, i) => {
-        // Create 2 tasks per school
         for (let j = 0; j < 2; j++) {
             const user = users[i % users.length];
             const priority = priorities[(i + j) % priorities.length];
             const category = categories[(i + j * 2) % categories.length];
-            const status = j === 0 ? 'pending' : (i % 3 === 0 ? 'completed' : 'in_progress');
+            const status = j === 0 ? 'todo' : (i % 3 === 0 ? 'done' : 'in_progress');
             
-            // Varied due dates: some overdue, some today, some future
             let dueDate = new Date();
-            if (i % 3 === 0) dueDate = subDays(new Date(), 2); // Overdue
-            else if (i % 3 === 1) dueDate = new Date(); // Today
-            else dueDate = addDays(new Date(), 5); // Future
+            if (i % 3 === 0) dueDate = subDays(new Date(), 2); 
+            else if (i % 3 === 1) dueDate = new Date(); 
+            else dueDate = addDays(new Date(), 5); 
 
             const task: any = {
                 title: `${category.charAt(0).toUpperCase() + category.slice(1)}: ${school.name} protocol`,
@@ -639,12 +637,14 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
                 assignedTo: user.id,
                 assignedToName: user.name,
                 dueDate: dueDate.toISOString(),
+                reminders: [],
                 reminderSent: false,
                 source: 'manual',
                 createdAt: subDays(new Date(), 5).toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
-            if (status === 'completed') {
+            if (status === 'done') {
                 task.completedAt = new Date().toISOString();
             }
 

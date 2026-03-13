@@ -673,9 +673,15 @@ export interface VariableDefinition {
   hidden?: boolean;
 }
 
-export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'review' | 'done';
 export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'general';
+
+export interface TaskReminder {
+  reminderTime: string; // ISO string
+  channels: ('notification' | 'email' | 'sms')[];
+  sent: boolean;
+}
 
 export interface Task {
   id: string;
@@ -688,13 +694,15 @@ export interface Task {
   schoolName?: string | null;
   assignedTo: string; // userId
   assignedToName?: string;
+  startDate?: string; // ISO string
   dueDate: string; // ISO string
-  reminderSent: boolean;
+  completedAt?: string; // ISO string
+  updatedAt?: string; // ISO string
+  createdAt: string; // ISO string
+  reminderSent: boolean; // Legacy
+  reminders: TaskReminder[];
   source: 'manual' | 'automation' | 'system';
   automationId?: string;
-  createdAt: string;
-  completedAt?: string;
-  updatedAt?: string;
   
   // Rich Data Interlinking
   relatedEntityId?: string | null;

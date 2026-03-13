@@ -6,8 +6,6 @@ import {
     addDoc, 
     updateDoc, 
     deleteDoc, 
-    serverTimestamp,
-    deleteField,
     type Firestore,
     writeBatch
 } from 'firebase/firestore';
@@ -19,10 +17,14 @@ import { errorEmitter, FirestorePermissionError } from '@/firebase';
  */
 export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'createdAt'>) {
     const tasksCol = collection(db, 'tasks');
+    const timestamp = new Date().toISOString();
+    
     const taskData = {
         ...task,
-        createdAt: new Date().toISOString(),
-        status: task.status || 'pending',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        status: task.status || 'todo',
+        reminders: task.reminders || [],
         reminderSent: false,
     };
 
@@ -41,16 +43,19 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
  */
 export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Partial<Task>) {
     const taskRef = doc(db, 'tasks', taskId);
-    
-    // Filter out undefined values to prevent Firestore crashes
-    const cleanedUpdates = Object.fromEntries(
-        Object.entries(updates).map(([k, v]) => [k, v === undefined ? deleteField() : v])
-    );
+    const timestamp = new Date().toISOString();
 
-    const data = {
-        ...cleanedUpdates,
-        updatedAt: new Date().toISOString(),
+    const data: any = {
+        ...updates,
+        updatedAt: timestamp,
     };
+
+    // Logic: Capture completedAt if status moves to 'done'
+    if (updates.status === 'done' && !updates.completedAt) {
+        data.completedAt = timestamp;
+    } else if (updates.status && updates.status !== 'done') {
+        data.completedAt = null; // Reopened
+    }
 
     updateDoc(taskRef, data).catch(async (error) => {
         const permissionError = new FirestorePermissionError({
@@ -67,8 +72,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
  */
 export function completeTaskNonBlocking(db: Firestore, taskId: string) {
     updateTaskNonBlocking(db, taskId, {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
+        status: 'done',
     });
 }
 
@@ -91,7 +95,7 @@ export async function bulkCompleteTasks(db: Firestore, taskIds: string[]) {
     const timestamp = new Date().toISOString();
     taskIds.forEach(id => {
         batch.update(doc(db, 'tasks', id), {
-            status: 'completed',
+            status: 'done',
             completedAt: timestamp,
             updatedAt: timestamp
         });
