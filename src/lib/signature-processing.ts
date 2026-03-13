@@ -3,7 +3,7 @@
 /**
  * @fileOverview Advanced image processing for signature and photo isolation.
  * Handles grayscale conversion, adaptive thresholding, background removal, 
- * stroke dilation (thickness), and general photo enhancement.
+ * stroke dilation (thickness), and Gaussian-style smoothing.
  */
 
 export interface ProcessingResult {
@@ -28,11 +28,15 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 
 /**
  * Processes a raw image to isolate ink and remove the paper background.
+ * Now supports manual cropping and rotation from the refinement step.
  */
 export async function processSignatureImage(
   sourceUrl: string, 
   threshold: number = 150,
-  thickness: number = 0
+  thickness: number = 0,
+  smoothing: number = 0,
+  cropArea?: { x: number, y: number, width: number, height: number },
+  rotation: number = 0
 ): Promise<ProcessingResult> {
   const img = await createImage(sourceUrl);
   const canvas = document.createElement('canvas');
@@ -40,27 +44,51 @@ export async function processSignatureImage(
   
   if (!ctx) throw new Error('Failed to initialize canvas context.');
 
-  canvas.width = img.width;
-  canvas.height = img.height;
+  // 1. SPATIAL TRANSFORMATION (Rotation & Cropping)
+  // If cropArea is provided, we use the user's manual framing
+  const sourceW = cropArea ? cropArea.width : img.width;
+  const sourceH = cropArea ? cropArea.height : img.height;
   
-  // 1. DILATION PASS (Thickness)
+  canvas.width = sourceW;
+  canvas.height = sourceH;
+
+  // Apply rotation and draw the cropped segment
+  if (rotation !== 0) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+  }
+
+  if (cropArea) {
+      ctx.drawImage(img, cropArea.x, cropArea.y, cropArea.width, cropArea.height, 0, 0, canvas.width, canvas.height);
+  } else {
+      ctx.drawImage(img, 0, 0);
+  }
+
+  // 2. SMOOTHING PASS (Digital Convolution)
+  if (smoothing > 0) {
+      ctx.filter = `blur(${smoothing * 0.5}px)`;
+      ctx.drawImage(canvas, 0, 0);
+      ctx.filter = 'none';
+  }
+
+  // 3. DILATION PASS (Thickness)
   if (thickness > 0) {
       const t = thickness * 0.5;
       ctx.globalAlpha = 0.8;
       for (let dy = -t; dy <= t; dy += 0.5) {
           for (let dx = -t; dx <= t; dx += 0.5) {
-              ctx.drawImage(img, dx, dy);
+              if (dx !== 0 || dy !== 0) ctx.drawImage(canvas, dx, dy);
           }
       }
       ctx.globalAlpha = 1.0;
-  } else {
-      ctx.drawImage(img, 0, 0);
   }
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
 
-  // 2. Thresholding & Transparency Pass
+  // 4. THRESHOLDING & TRANSPARENCY PASS (Ink Isolation)
+  // Hard normalization to pure black (#000000)
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
@@ -68,16 +96,17 @@ export async function processSignatureImage(
     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
 
     if (brightness < threshold) {
-      data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
-      data[i + 3] = 255;
+      data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; // Pure Black
+      data[i + 3] = 255; // Opaque
     } else {
-      data[i + 3] = 0;
+      data[i + 3] = 0; // Transparent Background
     }
   }
 
   ctx.putImageData(imageData, 0, 0);
 
-  // 3. Auto-Cropping
+  // 5. AUTO-CROP (TIGHTEN)
+  // Even with manual crop, we tighten the bounds to the actual ink
   let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
   let foundInk = false;
 
@@ -91,7 +120,14 @@ export async function processSignatureImage(
     }
   }
 
-  if (!foundInk) return { dataUrl: sourceUrl, width: img.width, height: img.height };
+  // If no ink found, return original cropped area
+  if (!foundInk) {
+      return { 
+          dataUrl: canvas.toDataURL('image/png'), 
+          width: canvas.width, 
+          height: canvas.height 
+      };
+  }
 
   const padding = 10;
   minX = Math.max(0, minX - padding);
@@ -99,18 +135,18 @@ export async function processSignatureImage(
   maxX = Math.min(canvas.width, maxX + padding);
   maxY = Math.min(canvas.height, maxY + padding);
 
-  const cropW = maxX - minX;
-  const cropH = maxY - minY;
+  const finalW = maxX - minX;
+  const finalH = maxY - minY;
 
-  // 4. Output Normalization (Fidelity Check)
+  // 6. OUTPUT NORMALIZATION
   const outputCanvas = document.createElement('canvas');
   outputCanvas.width = TARGET_WIDTH;
-  outputCanvas.height = Math.round((cropH / cropW) * TARGET_WIDTH);
+  outputCanvas.height = Math.round((finalH / finalW) * TARGET_WIDTH);
   
   const oCtx = outputCanvas.getContext('2d');
   if (!oCtx) throw new Error('Failed to initialize output context.');
 
-  oCtx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, outputCanvas.width, outputCanvas.height);
+  oCtx.drawImage(canvas, minX, minY, finalW, finalH, 0, 0, outputCanvas.width, outputCanvas.height);
 
   return {
     dataUrl: outputCanvas.toDataURL('image/png'),
