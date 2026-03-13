@@ -379,14 +379,13 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 animate={{ opacity: 1, x: 0 }} 
                                 className="h-full flex flex-col p-6 pt-0 space-y-6"
                             >
-                                {/* Full-Width Viewport */}
-                                <div className="flex-1 w-full aspect-video relative rounded-[2rem] overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
+                                <div className="flex-1 w-full aspect-square sm:aspect-video relative rounded-[2rem] overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
                                     <Cropper
                                         image={filteredBaseImageUrl || rawCapturedImage!}
                                         crop={crop}
                                         zoom={zoom}
                                         rotation={rotation}
-                                        aspect={16 / 9}
+                                        aspect={1}
                                         onCropChange={setCrop}
                                         onZoomChange={setZoom}
                                         onRotationChange={setRotation}
@@ -406,7 +405,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                     </div>
                                 </div>
 
-                                {/* Integrated Control Panel (Bottom) */}
                                 <div className="space-y-6 bg-muted/20 p-5 rounded-[2rem] border shadow-inner">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="space-y-3">
