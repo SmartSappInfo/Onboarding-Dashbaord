@@ -28,7 +28,7 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 
 /**
  * Processes a raw image to isolate ink and remove the paper background.
- * Now supports manual cropping and rotation from the refinement step.
+ * Supports manual cropping and rotation from the refinement step.
  */
 export async function processSignatureImage(
   sourceUrl: string, 
@@ -36,7 +36,8 @@ export async function processSignatureImage(
   thickness: number = 0,
   smoothing: number = 0,
   cropArea?: { x: number, y: number, width: number, height: number },
-  rotation: number = 0
+  rotation: number = 0,
+  skipAutoCrop: boolean = false
 ): Promise<ProcessingResult> {
   const img = await createImage(sourceUrl);
   const canvas = document.createElement('canvas');
@@ -106,7 +107,15 @@ export async function processSignatureImage(
   ctx.putImageData(imageData, 0, 0);
 
   // 5. AUTO-CROP (TIGHTEN)
-  // Even with manual crop, we tighten the bounds to the actual ink
+  // Skip if we are doing a live preview to maintain coordinate stability
+  if (skipAutoCrop) {
+      return { 
+          dataUrl: canvas.toDataURL('image/png'), 
+          width: canvas.width, 
+          height: canvas.height 
+      };
+  }
+
   let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
   let foundInk = false;
 
