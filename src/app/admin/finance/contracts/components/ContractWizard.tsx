@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -32,7 +33,8 @@ import {
     Smartphone,
     Info,
     FlaskConical,
-    Building
+    Building,
+    MessageSquareOff
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -45,11 +47,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfFormRenderer from '@/app/forms/[pdfId]/components/PdfFormRenderer';
 import TestDispatchDialog from '../../../messaging/components/TestDispatchDialog';
+import { Switch } from '@/components/ui/switch';
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),
     emailTemplateId: z.string().optional(),
     smsTemplateId: z.string().optional(),
+    skipMessaging: z.boolean().default(false),
 });
 
 type WizardData = z.infer<typeof wizardSchema>;
@@ -87,6 +91,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
             pdfId: '',
             emailTemplateId: 'none',
             smsTemplateId: 'none',
+            skipMessaging: false,
         }
     });
 
@@ -94,6 +99,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
     const watchedPdfId = watch('pdfId');
     const watchedEmailId = watch('emailTemplateId');
     const watchedSmsId = watch('smsTemplateId');
+    const watchedSkipMessaging = watch('skipMessaging');
 
     // Data Subscriptions
     const pdfsQuery = useMemoFirebase(() => 
@@ -123,8 +129,10 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
     const onSubmit = async (data: WizardData) => {
         if (!user || !selectedPdf) return;
         
-        if (data.emailTemplateId === 'none' && data.smsTemplateId === 'none') {
-            toast({ variant: 'destructive', title: 'Template Required', description: 'Please select at least one message template.' });
+        const noMessagingSelected = data.emailTemplateId === 'none' && data.smsTemplateId === 'none';
+        
+        if (noMessagingSelected && !data.skipMessaging) {
+            toast({ variant: 'destructive', title: 'Template Required', description: 'Please select a template or enable manual dispatch mode.' });
             return;
         }
 
@@ -142,11 +150,11 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                     schoolName: school.name,
                     pdfId: data.pdfId,
                     pdfName: selectedPdf.name,
-                    status: 'sent',
+                    status: 'sent', // Mark as sent even if handled manually
                     userId: user.uid
                 });
 
-                if (upsertRes.success && upsertRes.id) {
+                if (upsertRes.success && upsertRes.id && !data.skipMessaging && !noMessagingSelected) {
                     // 2. Identify designated signatory for this school
                     const signatory = school.focalPersons?.find(p => p.isSignatory) || school.focalPersons?.[0];
                     if (signatory) {
@@ -160,15 +168,18 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                             userId: user.uid,
                             publicUrl: getPublicUrl(school)
                         });
-                        successCount++;
                     }
+                }
+                
+                if (upsertRes.success) {
+                    successCount++;
                 }
             } catch (err) {
                 console.error(`Failed to process ${school.name}:`, err);
             }
         }
 
-        toast({ title: 'Bulk Execution Complete', description: `${successCount} institutional agreements dispatched.` });
+        toast({ title: 'Bulk Execution Complete', description: `${successCount} institutional records updated.` });
         setIsSaving(false);
         onOpenChange(false);
     };
@@ -357,7 +368,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                                                 <Label className="text-base font-black uppercase tracking-tight">Protocol Selection</Label>
                                                             </div>
                                                             
-                                                            <div className="space-y-4">
+                                                            <div className={cn("space-y-4", watchedSkipMessaging && "opacity-40 pointer-events-none transition-opacity")}>
                                                                 <div className="space-y-2">
                                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Email Template</Label>
                                                                     <Controller
@@ -401,10 +412,37 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                                                 </div>
                                                             </div>
 
+                                                            <div className="space-y-4 border-t pt-6 mt-4 border-dashed">
+                                                                <div className={cn(
+                                                                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
+                                                                    watchedSkipMessaging ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/10"
+                                                                )}>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={cn("p-2 rounded-xl", watchedSkipMessaging ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                                                            <MessageSquareOff className="h-4 w-4" />
+                                                                        </div>
+                                                                        <div className="space-y-0.5">
+                                                                            <Label className="text-xs font-black uppercase tracking-tight">Manual Dispatch Mode</Label>
+                                                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tighter">Assign records without sending notifications</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <Controller 
+                                                                        name="skipMessaging"
+                                                                        control={methods.control}
+                                                                        render={({ field }) => (
+                                                                            <Switch 
+                                                                                checked={field.value} 
+                                                                                onCheckedChange={field.onChange}
+                                                                            />
+                                                                        )}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
                                                             <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
                                                                 <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
                                                                 <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed tracking-widest opacity-80">
-                                                                    Bulk dispatches will resolve unique institutional signing URLs and signatory context for every record before delivery.
+                                                                    {watchedSkipMessaging ? "The system will initialize institutional contract records but will suppress all automated messaging. Finalize manually after this process." : "Bulk dispatches will resolve unique institutional signing URLs and signatory context for every record before delivery."}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -434,7 +472,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                             <Button 
                                 variant="outline" 
                                 onClick={() => setIsTestModalOpen(true)}
-                                disabled={watchedEmailId === 'none' && watchedSmsId === 'none'}
+                                disabled={watchedSkipMessaging || (watchedEmailId === 'none' && watchedSmsId === 'none')}
                                 className="rounded-xl font-bold h-14 border-primary/20 text-primary px-8 gap-2"
                             >
                                 <FlaskConical className="h-5 w-5" /> Send Test
@@ -453,11 +491,11 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                             !isSaving && (
                                 <Button 
                                     onClick={handleSubmit(onSubmit)} 
-                                    disabled={isSaving || (watchedEmailId === 'none' && watchedSmsId === 'none')}
+                                    disabled={isSaving || (!watchedSkipMessaging && watchedEmailId === 'none' && watchedSmsId === 'none')}
                                     className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
                                 >
-                                    <Send className="h-6 w-6" />
-                                    Launch Bulk Dispatch
+                                    {watchedSkipMessaging ? <ShieldCheck className="h-6 w-6" /> : <Send className="h-6 w-6" />}
+                                    {watchedSkipMessaging ? 'Finalize Manual Assignment' : 'Launch Bulk Dispatch'}
                                 </Button>
                             )
                         )}
