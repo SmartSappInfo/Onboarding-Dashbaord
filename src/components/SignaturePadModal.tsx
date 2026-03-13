@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { 
     Upload, Camera, Eraser, Check, Loader2, X, ArrowLeft, ArrowRight,
-    Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck, FileIcon
+    Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -29,14 +29,6 @@ interface SignaturePadModalProps {
     mode?: 'signature' | 'photo';
 }
 
-/**
- * @fileOverview High-fidelity Identity Capture Module.
- * Features:
- * - 16:9 Cinematic framing for Camera & Drawing.
- * - Interactive Cropper with pinch-to-zoom sync.
- * - Real-time AI filter preview (Density, Weight, Smoothing).
- * - High-fidelity verification view (95% scale).
- */
 export default function SignaturePadModal({ open, onClose, onSave, mode = 'signature' }: SignaturePadModalProps) {
     const { toast } = useToast();
     const [step, setStep] = React.useState<'input' | 'refine' | 'confirm'>('input');
@@ -54,14 +46,12 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [isConsented, setIsConsented] = React.useState(false);
     const [hasDrawn, setHasDrawn] = React.useState(false);
 
-    // Refinement parameters
     const [inkSensitivity, setInkSensitivity] = React.useState(150);
     const [strokeWeight, setStrokeWeight] = React.useState(0);
     const [smoothing, setSmoothing] = React.useState(0);
     const [brightness, setBrightness] = React.useState(0);
     const [contrast, setContrast] = React.useState(0);
     
-    // Spatial parameters (Cropper)
     const [crop, setCrop] = React.useState({ x: 0, y: 0 });
     const [zoom, setZoom] = React.useState(1);
     const [rotation, setRotation] = React.useState(0);
@@ -76,7 +66,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     }, [open]);
 
-    // REAL-TIME REFINEMENT ENGINE (Live Preview Generator)
     React.useEffect(() => {
         if (step === 'refine' && rawCapturedImage) {
             const generatePreview = async () => {
@@ -90,7 +79,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                             smoothing,
                             undefined, 
                             0, 
-                            true // skipAutoCrop for coordinate stability during preview
+                            true
                         );
                         setFilteredBaseImageUrl(result.dataUrl);
                     } else {
@@ -186,7 +175,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         smoothing,
                         croppedAreaPixels || undefined,
                         rotation,
-                        false // Perform final tightening crop
+                        false
                     );
                     setProcessedResult(result.dataUrl);
                 } else {
@@ -242,7 +231,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
-                        {mode === 'photo' ? 'Photo Identity' : 'Digital Signature'}
+                        {mode === 'photo' ? 'Photo Identity' : 'Your Signature'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                         {step === 'input' ? 'Choose input method' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}
@@ -298,6 +287,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full flex flex-col">
+                                            <p className="text-[10px] font-black uppercase text-center mb-4 text-primary tracking-widest">Draw directly inside the viewport</p>
                                             <div className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
                                                 <SignatureCanvas 
                                                     ref={sigPadRef} 
@@ -306,10 +296,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                     onBegin={() => setHasDrawn(true)} 
                                                 />
                                             </div>
-                                            <p className="text-[8px] font-black uppercase text-center mt-3 text-muted-foreground tracking-[0.2em]">Draw directly inside the viewport</p>
                                         </TabsContent>
 
                                         <TabsContent value="type" className="m-0 h-full flex flex-col justify-center text-center">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Sign with Your Initials to Sign</p>
                                             <Input 
                                                 value={typedInitials} 
                                                 onChange={(e) => setTypedInitials(e.target.value)} 
@@ -420,6 +410,16 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 animate={{ opacity: 1, scale: 1 }} 
                                 className="p-8 text-center space-y-8 h-full flex flex-col justify-center bg-slate-50"
                             >
+                                <div className="flex items-center justify-center gap-4">
+                                    <div className={cn(
+                                        "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer shadow-sm",
+                                        isConsented ? "bg-emerald-50 border-emerald-500 shadow-emerald-500/10 scale-105" : "bg-white border-slate-200"
+                                    )} onClick={() => setIsConsented(!isConsented)}>
+                                        <Switch checked={isConsented} onCheckedChange={setIsConsented} />
+                                        <Label className="text-sm font-black uppercase tracking-tight cursor-pointer">Confirm Use of This Signature</Label>
+                                    </div>
+                                </div>
+
                                 <div className="p-12 bg-white border-2 border-dashed border-border rounded-[3rem] shadow-2xl relative flex items-center justify-center min-h-[350px] group overflow-hidden">
                                     {processedResult ? (
                                         <div className="relative w-full h-full flex items-center justify-center p-4">
@@ -435,15 +435,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Normalizing Asset...</p>
                                         </div>
                                     )}
-                                </div>
-                                <div className="flex items-center justify-center gap-4 pt-4">
-                                    <div className={cn(
-                                        "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer shadow-sm",
-                                        isConsented ? "bg-emerald-50 border-emerald-500 shadow-emerald-500/10 scale-105" : "bg-white border-slate-200"
-                                    )} onClick={() => setIsConsented(!isConsented)}>
-                                        <Switch checked={isConsented} onCheckedChange={setIsConsented} />
-                                        <Label className="text-sm font-black uppercase tracking-tight cursor-pointer">Verify Signature Identity</Label>
-                                    </div>
                                 </div>
                             </motion.div>
                         )}
@@ -469,10 +460,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         </>
                     ) : (
                         <>
-                            <Button variant="ghost" onClick={() => setStep('refine')} className="font-bold h-10 px-8 rounded-xl gap-2"><ArrowLeft className="h-3 w-3" /> Adjust Frame</Button>
+                            <Button variant="ghost" onClick={() => setStep('refine')} className="font-bold h-10 px-8 rounded-xl gap-2"><ArrowLeft className="h-3 w-3" /> Back</Button>
                             <div className="flex-1" />
                             <Button onClick={handleFinalSave} disabled={!isConsented || !processedResult} className="rounded-xl font-black h-12 px-12 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-widest text-[10px] gap-3 active:scale-95 transition-all">
-                                <ShieldCheck className="h-5 w-5" /> Execute Signature
+                                <ShieldCheck className="h-5 w-5" /> Apply Signature
                             </Button>
                         </>
                     )}
