@@ -77,6 +77,21 @@ export function completeTaskNonBlocking(db: Firestore, taskId: string) {
 }
 
 /**
+ * Bulk updates multiple tasks with shared properties.
+ */
+export async function bulkUpdateTasks(db: Firestore, taskIds: string[], updates: Partial<Task>) {
+    const batch = writeBatch(db);
+    const timestamp = new Date().toISOString();
+    
+    taskIds.forEach(id => {
+        const data: any = { ...updates, updatedAt: timestamp };
+        if (updates.status === 'done') data.completedAt = timestamp;
+        batch.update(doc(db, 'tasks', id), data);
+    });
+    return batch.commit();
+}
+
+/**
  * Bulk deletes multiple tasks.
  */
 export async function bulkDeleteTasks(db: Firestore, taskIds: string[]) {
@@ -91,16 +106,7 @@ export async function bulkDeleteTasks(db: Firestore, taskIds: string[]) {
  * Bulk marks multiple tasks as complete.
  */
 export async function bulkCompleteTasks(db: Firestore, taskIds: string[]) {
-    const batch = writeBatch(db);
-    const timestamp = new Date().toISOString();
-    taskIds.forEach(id => {
-        batch.update(doc(db, 'tasks', id), {
-            status: 'done',
-            completedAt: timestamp,
-            updatedAt: timestamp
-        });
-    });
-    return batch.commit();
+    return bulkUpdateTasks(db, taskIds, { status: 'done' });
 }
 
 /**
