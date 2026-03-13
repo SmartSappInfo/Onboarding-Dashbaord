@@ -82,8 +82,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                             inkSensitivity, 
                             strokeWeight, 
                             smoothing,
-                            undefined, // No crop yet, let Cropper handle it
-                            0, // Let Cropper handle rotation visually
+                            undefined, // No crop yet
+                            0, // No rotation yet
                             true // skipAutoCrop for stable coords
                         );
                         setFilteredBaseImageUrl(result.dataUrl);
@@ -170,7 +170,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 setStep('confirm');
             }
         } else if (rawCapturedImage) {
-            // Final High-Fidelity Process with Crop and Rotation applied
             setIsProcessingPreview(true);
             try {
                 if (mode === 'signature') {
@@ -230,6 +229,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         (activeTab === 'type' && typedInitials.length > 0) ||
         (activeTab === 'upload' && uploadedImage !== null);
 
+    const showClearButton = (activeTab === 'draw' || activeTab === 'type') && step === 'input';
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card">
@@ -271,7 +272,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                     videoConstraints={{ aspectRatio: 1.7777777778, facingMode: "environment" }}
                                                     className="w-full h-full object-cover"
                                                 />
-                                                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-12">
+                                                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-8 sm:p-12">
                                                     <div className="w-full h-full border-2 border-dashed border-white/20 rounded-xl relative">
                                                         <motion.div 
                                                             animate={{ top: ['10%', '90%', '10%'] }} 
@@ -330,68 +331,34 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 animate={{ opacity: 1, x: 0 }} 
                                 className="h-full flex flex-col p-6 pt-0 space-y-6"
                             >
-                                {/* INTERACTIVE REFINEMENT WORKSPACE */}
-                                <div className="w-full aspect-video relative flex items-center justify-center gap-4 group">
-                                    {/* Left: Zoom Controller */}
-                                    <div className="hidden sm:flex flex-col items-center justify-center gap-2 h-full w-12 bg-muted/30 rounded-full border p-2 shadow-inner">
-                                        <ZoomIn className="h-3 w-3 text-muted-foreground" />
-                                        <div className="flex-1 w-1.5 bg-muted rounded-full relative overflow-hidden">
-                                            <Slider 
-                                                orientation="vertical" 
-                                                value={[zoom]} 
-                                                onValueChange={([v]) => setZoom(v)} 
-                                                min={1} max={3} step={0.1}
-                                                className="h-full"
-                                            />
-                                        </div>
-                                        <span className="text-[8px] font-black">{zoom.toFixed(1)}x</span>
-                                    </div>
-
-                                    <div className="flex-1 relative aspect-video rounded-3xl overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
-                                        <Cropper
-                                            image={filteredBaseImageUrl || rawCapturedImage!}
-                                            crop={crop}
-                                            zoom={zoom}
-                                            rotation={rotation}
-                                            aspect={16 / 9}
-                                            onCropChange={setCrop}
-                                            onZoomChange={setZoom}
-                                            onRotationChange={setRotation}
-                                            onCropComplete={handleOnCropComplete}
-                                            showGrid={true}
-                                            style={{
-                                                containerStyle: { borderRadius: '1.5rem' },
-                                                cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
-                                            {isProcessingPreview && (
-                                                <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
-                                                    <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Live Processing...
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Right: Rotation Controller */}
-                                    <div className="hidden sm:flex flex-col items-center justify-center gap-2 h-full w-12 bg-muted/30 rounded-full border p-2 shadow-inner">
-                                        <RotateCcw className="h-3 w-3 text-muted-foreground" />
-                                        <div className="flex-1 w-1.5 bg-muted rounded-full relative overflow-hidden">
-                                            <Slider 
-                                                orientation="vertical" 
-                                                value={[rotation]} 
-                                                onValueChange={([v]) => setRotation(v)} 
-                                                min={-180} max={180} step={1}
-                                                className="h-full"
-                                            />
-                                        </div>
-                                        <span className="text-[8px] font-black">{rotation}°</span>
+                                <div className="w-full aspect-video relative rounded-3xl overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
+                                    <Cropper
+                                        image={filteredBaseImageUrl || rawCapturedImage!}
+                                        crop={crop}
+                                        zoom={zoom}
+                                        rotation={rotation}
+                                        aspect={16 / 9}
+                                        onCropChange={setCrop}
+                                        onZoomChange={setZoom}
+                                        onRotationChange={setRotation}
+                                        onCropComplete={handleOnCropComplete}
+                                        showGrid={true}
+                                        style={{
+                                            containerStyle: { borderRadius: '1.5rem' },
+                                            cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
+                                        {isProcessingPreview && (
+                                            <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
+                                                <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Live Processing...
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* STUDIO REFINEMENT CONTROLS */}
                                 <div className="space-y-4 px-2">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
@@ -419,6 +386,24 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             </div>
                                             <Slider value={[smoothing]} onValueChange={([v]) => setSmoothing(v)} min={0} max={5} step={1} className="py-1" />
                                         </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                                    <RotateCcw className="h-3 w-3" /> Fine Rotation
+                                                </Label>
+                                                <span className="text-[9px] font-mono opacity-40">{rotation}°</span>
+                                            </div>
+                                            <Slider value={[rotation]} onValueChange={([v]) => setRotation(v)} min={-180} max={180} step={1} className="py-1" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                                    <ZoomIn className="h-3 w-3" /> Zoom
+                                                </Label>
+                                                <span className="text-[9px] font-mono opacity-40">{zoom.toFixed(1)}x</span>
+                                            </div>
+                                            <Slider value={[zoom]} onValueChange={([v]) => setZoom(v)} min={1} max={3} step={0.1} className="py-1" />
+                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -444,9 +429,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Normalizing Asset...</p>
                                         </div>
                                     )}
-                                    <div className="absolute top-4 left-4">
-                                        <Badge variant="outline" className="bg-white/80 backdrop-blur-md text-[8px] font-black uppercase tracking-widest border-primary/20 text-primary">Final Audit View</Badge>
-                                    </div>
                                 </div>
                                 <div className="flex items-center justify-center gap-4 pt-4">
                                     <div className={cn(
@@ -465,7 +447,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
                     {step === 'input' ? (
                         <>
-                            {(activeTab === 'draw' || activeTab === 'type') && <Button variant="ghost" size="sm" onClick={handleClear} className="font-bold text-[10px] uppercase h-10 px-4"><Eraser className="h-3 w-3 mr-1.5" /> Clear</Button>}
+                            {showClearButton && <Button variant="ghost" size="sm" onClick={handleClear} className="font-bold text-[10px] uppercase h-10 px-4"><Eraser className="h-3 w-3 mr-1.5" /> Clear</Button>}
                             <div className="flex-1" />
                             <Button variant="ghost" onClick={onClose} className="font-bold h-10 px-8 rounded-xl">Discard</Button>
                             <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black h-10 px-10 shadow-lg uppercase text-[10px] tracking-widest transition-all active:scale-95">Continue</Button>
@@ -475,7 +457,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                             <Button variant="ghost" onClick={() => setStep('input')} className="font-bold h-10 px-8 rounded-xl gap-2"><ArrowLeft className="h-3 w-3" /> Start Over</Button>
                             <div className="flex-1" />
                             <Button onClick={handleProceedToConfirm} disabled={isProcessingPreview} className="rounded-xl font-black h-10 px-10 shadow-lg bg-primary text-white uppercase text-[10px] tracking-widest transition-all active:scale-95">
-                                {isProcessingPreview ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                                {isProcessingPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin mr-2" /> : <Check className="mr-2 h-4 w-4 mr-2" />}
                                 Process Final
                             </Button>
                         </>
