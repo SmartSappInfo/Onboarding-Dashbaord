@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,7 +32,9 @@ import {
     Circle,
     Receipt,
     Camera,
-    Loader2
+    Loader2,
+    ArrowRightLeft,
+    RefreshCw
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +57,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import ChangeStatusModal from '../components/ChangeStatusModal';
+import TransferPipelineModal from '../components/TransferPipelineModal';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -83,6 +88,9 @@ export default function SchoolDetailPage() {
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
+    
+    const [statusModalOpen, setStatusModalOpen] = React.useState(false);
+    const [transferModalOpen, setTransferModalOpen] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -97,6 +105,7 @@ export default function SchoolDetailPage() {
         return query(
             collection(firestore, 'tasks'),
             where('schoolId', '==', schoolId),
+            where('status', '!=', 'done'),
             orderBy('status'),
             orderBy('dueDate', 'asc')
         );
@@ -125,14 +134,6 @@ export default function SchoolDetailPage() {
                 updatedAt: new Date().toISOString()
             });
             
-            logActivity({
-                schoolId: school.id,
-                userId: currentUser?.uid || null,
-                type: 'school_updated',
-                source: 'user_action',
-                description: `updated the school logo for "${school.name}"`
-            });
-
             toast({ title: 'Branding Synchronized', description: 'Institutional logo updated across the platform.' });
             setIsLogoDialogOpen(false);
         } catch (e: any) {
@@ -154,24 +155,60 @@ export default function SchoolDetailPage() {
     );
 
     return (
-        <div className="h-full overflow-y-auto bg-muted/10 pb-32">
+        <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.lifecycleStatus === 'Churned' && "grayscale opacity-80")}>
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-                <div className="flex justify-end gap-2 text-left">
-                    <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => setIsLogModalOpen(true)}>
-                        <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
-                        Log Interaction
-                    </Button>
-                    <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                        <PenSquare className="mr-2 h-4 w-4" /> 
-                        Edit Profile
-                    </Button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="rounded-xl font-bold h-10 border-primary/20 text-primary bg-background"
+                            onClick={() => setStatusModalOpen(true)}
+                        >
+                            <ShieldCheck className="mr-2 h-4 w-4" /> 
+                            Update Lifecycle
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="rounded-xl font-bold h-10 border-blue-200 text-blue-600 bg-background"
+                            onClick={() => setTransferModalOpen(true)}
+                        >
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> 
+                            Transfer Pipeline
+                        </Button>
+                    </div>
+                    <div className="flex justify-end gap-2 text-left">
+                        <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4 bg-background" onClick={() => setIsLogModalOpen(true)}>
+                            <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
+                            Log Interaction
+                        </Button>
+                        <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                            <PenSquare className="mr-2 h-4 w-4" /> 
+                            Edit Profile
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
                     <div className="h-48 bg-slate-900 relative group">
                         {school.heroImageUrl && <Image src={school.heroImageUrl} alt="banner" fill className="object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />}
                         <div className="absolute bottom-6 right-8 flex gap-3">
-                             <Badge variant={getStatusBadgeVariant(school.status)} className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md">{school.status}</Badge>
+                             <Badge 
+                                variant={getStatusBadgeVariant(school.status)} 
+                                className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md"
+                             >
+                                {school.status}
+                             </Badge>
+                             <Badge 
+                                className={cn(
+                                    "h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md",
+                                    school.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
+                                    school.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-500"
+                                )}
+                             >
+                                {school.lifecycleStatus}
+                             </Badge>
                              <Badge className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md" style={{ backgroundColor: school.stage?.color || '#3B5FFF' }}>{school.stage?.name || 'Welcome'}</Badge>
                         </div>
                     </div>
@@ -206,8 +243,8 @@ export default function SchoolDetailPage() {
                         <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Campus Insights</TabsTrigger>
                         <TabsTrigger value="tasks" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
                             Tasks
-                            {tasks && tasks.filter(t => t.status !== 'completed').length > 0 && (
-                                <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.filter(t => t.status !== 'completed').length}</Badge>
+                            {tasks && tasks.length > 0 && (
+                                <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
                         </TabsTrigger>
                         <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
@@ -275,7 +312,7 @@ export default function SchoolDetailPage() {
 
                     <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <h3 className="text-xl font-black uppercase tracking-tight">Tasks</h3>
+                            <h3 className="text-xl font-black uppercase tracking-tight">Active Missions</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
                                 <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`}>
                                     <Plus className="h-4 w-4" /> Create Task
@@ -286,7 +323,7 @@ export default function SchoolDetailPage() {
                             {isLoadingTasks ? (
                                 Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                             ) : tasks && tasks.length > 0 ? (
-                                tasks.filter(t => t.status !== 'completed').map(task => (
+                                tasks.map(task => (
                                     <Card key={task.id} className="border-border/50 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all">
                                         <CardContent className="p-4 flex items-center gap-4">
                                             <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
@@ -296,7 +333,7 @@ export default function SchoolDetailPage() {
                                                     <span className={cn("flex items-center gap-1", isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "text-rose-600" : "text-muted-foreground")}>
                                                         <Clock className="h-2.5 w-2.5" /> Due {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
                                                     </span>
-                                                    <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px]">{task.category}</Badge>
+                                                    <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px] uppercase">{task.category}</Badge>
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -363,6 +400,8 @@ export default function SchoolDetailPage() {
             </Dialog>
 
             <LogActivityModal school={school} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
+            <ChangeStatusModal school={school} open={statusModalOpen} onOpenChange={setStatusModalOpen} />
+            <TransferPipelineModal school={school} open={transferModalOpen} onOpenChange={setTransferModalOpen} />
         </div>
     );
 }

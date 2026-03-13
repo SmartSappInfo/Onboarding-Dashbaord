@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,6 +42,7 @@ const schoolEditSchema = z.object({
   initials: z.string().optional(),
   slogan: z.string().optional(),
   status: z.enum(['Active', 'Inactive', 'Archived']),
+  lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
@@ -116,7 +118,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const methods = useForm<SchoolEditValues>({
     resolver: zodResolver(schoolEditSchema),
     defaultValues: {
-      name: '', initials: '', slogan: '', status: 'Active',
+      name: '', initials: '', slogan: '', status: 'Active', lifecycleStatus: 'Onboarding',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
       referee: '', includeDroneFootage: false, assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
@@ -133,6 +135,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         initials: school.initials || '',
         slogan: school.slogan || '',
         status: school.status || 'Active',
+        lifecycleStatus: school.lifecycleStatus || 'Onboarding',
         logoUrl: school.logoUrl || '',
         heroImageUrl: school.heroImageUrl || '',
         zone: school.zone || undefined,
@@ -260,7 +263,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     name="status" 
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Status</FormLabel>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational State</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
@@ -277,6 +280,36 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                         </FormItem>
                     )} 
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <FormField 
+                        control={methods.control} 
+                        name="lifecycleStatus" 
+                        render={({ field }) => (
+                            <FormItem className="md:col-span-1">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Lifecycle Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 shadow-sm font-black uppercase text-xs text-primary">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="Onboarding" className="font-black">Onboarding</SelectItem>
+                                        <SelectItem value="Active" className="font-black">Active</SelectItem>
+                                        <SelectItem value="Churned" className="font-black">Churned</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} 
+                    />
+                    <div className="md:col-span-2 pt-2">
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic">
+                            Changing the lifecycle status affects regional health reporting and mission priorities in the Task Manager.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="space-y-2">

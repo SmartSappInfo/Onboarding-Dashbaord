@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -38,6 +39,7 @@ const formSchema = z.object({
   initials: z.string().optional(),
   slogan: z.string().optional(),
   status: z.enum(['Active', 'Inactive', 'Archived']),
+  lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
@@ -101,6 +103,7 @@ export default function NewSchoolPage() {
       initials: '',
       slogan: '',
       status: 'Active',
+      lifecycleStatus: 'Onboarding',
       location: '',
       nominalRoll: 0,
       focalPersons: [{ name: '', email: '', phone: '', type: 'Administrator', isSignatory: true }],
@@ -168,10 +171,11 @@ export default function NewSchoolPage() {
       ...rest,
       slug,
       assignedTo,
+      pipelineId: 'institutional_onboarding', // Default pipeline
       subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
-      stage: { id: 'welcome', name: 'Welcome', order: 1 },
+      stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
       createdAt: new Date().toISOString(),
     };
 
@@ -198,7 +202,14 @@ export default function NewSchoolPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">General Identity</CardTitle></div></CardHeader>
+                  <CardHeader className="bg-muted/30 border-b pb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <Building className="h-5 w-5 text-primary" />
+                        </div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">General Identity</CardTitle>
+                    </div>
+                  </CardHeader>
                   <CardContent className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField control={methods.control} name="name" render={({ field }) => (
@@ -207,6 +218,33 @@ export default function NewSchoolPage() {
                       <FormField control={methods.control} name="initials" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" /></FormControl><FormMessage /></FormItem>
                       )} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField control={methods.control} name="status" render={({ field }) => (
+                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                                        <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                                        <SelectItem value="Archived" className="font-bold">Archived</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            <FormMessage /></FormItem>
+                        )} />
+                        <FormField control={methods.control} name="lifecycleStatus" render={({ field }) => (
+                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Lifecycle Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger className="h-11 rounded-xl bg-primary/5 border-primary/20 text-primary font-black"><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="Onboarding" className="font-black">Onboarding</SelectItem>
+                                        <SelectItem value="Active" className="font-black">Active</SelectItem>
+                                        <SelectItem value="Churned" className="font-black">Churned</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            <FormMessage /></FormItem>
+                        )} />
                     </div>
 
                     <div className="space-y-2">
@@ -220,21 +258,10 @@ export default function NewSchoolPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-                        <FormField control={methods.control} name="status" render={({ field }) => (
-                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        <SelectItem value="Active" className="font-bold">Active</SelectItem>
-                                        <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
-                                        <SelectItem value="Archived" className="font-bold">Archived</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            <FormMessage /></FormItem>
-                        )} />
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Motto / Slogan</Label>
                         <FormField control={methods.control} name="slogan" render={({ field }) => (
-                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Motto</FormLabel><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
                         )} />
                     </div>
                   </CardContent>
