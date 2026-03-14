@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -47,7 +46,7 @@ import InternalNotificationConfig from '@/app/admin/components/internal-notifica
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { format } from 'date-fns';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../../schools/components/media-select';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),

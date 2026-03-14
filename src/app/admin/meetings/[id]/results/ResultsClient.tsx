@@ -254,7 +254,7 @@ export default function ResultsClient() {
                         <Table>
                             <TableHeader className="bg-muted/30">
                                 <TableRow>
-                                    <TableHead className="pl-8 text-[10px] font-black uppercase tracking-widest py-5">Parent / Guardian Identity</TableHead>
+                                    <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest">Parent / Guardian Identity</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Enrolled Children</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Session Ingress</TableHead>
                                     <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Status</TableHead>
@@ -322,10 +322,10 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="text-left">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-2xl font-black tabular-nums tracking-tighter truncate">{value}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 truncate">{sub}</p>
+                    <p className="text-2xl font-black tabular-nums tracking-tighter leading-none">{value}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1">{sub}</p>
                 </div>
             </CardContent>
         </Card>
@@ -334,7 +334,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
 
 function DetailRow({ label, value, sub, icon: Icon }: { label: string, value: string, sub: string, icon: any }) {
     return (
-        <div className="flex gap-4 group">
+        <div className="flex gap-4 group text-left">
             <div className="p-2.5 bg-muted rounded-xl transition-transform group-hover:scale-110 shrink-0 h-fit mt-1"><Icon className="h-4 w-4 text-muted-foreground" /></div>
             <div className="space-y-0.5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none">{label}</p>
