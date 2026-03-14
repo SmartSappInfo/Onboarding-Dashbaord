@@ -21,7 +21,6 @@ import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
 import { 
     Zap, 
     Play, 
-    Database, 
     Maximize2,
     Minimize2,
     Grid3X3,
@@ -54,7 +53,7 @@ interface AutomationBuilderProps {
 
 /**
  * @fileOverview The SmartSapp Visual Automation Architect.
- * Upgraded with Logic and Temporal nodes for Phase 6.
+ * Upgraded with stabilized state emitters to prevent recursive re-renders.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, onStateChange }: AutomationBuilderProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes || []);
@@ -90,8 +89,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         }));
     };
 
+    // Bubble state up to parent, ensuring we don't trigger unnecessary re-renders
     React.useEffect(() => {
-        onStateChange(nodes, edges);
+        const timeout = setTimeout(() => {
+            onStateChange(nodes, edges);
+        }, 100);
+        return () => clearTimeout(timeout);
     }, [nodes, edges, onStateChange]);
 
     const addNode = (type: keyof typeof nodeTypes) => {
@@ -207,7 +210,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                         )}
                     </div>
 
-                    <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 shrink-0">
+                    <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 shrink-0 text-left">
                         <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                         <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
                             Trigger payloads are automatically injected into the action context via the variable registry.

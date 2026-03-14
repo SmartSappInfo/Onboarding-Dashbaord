@@ -6,12 +6,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Automation } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, Zap, Settings2, Play, Layout, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import AutomationBuilder from '../../components/AutomationBuilder';
 import { saveAutomationAction } from '@/lib/automation-actions';
 
+/**
+ * @fileOverview High-fidelity Automation Blueprint Editor.
+ * Optimized with memoized state handlers to prevent infinite re-render loops.
+ */
 export default function EditAutomationPage() {
     const params = useParams();
     const router = useRouter();
@@ -29,17 +33,48 @@ export default function EditAutomationPage() {
 
     const { data: automation, isLoading } = useDoc<Automation>(docRef);
 
+    /**
+     * STABILIZED STATE HANDLER: Memoized to prevent infinite update depth error
+     * when passed to the visual builder's synchronization engine.
+     */
+    const handleStateChange = React.useCallback((nodes: any[], edges: any[]) => {
+        setCurrentData(prev => {
+            // Only update if nodes or edges have actually changed
+            if (JSON.stringify(prev.nodes) === JSON.stringify(nodes) && 
+                JSON.stringify(prev.edges) === JSON.stringify(edges)) {
+                return prev;
+            }
+            return { ...prev, nodes, edges };
+        });
+    }, []);
+
     const handleSave = async () => {
         if (!user) return;
         setIsSaving(true);
         const res = await saveAutomationAction(automationId, currentData, user.uid);
-        if (res.success) toast({ title: 'Logic Synchronized', description: 'Automation blueprint updated.' });
-        else toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
+        if (res.success) {
+            toast({ title: 'Logic Synchronized', description: 'Automation blueprint updated.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
+        }
         setIsSaving(false);
     };
 
-    if (isLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" /></div>;
-    if (!automation) return <div className="p-20 text-center">Automation not found.</div>;
+    if (isLoading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+            </div>
+        );
+    }
+
+    if (!automation) {
+        return (
+            <div className="p-20 text-center">
+                <p className="text-muted-foreground font-black uppercase tracking-widest">Blueprint not found.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-muted/10">
@@ -49,7 +84,7 @@ export default function EditAutomationPage() {
                     <Button variant="ghost" size="icon" onClick={() => router.push('/admin/automations')} className="rounded-xl h-10 w-10">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <div className="min-w-0">
+                    <div className="min-w-0 text-left">
                         <h1 className="text-sm font-black uppercase tracking-tight truncate pr-4">{automation.name}</h1>
                         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-0.5">Editing Workflow Blueprint</p>
                     </div>
@@ -70,7 +105,7 @@ export default function EditAutomationPage() {
                 <AutomationBuilder 
                     initialNodes={automation.nodes} 
                     initialEdges={automation.edges} 
-                    onStateChange={(nodes, edges) => setCurrentData(p => ({ ...p, nodes, edges }))}
+                    onStateChange={handleStateChange}
                 />
             </div>
         </div>
