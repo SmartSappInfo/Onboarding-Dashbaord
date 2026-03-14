@@ -9,6 +9,7 @@ import { PlusCircle, CalendarPlus, FilePlus, Upload, Sparkles, Loader2 } from "l
 import Link from "next/link";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { usePerspective } from "@/context/PerspectiveContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * @fileOverview Intelligence Hub Dashboard.
@@ -54,7 +55,7 @@ export default function AdminDashboardPage() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 shrink-0">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1">Quick Actions:</h3>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <RainbowButton asChild size="sm" className="justify-start rounded-xl font-bold h-9 shadow-lg">
