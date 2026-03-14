@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -38,7 +37,8 @@ import {
     Paperclip,
     Filter,
     ArrowUpDown,
-    EyeOff
+    EyeOff,
+    ChevronDown
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
