@@ -11,6 +11,7 @@ import ReactFlow, {
     addEdge, 
     Connection, 
     MarkerType,
+    Node
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
@@ -24,12 +25,14 @@ import {
     Grid3X3,
     Info,
     Layers,
-    Wand2
+    Wand2,
+    Settings2
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { NodeInspector } from './NodeInspector';
 
 const nodeTypes = {
     triggerNode: TriggerNode,
@@ -44,12 +47,13 @@ interface AutomationBuilderProps {
 
 /**
  * @fileOverview The SmartSapp Visual Automation Architect.
- * Built on React Flow with an executive dashboard aesthetic.
+ * Upgraded with a functional Node Inspector for Phase 4: Module Binding.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, onStateChange }: AutomationBuilderProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes || []);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges || []);
     const [isFullScreen, setIsFullScreen] = React.useState(false);
+    const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
 
     const onConnect = React.useCallback(
         (params: Connection) => setEdges((eds) => addEdge({
@@ -62,6 +66,23 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         [setEdges]
     );
 
+    const onNodeClick = (_: React.MouseEvent, node: Node) => {
+        setSelectedNodeId(node.id);
+    };
+
+    const onPaneClick = () => {
+        setSelectedNodeId(null);
+    };
+
+    const handleUpdateNodeData = (nodeId: string, newData: any) => {
+        setNodes(nds => nds.map(node => {
+            if (node.id === nodeId) {
+                return { ...node, data: { ...node.data, ...newData } };
+            }
+            return node;
+        }));
+    };
+
     React.useEffect(() => {
         onStateChange(nodes, edges);
     }, [nodes, edges, onStateChange]);
@@ -72,10 +93,16 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             id,
             type,
             position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
-            data: { label: type === 'triggerNode' ? 'New Event Trigger' : 'New Task Action' },
+            data: { 
+                label: type === 'triggerNode' ? 'New Event Trigger' : 'New Task Action',
+                config: {}
+            },
         };
         setNodes(nds => [...nds, newNode]);
+        setSelectedNodeId(id);
     };
+
+    const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
     return (
         <div className={cn(
@@ -88,6 +115,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 fitView
                 snapToGrid
@@ -130,21 +159,40 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             </ReactFlow>
 
             {/* Sidebar Inspector Context */}
-            <div className="absolute top-6 right-6 z-20 w-80 pointer-events-none">
-                <Card className="rounded-[2rem] border-none shadow-2xl bg-white/80 backdrop-blur-md p-6 pointer-events-auto opacity-0 group-hover/builder:opacity-100 transition-opacity">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-primary/10 rounded-xl text-primary"><Database className="h-4 w-4" /></div>
-                        <h4 className="text-[10px] font-black uppercase tracking-widest">Logic Inspector</h4>
+            <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
+                <Card className={cn(
+                    "rounded-[2rem] border-none shadow-2xl bg-white/95 backdrop-blur-md p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] flex flex-col",
+                    selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
+                )}>
+                    <div className="flex items-center justify-between mb-6 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl text-primary"><Settings2 className="h-4 w-4" /></div>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest">Logic Inspector</h4>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg">
+                            <X className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <div className="py-12 text-center border-2 border-dashed rounded-2xl border-border/50">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
-                            Select a node to<br/>configure parameters
-                        </p>
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                        {selectedNode ? (
+                            <NodeInspector 
+                                node={selectedNode} 
+                                onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)} 
+                            />
+                        ) : (
+                            <div className="py-12 text-center border-2 border-dashed rounded-2xl border-border/50">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
+                                    Select a node to<br/>configure parameters
+                                </p>
+                            </div>
+                        )}
                     </div>
-                    <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+
+                    <div className="mt-6 p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 shrink-0">
                         <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                         <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                            Trigger payloads are automatically injected into the action context.
+                            Trigger payloads are automatically injected into the action context via the variable registry.
                         </p>
                     </div>
                 </Card>
@@ -163,5 +211,25 @@ function ToolBtn({ icon: Icon, label, color, onClick }: any) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-black text-[10px] uppercase tracking-widest">{label}</TooltipContent>
         </Tooltip>
+    );
+}
+
+function X({ className }: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+        </svg>
     );
 }

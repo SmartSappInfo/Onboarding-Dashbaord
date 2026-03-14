@@ -3,15 +3,27 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, ChevronDown } from 'lucide-react';
+import { Zap, ChevronDown, Target, Building, CheckSquare, Database } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
+const TRIGGER_ICONS: Record<string, any> = {
+    'SCHOOL_CREATED': Building,
+    'SCHOOL_STAGE_CHANGED': Zap,
+    'TASK_COMPLETED': CheckSquare,
+    'SURVEY_SUBMITTED': Database,
+    'PDF_SIGNED': Target,
+};
 
 /**
  * @fileOverview High-fidelity Trigger Node for Automation Canvas.
  * Anchors the start of every operational flow.
  */
 export function TriggerNode({ data, selected }: any) {
+    const trigger = data.trigger;
+    const Icon = TRIGGER_ICONS[trigger] || Zap;
+
     return (
         <div className={cn(
             "relative transition-all duration-500",
@@ -28,9 +40,16 @@ export function TriggerNode({ data, selected }: any) {
                     </div>
                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                 </div>
-                <div className="p-4 space-y-1 text-left">
+                <div className="p-4 space-y-2 text-left">
                     <p className="text-xs font-black uppercase text-foreground leading-tight">{data.label || 'Event Detected'}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Trigger: System Internal</p>
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+                            <Icon className="h-3 w-3" />
+                        </div>
+                        <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-widest border-none p-0 opacity-60">
+                            Trigger: {trigger?.replace('_', ' ') || 'None'}
+                        </Badge>
+                    </div>
                 </div>
             </Card>
             <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-emerald-500 border-2 border-white !-bottom-1.5 shadow-md" />
