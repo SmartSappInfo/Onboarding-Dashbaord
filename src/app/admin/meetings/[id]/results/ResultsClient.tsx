@@ -26,7 +26,8 @@ import {
     Zap, 
     RotateCcw,
     Settings2,
-    Loader2
+    Loader2,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
