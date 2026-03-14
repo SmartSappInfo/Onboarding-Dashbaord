@@ -103,15 +103,15 @@ export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meet
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-8 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 text-center space-y-4 shadow-2xl"
+                    className="p-10 bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 text-center space-y-6 shadow-2xl"
                 >
-                    <div className="mx-auto bg-primary/20 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                        <Clock className="h-6 w-6 text-primary animate-pulse" />
+                    <div className="mx-auto bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mb-2">
+                        <Clock className="h-8 w-8 text-primary animate-pulse" />
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-lg font-black uppercase tracking-tight text-white leading-tight">Entrance Pending</p>
-                        <p className="text-xs font-bold text-white/60 uppercase tracking-widest leading-relaxed px-4">
-                            The joining portal will activate automatically once the session begins.
+                    <div className="space-y-3">
+                        <p className="text-2xl font-black text-white leading-tight">😃 You're In Too Early!</p>
+                        <p className="text-base font-medium text-white/70 leading-relaxed px-4">
+                            You'll be able to join from here, when the countdown is over
                         </p>
                     </div>
                 </motion.div>
