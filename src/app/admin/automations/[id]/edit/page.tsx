@@ -9,7 +9,7 @@ import type { Automation } from '@/lib/types';
 import { Loader2, ArrowLeft, Save, Zap, Settings2, Play, Layout, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import AutomationBuilder from '../components/AutomationBuilder';
+import AutomationBuilder from '../../components/AutomationBuilder';
 import { saveAutomationAction } from '@/lib/automation-actions';
 
 export default function EditAutomationPage() {
