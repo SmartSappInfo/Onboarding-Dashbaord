@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Automation, AutomationRun, AutomationTrigger, School, MessageTemplate, SenderProfile, TaskCategory, TaskPriority } from './types';
+import type { Automation, AutomationRun, AutomationTrigger, School, MessageTemplate, SenderProfile, TaskCategory, TaskPriority, AutomationJob } from './types';
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
@@ -10,7 +10,7 @@ import { logActivity } from './activity-logger';
 
 /**
  * @fileOverview The SmartSapp Logic Processor (Execution Engine).
- * Upgraded for Phase 6 to support conditional branching and temporal infrastructure.
+ * Upgraded for Phase 8 to support Background Job resumption and Heartbeat logic.
  */
 
 interface ExecutionContext {
@@ -44,6 +44,82 @@ export async function triggerAutomationProtocols(trigger: AutomationTrigger, pay
 }
 
 /**
+ * Heartbeat: Scans for and executes pending delayed jobs.
+ * Intended to be called by a 1-minute Cron job (e.g., Google Cloud Scheduler).
+ */
+export async function processScheduledJobsAction() {
+    console.log(`>>> [LOGIC:HEARTBEAT] Scanning for pending protocols...`);
+    const now = new Date().toISOString();
+    
+    try {
+        const jobsSnap = await adminDb.collection('automation_jobs')
+            .where('status', '==', 'pending')
+            .where('executeAt', '<=', now)
+            .limit(20)
+            .get();
+
+        if (jobsSnap.empty) return { success: true, processed: 0 };
+
+        let processedCount = 0;
+        for (const jobDoc of jobsSnap.docs) {
+            const job = { id: jobDoc.id, ...jobDoc.data() } as AutomationJob;
+            
+            // 1. Mark as processing to prevent race conditions
+            await jobDoc.ref.update({ status: 'processing' });
+
+            // 2. Resume Workflow
+            const success = await resumeAutomationRun(job);
+            
+            // 3. Finalize Job
+            await jobDoc.ref.update({ 
+                status: success ? 'completed' : 'failed'
+            });
+            processedCount++;
+        }
+
+        return { success: true, processed: processedCount };
+    } catch (error: any) {
+        console.error(`>>> [LOGIC:HEARTBEAT] CRITICAL FAILURE:`, error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Resumption Logic: Restores state and continues path traversal from a delay checkpoint.
+ */
+async function resumeAutomationRun(job: AutomationJob) {
+    try {
+        const [autoSnap, runSnap] = await Promise.all([
+            adminDb.collection('automations').doc(job.automationId).get(),
+            adminDb.collection('automation_runs').doc(job.runId).get()
+        ]);
+
+        if (!autoSnap.exists || !runSnap.exists) {
+            throw new Error("Blueprint or Run trace missing during resumption.");
+        }
+
+        const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
+        const runData = runSnap.data();
+
+        const context: ExecutionContext = {
+            schoolId: job.payload.schoolId,
+            payload: job.payload,
+            automationId: job.automationId,
+            runId: job.runId
+        };
+
+        console.log(`>>> [LOGIC:RESUME] Waking protocol [${automation.name}] at node: ${job.targetNodeId}`);
+
+        // Continue traversal from the next nodes connected to the delay node
+        await traverseNodes(job.targetNodeId, automation, context);
+        return true;
+    } catch (e: any) {
+        console.error(`>>> [LOGIC:RESUME] Failed:`, e.message);
+        return false;
+    }
+}
+
+/**
  * Execution Engine: Traverses the node tree for a single automation run.
  */
 async function executeAutomation(automation: Automation, triggerPayload: Record<string, any>) {
@@ -73,11 +149,20 @@ async function executeAutomation(automation: Automation, triggerPayload: Record<
         // 3. Begin Path Traversal
         await traverseNodes(triggerNode.id, automation, context);
 
-        // 4. Mark Success
-        await runRef.update({
-            status: 'completed',
-            finishedAt: new Date().toISOString()
-        });
+        // 4. Mark Success (Unless jobs are pending)
+        const activeJobs = await adminDb.collection('automation_jobs')
+            .where('runId', '==', runRef.id)
+            .where('status', '==', 'pending')
+            .get();
+
+        if (activeJobs.empty) {
+            await runRef.update({
+                status: 'completed',
+                finishedAt: new Date().toISOString()
+            });
+        } else {
+            console.log(`>>> [LOGIC:RUN] Paused for pending jobs.`);
+        }
 
     } catch (error: any) {
         console.error(`>>> [LOGIC:RUN] Execution Failed [${automation.name}]:`, error.message);
@@ -91,7 +176,6 @@ async function executeAutomation(automation: Automation, triggerPayload: Record<
 
 /**
  * Path Traversal: Recursive function to follow edges and execute node logic.
- * Upgraded to handle branching based on condition handles.
  */
 async function traverseNodes(nodeId: string, automation: Automation, context: ExecutionContext) {
     const currentNode = automation.nodes.find(n => n.id === nodeId);
@@ -120,7 +204,7 @@ async function traverseNodes(nodeId: string, automation: Automation, context: Ex
                 await processActionNode(nextNode, context);
             } else if (nextNode.type === 'delayNode') {
                 await handleDelayNode(nextNode, context);
-                // Delays stop linear execution. A background worker should resume from here.
+                // Delays stop linear execution. Resumption will pick up from HERE (nextNode.id).
                 return; 
             }
             

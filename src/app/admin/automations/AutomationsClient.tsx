@@ -26,7 +26,8 @@ import {
     ArrowRight, 
     SearchCode,
     ShieldAlert,
-    Info
+    Info,
+    RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, differenceInSeconds, parseISO } from 'date-fns';
 import { deleteAutomationAction, toggleAutomationStatusAction } from '@/lib/automation-actions';
+import { processScheduledJobsAction } from '@/lib/automation-processor';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -51,13 +53,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 /**
  * @fileOverview High-fidelity Automation Hub Client.
- * Upgraded with Phase 5: Run Ledger diagnostics and import integrity fixes.
+ * Upgraded with Phase 8: Engine Pulse (Heartbeat) for delayed protocols.
  */
 export default function AutomationsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
+    const [isPulsing, setIsPulsing] = React.useState(false);
 
     const automationsQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'automations'), orderBy('createdAt', 'desc')) : null, 
@@ -86,6 +89,23 @@ export default function AutomationsClient() {
         if (res.success) toast({ title: 'Automation Deleted' });
     };
 
+    const handlePulseEngine = async () => {
+        setIsPulsing(true);
+        try {
+            const res = await processScheduledJobsAction();
+            if (res.success) {
+                toast({ 
+                    title: 'Engine Pulse Complete', 
+                    description: res.processed ? `Resumed ${res.processed} pending protocols.` : 'No pending delays identified.' 
+                });
+            } else throw new Error(res.error);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Heartbeat Failure', description: e.message });
+        } finally {
+            setIsPulsing(false);
+        }
+    };
+
     const getDuration = (run: AutomationRun) => {
         if (!run.finishedAt) return 'Running...';
         const seconds = differenceInSeconds(parseISO(run.finishedAt), parseISO(run.startedAt));
@@ -103,9 +123,20 @@ export default function AutomationsClient() {
                         </h1>
                         <p className="text-muted-foreground font-medium text-lg mt-1">Design and audit proactive institutional logic.</p>
                     </div>
-                    <Button asChild className="rounded-xl font-black h-12 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs">
-                        <Link href="/admin/automations/new"><Plus className="mr-2 h-5 w-5" /> Initialize Workflow</Link>
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="outline" 
+                            onClick={handlePulseEngine} 
+                            disabled={isPulsing}
+                            className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-white shadow-sm transition-all active:scale-95"
+                        >
+                            {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            Pulse Engine
+                        </Button>
+                        <Button asChild className="rounded-xl font-black h-12 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs">
+                            <Link href="/admin/automations/new"><Plus className="mr-2 h-5 w-5" /> Initialize Workflow</Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <Tabs defaultValue="blueprints" className="space-y-8">
@@ -195,7 +226,7 @@ export default function AutomationsClient() {
                                             <div className={cn(
                                                 "p-2.5 rounded-xl shadow-sm transition-all",
                                                 run.status === 'completed' ? "bg-emerald-50 text-emerald-600" : 
-                                                run.status === 'failed' ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-blue-50 text-blue-600"
+                                                run.status === 'failed' ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
                                             )}>
                                                 {run.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> : 
                                                  run.status === 'failed' ? <XCircle className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
