@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -204,8 +203,7 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
     const overContainer = findContainer(over.id as string);
 
     if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
-        // Reordering columns is only for admins in Phase 4, but we support the UI move for now
-        toast({ title: 'Column Reordering Blocked', description: 'Modify pipeline structure in Pipeline Studio (Coming Soon).' });
+        toast({ title: 'Logic Restricted', description: 'Reorder stages in Pipeline Configuration.' });
         return;
     } else if (active.data.current?.type === 'SCHOOL' && activeContainer !== overContainer && overContainer) {
       const schoolId = active.id as string;
@@ -219,7 +217,7 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
           await updateDoc(schoolRef, {
             stage: { id: newStage.id, name: newStage.name, order: newStage.order, color: newStage.color },
           });
-          toast({ title: 'School Progressed', description: `Moved to "${newStage.name}" stage.` });
+          toast({ title: 'Protocol Advanced', description: `Institutional state set to "${newStage.name}".` });
           
           if (user && school) {
             logActivity({
@@ -247,12 +245,12 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full gap-6 px-8 py-4">
+      <div className="flex h-full gap-8 px-8 py-10 overflow-hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="w-72 space-y-6">
-            <Skeleton className="h-10 w-1/2 rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-[2rem]" />
-            <Skeleton className="h-48 w-full rounded-[2rem]" />
+          <div key={i} className="w-80 space-y-8 shrink-0">
+            <Skeleton className="h-14 w-full rounded-[1.25rem]" />
+            <Skeleton className="h-48 w-full rounded-[2.25rem]" />
+            <Skeleton className="h-48 w-full rounded-[2.25rem]" />
           </div>
         ))}
       </div>
@@ -261,11 +259,11 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
 
   if (!stages || stages.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 opacity-30 gap-4">
-        <div className="p-8 bg-muted rounded-full shadow-inner"><Workflow size={64} /></div>
-        <div className="text-center space-y-1">
-            <p className="font-black uppercase tracking-widest">No Active Workflow</p>
-            <p className="text-xs font-bold uppercase tracking-tighter">Please initialize stages for this pipeline.</p>
+      <div className="h-full flex flex-col items-center justify-center p-8 opacity-10 gap-6">
+        <div className="p-10 bg-muted rounded-[3rem] shadow-inner border"><Workflow size={80} /></div>
+        <div className="text-center space-y-2">
+            <p className="font-black uppercase tracking-[0.3em] text-xl">Empty Architecture</p>
+            <p className="text-xs font-bold uppercase tracking-widest opacity-60">Please define stages in Configuration Hub.</p>
         </div>
       </div>
     );
@@ -281,7 +279,7 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
       collisionDetection={closestCorners}
     >
       <ScrollArea className="h-full whitespace-nowrap">
-        <div className="flex h-full gap-6 p-8">
+        <div className="flex h-full gap-8 p-10">
           {stages.map((stage) => (
             <StageColumn
               key={stage.id}
@@ -301,8 +299,8 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
               isOverlay
             />
           ) : (
-            <div className="shadow-2xl rounded-[2.5rem] transform rotate-2 scale-105 transition-transform origin-center">
-              <SchoolCard school={activeElement as School} />
+            <div className="w-72 pointer-events-none">
+              <SchoolCard school={activeElement as School} isOverlay />
             </div>
           )
         ) : null}

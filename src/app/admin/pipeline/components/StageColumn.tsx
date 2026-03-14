@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { School, OnboardingStage } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ShieldCheck as ShieldIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -19,6 +19,10 @@ interface StageColumnProps {
     isOverlay?: boolean;
 }
 
+/**
+ * @fileOverview High-fidelity Kanban Column.
+ * Features weighted color headers and optimized content density.
+ */
 export default function StageColumn({ stage, schools, isOverlay }: StageColumnProps) {
     const {
         attributes,
@@ -37,45 +41,52 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full w-80 flex-shrink-0 flex flex-col">
+        <div ref={setNodeRef} style={style} className="h-full w-80 flex-shrink-0 flex flex-col group/column">
             <Card 
                 className={cn(
                     "h-full flex flex-col bg-muted/20 border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden transition-all duration-500",
                     isOverlay && "ring-primary shadow-2xl scale-105 rotate-1",
-                    "border-t-4"
+                    isOver && "ring-primary bg-primary/5",
+                    "border-t-[6px]"
                 )}
                 style={{ borderTopColor: stage.color || 'hsl(var(--primary))' }}
             >
-                <CardHeader className="p-6 pb-4 border-b bg-card shrink-0 flex flex-row items-center justify-between">
+                <CardHeader className="p-6 pb-4 border-b bg-background shrink-0 flex flex-row items-center justify-between shadow-sm z-10">
                      <div className="flex items-center gap-3">
                         <Button 
                             variant="ghost" 
                             size="icon"
                             {...attributes} 
                             {...listeners} 
-                            className="cursor-grab active:cursor-grabbing h-8 w-8 rounded-lg hover:bg-muted"
+                            className="cursor-grab active:cursor-grabbing h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground/30 hover:text-primary transition-colors shrink-0"
                         >
-                           <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                           <GripVertical className="h-4 w-4" />
                         </Button>
-                        <div className="flex flex-col">
-                            <CardTitle className="text-sm font-semibold uppercase tracking-tight text-foreground/80">{toTitleCase(stage.name)}</CardTitle>
+                        <div className="min-w-0">
+                            <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground truncate">
+                                {toTitleCase(stage.name)}
+                            </CardTitle>
                         </div>
                     </div>
-                    <Badge variant="secondary" className="rounded-full h-5 px-3 font-semibold tabular-nums border-none shadow-inner bg-background">{schools.length}</Badge>
+                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums border-none shadow-inner bg-slate-100 text-slate-600 shrink-0">
+                        {schools.length}
+                    </Badge>
                 </CardHeader>
                 
                 <ScrollArea className="flex-1">
                     <CardContent className="p-4 pt-6">
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                            {schools.map(school => (
-                                <SchoolCard key={school.id} school={school} />
-                            ))}
+                            <div className="min-h-[100px]">
+                                {schools.map(school => (
+                                    <SchoolCard key={school.id} school={school} />
+                                ))}
+                            </div>
                         </SortableContext>
                         
-                        {schools.length === 0 && !isOver && (
-                            <div className="py-20 text-center flex flex-col items-center gap-3 opacity-10">
-                                <ShieldCheck size={40} />
-                                <p className="text-[10px] font-semibold uppercase tracking-widest leading-none">Segment Clear</p>
+                        {schools.length === 0 && (
+                            <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
+                                <ShieldIcon size={64} />
+                                <p className="text-xs font-black uppercase tracking-[0.3em] leading-none">Segment Clear</p>
                             </div>
                         )}
                     </CardContent>
@@ -83,24 +94,4 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
             </Card>
         </div>
     );
-}
-
-function ShieldCheck(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-            <path d="m9 12 2 2 4-4" />
-        </svg>
-    )
 }

@@ -8,7 +8,9 @@ import {
     MapPin, 
     ShieldCheck, 
     RotateCcw,
-    Settings2
+    Settings2,
+    ChevronDown,
+    Zap
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +20,12 @@ import type { Pipeline, Zone, LifecycleStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { toTitleCase } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
+/**
+ * @fileOverview Executive Pipeline Command Hub.
+ * Optimized for institutional oversight with high data density and minimalist controls.
+ */
 
 export default function PipelineClient() {
   const firestore = useFirestore();
@@ -60,48 +68,49 @@ export default function PipelineClient() {
   const hasActiveFilters = searchTerm !== '' || zoneFilter !== 'all' || statusFilter !== 'all';
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-muted/10">
-      {/* Executive Header & Filter Bar */}
-      <header className="shrink-0 bg-background border-b shadow-sm z-30">
+    <div className="flex h-full flex-col overflow-hidden bg-slate-50/50">
+      {/* Executive Command Header */}
+      <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30">
         <div className="p-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary shadow-inner">
+            <div className="flex items-center gap-5">
+                <div className="p-3.5 bg-primary text-white rounded-[1.25rem] shadow-xl shadow-primary/20 rotate-3">
                     <Workflow className="h-6 w-6" />
                 </div>
-                <div>
-                    <div className="flex items-center gap-3 text-left">
-                        <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
-                            <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-xl font-semibold uppercase tracking-tight gap-2 w-auto bg-transparent">
-                                <SelectValue placeholder="Select Pipeline..." />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
-                                {pipelines?.map(p => (
-                                    <SelectItem key={p.id} value={p.id} className="rounded-xl p-3">
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-semibold uppercase text-xs tracking-wide">{toTitleCase(p.name)}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                <div className="text-left">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Active Workflow</span>
+                        <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[8px] font-black px-1.5 bg-primary/5 uppercase">Live Sync</Badge>
                     </div>
+                    <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
+                        <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-2xl font-black uppercase tracking-tighter gap-3 w-auto bg-transparent hover:text-primary transition-colors">
+                            <SelectValue placeholder="Select Pipeline..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-[1.5rem] border-none shadow-2xl p-2 min-w-[240px]">
+                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">Pipeline Registry</div>
+                            {pipelines?.map(p => (
+                                <SelectItem key={p.id} value={p.id} className="rounded-xl p-3 my-1">
+                                    <span className="font-black uppercase text-xs tracking-tight">{p.name}</span>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 bg-muted/30 p-1 rounded-2xl border shadow-inner">
+            <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-2xl border shadow-inner">
                 <Button 
                     variant="ghost" 
-                    className="h-10 rounded-xl font-semibold uppercase text-[10px] tracking-widest text-primary bg-white shadow-sm px-6"
+                    className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest text-primary bg-white shadow-md px-6"
                 >
-                    <Workflow className="mr-2 h-4 w-4" /> Board
+                    <Workflow className="mr-2 h-4 w-4" /> Board View
                 </Button>
                 <Button 
                     variant="ghost" 
                     asChild
-                    className="h-10 rounded-xl font-semibold uppercase text-[10px] tracking-widest text-muted-foreground opacity-60 hover:opacity-100 px-6"
+                    className="h-10 rounded-xl font-bold uppercase text-[10px] tracking-widest text-muted-foreground opacity-60 hover:opacity-100 px-6"
                 >
                     <Link href="/admin/pipeline/settings">
-                        <Settings2 className="mr-2 h-4 w-4" /> Pipeline Studio
+                        <Settings2 className="mr-2 h-4 w-4" /> Studio
                     </Link>
                 </Button>
             </div>
@@ -109,37 +118,37 @@ export default function PipelineClient() {
 
         {/* Global Pipeline Filters */}
         <div className="px-6 pb-6 pt-2 flex flex-wrap items-center gap-4">
-            <div className="relative flex-grow max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+            <div className="relative flex-grow max-w-md group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-20 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
                 <Input 
-                    placeholder="Search schools or signatories..." 
+                    placeholder="Identify school or signatory..." 
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-11 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium"
+                    className="pl-11 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-sm"
                 />
             </div>
 
             <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-semibold uppercase text-[10px] tracking-widest">
+                <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
                     <MapPin className="h-3.5 w-3.5 mr-2 text-primary/40" />
                     <SelectValue placeholder="All Zones" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                    <SelectItem value="all">Global Network</SelectItem>
-                    {zones?.map(z => <SelectItem key={z.id} value={z.id}>{toTitleCase(z.name)}</SelectItem>)}
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                    <SelectItem value="all" className="font-black uppercase text-[10px]">Global Network</SelectItem>
+                    {zones?.map(z => <SelectItem key={z.id} value={z.id} className="font-black uppercase text-[10px]">{z.name}</SelectItem>)}
                 </SelectContent>
             </Select>
 
             <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-semibold uppercase text-[10px] tracking-widest">
+                <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
                     <ShieldCheck className="h-3.5 w-3.5 mr-2 text-primary/40" />
                     <SelectValue placeholder="Any Status" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="Onboarding">Onboarding</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Churned">Churned</SelectItem>
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                    <SelectItem value="all" className="font-black uppercase text-[10px]">All Status</SelectItem>
+                    <SelectItem value="Onboarding" className="font-black uppercase text-[10px]">Onboarding</SelectItem>
+                    <SelectItem value="Active" className="font-black uppercase text-[10px]">Active</SelectItem>
+                    <SelectItem value="Churned" className="font-black uppercase text-[10px]">Churned</SelectItem>
                 </SelectContent>
             </Select>
 
@@ -147,7 +156,7 @@ export default function PipelineClient() {
                 <Button 
                     variant="ghost" 
                     onClick={clearFilters}
-                    className="h-11 px-4 rounded-xl font-semibold uppercase text-[9px] tracking-[0.2em] text-muted-foreground hover:text-primary transition-all gap-2"
+                    className="h-11 px-4 rounded-xl font-black uppercase text-[9px] tracking-[0.2em] text-muted-foreground hover:text-rose-600 transition-all gap-2"
                 >
                     <RotateCcw className="h-3.5 w-3.5" /> Reset
                 </Button>
@@ -167,9 +176,9 @@ export default function PipelineClient() {
                 }}
             />
         ) : (
-            <div className="flex flex-col items-center justify-center h-full p-8 opacity-20">
-                <Workflow size={80} className="mb-6" />
-                <p className="font-semibold uppercase tracking-[0.3em] text-lg">No Pipeline Selected</p>
+            <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
+                <Workflow size={120} className="mb-6" />
+                <p className="font-black uppercase tracking-[0.4em] text-2xl">No Selection</p>
             </div>
         )}
       </div>
