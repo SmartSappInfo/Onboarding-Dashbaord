@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -43,7 +44,8 @@ import {
     Settings2,
     FileCheck,
     GraduationCap,
-    ShieldAlert
+    ShieldAlert,
+    Target
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -96,8 +98,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
             const data = docSnap.data();
             
-            // 1. Resolve Permissions
-            // Use flattened permissions if available (optimized)
+            // 1. Resolve Permissions (Flattened in registry update)
             let perms = data.permissions || [];
             
             // 2. Fetch Role Names for Display
@@ -154,7 +155,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
     { href: '/admin/schools', icon: School, label: 'Schools', visible: hasPerm('schools_view') },
-    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') },
+    { href: '/admin/prospects', icon: Target, label: 'Prospects', visible: hasPerm('prospects_view') },
+    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') || hasPerm('prospects_view') },
     { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: hasPerm('tasks_manage') },
     { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: hasPerm('meetings_manage') },
     { href: '/admin/automations', icon: Zap, label: 'Automations', visible: hasPerm('system_admin') },
@@ -190,7 +192,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarProvider defaultOpen={false}>
             <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
               <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
-                <SidebarHeader className="p-2">
+                <SidebarHeader className="p-2 text-left">
                    <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
                       <Link href="/admin" className="flex items-center gap-2 font-semibold">
                         <Logo variant="white" className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
@@ -199,10 +201,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       </Link>
                    </div>
                 </SidebarHeader>
-                <SidebarContent>
+                <SidebarContent className="text-left">
                   <SidebarGroup>
                     <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
-                      <SidebarGroupLabel>Operations</SidebarGroupLabel>
+                      <SidebarGroupLabel className="text-left">Operations</SidebarGroupLabel>
                       <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
                     </div>
                     <SidebarMenu>
@@ -218,7 +220,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
                   {hasPerm('finance_view') && (
                     <SidebarGroup>
-                        <SidebarGroupLabel>Finance Hub</SidebarGroupLabel>
+                        <SidebarGroupLabel className="text-left">Finance Hub</SidebarGroupLabel>
                         <SidebarMenu>
                         {financeNavItems.filter(i => i.visible).map((item) => (
                             <SidebarMenuItem key={item.href}>
@@ -232,7 +234,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   )}
 
                   <SidebarGroup>
-                    <SidebarGroupLabel>Studios</SidebarGroupLabel>
+                    <SidebarGroupLabel className="text-left">Studios</SidebarGroupLabel>
                     <SidebarMenu>
                       {studioNavItems.filter(i => i.visible).map((item) => (
                         <SidebarMenuItem key={item.href}>
@@ -245,7 +247,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   </SidebarGroup>
 
                   <SidebarGroup className="mt-auto">
-                      <SidebarGroupLabel>Management</SidebarGroupLabel>
+                      <SidebarGroupLabel className="text-left">Management</SidebarGroupLabel>
                       <SidebarMenu>
                       {systemNavItems.filter(i => i.visible).map((item) => (
                           <SidebarMenuItem key={item.href}>
@@ -257,7 +259,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       </SidebarMenu>
                   </SidebarGroup>
                 </SidebarContent>
-                <SidebarFooter>
+                <SidebarFooter className="text-left">
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton asChild tooltip="Go to public site">
@@ -285,7 +287,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           </Avatar>
                           </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-64" align="end" forceMount>
+                      <DropdownMenuContent className="w-64 text-left" align="end" forceMount>
                           <DropdownMenuLabel className="font-normal">
                           <div className="flex flex-col space-y-1">
                               <p className="text-sm font-black leading-none">{user?.displayName}</p>

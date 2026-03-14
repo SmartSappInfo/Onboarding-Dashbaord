@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, orderBy, query, doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, orderBy, query, doc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { UserProfile, Role, AppPermissionId } from '@/lib/types';
 
@@ -12,13 +13,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2 } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
+/**
+ * @fileOverview Institutional Identity Hub.
+ * Features permission flattening logic and role-based access management.
+ */
 export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -76,12 +83,19 @@ export default function UsersClient() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
       <div className="max-w-7xl mx-auto space-y-10 pb-32">
         
-        <div>
-            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
-                <ShieldCheck className="h-10 w-10 text-primary" />
-                Identity Command
-            </h1>
-            <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional access levels and flattened permission sets.</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
+                    <ShieldCheck className="h-10 w-10 text-primary" />
+                    Identity Hub
+                </h1>
+                <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional access levels and flattened permission sets.</p>
+            </div>
+            <div className="flex items-center gap-3">
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 h-8 uppercase tracking-widest">
+                    {users?.length || 0} Registered Members
+                </Badge>
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -97,7 +111,7 @@ export default function UsersClient() {
                         {isLoadingRoles ? (
                             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)
                         ) : roles?.map(r => (
-                            <div key={r.id} className="space-y-1.5 group cursor-help">
+                            <div key={r.id} className="space-y-1.5 group cursor-help text-left">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: r.color }} />
                                     <span className="text-xs font-black uppercase tracking-tight">{r.name}</span>
@@ -112,7 +126,7 @@ export default function UsersClient() {
                             <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-blue-900 uppercase">Additive Access</p>
-                                <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
                                     Permissions are flattened across all assigned roles. Users gain the union of all capabilities.
                                 </p>
                             </div>
@@ -129,8 +143,8 @@ export default function UsersClient() {
                             <TableRow>
                                 <TableHead className="w-16 pl-8 text-[10px] font-black uppercase tracking-widest py-5">Profile</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Corporate Identity</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Assigned Architecture</TableHead>
-                                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-5">Authorized</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Architecture</TableHead>
+                                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-5">Access</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -160,25 +174,57 @@ export default function UsersClient() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col text-left">
                                                 <span className="font-black text-sm uppercase tracking-tight text-foreground">{user.name}</span>
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tabular-nums mt-0.5">{user.email}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="min-w-[250px]">
-                                            <MultiSelect 
-                                                options={roles?.map(r => ({ label: r.name, value: r.id })) || []}
-                                                value={user.roles || []}
-                                                onChange={(vals) => handleUpdateUser(user.id, { roles: vals })}
-                                                placeholder="Assign Role Architecture..."
-                                                className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-xl"
-                                            />
+                                            <div className="flex flex-col gap-2">
+                                                <MultiSelect 
+                                                    options={roles?.map(r => ({ label: r.name, value: r.id })) || []}
+                                                    value={user.roles || []}
+                                                    onChange={(vals) => handleUpdateUser(user.id, { roles: vals })}
+                                                    placeholder="Assign Role Architecture..."
+                                                    className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-xl"
+                                                />
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="flex flex-wrap gap-1 px-1">
+                                                                {user.permissions?.slice(0, 3).map(p => (
+                                                                    <Badge key={p} variant="ghost" className="h-4 text-[7px] font-black uppercase tracking-tighter bg-primary/5 text-primary">
+                                                                        {p.replace('_', ' ')}
+                                                                    </Badge>
+                                                                ))}
+                                                                {(user.permissions?.length || 0) > 3 && (
+                                                                    <Badge variant="ghost" className="h-4 text-[7px] font-black uppercase bg-muted text-muted-foreground">
+                                                                        +{(user.permissions?.length || 0) - 3} more
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="max-w-xs p-3 rounded-xl border-none shadow-2xl">
+                                                            <div className="space-y-2">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary border-b pb-1.5">Flattened Matrix</p>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {user.permissions?.map(p => (
+                                                                        <Badge key={p} className="text-[8px] font-bold uppercase tracking-tight h-5">
+                                                                            {p.replace('_', ' ')}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Switch
                                                 checked={user.isAuthorized}
                                                 onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
-                                                className="mx-auto"
+                                                className="mx-auto scale-90"
                                                 disabled={updatingId === user.id}
                                             />
                                         </TableCell>

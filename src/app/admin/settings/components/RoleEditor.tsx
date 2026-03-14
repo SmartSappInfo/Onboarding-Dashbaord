@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,9 +9,7 @@ import {
     addDoc, 
     doc, 
     deleteDoc, 
-    updateDoc, 
-    getDocs, 
-    writeBatch 
+    updateDoc 
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { 
@@ -22,7 +21,6 @@ import { useToast } from '@/hooks/use-toast';
 import { 
     Card, 
     CardContent, 
-    CardDescription, 
     CardHeader, 
     CardTitle 
 } from '@/components/ui/card';
@@ -33,7 +31,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
     Plus, Trash2, Loader2, Pencil, ShieldCheck, X, Save, 
-    Check, Settings2, Info, UserCheck, AlertTriangle
+    Check, Settings2, Info, AlertTriangle, Zap
 } from 'lucide-react';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, 
@@ -49,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 /**
  * @fileOverview Role & Permission Architect.
  * Allows administrators to define dynamic roles and map them to system permissions.
+ * Upgraded for Phase 2: Support for multi-track (Onboarding/Prospect) permissions.
  */
 
 export default function RoleEditor() {
@@ -73,9 +72,9 @@ export default function RoleEditor() {
         if (role) {
             setActiveRole(role);
             setRoleName(role.name);
-            setRoleDescription(role.description);
-            setRoleColor(role.color);
-            setSelectedPermissions(role.permissions);
+            setRoleDescription(role.description || '');
+            setRoleColor(role.color || '#3B5FFF');
+            setSelectedPermissions(role.permissions || []);
         } else {
             setActiveRole(null);
             setRoleName('');
@@ -102,11 +101,6 @@ export default function RoleEditor() {
         try {
             if (activeRole) {
                 await updateDoc(doc(firestore, 'roles', activeRole.id), roleData);
-                
-                // FLATTENING LOGIC: When a role is updated, we should ideally refresh 
-                // all users with this role. For now, we update the role itself.
-                // Dynamic lookups in layout.tsx will handle the rest.
-                
                 toast({ title: 'Role Architecture Updated' });
             } else {
                 await addDoc(collection(firestore, 'roles'), {
@@ -137,18 +131,23 @@ export default function RoleEditor() {
 
     const groupedPermissions = React.useMemo(() => {
         return APP_PERMISSIONS.reduce((acc, p) => {
-            if (!acc[p.category]) acc[p.category] = [];
-            acc[p.category].push(p);
+            if (!acc[p.category]) acc[acc.length - 1] = { category: p.category, perms: [] };
+            const existing = acc.find(item => item.category === p.category);
+            if (existing) {
+                existing.perms.push(p);
+            } else {
+                acc.push({ category: p.category, perms: [p] });
+            }
             return acc;
-        }, {} as Record<string, typeof APP_PERMISSIONS[number][]>);
+        }, [] as { category: string, perms: typeof APP_PERMISSIONS[number][] }[]);
     }, []);
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-1">
-                <div>
+                <div className="text-left">
                     <h3 className="text-xl font-black uppercase tracking-tight text-foreground">Role Architect</h3>
-                    <p className="text-sm text-muted-foreground font-medium">Define custom identities and permission mappings.</p>
+                    <p className="text-sm text-muted-foreground font-medium">Define custom identities and multi-track permission mappings.</p>
                 </div>
                 <Button onClick={() => handleOpenEdit()} className="rounded-xl font-black h-11 px-6 shadow-lg gap-2">
                     <Plus className="h-4 w-4" /> New Role
@@ -159,7 +158,7 @@ export default function RoleEditor() {
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : roles?.map(role => (
-                    <Card key={role.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+                    <Card key={role.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
                         <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between border-b bg-muted/5">
                             <div className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: role.color }} />
@@ -177,10 +176,10 @@ export default function RoleEditor() {
                         <CardContent className="p-6 space-y-4">
                             <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2">{role.description}</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {role.permissions.slice(0, 4).map(p => (
+                                {role.permissions?.slice(0, 4).map(p => (
                                     <Badge key={p} variant="outline" className="text-[8px] font-bold uppercase tracking-tighter bg-muted/20">{p.replace('_', ' ')}</Badge>
                                 ))}
-                                {role.permissions.length > 4 && <Badge variant="outline" className="text-[8px] font-black uppercase tabular-nums">+{role.permissions.length - 4}</Badge>}
+                                {(role.permissions?.length || 0) > 4 && <Badge variant="outline" className="text-[8px] font-black uppercase tabular-nums">+{(role.permissions?.length || 0) - 4}</Badge>}
                             </div>
                         </CardContent>
                     </Card>
@@ -189,7 +188,7 @@ export default function RoleEditor() {
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
                 <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
-                    <form onSubmit={handleSave} className="flex flex-col h-full">
+                    <form onSubmit={handleSave} className="flex flex-col h-full text-left">
                         <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -215,7 +214,7 @@ export default function RoleEditor() {
                                                     value={roleName} 
                                                     onChange={e => setRoleName(e.target.value)} 
                                                     placeholder="e.g. Regional Manager" 
-                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg" 
+                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
                                                     required 
                                                 />
                                             </div>
@@ -226,7 +225,7 @@ export default function RoleEditor() {
                                                         <PopoverTrigger asChild>
                                                             <button 
                                                                 type="button" 
-                                                                className="w-12 h-12 rounded-xl border-2 shadow-sm transition-transform active:scale-95" 
+                                                                className="w-12 h-12 rounded-xl border-2 shadow-sm transition-transform active:scale-95 shrink-0" 
                                                                 style={{ backgroundColor: roleColor, borderColor: roleColor + '40' }} 
                                                             />
                                                         </PopoverTrigger>
@@ -252,7 +251,7 @@ export default function RoleEditor() {
                                                 value={roleDesc} 
                                                 onChange={e => setRoleDescription(e.target.value)} 
                                                 placeholder="Define the purpose and access level of this role..." 
-                                                className="min-h-[135px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium" 
+                                                className="min-h-[135px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed" 
                                             />
                                         </div>
                                     </div>
@@ -266,9 +265,9 @@ export default function RoleEditor() {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 rounded-[2rem] bg-muted/10 border-2 border-dashed border-border shadow-inner">
-                                            {Object.entries(groupedPermissions).map(([cat, perms]) => (
-                                                <div key={cat} className="space-y-4">
-                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60 ml-1">{cat}</h4>
+                                            {groupedPermissions.map(({ category, perms }) => (
+                                                <div key={category} className="space-y-4">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60 ml-1">{category}</h4>
                                                     <div className="space-y-3">
                                                         {perms.map(p => {
                                                             const isChecked = selectedPermissions.includes(p.id);
@@ -296,11 +295,11 @@ export default function RoleEditor() {
                                     </div>
 
                                     <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-sm text-left">
-                                        <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Info className="h-6 w-6" /></div>
+                                        <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
                                         <div className="space-y-1">
-                                            <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Security Note</p>
+                                            <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Security Protocol</p>
                                             <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                                Role updates are synchronized globally. Any user assigned to this role will have their permissions updated on their next institutional session.
+                                                Role updates are synchronized globally. Any user assigned to this role will have their permissions flattened and updated on their next login session.
                                             </p>
                                         </div>
                                     </div>
