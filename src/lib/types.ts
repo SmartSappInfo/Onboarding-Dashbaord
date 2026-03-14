@@ -12,6 +12,13 @@ export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Pri
 export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
 
+export interface Attendee {
+    id: string;
+    parentName: string;
+    childrenNames: string[];
+    joinedAt: string;
+}
+
 export interface FocalPerson {
   name: string;
   phone: string;
