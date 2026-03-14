@@ -39,7 +39,9 @@ import {
     Filter,
     ArrowUpDown,
     EyeOff,
-    ChevronDown
+    ChevronDown,
+    Target,
+    TrendingUp
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -189,17 +191,17 @@ export default function TasksClient() {
         });
     }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm, smartFilter]);
 
-    const metrics = React.useMemo(() => {
-        if (!allTasks) return { today: 0, overdue: 0, mine: 0 };
-        return {
-            today: allTasks.filter(t => isToday(new Date(t.dueDate)) && t.status !== 'done').length,
-            overdue: allTasks.filter(t => {
-                const date = new Date(t.dueDate);
-                return isPast(date) && !isToday(date) && t.status !== 'done';
-            }).length,
-            mine: allTasks.filter(t => t.assignedTo === currentUser?.uid && t.status !== 'done').length
-        };
-    }, [allTasks, currentUser]);
+    const stats = React.useMemo(() => {
+        if (!allTasks) return { active: 0, resolved: 0, overdue: 0, efficiency: 0 };
+        const active = allTasks.filter(t => t.status !== 'done').length;
+        const resolved = allTasks.filter(t => t.status === 'done').length;
+        const overdue = allTasks.filter(t => {
+            const date = new Date(t.dueDate);
+            return isPast(date) && !isToday(date) && t.status !== 'done';
+        }).length;
+        const efficiency = allTasks.length > 0 ? Math.round((resolved / allTasks.length) * 100) : 100;
+        return { active, resolved, overdue, efficiency };
+    }, [allTasks]);
 
     const handleSaveTask = async (payload: any) => {
         if (!firestore || !currentUser) return;
@@ -306,7 +308,43 @@ export default function TasksClient() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-50 text-left">
             <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
-                {/* Header Category Grid */}
+                {/* Executive KPI Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard 
+                        label="Missions Active" 
+                        value={isLoading ? '...' : stats.active} 
+                        sub="In-flight protocols" 
+                        icon={Zap} 
+                        color="text-primary" 
+                        bg="bg-primary/10" 
+                    />
+                    <StatCard 
+                        label="Resolved Protocols" 
+                        value={isLoading ? '...' : stats.resolved} 
+                        sub="Mission success archive" 
+                        icon={CheckCircle2} 
+                        color="text-emerald-600" 
+                        bg="bg-emerald-50" 
+                    />
+                    <StatCard 
+                        label="Overdue Protocols" 
+                        value={isLoading ? '...' : stats.overdue} 
+                        sub="Manager intervention required" 
+                        icon={ShieldAlert} 
+                        color="text-rose-600" 
+                        bg="bg-rose-50" 
+                    />
+                    <StatCard 
+                        label="Closure Velocity" 
+                        value={isLoading ? '...' : `${stats.efficiency}%`} 
+                        sub="Efficiency benchmark" 
+                        icon={Target} 
+                        color="text-blue-600" 
+                        bg="bg-blue-50" 
+                    />
+                </div>
+
+                {/* Recommended Categories Grid */}
                 <section className="space-y-6">
                     <h3 className="text-xl font-black uppercase tracking-tight text-foreground ml-1">Recommended Categories</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -328,17 +366,14 @@ export default function TasksClient() {
                 {/* Toolbar */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 rounded-[2rem] border shadow-sm ring-1 ring-black/5">
                     <div className="flex flex-wrap items-center gap-3">
+                        <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
+                            {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
+                        </Button>
                         <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
                             <Filter className="h-3.5 w-3.5" /> Filter <ChevronDown className="h-3 w-3 opacity-40" />
                         </Button>
                         <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
                             <ArrowUpDown className="h-3.5 w-3.5" /> Sort
-                        </Button>
-                        <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
-                            <EyeOff className="h-3.5 w-3.5" /> Hide
-                        </Button>
-                        <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl">
-                            <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </div>
 
@@ -349,7 +384,7 @@ export default function TasksClient() {
                                 placeholder="Search missions..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="h-11 rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                             />
                         </div>
                         <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest h-11 px-8 shadow-xl active:scale-95 text-[10px]">
@@ -357,6 +392,27 @@ export default function TasksClient() {
                         </Button>
                     </div>
                 </div>
+
+                <AnimatePresence>
+                    {isSelectionMode && selectedIds.length > 0 && (
+                        <motion.div 
+                            initial={{ y: 50, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 50, opacity: 0 }}
+                            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+                        >
+                            <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
+                                <span className="px-4 text-[10px] font-black uppercase tracking-widest border-r border-white/10">{selectedIds.length} Selected</span>
+                                <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl">
+                                    <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold uppercase text-[9px] h-9 px-4">Resolve Bulk</Button>
+                                    <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold uppercase text-[9px] h-9 px-4">Purge Selected</Button>
+                                    <Separator orientation="vertical" className="h-9 bg-white/10" />
+                                    <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
+                                </div>
+                            </Card>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
                     <TabsContent value="list" className="m-0 space-y-12">
@@ -366,6 +422,8 @@ export default function TasksClient() {
                                 status === 'in_progress' ? (t.status !== 'todo' && t.status !== 'done') : t.status === status
                             );
                             
+                            if (groupTasks.length === 0 && status === 'done') return null;
+
                             return (
                                 <section key={status} className="space-y-6">
                                     <div className="flex items-center justify-between px-2">
@@ -379,7 +437,7 @@ export default function TasksClient() {
                                         {isLoading ? (
                                             Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
                                         ) : groupTasks.map((task) => {
-                                            const P = PRIORITY_CONFIG[task.priority];
+                                            const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
                                             const daysLeft = differenceInDays(new Date(task.dueDate), new Date());
                                             const isOverdue = daysLeft < 0 && task.status !== 'done';
                                             const progress = getProgressValue(task.status);
@@ -424,7 +482,7 @@ export default function TasksClient() {
 
                                                     <div className="hidden sm:flex items-center gap-3 shrink-0">
                                                         <Badge variant="outline" className="h-6 rounded-lg font-black uppercase text-[8px] bg-slate-100 border-none px-2.5">
-                                                            {STATUS_LABELS[task.status]}
+                                                            {STATUS_LABELS[task.status] || task.status}
                                                         </Badge>
                                                         <Badge variant="outline" className={cn("h-6 rounded-lg font-black uppercase text-[8px] border-none px-2.5", P.color)}>
                                                             {P.label}
@@ -458,7 +516,7 @@ export default function TasksClient() {
                                                                     <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm uppercase">Modify Blueprint</span>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
-                                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm uppercase">Mark Resolved</span>
+                                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm uppercase">{task.status === 'done' ? 'Reopen Protocol' : 'Mark Resolved'}</span>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
                                                                 <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
