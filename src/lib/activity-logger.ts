@@ -38,7 +38,8 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             'pipeline_stage_changed': 'SCHOOL_STAGE_CHANGED',
             'pdf_form_submitted': 'PDF_SIGNED',
             'form_submission': 'SURVEY_SUBMITTED',
-            'task_completed': 'TASK_COMPLETED'
+            'task_completed': 'TASK_COMPLETED',
+            'meeting_created': 'MEETING_CREATED'
         };
 
         const triggerType = triggerMap[activityData.type];

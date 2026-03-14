@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -87,7 +88,7 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
-  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
+  // Phase 2: Dynamic Label Resolution
   useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
@@ -152,41 +153,42 @@ export default function EditMeetingPage() {
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) return;
     
-    const meetingsRef = collection(firestore, 'meetings');
-    const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
-    const querySnapshot = await getDocs(q);
-    
-    const isDuplicate = querySnapshot.docs.some(doc => doc.id !== meetingId);
-    
-    if (isDuplicate) {
-        form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
-        toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
-        return;
-    }
+    try {
+        const meetingsRef = collection(firestore, 'meetings');
+        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
+        const querySnapshot = await getDocs(q);
+        
+        const isDuplicate = querySnapshot.docs.some(doc => doc.id !== meetingId);
+        
+        if (isDuplicate) {
+            form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+            toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
+            return;
+        }
 
-    const meetingData = {
-        schoolId: data.school.id,
-        schoolName: data.school.name,
-        schoolSlug: data.schoolSlug,
-        meetingTime: data.meetingTime.toISOString(),
-        meetingLink: data.meetingLink,
-        type: data.type,
-        recordingUrl: data.recordingUrl || '',
-        brochureUrl: data.brochureUrl || '',
-        adminAlertsEnabled: data.adminAlertsEnabled,
-        adminAlertChannel: data.adminAlertChannel,
-        adminAlertNotifyManager: data.adminAlertNotifyManager,
-        adminAlertSpecificUserIds: data.adminAlertSpecificUserIds,
-        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
-        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
-    };
+        const meetingData = {
+            schoolId: data.school.id,
+            schoolName: data.school.name,
+            schoolSlug: data.schoolSlug,
+            meetingTime: data.meetingTime.toISOString(),
+            meetingLink: data.meetingLink,
+            type: data.type,
+            recordingUrl: data.recordingUrl || '',
+            brochureUrl: data.brochureUrl || '',
+            adminAlertsEnabled: data.adminAlertsEnabled,
+            adminAlertChannel: data.adminAlertChannel,
+            adminAlertNotifyManager: data.adminAlertNotifyManager,
+            adminAlertSpecificUserIds: data.adminAlertSpecificUserIds || [],
+            adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
+            adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
+        };
 
-    const docRef = doc(firestore, 'meetings', meetingId);
-    
-    updateDoc(docRef, meetingData).then(async () => {
+        const docRef = doc(firestore, 'meetings', meetingId);
+        
+        await updateDoc(docRef, meetingData);
         toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
         
-        // 1. Log Activity
+        // 1. Log Activity (Non-blocking)
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
@@ -194,11 +196,11 @@ export default function EditMeetingPage() {
             source: 'user_action',
             description: `updated the ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId }
-        });
+        }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // 2. Trigger Internal Notification
+        // 2. Trigger Internal Notification (Non-blocking)
         if (data.adminAlertsEnabled) {
-            await triggerInternalNotification({
+            triggerInternalNotification({
                 schoolId: data.school.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
@@ -213,17 +215,17 @@ export default function EditMeetingPage() {
                     link: data.meetingLink,
                     event_type: 'Session Updated'
                 }
-            });
+            }).catch(err => console.warn("Notification deferred:", err.message));
         }
 
         router.push('/admin/meetings');
-    }).catch((error) => {
+    } catch (error: any) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: docRef.path,
+            path: `meetings/${meetingId}`,
             operation: 'update',
-            requestResourceData: meetingData,
+            requestResourceData: data,
         }));
-    });
+    }
   };
 
   const publicUrl = watchedType && watchedSlug ? `/meetings/${watchedType.slug}/${watchedSlug}` : null;

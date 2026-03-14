@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,7 +6,6 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
     Calendar, 
@@ -104,7 +104,7 @@ export default function NewMeetingPage() {
   const { watch, setValue, reset } = form;
   const watchedType = watch('type');
 
-  // Pre-select school if passed via URL (e.g. from school console)
+  // Pre-select school if passed via URL
   React.useEffect(() => {
     const schoolIdFromUrl = searchParams.get('schoolId');
     if (schoolIdFromUrl && schools && !hasInitialized) {
@@ -125,40 +125,39 @@ export default function NewMeetingPage() {
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user) return;
 
-    const meetingsRef = collection(firestore, 'meetings');
-    const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-        form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
-        toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
-        return;
-    }
-    
-    const meetingData = {
-        schoolId: data.school.id,
-        schoolName: data.school.name,
-        schoolSlug: data.schoolSlug,
-        meetingTime: data.meetingTime.toISOString(),
-        meetingLink: data.meetingLink,
-        type: data.type,
-        recordingUrl: data.recordingUrl || '',
-        brochureUrl: data.brochureUrl || '',
-        adminAlertsEnabled: data.adminAlertsEnabled,
-        adminAlertChannel: data.adminAlertChannel,
-        adminAlertNotifyManager: data.adminAlertNotifyManager,
-        adminAlertSpecificUserIds: data.adminAlertSpecificUserIds,
-        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
-        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
-    };
+    try {
+        const meetingsRef = collection(firestore, 'meetings');
+        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+            form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+            toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
+            return;
+        }
+        
+        const meetingData = {
+            schoolId: data.school.id,
+            schoolName: data.school.name,
+            schoolSlug: data.schoolSlug,
+            meetingTime: data.meetingTime.toISOString(),
+            meetingLink: data.meetingLink,
+            type: data.type,
+            recordingUrl: data.recordingUrl || '',
+            brochureUrl: data.brochureUrl || '',
+            adminAlertsEnabled: data.adminAlertsEnabled,
+            adminAlertChannel: data.adminAlertChannel,
+            adminAlertNotifyManager: data.adminAlertNotifyManager,
+            adminAlertSpecificUserIds: data.adminAlertSpecificUserIds || [],
+            adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
+            adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
+        };
 
-    const meetingsCollection = collection(firestore, 'meetings');
-
-    addDoc(meetingsCollection, meetingData)
-      .then(async (docRef) => {
+        const docRef = await addDoc(meetingsRef, meetingData);
+        
         toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
         
-        // 1. Log to Timeline
+        // 1. Log to Timeline (Non-blocking to prevent timeout errors)
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
@@ -166,11 +165,11 @@ export default function NewMeetingPage() {
             source: 'user_action',
             description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
-        });
+        }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // 2. Trigger Internal Notification
+        // 2. Trigger Internal Notification (Non-blocking)
         if (data.adminAlertsEnabled) {
-            await triggerInternalNotification({
+            triggerInternalNotification({
                 schoolId: data.school.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
@@ -185,18 +184,17 @@ export default function NewMeetingPage() {
                     link: data.meetingLink,
                     event_type: 'Session Scheduled'
                 }
-            });
+            }).catch(err => console.warn("Notification deferred:", err.message));
         }
 
         router.push('/admin/meetings');
-      })
-      .catch((error) => {
+    } catch (error: any) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: meetingsCollection.path,
+            path: 'meetings',
             operation: 'create',
-            requestResourceData: meetingData,
+            requestResourceData: data,
         }));
-      });
+    }
   };
 
   return (
@@ -369,7 +367,7 @@ export default function NewMeetingPage() {
                                 <Globe className="h-5 w-5" />
                             </div>
                             <div>
-                                <CardTitle className="text-lg font-black uppercase tracking-tight">Public Presence</CardTitle>
+                                <CardTitle className="text-lg font-black tracking-tight uppercase">Public Presence</CardTitle>
                                 <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
                             </div>
                         </div>
