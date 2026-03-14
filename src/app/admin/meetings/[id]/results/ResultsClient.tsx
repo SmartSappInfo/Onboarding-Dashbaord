@@ -16,16 +16,18 @@ import {
     TrendingUp, 
     LayoutList, 
     Building, 
-    Calendar,
-    Target,
-    BarChart3,
-    CheckCircle2,
-    CalendarCheck,
-    Contact,
-    ChevronRight,
-    FileSpreadsheet,
-    Zap,
-    RotateCcw
+    Calendar, 
+    Target, 
+    BarChart3, 
+    CheckCircle2, 
+    CalendarCheck, 
+    Contact, 
+    ChevronRight, 
+    FileSpreadsheet, 
+    Zap, 
+    RotateCcw,
+    Settings2,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -205,7 +207,7 @@ export default function ResultsClient() {
                                     </LineChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center opacity-20 gap-3">
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 gap-3">
                                     <BarChart3 className="h-12 w-12" />
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">Collecting Engagement Data...</p>
                                 </div>
@@ -273,9 +275,7 @@ export default function ResultsClient() {
                                         <TableRow key={a.id} className="group hover:bg-muted/30 transition-colors">
                                             <TableCell className="pl-8 py-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">
-                                                        {a.parentName.substring(0, 2).toUpperCase()}
-                                                    </div>
+                                                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{a.parentName.substring(0, 2).toUpperCase()}</div>
                                                     <span className="font-black text-sm uppercase tracking-tight text-foreground">{a.parentName}</span>
                                                 </div>
                                             </TableCell>
@@ -324,7 +324,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter truncate">{value}</p>
+                    <p className="text-2xl font-black tabular-nums tracking-tighter truncate">{value}</p>
                     <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 truncate">{sub}</p>
                 </div>
             </CardContent>
