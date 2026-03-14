@@ -22,9 +22,8 @@ interface StageColumnProps {
 
 /**
  * @fileOverview High-fidelity Kanban Column.
- * Features weighted color headers and optimized content density.
- * Now supports dynamic width resizing for custom studio layouts.
- * Added whitespace-normal to break horizontal scroll inheritance.
+ * Updated with executive minimalist borders and contrasting surfaces.
+ * Enforces uniform card widths and strict layout constraints.
  */
 export default function StageColumn({ stage, schools, isOverlay, customWidth = 320 }: StageColumnProps) {
     const {
@@ -41,22 +40,21 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
         transform: CSS.Translate.toString(transform),
         transition,
         opacity: isDragging && !isOverlay ? 0.5 : 1,
-        width: `${customWidth}px`
+        width: `${customWidth}px`,
+        borderColor: stage.color || 'hsl(var(--border))',
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-x-hidden">
+        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width,border-color] duration-300 whitespace-normal overflow-x-hidden border rounded-[2rem]">
             <Card 
                 className={cn(
-                    "h-full flex flex-col bg-muted/20 border-none ring-1 ring-border rounded-[2rem] overflow-hidden transition-all duration-500",
-                    isOverlay && "ring-primary shadow-2xl scale-105 rotate-1",
-                    isOver && "ring-primary bg-primary/5",
-                    "border-t-[6px]"
+                    "h-full flex flex-col bg-slate-100/50 border-none rounded-[2rem] overflow-hidden transition-all duration-500",
+                    isOverlay && "shadow-2xl scale-105 rotate-1",
+                    isOver && "bg-primary/[0.03]"
                 )}
-                style={{ borderTopColor: stage.color || 'hsl(var(--primary))' }}
             >
                 <CardHeader className="p-5 pb-3 border-b bg-background shrink-0 flex flex-row items-center justify-between shadow-sm z-10">
-                     <div className="flex items-center gap-3 min-w-0">
+                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         <Button 
                             variant="ghost" 
                             size="icon"
@@ -80,7 +78,7 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                 <ScrollArea className="flex-1">
                     <CardContent className="p-3 pt-5">
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                            <div className="min-h-[100px]">
+                            <div className="min-h-[100px] flex flex-col items-stretch">
                                 {schools.map(school => (
                                     <SchoolCard key={school.id} school={school} />
                                 ))}
