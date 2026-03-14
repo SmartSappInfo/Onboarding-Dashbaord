@@ -1,6 +1,6 @@
 'use client';
 
-import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -120,6 +120,168 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+/**
+ * High-fidelity migration engine for the Institutional Onboarding Pipeline.
+ * Harvests unique stages from current schools to architect the pipeline.
+ */
+export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore): Promise<number> {
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    if (schoolsSnap.empty) {
+        return await seedPipelines(firestore); // Fallback to standard seed if no data exists
+    }
+
+    const schools = schoolsSnap.docs.map(d => d.data() as School);
+    
+    // 1. Identify Unique Stages from current dataset
+    const stageMap = new Map<string, { name: string, color: string, order: number }>();
+    
+    schools.forEach(school => {
+        if (school.stage && school.stage.name) {
+            const key = school.stage.name.toLowerCase().trim();
+            if (!stageMap.has(key)) {
+                stageMap.set(key, {
+                    name: school.stage.name,
+                    color: school.stage.color || ONBOARDING_STAGE_COLORS[stageMap.size % ONBOARDING_STAGE_COLORS.length],
+                    order: school.stage.order || (stageMap.size + 1)
+                });
+            }
+        }
+    });
+
+    // 2. Ensure foundational stages exist if harvesting yielded little
+    if (stageMap.size === 0) {
+        stageMap.set('welcome', { name: 'Welcome', color: '#f72585', order: 1 });
+        stageMap.set('training', { name: 'Staff Training', color: '#7209b7', order: 2 });
+        stageMap.set('live', { name: 'Go-Live', color: '#4361ee', order: 3 });
+    }
+
+    const batch = writeBatch(firestore);
+    const pipelinesCol = collection(firestore, 'pipelines');
+    const stagesCol = collection(firestore, 'onboardingStages');
+    const onboardingId = 'institutional_onboarding';
+
+    // 3. Clear existing stages for this pipeline only to prevent orphans
+    const oldStagesQuery = query(stagesCol, where('pipelineId', '==', onboardingId));
+    const oldStagesSnap = await getDocs(oldStagesQuery);
+    oldStagesSnap.forEach(d => batch.delete(d.ref));
+
+    // 4. Architect New Stages
+    const newStageIds: string[] = [];
+    const sortedStages = Array.from(stageMap.values()).sort((a, b) => a.order - b.order);
+    
+    sortedStages.forEach((s, i) => {
+        const stageId = `stg_${onboardingId}_${i}`;
+        newStageIds.push(stageId);
+        batch.set(doc(stagesCol, stageId), {
+            id: stageId,
+            pipelineId: onboardingId,
+            name: s.name,
+            order: i + 1,
+            color: s.color
+        });
+    });
+
+    // 5. Initialize Pipeline Blueprint
+    const onboardingPipeline: Omit<Pipeline, 'id'> = {
+        name: 'Institutional Onboarding',
+        description: 'Harvested from current network data. Primary school integration cycle.',
+        stageIds: newStageIds,
+        accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
+        createdAt: new Date().toISOString()
+    };
+
+    batch.set(doc(pipelinesCol, onboardingId), onboardingPipeline);
+
+    await batch.commit();
+    return newStageIds.length;
+}
+
+/**
+ * Enrichment Strategy: Updates all schools to be part of the "Institutional Onboarding" pipeline.
+ * Creates a backup before proceeding.
+ */
+export async function enrichAndRestoreSchools(firestore: Firestore): Promise<number> {
+    const schoolsCol = collection(firestore, 'schools');
+    const backupCol = collection(firestore, 'backup_schools');
+    const stagesCol = collection(firestore, 'onboardingStages');
+    const onboardingId = 'institutional_onboarding';
+
+    const [schoolsSnap, stagesSnap] = await Promise.all([
+        getDocs(schoolsCol),
+        getDocs(query(stagesCol, where('pipelineId', '==', onboardingId), orderBy('order', 'asc')))
+    ]);
+
+    if (schoolsSnap.empty) return 0;
+    
+    const availableStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as OnboardingStage));
+    if (availableStages.length === 0) throw new Error("Pipeline architecture must be initialized first.");
+
+    const batch = writeBatch(firestore);
+    
+    // 1. CLEAR OLD BACKUP
+    const oldBackupSnap = await getDocs(backupCol);
+    oldBackupSnap.forEach(d => batch.delete(d.ref));
+
+    let processedCount = 0;
+
+    schoolsSnap.forEach(schoolDoc => {
+        const schoolData = schoolDoc.data() as School;
+        
+        // 2. BACKUP CURRENT STATE
+        batch.set(doc(backupCol, schoolDoc.id), { ...schoolData, id: schoolDoc.id });
+
+        // 3. ENRICH WITH PIPELINE CONTEXT
+        let targetStage = availableStages[0]; // Default to entry stage
+        if (schoolData.stage && schoolData.stage.name) {
+            const match = availableStages.find(s => s.name.toLowerCase().trim() === schoolData.stage!.name.toLowerCase().trim());
+            if (match) targetStage = match;
+        }
+
+        batch.update(schoolDoc.ref, {
+            pipelineId: onboardingId,
+            stage: {
+                id: targetStage.id,
+                name: targetStage.name,
+                order: targetStage.order,
+                color: targetStage.color
+            },
+            updatedAt: new Date().toISOString()
+        });
+
+        processedCount++;
+    });
+
+    await batch.commit();
+    return processedCount;
+}
+
+/**
+ * Emergency Recovery: Restores school directory from the last backup.
+ */
+export async function rollbackSchoolsMigration(firestore: Firestore): Promise<number> {
+    const schoolsCol = collection(firestore, 'schools');
+    const backupCol = collection(firestore, 'backup_schools');
+
+    const backupSnap = await getDocs(backupCol);
+    if (backupSnap.empty) throw new Error("No institutional backup found.");
+
+    const batch = writeBatch(firestore);
+    
+    // Wipe current school records to ensure clean restore
+    const currentSchools = await getDocs(schoolsCol);
+    currentSchools.forEach(d => batch.delete(d.ref));
+
+    let restoreCount = 0;
+    backupSnap.forEach(backupDoc => {
+        const data = backupDoc.data();
+        batch.set(doc(schoolsCol, backupDoc.id), data);
+        restoreCount++;
+    });
+
+    await batch.commit();
+    return restoreCount;
+}
 
 export async function seedPipelines(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'pipelines');

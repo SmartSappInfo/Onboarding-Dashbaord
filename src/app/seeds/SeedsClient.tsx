@@ -10,7 +10,7 @@ import {
     seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, 
     seedOnboardingStages, seedModules, seedActivities, seedPdfForms, 
     seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
-    seedRolesAndPermissions, seedPipelines 
+    seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, enrichAndRestoreSchools, rollbackSchoolsMigration 
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -38,7 +38,9 @@ import {
     Check,
     Layers,
     Globe,
-    Workflow
+    Workflow,
+    ArrowRightLeft,
+    RotateCcw
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -49,7 +51,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -69,7 +71,8 @@ export default function SeedsClient() {
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
-    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle'
+    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
+    harvest: 'idle', enrich: 'idle', rollback: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -96,6 +99,15 @@ export default function SeedsClient() {
           }
           await setDoc(doc(firestore, 'dashboardLayouts', user.uid), { componentIds: DEFAULT_LAYOUT });
           toast({ title: 'Layout Reset', description: 'Dashboard layout has been reset to default.' });
+      } else if (seeder === 'harvest') {
+          const count = await seedOnboardingPipelineFromCurrentData(firestore);
+          toast({ title: 'Harvest Complete', description: `Initialized pipeline with ${count} unique stages.` });
+      } else if (seeder === 'enrich') {
+          const count = await enrichAndRestoreSchools(firestore);
+          toast({ title: 'Migration Complete', description: `Enriched ${count} schools with pipeline context.` });
+      } else if (seeder === 'rollback') {
+          const count = await rollbackSchoolsMigration(firestore);
+          toast({ title: 'Rollback Successful', description: `Restored ${count} schools from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -128,7 +140,7 @@ export default function SeedsClient() {
     } catch (error: any) {
       console.error(error);
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'error' }));
-      toast({ variant: 'destructive', title: 'Error', description: `Could not process ${seeder}.` });
+      toast({ variant: 'destructive', title: 'Error', description: error.message || `Could not process ${seeder}.` });
     }
   };
 
@@ -140,7 +152,7 @@ export default function SeedsClient() {
                 <h1 className="text-white text-3xl font-black uppercase tracking-tighter">Dev Seeding Hub</h1>
             </div>
             
-            <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+            <Card className="w-full max-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
                 <CardHeader className="bg-muted/30 p-8 border-b text-center">
                     <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4">
                         <Lock className="h-8 w-8 text-primary" />
@@ -203,6 +215,71 @@ export default function SeedsClient() {
 
         <main className="max-w-7xl mx-auto p-8 space-y-12 text-left">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Advanced Migration Protocols */}
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white md:col-span-2">
+                    <CardHeader className="bg-primary/5 border-b p-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-primary">
+                                <div className="p-2 bg-white rounded-xl shadow-sm"><ArrowRightLeft className="h-5 w-5" /></div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Institutional Migration Protocols</CardTitle>
+                            </div>
+                            <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px]">Non-Destructive</Badge>
+                        </div>
+                        <CardDescription className="text-xs font-medium uppercase tracking-widest mt-1 opacity-60">Surgical enrichment of existing school data for multi-pipeline support.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="p-6 rounded-3xl bg-muted/20 border-2 border-dashed border-border flex flex-col justify-between gap-6 transition-all hover:bg-muted/30">
+                            <div className="space-y-3">
+                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary"><Zap className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight">1. Architect Discovery</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Harvests unique stages from your current schools to build the Onboarding Pipeline blueprint.</p>
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                onClick={() => handleSeed('harvest')} 
+                                disabled={seedingStatus.harvest === 'seeding'} 
+                                className="w-full rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
+                            >
+                                {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4" />}
+                                Initialize Master Pipeline
+                            </Button>
+                        </div>
+
+                        <div className="p-6 rounded-3xl bg-primary/[0.03] border-2 border-primary/10 flex flex-col justify-between gap-6 transition-all hover:bg-primary/[0.05]">
+                            <div className="space-y-3">
+                                <div className="p-2.5 bg-primary text-white rounded-xl w-fit shadow-lg shadow-primary/20"><ShieldCheck className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight">2. Synchronize Network</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches schools with pipeline IDs and syncs stage logic. Performs auto-backup before execution.</p>
+                            </div>
+                            <Button 
+                                onClick={() => handleSeed('enrich')} 
+                                disabled={seedingStatus.enrich === 'seeding'} 
+                                className="w-full rounded-xl font-black shadow-xl uppercase text-[10px] tracking-widest h-11"
+                            >
+                                {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                                Execute Migration
+                            </Button>
+                        </div>
+
+                        <div className="p-6 rounded-3xl bg-rose-50 border-2 border-dashed border-rose-100 flex flex-col justify-between gap-6 transition-all hover:bg-rose-100/50">
+                            <div className="space-y-3">
+                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-rose-600 border border-rose-100"><RotateCcw className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight text-rose-900">3. Emergency Rollback</h4>
+                                <p className="text-[10px] font-medium text-rose-700 leading-relaxed uppercase tracking-tighter opacity-70">Instantly restores the school directory from the last captured pre-migration snapshot.</p>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                onClick={() => handleSeed('rollback')} 
+                                disabled={seedingStatus.rollback === 'seeding'} 
+                                className="w-full rounded-xl font-bold text-rose-600 hover:bg-rose-100/50 h-11"
+                            >
+                                {seedingStatus.rollback === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                                Restore Directory
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Structural Infrastructure */}
                 <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
                     <CardHeader className="bg-primary/5 border-b p-8">
