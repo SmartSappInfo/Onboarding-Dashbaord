@@ -24,6 +24,7 @@ interface StageColumnProps {
  * @fileOverview High-fidelity Kanban Column.
  * Features weighted color headers and optimized content density.
  * Now supports dynamic width resizing for custom studio layouts.
+ * Added whitespace-normal to break horizontal scroll inheritance.
  */
 export default function StageColumn({ stage, schools, isOverlay, customWidth = 320 }: StageColumnProps) {
     const {
@@ -44,7 +45,7 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300">
+        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-x-hidden">
             <Card 
                 className={cn(
                     "h-full flex flex-col bg-muted/20 border-none ring-1 ring-border rounded-[2rem] overflow-hidden transition-all duration-500",
@@ -55,7 +56,7 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                 style={{ borderTopColor: stage.color || 'hsl(var(--primary))' }}
             >
                 <CardHeader className="p-5 pb-3 border-b bg-background shrink-0 flex flex-row items-center justify-between shadow-sm z-10">
-                     <div className="flex items-center gap-3">
+                     <div className="flex items-center gap-3 min-w-0">
                         <Button 
                             variant="ghost" 
                             size="icon"
@@ -65,13 +66,13 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                         >
                            <GripVertical className="h-4 w-4" />
                         </Button>
-                        <div className="min-w-0">
-                            <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground truncate">
+                        <div className="min-w-0 flex-1">
+                            <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground truncate block">
                                 {toTitleCase(stage.name)}
                             </CardTitle>
                         </div>
                     </div>
-                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums border-none shadow-inner bg-slate-100 text-slate-600 shrink-0">
+                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums border-none shadow-inner bg-slate-100 text-slate-600 shrink-0 ml-2">
                         {schools.length}
                     </Badge>
                 </CardHeader>

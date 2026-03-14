@@ -47,7 +47,7 @@ interface SchoolCardProps {
 /**
  * @fileOverview High-fidelity Institutional Card for Kanban boards.
  * Optimized for data density and professional SaaS aesthetic.
- * Updated to use Title Case and match the 'Tasks' module minimalism.
+ * Fixed horizontal overflow issues with strict truncation and min-w-0.
  */
 export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
@@ -77,7 +77,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
         ref={setNodeRef}
         style={style}
         className={cn(
-            "mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card",
+            "mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
             isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
             school.lifecycleStatus === 'Churned' && "grayscale opacity-60"
         )}
@@ -87,7 +87,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
             {...listeners} 
             className="p-4 pb-2 flex flex-row items-start justify-between space-y-0 cursor-grab active:cursor-grabbing"
         >
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
                     <Avatar className={cn(
                         "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105",
@@ -104,10 +104,10 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                         school.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-400"
                     )} />
                 </div>
-                <div className="min-w-0 text-left">
+                <div className="min-w-0 flex-1 text-left">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1">
+                            <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full">
                                 {schoolTitle}
                             </CardTitle>
                         </TooltipTrigger>
@@ -117,7 +117,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                     </Tooltip>
                     <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">
                         <ShieldCheck className="h-2 w-2 text-primary/40" />
-                        <span className="truncate">{toTitleCase(signatory?.name || 'No Primary Contact')}</span>
+                        <span className="truncate block flex-1">{toTitleCase(signatory?.name || 'No Primary Contact')}</span>
                     </div>
                 </div>
             </div>
@@ -160,10 +160,10 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
         </CardHeader>
 
         <CardContent className="p-4 pt-3 space-y-4">
-            {/* Metrics Row - Swapped to top of content */}
+            {/* Metrics Row */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex flex-col text-left">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex flex-col text-left shrink-0">
                         <div className="flex items-center gap-1">
                             <Users className="h-2.5 w-2.5 text-primary/40" />
                             <span className="text-[10px] font-black tabular-nums tracking-tighter leading-none">{school.nominalRoll?.toLocaleString() || 0}</span>
@@ -171,12 +171,12 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                         <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Students</span>
                     </div>
                     
-                    <div className="h-6 w-px bg-border/50" />
+                    <div className="h-6 w-px bg-border/50 shrink-0" />
 
-                    <div className="flex flex-col text-left">
+                    <div className="flex flex-col text-left min-w-0">
                         <div className="flex items-center gap-1">
                             <MapPin className="h-2.5 w-2.5 text-primary/40" />
-                            <span className="text-[9px] font-bold text-foreground/80 truncate max-w-[70px] leading-none">{toTitleCase(school.zone?.name || 'Global')}</span>
+                            <span className="text-[9px] font-bold text-foreground/80 truncate leading-none">{toTitleCase(school.zone?.name || 'Global')}</span>
                         </div>
                         <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Region</span>
                     </div>
@@ -185,7 +185,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <Badge 
                     variant="outline" 
                     className={cn(
-                        "h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner",
+                        "h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0 ml-2",
                         school.lifecycleStatus === 'Active' ? "bg-emerald-50 text-emerald-600" :
                         school.lifecycleStatus === 'Onboarding' ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"
                     )}
@@ -194,7 +194,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 </Badge>
             </div>
 
-            {/* Actions Hub - Moved to last row */}
+            {/* Actions Hub */}
             <div className="flex items-center gap-1.5 pt-3 border-t border-border/50 opacity-0 group-hover/card:opacity-100 transition-opacity">
                 <Tooltip>
                     <TooltipTrigger asChild>
