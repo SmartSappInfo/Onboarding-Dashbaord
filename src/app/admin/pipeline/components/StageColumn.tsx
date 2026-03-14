@@ -41,11 +41,11 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
         transition,
         opacity: isDragging && !isOverlay ? 0.5 : 1,
         width: `${customWidth}px`,
-        borderColor: stage.color || 'hsl(var(--border))',
+        borderColor: 'hsl(var(--border))',
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width,border-color] duration-300 whitespace-normal overflow-hidden border rounded-[2rem] min-w-0">
+        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border rounded-[2rem] min-w-0">
             <Card 
                 className={cn(
                     "h-full flex flex-col bg-slate-100/50 border-none rounded-[2rem] overflow-hidden transition-all duration-500 w-full",
@@ -65,7 +65,10 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                            <GripVertical className="h-4 w-4" />
                         </Button>
                         <div className="min-w-0 flex-1">
-                            <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground truncate block">
+                            <CardTitle 
+                                className="text-sm font-semibold tracking-tight truncate block"
+                                style={{ color: stage.color }}
+                            >
                                 {toTitleCase(stage.name)}
                             </CardTitle>
                         </div>
