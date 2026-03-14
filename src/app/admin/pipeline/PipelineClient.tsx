@@ -1,7 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import KanbanBoard from './components/KanbanBoard';
+import PipelineConfigView from './components/PipelineConfigView';
 import { 
     Workflow, 
     Search, 
@@ -9,8 +11,8 @@ import {
     ShieldCheck, 
     RotateCcw,
     Settings2,
-    ChevronDown,
-    Zap
+    Zap,
+    Layout
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,18 +20,21 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Pipeline, Zone, LifecycleStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { toTitleCase } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview Executive Pipeline Command Hub.
- * Optimized for institutional oversight with high data density and minimalist controls.
+ * @fileOverview Unified Pipeline Hub.
+ * Manages both the Kanban Board and Configuration Studio with shared context.
  */
 
 export default function PipelineClient() {
   const firestore = useFirestore();
   
+  // View State
+  const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
+
   // Pipeline Registry
   const pipelinesQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'pipelines'), orderBy('createdAt', 'desc')) : null, 
@@ -42,7 +47,7 @@ export default function PipelineClient() {
   [firestore]);
   const { data: zones } = useCollection<Zone>(zonesQuery);
 
-  // Global Filter State
+  // Global Context State
   const [currentPipelineId, setCurrentPipelineId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [zoneFilter, setZoneFilter] = React.useState<string>('all');
@@ -77,23 +82,23 @@ export default function PipelineClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-slate-50/50">
       {/* Executive Command Header */}
-      <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30">
+      <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30 transition-all duration-500">
         <div className="p-6 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-                <div className="p-3.5 bg-primary text-white rounded-[1.25rem] shadow-xl shadow-primary/20 rotate-3">
+                <div className="p-3.5 bg-primary text-white rounded-[1.25rem] shadow-xl shadow-primary/20 rotate-3 transition-transform hover:rotate-0">
                     <Workflow className="h-6 w-6" />
                 </div>
-                <div className="text-left">
+                <div className="text-left min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Active Workflow</span>
-                        <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[8px] font-black px-1.5 bg-primary/5 uppercase">Live Sync</Badge>
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Pipeline Context</span>
+                        <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[8px] font-black px-1.5 bg-primary/5 uppercase">Shared</Badge>
                     </div>
                     <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
                         <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-2xl font-black uppercase tracking-tighter gap-3 w-auto bg-transparent hover:text-primary transition-colors">
                             <SelectValue placeholder="Select Pipeline..." />
                         </SelectTrigger>
                         <SelectContent className="rounded-[1.5rem] border-none shadow-2xl p-2 min-w-[240px]">
-                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">Pipeline Registry</div>
+                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">Available Workflows</div>
                             {pipelines?.map(p => (
                                 <SelectItem key={p.id} value={p.id} className="rounded-xl p-3 my-1">
                                     <span className="font-black uppercase text-xs tracking-tight">{p.name}</span>
@@ -107,24 +112,32 @@ export default function PipelineClient() {
             <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-2xl border shadow-inner">
                 <Button 
                     variant="ghost" 
-                    className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest text-primary bg-white shadow-md px-6"
+                    onClick={() => setActiveView('board')}
+                    className={cn(
+                        "h-10 rounded-xl font-black uppercase text-[10px] tracking-widest px-6 transition-all",
+                        activeView === 'board' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
+                    )}
                 >
-                    <Workflow className="mr-2 h-4 w-4" /> Board View
+                    <Layout className="mr-2 h-4 w-4" /> Board View
                 </Button>
                 <Button 
                     variant="ghost" 
-                    asChild
-                    className="h-10 rounded-xl font-bold uppercase text-[10px] tracking-widest text-muted-foreground opacity-60 hover:opacity-100 px-6"
+                    onClick={() => setActiveView('config')}
+                    className={cn(
+                        "h-10 rounded-xl font-black uppercase text-[10px] tracking-widest px-6 transition-all",
+                        activeView === 'config' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
+                    )}
                 >
-                    <Link href="/admin/pipeline/settings">
-                        <Settings2 className="mr-2 h-4 w-4" /> Studio
-                    </Link>
+                    <Settings2 className="mr-2 h-4 w-4" /> Config
                 </Button>
             </div>
         </div>
 
-        {/* Global Pipeline Filters */}
-        <div className="px-6 pb-6 pt-2 flex flex-wrap items-center gap-4">
+        {/* Global Pipeline Filters - Only visible in Board View */}
+        <div className={cn(
+            "px-6 pb-6 pt-2 flex flex-wrap items-center gap-4 transition-all duration-500 overflow-hidden",
+            activeView === 'board' ? "max-h-24 opacity-100 translate-y-0" : "max-h-0 opacity-0 -translate-y-4 pointer-events-none"
+        )}>
             <div className="relative flex-grow max-w-md group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-20 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
                 <Input 
@@ -171,24 +184,59 @@ export default function PipelineClient() {
         </div>
       </header>
 
-      {/* Main Kanban Content */}
-      <div className="flex-grow overflow-hidden relative">
-        {currentPipelineId ? (
-            <KanbanBoard 
-                pipelineId={currentPipelineId}
-                customWidth={columnWidth}
-                filters={{
-                    searchTerm,
-                    zoneId: zoneFilter,
-                    lifecycleStatus: statusFilter
-                }}
-            />
-        ) : (
-            <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
-                <Workflow size={120} className="mb-6" />
-                <p className="font-black uppercase tracking-[0.4em] text-2xl">No Selection</p>
-            </div>
-        )}
+      {/* Dynamic Content Area */}
+      <div className="flex-1 overflow-hidden relative">
+        <AnimatePresence mode="wait">
+            {activeView === 'board' ? (
+                <motion.div 
+                    key="board"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="h-full w-full"
+                >
+                    {currentPipelineId ? (
+                        <KanbanBoard 
+                            pipelineId={currentPipelineId}
+                            customWidth={columnWidth}
+                            filters={{
+                                searchTerm,
+                                zoneId: zoneFilter,
+                                lifecycleStatus: statusFilter
+                            }}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
+                            <Workflow size={120} className="mb-6" />
+                            <p className="font-black uppercase tracking-[0.4em] text-2xl">No Selection</p>
+                        </div>
+                    )}
+                </motion.div>
+            ) : (
+                <motion.div 
+                    key="config"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="h-full w-full overflow-y-auto"
+                >
+                    <div className="max-w-5xl mx-auto p-8">
+                        {currentPipelineId ? (
+                            <PipelineConfigView 
+                                pipelineId={currentPipelineId} 
+                                onWidthChange={setColumnWidth}
+                                columnWidth={columnWidth}
+                            />
+                        ) : (
+                            <div className="py-40 text-center opacity-20 flex flex-col items-center gap-6">
+                                <Workflow size={80} />
+                                <p className="text-sm font-semibold uppercase tracking-[0.3em]">Select a pipeline to configure</p>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
       </div>
     </div>
   );
