@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, enrichAndRestoreSchools, rollbackSchoolsMigration } from '@/lib/seed';
-import { Loader2, RefreshCw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert, Workflow, Zap, ArrowRightLeft, RotateCcw } from 'lucide-react';
+import { Loader2, RefreshCw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert, Workflow, Zap, ArrowRightLeft, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
