@@ -743,7 +743,7 @@ export interface Task {
   relatedParentId?: string | null; // e.g. SurveyId for a Response
 }
 
-export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON';
+export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON' | 'INVOICE_OVERDUE' | 'PAYMENT_RECEIVED';
 
 export interface AutomationCondition {
   field: string;
@@ -752,10 +752,10 @@ export interface AutomationCondition {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'WEBHOOK';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_RECORD' | 'WEBHOOK';
   templateId?: string;
   senderProfileId?: string;
-  recipientType?: 'manager' | 'fixed' | 'focal_person';
+  recipientType?: 'manager' | 'fixed' | 'focal_person' | 'respondent';
   focalPersonType?: FocalPersonType;
   fixedRecipient?: string;
   taskTitle?: string;
@@ -763,6 +763,30 @@ export interface AutomationAction {
   taskPriority?: TaskPriority;
   taskCategory?: TaskCategory;
   taskDueOffsetDays?: number;
+}
+
+export interface Automation {
+  id: string;
+  name: string;
+  description?: string;
+  trigger: AutomationTrigger;
+  nodes: any[];
+  edges: any[];
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationRun {
+  id: string;
+  automationId: string;
+  automationName: string;
+  status: 'running' | 'completed' | 'failed';
+  triggerData: any;
+  startedAt: string;
+  finishedAt?: string;
+  error?: string;
 }
 
 export interface AutomationRule {
