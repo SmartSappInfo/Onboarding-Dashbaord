@@ -9,6 +9,10 @@ import type { Automation, AutomationRun } from './types';
  * @fileOverview Server-side actions for the Automation Engine.
  */
 
+/**
+ * Persists an automation blueprint to Firestore.
+ * Handles both new creation and updates.
+ */
 export async function saveAutomationAction(id: string | null, data: Partial<Automation>, userId: string) {
     try {
         const timestamp = new Date().toISOString();
@@ -32,10 +36,14 @@ export async function saveAutomationAction(id: string | null, data: Partial<Auto
             return { success: true, id: docRef.id };
         }
     } catch (e: any) {
+        console.error(">>> [AUTO:SAVE] FAILED:", e.message);
         return { success: false, error: e.message };
     }
 }
 
+/**
+ * Purges an automation blueprint and its history from the registry.
+ */
 export async function deleteAutomationAction(id: string) {
     try {
         await adminDb.collection('automations').doc(id).delete();
@@ -46,6 +54,9 @@ export async function deleteAutomationAction(id: string) {
     }
 }
 
+/**
+ * Toggles the operational status of an automation flow.
+ */
 export async function toggleAutomationStatusAction(id: string, active: boolean) {
     try {
         await adminDb.collection('automations').doc(id).update({ isActive: active });
@@ -56,6 +67,9 @@ export async function toggleAutomationStatusAction(id: string, active: boolean) 
     }
 }
 
+/**
+ * Records the start of an automated execution.
+ */
 export async function logAutomationRunAction(automationId: string, name: string, triggerData: any) {
     try {
         const docRef = await adminDb.collection('automation_runs').add({
@@ -71,6 +85,9 @@ export async function logAutomationRunAction(automationId: string, name: string,
     }
 }
 
+/**
+ * Finalizes an automation run record with success or failure status.
+ */
 export async function updateAutomationRunStatusAction(runId: string, status: 'completed' | 'failed', error?: string) {
     try {
         await adminDb.collection('automation_runs').doc(runId).update({
