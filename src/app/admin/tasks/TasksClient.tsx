@@ -93,6 +93,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 
@@ -127,6 +128,7 @@ export default function TasksClient() {
     const { user: currentUser } = useUser();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+    const { activeTrack } = usePerspective();
     
     // View State
     const [activeTab, setActiveTab] = React.useState('list');
@@ -150,11 +152,16 @@ export default function TasksClient() {
 
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, 'tasks'), orderBy('dueDate', 'asc'), limit(200));
-    }, [firestore]);
+        return query(
+            collection(firestore, 'tasks'), 
+            where('track', '==', activeTrack),
+            orderBy('dueDate', 'asc'), 
+            limit(200)
+        );
+    }, [firestore, activeTrack]);
 
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true)) : null, [firestore]);
-    const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
+    const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc')) : null, [firestore, activeTrack]);
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
@@ -207,11 +214,12 @@ export default function TasksClient() {
         if (!firestore || !currentUser) return;
         setIsSaving(true);
         try {
+            const finalPayload = { ...payload, track: activeTrack };
             if (editingTask) {
-                updateTaskNonBlocking(firestore, editingTask.id, payload);
+                updateTaskNonBlocking(firestore, editingTask.id, finalPayload);
                 toast({ title: 'Task Architecture Synchronized' });
             } else {
-                await createTaskNonBlocking(firestore, payload);
+                await createTaskNonBlocking(firestore, finalPayload);
                 toast({ title: 'Task Initialized' });
             }
             setEditorOpen(false);
@@ -231,6 +239,7 @@ export default function TasksClient() {
             priority: 'medium',
             status: 'todo',
             category: category,
+            track: activeTrack,
             assignedTo: currentUser?.uid || '',
             dueDate: new Date().toISOString(),
             createdAt: new Date().toISOString(),
@@ -311,25 +320,25 @@ export default function TasksClient() {
                 {/* Executive KPI Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard 
-                        label="Tasks Active" 
+                        label="Active Actions" 
                         value={isLoading ? '...' : stats.active} 
-                        sub="In-flight protocols" 
+                        sub={`${toTitleCase(activeTrack)} track focus`} 
                         icon={Zap} 
-                        color="text-primary" 
-                        bg="bg-primary/10" 
+                        color={activeTrack === 'prospect' ? "text-emerald-600" : "text-primary"} 
+                        bg={activeTrack === 'prospect' ? "bg-emerald-50" : "bg-primary/10"} 
                     />
                     <StatCard 
                         label="Resolved Protocols" 
                         value={isLoading ? '...' : stats.resolved} 
-                        sub="Task success archive" 
+                        sub="Success archive" 
                         icon={CheckCircle2} 
                         color="text-emerald-600" 
                         bg="bg-emerald-50" 
                     />
                     <StatCard 
-                        label="Overdue Protocols" 
+                        label="Overdue Alerts" 
                         value={isLoading ? '...' : stats.overdue} 
-                        sub="Manager intervention required" 
+                        sub="SLA breach detection" 
                         icon={ShieldAlert} 
                         color="text-rose-600" 
                         bg="bg-rose-50" 
@@ -371,9 +380,6 @@ export default function TasksClient() {
                         </Button>
                         <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
                             <Filter className="h-3.5 w-3.5" /> Filter <ChevronDown className="h-3 w-3 opacity-40" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
-                            <ArrowUpDown className="h-3.5 w-3.5" /> Sort
                         </Button>
                     </div>
 
@@ -436,7 +442,7 @@ export default function TasksClient() {
                                     <div className="space-y-3">
                                         {isLoading ? (
                                             Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
-                                        ) : groupTasks.map((task) => {
+                                        ) : groupTasks.length > 0 ? groupTasks.map((task) => {
                                             const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
                                             const daysLeft = differenceInDays(new Date(task.dueDate), new Date());
                                             const isOverdue = daysLeft < 0 && task.status !== 'done';
@@ -527,7 +533,12 @@ export default function TasksClient() {
                                                     </div>
                                                 </div>
                                             );
-                                        })}
+                                        }) : (
+                                            <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
+                                                <EyeOff className="h-8 w-8 text-muted-foreground" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest">No matching tasks in this phase</p>
+                                            </div>
+                                        )}
 
                                         {status !== 'done' && (
                                             <button 

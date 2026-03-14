@@ -11,6 +11,7 @@ import type { School, UserProfile, Activity, Zone } from '@/lib/types';
 import { Filter, X, History, Building, User, Tag, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { usePerspective } from '@/context/PerspectiveContext';
 
 const ACTIVITY_TYPES: { value: Activity['type']; label: string }[] = [
     { value: 'note', label: 'Internal Notes' },
@@ -28,14 +29,24 @@ const ACTIVITY_TYPES: { value: Activity['type']; label: string }[] = [
 
 export default function ActivitiesClient() {
     const firestore = useFirestore();
+    const { activeTrack } = usePerspective();
+    
     const [schoolId, setSchoolId] = React.useState<string | null>('all');
     const [userId, setUserId] = React.useState<string | null>('all');
     const [type, setType] = React.useState<string | null>('all');
     const [zoneId, setZoneId] = React.useState<string | null>('all');
 
-    const schoolsCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name')) : null, [firestore]);
-    const usersCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), orderBy('name')) : null, [firestore]);
-    const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
+    const schoolsCol = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'schools'), orderBy('name')) : null, 
+    [firestore]);
+    
+    const usersCol = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'users'), orderBy('name')) : null, 
+    [firestore]);
+    
+    const zonesCol = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, 
+    [firestore]);
 
     const { data: schools } = useCollection<School>(schoolsCol);
     const { data: users } = useCollection<UserProfile>(usersCol);
@@ -93,7 +104,7 @@ export default function ActivitiesClient() {
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         <SelectItem value="all">All Schools</SelectItem>
-                                        {schools?.filter(s => zoneId === 'all' || s.zone?.id === zoneId).map(s => (
+                                        {schools?.filter(s => (zoneId === 'all' || s.zone?.id === zoneId) && (s.track === activeTrack)).map(s => (
                                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -143,6 +154,7 @@ export default function ActivitiesClient() {
                         <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                     </div>
                     <ActivityTimeline 
+                        track={activeTrack}
                         schoolId={schoolId} 
                         userId={userId} 
                         type={type} 

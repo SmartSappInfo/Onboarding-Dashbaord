@@ -45,7 +45,8 @@ import ChangeStageModal from './components/ChangeStageModal';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import TransferPipelineModal from './components/TransferPipelineModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { cn } from '@/lib/utils';
+import { usePerspective } from '@/context/PerspectiveContext';
+import { cn, toTitleCase } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 
 const getInitials = (name?: string) => {
@@ -66,6 +67,7 @@ export default function SchoolsClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { activeTrack } = usePerspective();
 
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
@@ -93,13 +95,21 @@ export default function SchoolsClient() {
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
     let temp = schools;
+
+    // 1. Perspective Context Filter (CRITICAL)
+    temp = temp.filter(s => s.track === activeTrack || (!s.track && activeTrack === 'onboarding'));
+
+    // 2. Global Assignment Filter
     if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
+    
+    // 3. Search & UI Filters
     if (searchTerm) temp = temp.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
     if (stageFilter !== 'all') temp = temp.filter(s => s.stage?.id === stageFilter);
     if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
+    
     return temp;
-  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter]);
+  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter, activeTrack]);
   
   const sortedSchools = useMemo(() => {
     let sortable = [...filteredSchools];
@@ -303,7 +313,7 @@ export default function SchoolsClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found matching your current filters.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found for the active perspective.</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>

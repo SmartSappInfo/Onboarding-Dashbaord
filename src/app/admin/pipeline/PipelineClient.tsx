@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import type { Pipeline, Zone, LifecycleStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { toTitleCase } from '@/lib/utils';
@@ -31,24 +31,29 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { usePerspective } from '@/context/PerspectiveContext';
 
 /**
  * @fileOverview Unified Pipeline Hub.
- * Optimized with Expandable Search and Consolidated Filter Hub.
+ * Optimized with Perspective Filtering to isolate Onboarding and Prospect workflows.
  */
 
 export default function PipelineClient() {
   const firestore = useFirestore();
+  const { activeTrack } = usePerspective();
   
   // View State
   const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
 
-  // Pipeline Registry
+  // Pipeline Registry - Filtered by Track
   const pipelinesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'pipelines'), orderBy('createdAt', 'desc')) : null, 
-  [firestore]);
+    firestore ? query(
+        collection(firestore, 'pipelines'), 
+        where('targetTrack', '==', activeTrack),
+        orderBy('createdAt', 'desc')
+    ) : null, 
+  [firestore, activeTrack]);
   const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   // Regional Context
@@ -64,12 +69,14 @@ export default function PipelineClient() {
   const [statusFilter, setStatusFilter] = React.useState<LifecycleStatus | 'all'>('all');
   const [columnWidth, setColumnWidth] = React.useState(320);
 
-  // Initialization
+  // Initialization: Reset selection when perspective changes
   React.useEffect(() => {
-    if (pipelines && pipelines.length > 0 && !currentPipelineId) {
+    if (pipelines && pipelines.length > 0) {
         setCurrentPipelineId(pipelines[0].id);
+    } else {
+        setCurrentPipelineId(null);
     }
-  }, [pipelines, currentPipelineId]);
+  }, [pipelines]);
 
   // Load UI preferences
   React.useEffect(() => {
@@ -87,18 +94,21 @@ export default function PipelineClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-slate-50/50">
-      {/* Executive Command Header - Consolidated Single Row */}
+      {/* Executive Command Header */}
       <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30">
         <div className="p-4 sm:p-6 flex items-center justify-between gap-4">
             {/* Left: Context */}
             <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden sm:flex p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 rotate-3 transition-transform hover:rotate-0">
+                <div className={cn(
+                    "hidden sm:flex p-2.5 text-white rounded-xl shadow-lg rotate-3 transition-transform hover:rotate-0",
+                    activeTrack === 'prospect' ? "bg-emerald-600 shadow-emerald-200" : "bg-primary shadow-primary/20"
+                )}>
                     <Workflow className="h-5 w-5" />
                 </div>
                 <div className="text-left min-w-0">
                     <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
                         <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-lg sm:text-xl font-black uppercase tracking-tighter gap-2 w-auto bg-transparent hover:text-primary transition-colors">
-                            <SelectValue placeholder="Pipeline Context" />
+                            <SelectValue placeholder={pipelines?.length ? "Pipeline Context" : "No Active Pipeline"} />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
                             {pipelines?.map(p => (
@@ -106,6 +116,11 @@ export default function PipelineClient() {
                                     <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
                                 </SelectItem>
                             ))}
+                            {(!pipelines || pipelines.length === 0) && (
+                                <div className="p-4 text-center italic text-xs text-muted-foreground">
+                                    No {activeTrack} pipelines defined.
+                                </div>
+                            )}
                         </SelectContent>
                     </Select>
                 </div>
@@ -133,7 +148,7 @@ export default function PipelineClient() {
                                         >
                                             <Input 
                                                 autoFocus
-                                                placeholder="Search protocols..." 
+                                                placeholder="Search hubs..." 
                                                 value={searchTerm}
                                                 onChange={e => setSearchTerm(e.target.value)}
                                                 className="h-10 rounded-xl bg-muted/30 border-primary/20 font-bold text-xs pl-4 pr-10 shadow-inner"
@@ -178,7 +193,7 @@ export default function PipelineClient() {
                                 <PopoverContent className="w-72 p-4 rounded-2xl border-none shadow-2xl space-y-6" align="end">
                                     <div className="space-y-1.5">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Filter Hub</h4>
-                                        <p className="text-[10px] font-medium text-muted-foreground">Narrow down the institutional view.</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground">Narrow down the track-specific view.</p>
                                     </div>
                                     
                                     <div className="space-y-4">
@@ -260,7 +275,7 @@ export default function PipelineClient() {
         <AnimatePresence mode="wait">
             {activeView === 'board' ? (
                 <motion.div 
-                    key="board"
+                    key={`board-${activeTrack}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -279,13 +294,13 @@ export default function PipelineClient() {
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
                             <Workflow size={120} className="mb-6" />
-                            <p className="font-black uppercase tracking-[0.4em] text-2xl">No Selection</p>
+                            <p className="font-black uppercase tracking-[0.4em] text-2xl">Perspective Clear</p>
                         </div>
                     )}
                 </motion.div>
             ) : (
                 <motion.div 
-                    key="config"
+                    key={`config-${activeTrack}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
@@ -301,7 +316,7 @@ export default function PipelineClient() {
                         ) : (
                             <div className="py-40 text-center opacity-20 flex flex-col items-center gap-6">
                                 <Workflow size={80} />
-                                <p className="text-sm font-semibold uppercase tracking-[0.3em]">Select a pipeline to configure</p>
+                                <p className="text-sm font-semibold uppercase tracking-[0.3em]">Initialize a {activeTrack} pipeline to begin</p>
                             </div>
                         )}
                     </div>

@@ -1,7 +1,7 @@
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task, InstitutionalTrack } from '@/lib/types';
 import { format, isAfter, startOfToday, subDays } from 'date-fns';
 
 function getDb() {
@@ -23,9 +23,14 @@ async function safeGetDocs(q: any) {
     }
 }
 
-export async function getDashboardData() {
+/**
+ * @fileOverview Intelligence Hub Data Aggregator.
+ * Upgraded to support Perspective Filtering (Onboarding vs Prospect tracks).
+ */
+export async function getDashboardData(track: InstitutionalTrack = 'onboarding') {
   const db = getDb();
 
+  // 1. Fetch Master Data
   const [
     schoolsSnapshot,
     meetingsSnapshot,
@@ -44,37 +49,52 @@ export async function getDashboardData() {
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
     safeGetDocs(query(collection(db, 'modules'))),
-    safeGetDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
+    safeGetDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(50))),
     safeGetDocs(collection(db, 'zones')),
     safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
     safeGetDocs(collection(db, 'tasks')),
   ]); 
 
-  const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
+  // 2. APPLY TRACK FILTERING (Logic Level)
+  const schools = schoolsSnapshot.docs
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as School))
+    .filter(s => s.track === track || (!s.track && track === 'onboarding'));
+
+  const tasks = tasksSnapshot.docs
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Task))
+    .filter(t => t.track === track || (!t.track && track === 'onboarding'));
+
+  const activities = activitiesSnapshot.docs
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity))
+    .filter(a => a.track === track || (!a.track && track === 'onboarding'));
+
   const zones = zonesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Zone));
   const logs = logsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as MessageLog));
-  const tasks = tasksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Task));
   
   const now = startOfToday();
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
-  const upcomingMeetingsCount = meetingsSnapshot.docs.filter((doc: any) => {
-    const meetingTime = doc.data().meetingTime;
-    return meetingTime && isAfter(new Date(meetingTime), now);
-  }).length;
+  // Meetings are tied to schools, so we only show meetings for schools in the active track
+  const filteredSchoolIds = new Set(schools.map(s => s.id));
+  const upcomingMeetings = meetingsSnapshot.docs
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
+    .filter(m => filteredSchoolIds.has(m.schoolId) && m.meetingTime && isAfter(new Date(m.meetingTime), now))
+    .sort((a, b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
+    .slice(0, 5)
+    .map(meeting => ({
+      ...meeting,
+      date: format(new Date(meeting.meetingTime), 'MMM dd, yyyy'),
+      status: 'Upcoming',
+    }));
 
   const publishedSurveysCount = surveysSnapshot.docs.filter((doc: any) => doc.data().status === 'published').length;
   
-  const responseCountPromises = surveysSnapshot.docs.map((doc: any) => safeGetDocs(collection(db, 'surveys', doc.id, 'responses')).then(snap => snap.size));
-  const totalResponsesCount = (await Promise.all(responseCountPromises)).reduce((sum, count) => sum + count, 0);
-
   const metrics = {
     totalSchools: totalSchools,
     totalStudents: totalStudents,
-    upcomingMeetings: upcomingMeetingsCount,
+    upcomingMeetings: upcomingMeetings.length,
     publishedSurveys: publishedSurveysCount,
-    totalResponses: totalResponsesCount,
   };
 
   const latestSurveys = surveysSnapshot.docs
@@ -85,17 +105,6 @@ export async function getDashboardData() {
         return dateB - dateA;
     })
     .slice(0, 3);
-
-  const upcomingMeetings = meetingsSnapshot.docs
-    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
-    .filter(meeting => meeting.meetingTime && new Date(meeting.meetingTime) >= now)
-    .sort((a, b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
-    .slice(0, 5)
-    .map(meeting => ({
-      ...meeting,
-      date: format(new Date(meeting.meetingTime), 'MMM dd, yyyy'),
-      status: 'Upcoming',
-    }));
 
   const stages = stagesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as OnboardingStage));
   const pipelineCounts = stages.map(stage => {
@@ -169,8 +178,6 @@ export async function getDashboardData() {
   });
   const moduleImplementationData = Object.values(moduleCounts);
 
-  const activities = activitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity));
-
   const zoneDistribution = zones.map(zone => {
     const schoolsInZone = schools.filter(s => s.zone?.id === zone.id);
     return {
@@ -192,7 +199,7 @@ export async function getDashboardData() {
     recentLogs: logs.slice(0, 5)
   };
 
-  // Task Force Performance (Main Dashboard)
+  // Task Force Performance
   const taskPerformance = {
       total: tasks.length,
       completed: tasks.filter(t => t.status === 'done').length,

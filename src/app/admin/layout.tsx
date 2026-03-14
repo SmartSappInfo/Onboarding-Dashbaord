@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -56,6 +55,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
 import NotificationBell from './components/NotificationBell';
+import PerspectiveSwitcher from './components/PerspectiveSwitcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +69,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { NavigationProvider } from '@/context/NavigationContext';
+import { PerspectiveProvider } from '@/context/PerspectiveContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { UserRole, AppPermissionId, Role } from '@/lib/types';
@@ -98,7 +99,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
             const data = docSnap.data();
             
-            // 1. Resolve Permissions (Flattened in registry update)
+            // 1. Resolve Permissions
             let perms = data.permissions || [];
             
             // 2. Fetch Role Names for Display
@@ -189,40 +190,68 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <NavigationProvider>
         <GlobalFilterProvider>
-          <SidebarProvider defaultOpen={false}>
-            <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-              <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
-                <SidebarHeader className="p-2 text-left">
-                   <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
-                      <Link href="/admin" className="flex items-center gap-2 font-semibold">
-                        <Logo variant="white" className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
-                        <SmartSappIcon variant="white" className="h-8 w-8 hidden group-data-[collapsible=icon]:block" />
-                        <span className="sr-only">SmartSapp</span>
-                      </Link>
-                   </div>
-                </SidebarHeader>
-                <SidebarContent className="text-left">
-                  <SidebarGroup>
-                    <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
-                      <SidebarGroupLabel className="text-left">Operations</SidebarGroupLabel>
-                      <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
+          <PerspectiveProvider>
+            <SidebarProvider defaultOpen={false}>
+              <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+                <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
+                  <SidebarHeader className="p-2 text-left">
+                    <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
+                        <Link href="/admin" className="flex items-center gap-2 font-semibold">
+                          <Logo variant="white" className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
+                          <SmartSappIcon variant="white" className="h-8 w-8 hidden group-data-[collapsible=icon]:block" />
+                          <span className="sr-only">SmartSapp</span>
+                        </Link>
                     </div>
-                    <SidebarMenu>
-                      {coreNavItems.filter(i => i.visible).map((item) => (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label}>
-                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroup>
-
-                  {hasPerm('finance_view') && (
+                  </SidebarHeader>
+                  <SidebarContent className="text-left">
                     <SidebarGroup>
-                        <SidebarGroupLabel className="text-left">Finance Hub</SidebarGroupLabel>
+                      <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
+                        <SidebarGroupLabel className="text-left">Operations</SidebarGroupLabel>
+                        <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
+                      </div>
+                      <SidebarMenu>
+                        {coreNavItems.filter(i => i.visible).map((item) => (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label}>
+                                <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroup>
+
+                    {hasPerm('finance_view') && (
+                      <SidebarGroup>
+                          <SidebarGroupLabel className="text-left">Finance Hub</SidebarGroupLabel>
+                          <SidebarMenu>
+                          {financeNavItems.filter(i => i.visible).map((item) => (
+                              <SidebarMenuItem key={item.href}>
+                              <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                                  <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                              </SidebarMenuButton>
+                              </SidebarMenuItem>
+                          ))}
+                          </SidebarMenu>
+                      </SidebarGroup>
+                    )}
+
+                    <SidebarGroup>
+                      <SidebarGroupLabel className="text-left">Studios</SidebarGroupLabel>
+                      <SidebarMenu>
+                        {studioNavItems.filter(i => i.visible).map((item) => (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                                <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroup>
+
+                    <SidebarGroup className="mt-auto">
+                        <SidebarGroupLabel className="text-left">Management</SidebarGroupLabel>
                         <SidebarMenu>
-                        {financeNavItems.filter(i => i.visible).map((item) => (
+                        {systemNavItems.filter(i => i.visible).map((item) => (
                             <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
                                 <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
@@ -231,92 +260,67 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         ))}
                         </SidebarMenu>
                     </SidebarGroup>
-                  )}
-
-                  <SidebarGroup>
-                    <SidebarGroupLabel className="text-left">Studios</SidebarGroupLabel>
-                    <SidebarMenu>
-                      {studioNavItems.filter(i => i.visible).map((item) => (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
-                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroup>
-
-                  <SidebarGroup className="mt-auto">
-                      <SidebarGroupLabel className="text-left">Management</SidebarGroupLabel>
+                  </SidebarContent>
+                  <SidebarFooter className="text-left">
                       <SidebarMenu>
-                      {systemNavItems.filter(i => i.visible).map((item) => (
-                          <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
-                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
-                          </SidebarMenuButton>
+                          <SidebarMenuItem>
+                              <SidebarMenuButton asChild tooltip="Go to public site">
+                                  <Link href="/" target="_blank"><ExternalLink/><span>Go to site</span></Link>
+                              </SidebarMenuButton>
                           </SidebarMenuItem>
-                      ))}
                       </SidebarMenu>
-                  </SidebarGroup>
-                </SidebarContent>
-                <SidebarFooter className="text-left">
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild tooltip="Go to public site">
-                                <Link href="/" target="_blank"><ExternalLink/><span>Go to site</span></Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarFooter>
-              </Sidebar>
-              
-              <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden">
-                <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm print:hidden">
-                  <SidebarTrigger className="md:hidden" />
-                  <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
-                  <div className="flex items-center gap-2 shrink-0">
-                      {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
-                      <NotificationBell />
-                      <ThemeToggle />
-                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                          <Avatar className="h-8 w-8">
-                              <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
-                              <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
-                          </Avatar>
-                          </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-64 text-left" align="end" forceMount>
-                          <DropdownMenuLabel className="font-normal">
-                          <div className="flex flex-col space-y-1">
-                              <p className="text-sm font-black leading-none">{user?.displayName}</p>
-                              <p className="text-[10px] leading-none text-muted-foreground font-bold">{user?.email}</p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {userRolesData.map(role => (
-                                    <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
-                                ))}
-                              </div>
-                          </div>
-                          </DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild><Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link></DropdownMenuItem>
-                          {hasPerm('system_admin') && (
-                            <>
-                                <DropdownMenuItem asChild><Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link></DropdownMenuItem>
-                                <DropdownMenuItem asChild><Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link></DropdownMenuItem>
-                            </>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => auth.signOut()}><LogOut className="mr-2 h-4 w-4" /><span>Log out</span></DropdownMenuItem>
-                      </DropdownMenuContent>
-                      </DropdownMenu>
-                  </div>
-                </header>
-                <main className="flex-1 flex flex-col overflow-auto bg-background relative">{children}</main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
+                  </SidebarFooter>
+                </Sidebar>
+                
+                <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden">
+                  <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm print:hidden">
+                    <SidebarTrigger className="md:hidden" />
+                    <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <PerspectiveSwitcher />
+                        {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
+                        <NotificationBell />
+                        <ThemeToggle />
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
+                                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                            </Avatar>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64 text-left" align="end" forceMount>
+                            <DropdownMenuLabel className="font-normal">
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-black leading-none">{user?.displayName}</p>
+                                <p className="text-[10px] leading-none text-muted-foreground font-bold">{user?.email}</p>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {userRolesData.map(role => (
+                                      <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
+                                  ))}
+                                </div>
+                            </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild><Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link></DropdownMenuItem>
+                            {hasPerm('system_admin') && (
+                              <>
+                                  <DropdownMenuItem asChild><Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link></DropdownMenuItem>
+                                  <DropdownMenuItem asChild><Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link></DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => auth.signOut()}><LogOut className="mr-2 h-4 w-4" /><span>Log out</span></DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                  </header>
+                  <main className="flex-1 flex flex-col overflow-auto bg-background relative">{children}</main>
+                </SidebarInset>
+              </div>
+            </SidebarProvider>
+          </PerspectiveProvider>
         </GlobalFilterProvider>
       </NavigationProvider>
     </ThemeProvider>
