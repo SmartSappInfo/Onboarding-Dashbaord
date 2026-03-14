@@ -59,7 +59,7 @@ import {
     bulkCompleteTasks,
     getTaskInterlinkUrl
 } from '@/lib/task-actions';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
