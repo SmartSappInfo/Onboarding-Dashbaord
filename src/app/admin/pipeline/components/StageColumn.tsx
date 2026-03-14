@@ -27,6 +27,7 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
         transform,
         transition,
         isDragging,
+        isOver,
     } = useSortable({ id: stage.id, data: { type: 'COLUMN', stage } });
 
     const style = {
@@ -60,7 +61,7 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
                             <CardTitle className="text-sm font-semibold uppercase tracking-tight text-foreground/80">{toTitleCase(stage.name)}</CardTitle>
                         </div>
                     </div>
-                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-semibold tabular-nums border-none shadow-inner bg-background">{schools.length}</Badge>
+                    <Badge variant="secondary" className="rounded-full h-5 px-3 font-semibold tabular-nums border-none shadow-inner bg-background">{schools.length}</Badge>
                 </CardHeader>
                 
                 <ScrollArea className="flex-1">
