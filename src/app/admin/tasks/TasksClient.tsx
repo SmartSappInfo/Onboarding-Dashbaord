@@ -17,6 +17,7 @@ import {
     FileText, 
     GraduationCap,
     MoreHorizontal,
+    MoreVertical,
     Trash2,
     Calendar,
     Plus,
