@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -11,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import SchoolCard from './SchoolCard';
 
 interface StageColumnProps {
@@ -58,11 +57,10 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
                            <GripVertical className="h-4 w-4 text-muted-foreground/40" />
                         </Button>
                         <div className="flex flex-col">
-                            <CardTitle className="text-sm font-black uppercase tracking-tight text-foreground/80">{stage.name}</CardTitle>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-40 tracking-tighter">Workflow Phase</p>
+                            <CardTitle className="text-sm font-semibold uppercase tracking-tight text-foreground/80">{toTitleCase(stage.name)}</CardTitle>
                         </div>
                     </div>
-                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums border-none shadow-inner bg-background">{schools.length}</Badge>
+                    <Badge variant="secondary" className="rounded-full h-6 px-3 font-semibold tabular-nums border-none shadow-inner bg-background">{schools.length}</Badge>
                 </CardHeader>
                 
                 <ScrollArea className="flex-1">
@@ -73,10 +71,10 @@ export default function StageColumn({ stage, schools, isOverlay }: StageColumnPr
                             ))}
                         </SortableContext>
                         
-                        {schools.length === 0 && (
+                        {schools.length === 0 && !isOver && (
                             <div className="py-20 text-center flex flex-col items-center gap-3 opacity-10">
                                 <ShieldCheck size={40} />
-                                <p className="text-[10px] font-black uppercase tracking-widest leading-none">Segment Clear</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-widest leading-none">Segment Clear</p>
                             </div>
                         )}
                     </CardContent>

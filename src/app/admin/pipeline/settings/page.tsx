@@ -1,4 +1,3 @@
-
 import PipelineSettingsClient from './PipelineSettingsClient';
 import { Metadata } from 'next';
 
@@ -7,8 +6,8 @@ import { Metadata } from 'next';
  */
 
 export const metadata: Metadata = {
-  title: 'Pipeline Studio',
-  description: 'Architect custom institutional onboarding workflows and define progression logic.',
+  title: 'Pipeline Configuration',
+  description: 'Modify your pipeline stages and access architecture.',
 };
 
 export default function PipelineSettingsPage() {

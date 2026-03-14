@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
     ShieldCheck, 
-    Users, 
-    Building, 
     MoreVertical, 
     Zap, 
     CheckCircle2,
@@ -18,10 +16,11 @@ import {
     Send,
     Eye,
     ArrowRightLeft,
-    RefreshCw
+    Users,
+    Building
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -83,7 +82,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <div className="relative">
                     <Avatar className="h-12 w-12 ring-4 ring-background shadow-xl">
                         <AvatarImage src={school.logoUrl} alt={school.name} className="object-contain p-2" />
-                        <AvatarFallback className="text-xs font-black bg-primary/5 text-primary">
+                        <AvatarFallback className="text-xs font-semibold bg-primary/5 text-primary">
                             {school.initials || school.name.substring(0, 2)}
                         </AvatarFallback>
                     </Avatar>
@@ -93,13 +92,13 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                         school.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-400"
                     )} />
                 </div>
-                <div className="min-w-0">
-                    <CardTitle className="text-sm font-black uppercase tracking-tight truncate text-foreground group-hover/card:text-primary transition-colors">
-                        {school.name}
+                <div className="min-w-0 text-left">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-tight truncate text-foreground group-hover/card:text-primary transition-colors">
+                        {toTitleCase(school.name)}
                     </CardTitle>
                     <div className="flex items-center gap-1.5 mt-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">
                         <ShieldCheck className="h-2.5 w-2.5 text-primary/40" />
-                        <span className="truncate">{signatory?.name || 'No Primary Contact'}</span>
+                        <span className="truncate">{toTitleCase(signatory?.name || 'No Primary Contact')}</span>
                     </div>
                 </div>
             </div>
@@ -112,29 +111,29 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-60 rounded-2xl border-none shadow-2xl p-2 animate-in zoom-in-95 duration-200">
-                        <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Hub</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Hub</DropdownMenuLabel>
                         
                         <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
                             <Link href={`/admin/schools/${school.id}`}>
                                 <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div>
-                                <span className="font-bold text-sm uppercase tracking-tight">View Full Console</span>
+                                <span className="font-semibold text-sm uppercase tracking-tight">View Full Console</span>
                             </Link>
                         </DropdownMenuItem>
 
                         <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setStatusModalOpen(true)}>
                             <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm uppercase tracking-tight">Update Lifecycle Status</span>
+                            <span className="font-semibold text-sm uppercase tracking-tight">Update Lifecycle Status</span>
                         </DropdownMenuItem>
 
                         <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferModalOpen(true)}>
                             <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm uppercase tracking-tight">Transfer Pipeline</span>
+                            <span className="font-semibold text-sm uppercase tracking-tight">Transfer Pipeline</span>
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator className="my-2" />
                         <DropdownMenuItem className="rounded-xl p-2.5 gap-3 text-muted-foreground opacity-60">
                             <div className="p-1.5 bg-muted rounded-lg"><Zap className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm uppercase tracking-tight italic">Archive Record</span>
+                            <span className="font-semibold text-sm uppercase tracking-tight italic">Archive Record</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -153,7 +152,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                                 </Link>
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent className="text-[10px] font-black uppercase">Initialize Task</TooltipContent>
+                        <TooltipContent className="text-[10px] font-semibold uppercase">Initialize Task</TooltipContent>
                     </Tooltip>
 
                     <Tooltip>
@@ -164,7 +163,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                                 </Link>
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent className="text-[10px] font-black uppercase">Send Message</TooltipContent>
+                        <TooltipContent className="text-[10px] font-semibold uppercase">Send Message</TooltipContent>
                     </Tooltip>
 
                     <Tooltip>
@@ -175,29 +174,29 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                                 </Link>
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent className="text-[10px] font-black uppercase">Book Session</TooltipContent>
+                        <TooltipContent className="text-[10px] font-semibold uppercase">Book Session</TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-4">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-left">
                         <div className="flex items-center gap-1.5">
                             <Users className="h-3 w-3 text-primary/40" />
-                            <span className="text-sm font-black tabular-nums tracking-tighter leading-none">{school.nominalRoll?.toLocaleString() || 0}</span>
+                            <span className="text-sm font-semibold tabular-nums tracking-tighter leading-none">{school.nominalRoll?.toLocaleString() || 0}</span>
                         </div>
-                        <span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Students</span>
+                        <span className="text-[8px] font-semibold uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Students</span>
                     </div>
                     
                     <div className="h-8 w-px bg-border/50" />
 
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-left">
                         <div className="flex items-center gap-1.5">
                             <Building className="h-3 w-3 text-primary/40" />
-                            <span className="text-[10px] font-bold text-foreground/80 truncate max-w-[80px] leading-none">{school.zone?.name || 'Global'}</span>
+                            <span className="text-[10px] font-medium text-foreground/80 truncate max-w-[80px] leading-none">{toTitleCase(school.zone?.name || 'Global')}</span>
                         </div>
-                        <span className="text-[8px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Region</span>
+                        <span className="text-[8px] font-semibold uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Region</span>
                     </div>
                 </div>
 
@@ -205,7 +204,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                     <Badge 
                         variant="outline" 
                         className={cn(
-                            "h-5 text-[8px] font-black uppercase border-none px-2 rounded-lg shadow-inner",
+                            "h-5 text-[8px] font-semibold uppercase border-none px-2 rounded-lg shadow-inner",
                             school.lifecycleStatus === 'Active' ? "bg-emerald-50 text-emerald-600" :
                             school.lifecycleStatus === 'Onboarding' ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"
                         )}
