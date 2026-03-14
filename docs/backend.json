@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -16,6 +15,38 @@
         "roles": { "type": "array", "items": { "type": "string" } },
         "permissions": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Automation": {
+      "title": "Automation Blueprint",
+      "description": "Definition of a node-based logic workflow.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "trigger": { "type": "string", "enum": ["SCHOOL_CREATED", "SCHOOL_STAGE_CHANGED", "TASK_COMPLETED", "SURVEY_SUBMITTED", "PDF_SIGNED"] },
+        "nodes": { "type": "array" },
+        "edges": { "type": "array" },
+        "isActive": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AutomationRun": {
+      "title": "Automation Execution",
+      "description": "Trace of an automation run.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "automationId": { "type": "string" },
+        "automationName": { "type": "string" },
+        "triggerData": { "type": "object" },
+        "status": { "type": "string", "enum": ["running", "completed", "failed"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "finishedAt": { "type": "string", "format": "date-time" },
+        "error": { "type": "string" }
       }
     },
     "Pipeline": {
@@ -328,8 +359,12 @@
       "description": "CRM task registry."
     },
     "/automations/{ruleId}": {
-      "schema": "#/entities/AutomationRule",
-      "description": "Global trigger hub rules."
+      "schema": "#/entities/Automation",
+      "description": "Automation blueprints."
+    },
+    "/automation_runs/{runId}": {
+      "schema": "#/entities/AutomationRun",
+      "description": "Trace ledger for automated executions."
     }
   }
 }
