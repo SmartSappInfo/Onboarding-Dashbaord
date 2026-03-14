@@ -24,7 +24,9 @@ import {
     Loader2,
     Info,
     Settings2,
-    CheckCircle2
+    CheckCircle2,
+    Layout,
+    Maximize
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import StageEditor from '../components/StageEditor';
 import { toTitleCase } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -52,6 +55,7 @@ export default function PipelineSettingsClient() {
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
+    const [columnWidth, setColumnWidth] = React.useState(320);
 
     const pipelinesQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'pipelines'), orderBy('createdAt', 'desc')) : null, 
@@ -66,6 +70,12 @@ export default function PipelineSettingsClient() {
     const selectedPipeline = React.useMemo(() => 
         pipelines?.find(p => p.id === selectedId),
     [pipelines, selectedId]);
+
+    // Load persisted settings
+    React.useEffect(() => {
+        const savedWidth = localStorage.getItem('onboarding_column_width');
+        if (savedWidth) setColumnWidth(parseInt(savedWidth, 10));
+    }, []);
 
     React.useEffect(() => {
         if (selectedPipeline) {
@@ -105,6 +115,8 @@ export default function PipelineSettingsClient() {
                 setSelectedId(docRef.id);
                 setIsAdding(false);
             }
+            // Persist UI width preference
+            localStorage.setItem('onboarding_column_width', String(columnWidth));
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
         } finally {
@@ -153,7 +165,7 @@ export default function PipelineSettingsClient() {
                 </div>
 
                 {/* Top Context Switcher */}
-                <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+                <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
                     <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
                         <div className="flex items-center gap-3 text-primary shrink-0 ml-2">
                             <Zap className="h-4 w-4" />
@@ -188,14 +200,14 @@ export default function PipelineSettingsClient() {
                         >
                             <div className="lg:col-span-2 space-y-8">
                                 {/* Basic Directives */}
-                                <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+                                <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
                                     <CardHeader className="bg-muted/10 border-b p-6">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-white rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
                                             <CardTitle className="text-sm font-semibold uppercase tracking-widest">Master Directives</CardTitle>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-8 space-y-6">
+                                    <CardContent className="p-8 space-y-8">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">Pipeline Label</Label>
                                             <Input 
@@ -205,6 +217,27 @@ export default function PipelineSettingsClient() {
                                                 className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg px-4" 
                                             />
                                         </div>
+                                        
+                                        {/* Dynamic Resizing Controller */}
+                                        <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
+                                            <div className="flex justify-between items-center px-1">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                    <Maximize className="h-3.5 w-3.5" /> Stage Column Width
+                                                </Label>
+                                                <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-white border-primary/20 text-primary">
+                                                    {columnWidth}px
+                                                </Badge>
+                                            </div>
+                                            <Slider 
+                                                value={[columnWidth]} 
+                                                onValueChange={([v]) => setColumnWidth(v)}
+                                                min={280}
+                                                max={500}
+                                                step={10}
+                                            />
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter text-center">Adjust Kanban density for optimal oversight.</p>
+                                        </div>
+
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">Scope Description</Label>
                                             <Textarea 
@@ -256,7 +289,7 @@ export default function PipelineSettingsClient() {
                                         className="w-full h-14 rounded-2xl font-black text-sm shadow-xl uppercase tracking-[0.2em] transition-all active:scale-95 gap-2"
                                     >
                                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                        Commit Logic
+                                        Commit Architecture
                                     </Button>
                                     
                                     {selectedId && (

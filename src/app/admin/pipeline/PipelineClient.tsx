@@ -47,6 +47,7 @@ export default function PipelineClient() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [zoneFilter, setZoneFilter] = React.useState<string>('all');
   const [statusFilter, setStatusFilter] = React.useState<LifecycleStatus | 'all'>('all');
+  const [columnWidth, setColumnWidth] = React.useState(320);
 
   // Initialization
   React.useEffect(() => {
@@ -54,6 +55,12 @@ export default function PipelineClient() {
         setCurrentPipelineId(pipelines[0].id);
     }
   }, [pipelines, currentPipelineId]);
+
+  // Load UI preferences
+  React.useEffect(() => {
+    const savedWidth = localStorage.getItem('onboarding_column_width');
+    if (savedWidth) setColumnWidth(parseInt(savedWidth, 10));
+  }, []);
 
   const activePipeline = React.useMemo(() => 
     pipelines?.find(p => p.id === currentPipelineId), 
@@ -169,6 +176,7 @@ export default function PipelineClient() {
         {currentPipelineId ? (
             <KanbanBoard 
                 pipelineId={currentPipelineId}
+                customWidth={columnWidth}
                 filters={{
                     searchTerm,
                     zoneId: zoneFilter,

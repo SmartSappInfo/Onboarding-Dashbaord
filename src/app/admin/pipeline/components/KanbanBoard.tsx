@@ -42,6 +42,7 @@ import SchoolCard from './SchoolCard';
 
 interface KanbanBoardProps {
     pipelineId: string;
+    customWidth?: number;
     filters: {
         searchTerm: string;
         zoneId: string;
@@ -49,7 +50,7 @@ interface KanbanBoardProps {
     };
 }
 
-export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
+export default function KanbanBoard({ pipelineId, customWidth, filters }: KanbanBoardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -284,6 +285,7 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
             <StageColumn
               key={stage.id}
               stage={stage}
+              customWidth={customWidth}
               schools={schoolsByStage[stage.id] || []}
             />
           ))}
@@ -295,6 +297,7 @@ export default function KanbanBoard({ pipelineId, filters }: KanbanBoardProps) {
           'order' in activeElement ? (
             <StageColumn
               stage={activeElement as OnboardingStage}
+              customWidth={customWidth}
               schools={schoolsByStage[(activeElement as OnboardingStage).id] || []}
               isOverlay
             />
