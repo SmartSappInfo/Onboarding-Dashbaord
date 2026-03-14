@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -37,7 +36,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GripVertical, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Loader2, Pencil, Workflow } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
@@ -345,7 +344,7 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogCancel className="rounded-xl font-bold">Retain Stage</AlertDialogCancel>
+                  <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDeleteStage} className="rounded-xl font-black bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">Confirm Deletion</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
