@@ -45,10 +45,10 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
     };
 
     return (
-        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width,border-color] duration-300 whitespace-normal overflow-x-hidden border rounded-[2rem]">
+        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width,border-color] duration-300 whitespace-normal overflow-hidden border rounded-[2rem] min-w-0">
             <Card 
                 className={cn(
-                    "h-full flex flex-col bg-slate-100/50 border-none rounded-[2rem] overflow-hidden transition-all duration-500",
+                    "h-full flex flex-col bg-slate-100/50 border-none rounded-[2rem] overflow-hidden transition-all duration-500 w-full",
                     isOverlay && "shadow-2xl scale-105 rotate-1",
                     isOver && "bg-primary/[0.03]"
                 )}
@@ -75,12 +75,14 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                     </Badge>
                 </CardHeader>
                 
-                <ScrollArea className="flex-1">
-                    <CardContent className="p-3 pt-5">
+                <ScrollArea className="flex-1 w-full min-w-0">
+                    <CardContent className="px-3 pt-5 pb-8 w-full min-w-0">
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                            <div className="min-h-[100px] flex flex-col items-stretch">
+                            <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">
                                 {schools.map(school => (
-                                    <SchoolCard key={school.id} school={school} />
+                                    <div key={school.id} className="w-full min-w-0">
+                                        <SchoolCard school={school} />
+                                    </div>
                                 ))}
                             </div>
                         </SortableContext>

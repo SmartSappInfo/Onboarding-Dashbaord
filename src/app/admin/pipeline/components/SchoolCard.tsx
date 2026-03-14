@@ -77,7 +77,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
         ref={setNodeRef}
         style={style}
         className={cn(
-            "w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
+            "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
             isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
             school.lifecycleStatus === 'Churned' && "grayscale opacity-60"
         )}
@@ -115,8 +115,8 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                             <p className="font-bold text-xs">{schoolTitle}</p>
                         </TooltipContent>
                     </Tooltip>
-                    <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">
-                        <ShieldCheck className="h-2 w-2 text-primary/40" />
+                    <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-60 min-w-0">
+                        <ShieldCheck className="h-2 w-2 text-primary/40 shrink-0" />
                         <span className="truncate block flex-1">{toTitleCase(signatory?.name || 'No Primary Contact')}</span>
                     </div>
                 </div>
@@ -124,7 +124,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
             
             <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg opacity-40 group-hover/card:opacity-100 transition-opacity -mt-1 -mr-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg opacity-40 group-hover/card:opacity-100 transition-opacity -mt-1 -mr-1 shrink-0">
                         <MoreVertical className="h-3.5 w-3.5" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -161,8 +161,8 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
         <CardContent className="p-4 pt-3 space-y-4">
             {/* Metrics Row */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-between gap-2 overflow-hidden">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="flex flex-col text-left shrink-0">
                         <div className="flex items-center gap-1">
                             <Users className="h-2.5 w-2.5 text-primary/40" />
@@ -173,9 +173,9 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                     
                     <div className="h-6 w-px bg-border/50 shrink-0" />
 
-                    <div className="flex flex-col text-left min-w-0">
-                        <div className="flex items-center gap-1">
-                            <MapPin className="h-2.5 w-2.5 text-primary/40" />
+                    <div className="flex flex-col text-left min-w-0 flex-1">
+                        <div className="flex items-center gap-1 min-w-0">
+                            <MapPin className="h-2.5 w-2.5 text-primary/40 shrink-0" />
                             <span className="text-[9px] font-bold text-foreground/80 truncate leading-none">{toTitleCase(school.zone?.name || 'Global')}</span>
                         </div>
                         <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Region</span>
@@ -185,7 +185,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <Badge 
                     variant="outline" 
                     className={cn(
-                        "h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0 ml-2",
+                        "h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0",
                         school.lifecycleStatus === 'Active' ? "bg-emerald-50 text-emerald-600" :
                         school.lifecycleStatus === 'Onboarding' ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"
                     )}
@@ -198,7 +198,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
             <div className="flex items-center gap-1.5 pt-3 border-t border-border/50 opacity-0 group-hover/card:opacity-100 transition-opacity">
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
+                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
                             <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
                                 <PlusCircle className="h-3 w-3" />
                             </Link>
@@ -209,7 +209,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
+                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
                             <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`} onPointerDown={e => e.stopPropagation()}>
                                 <Send className="h-3 w-3" />
                             </Link>
@@ -220,7 +220,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm">
+                        <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
                             <Link href={`/admin/meetings/new?schoolId=${school.id}`} onPointerDown={e => e.stopPropagation()}>
                                 <CalendarPlus className="h-3 w-3" />
                             </Link>
@@ -231,9 +231,9 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                 <div className="flex-1" />
 
-                <Button variant="ghost" size="sm" asChild className="h-7 px-2.5 rounded-lg text-primary hover:bg-primary/5 font-black uppercase text-[8px] tracking-widest gap-1 group/btn" onPointerDown={e => e.stopPropagation()}>
-                    <Link href={`/admin/schools/${school.id}`}>
-                        Open Console <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/btn:translate-x-0.5" />
+                <Button variant="ghost" size="sm" asChild className="h-7 px-2 rounded-lg text-primary hover:bg-primary/5 font-black uppercase text-[8px] tracking-widest gap-1 group/btn min-w-0 truncate" onPointerDown={e => e.stopPropagation()}>
+                    <Link href={`/admin/schools/${school.id}`} className="truncate">
+                        <span className="truncate">Open Console</span> <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/btn:translate-x-0.5 shrink-0" />
                     </Link>
                 </Button>
             </div>
