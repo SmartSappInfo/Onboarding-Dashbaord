@@ -743,7 +743,7 @@ export interface Task {
   relatedParentId?: string | null; // e.g. SurveyId for a Response
 }
 
-export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON' | 'INVOICE_OVERDUE' | 'PAYMENT_RECEIVED' | 'TASK_COMPLETED';
+export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON' | 'INVOICE_OVERDUE' | 'PAYMENT_RECEIVED' | 'TASK_COMPLETED' | 'WEBHOOK_RECEIVED';
 
 export interface AutomationCondition {
   field: string;

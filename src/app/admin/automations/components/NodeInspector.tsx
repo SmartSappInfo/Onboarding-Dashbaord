@@ -18,7 +18,10 @@ import {
     ArrowRightLeft,
     Timer,
     Info,
-    Layout
+    Layout,
+    Globe,
+    Copy,
+    Check
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -30,6 +33,8 @@ import type { MessageTemplate, SenderProfile, UserProfile, OnboardingStage, Vari
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { useParams } from 'next/navigation';
 
 interface NodeInspectorProps {
     node: any;
@@ -42,6 +47,7 @@ const TRIGGER_OPTIONS = [
     { value: 'TASK_COMPLETED', label: 'Protocol Resolution', icon: CheckSquare },
     { value: 'SURVEY_SUBMITTED', label: 'Intelligence Submission', icon: Database },
     { value: 'PDF_SIGNED', label: 'Agreement Execution', icon: Target },
+    { value: 'WEBHOOK_RECEIVED', label: 'External Ingress', icon: Globe },
 ];
 
 const ACTION_TYPES = [
@@ -59,13 +65,18 @@ const CONDITION_OPERATORS = [
 ];
 
 /**
- * @fileOverview Phase 6: Logic & Temporal Binding Inspector.
- * Upgraded to support Condition and Delay nodes.
+ * @fileOverview Phase 7: Webhook Ingress & Logic Inspector.
+ * Upgraded to support Webhook trigger configuration.
  */
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const params = useParams();
+    const automationId = params.id as string;
     const data = node.data || {};
     const config = data.config || {};
+
+    const [hasCopied, setHasCopied] = React.useState(false);
 
     // Data Loaders
     const templatesQuery = useMemoFirebase(() => 
@@ -91,6 +102,19 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
     const updateConfig = (updates: any) => {
         onUpdate({ config: { ...config, ...updates } });
+    };
+
+    const webhookUrl = React.useMemo(() => {
+        if (typeof window === 'undefined' || !automationId) return '';
+        const base = window.location.origin;
+        return `${base}/api/automations/webhook/${automationId}`;
+    }, [automationId]);
+
+    const copyWebhookUrl = () => {
+        navigator.clipboard.writeText(webhookUrl);
+        setHasCopied(true);
+        toast({ title: 'Webhook Endpoint Copied' });
+        setTimeout(() => setHasCopied(false), 2000);
     };
 
     if (node.type === 'triggerNode') {
@@ -120,6 +144,29 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                         ))}
                     </div>
                 </div>
+
+                {data.trigger === 'WEBHOOK_RECEIVED' && (
+                    <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
+                        <Separator className="opacity-50" />
+                        <div className="space-y-4">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Ingress Endpoint</Label>
+                            <div className="flex gap-2">
+                                <div className="flex-1 p-3 rounded-xl bg-slate-900 border border-white/10 shadow-inner overflow-hidden">
+                                    <p className="text-[10px] font-mono text-blue-400 break-all select-all">{webhookUrl}</p>
+                                </div>
+                                <Button size="icon" variant="outline" className="h-10 w-10 shrink-0 rounded-xl bg-white shadow-lg" onClick={copyWebhookUrl}>
+                                    {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                <Globe className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                                <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                    POST JSON data to this URL to trigger this flow. The JSON keys will be available as dynamic tags (e.g. &#123;&#123;key_name&#125;&#125;).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }

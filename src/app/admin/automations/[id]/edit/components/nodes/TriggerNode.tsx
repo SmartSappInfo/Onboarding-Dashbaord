@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, ChevronDown, Target, Building, CheckSquare, Database } from 'lucide-react';
+import { Zap, ChevronDown, Target, Building, CheckSquare, Database, Globe } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ const TRIGGER_ICONS: Record<string, any> = {
     'TASK_COMPLETED': CheckSquare,
     'SURVEY_SUBMITTED': Database,
     'PDF_SIGNED': Target,
+    'WEBHOOK_RECEIVED': Globe,
 };
 
 /**
@@ -43,7 +44,10 @@ export function TriggerNode({ data, selected }: any) {
                 <div className="p-4 space-y-2 text-left">
                     <p className="text-xs font-black uppercase text-foreground leading-tight">{data.label || 'Event Detected'}</p>
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100">
+                        <div className={cn(
+                            "p-1.5 rounded-lg border",
+                            trigger === 'WEBHOOK_RECEIVED' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        )}>
                             <Icon className="h-3 w-3" />
                         </div>
                         <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-widest border-none p-0 opacity-60">
