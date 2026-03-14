@@ -1,11 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Target as ProspectIcon } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
@@ -41,6 +40,7 @@ const schoolEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
+  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
   status: z.enum(['Active', 'Inactive', 'Archived']),
   lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
   logoUrl: z.string().url().optional().or(z.literal('')),
@@ -118,7 +118,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const methods = useForm<SchoolEditValues>({
     resolver: zodResolver(schoolEditSchema),
     defaultValues: {
-      name: '', initials: '', slogan: '', status: 'Active', lifecycleStatus: 'Onboarding',
+      name: '', initials: '', slogan: '', track: 'onboarding', status: 'Active', lifecycleStatus: 'Onboarding',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
       referee: '', includeDroneFootage: false, assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
@@ -134,6 +134,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         name: school.name || '',
         initials: school.initials || '',
         slogan: school.slogan || '',
+        track: school.track || 'onboarding',
         status: school.status || 'Active',
         lifecycleStatus: school.lifecycleStatus || 'Onboarding',
         logoUrl: school.logoUrl || '',
@@ -159,7 +160,6 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     }
   }, [school, methods, hasInitialized]);
 
-  // Handle Discount -> Calculate Rate
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
     if (!pkg) return;
@@ -167,7 +167,6 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     methods.setValue('subscriptionRate', parseFloat(newRate.toFixed(2)), { shouldDirty: true });
   };
 
-  // Handle Rate -> Calculate Discount
   const handleRateChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
     if (!pkg || pkg.ratePerStudent === 0) return;
@@ -199,7 +198,8 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });
         logActivity({ 
             schoolId, 
-            userId: user.uid, 
+            userId: user.uid,
+            track: data.track,
             type: 'school_updated', 
             source: 'user_action', 
             description: `updated school profile for "${data.name}"` 
@@ -230,6 +230,58 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
       <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {/* Track Selector Card */}
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+                <CardHeader className="bg-primary/5 border-b p-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Zap className="h-4 w-4" /></div>
+                        <CardTitle className="text-sm font-black uppercase tracking-tight">Institutional track</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <Controller
+                        name="track"
+                        control={methods.control}
+                        render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => field.onChange('onboarding')}
+                                    className={cn(
+                                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                        field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                    )}
+                                >
+                                    <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
+                                        <Building className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-xs uppercase">Onboarding</span>
+                                        <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Implementation track</span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => field.onChange('prospect')}
+                                    className={cn(
+                                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                        field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                    )}
+                                >
+                                    <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
+                                        <ProspectIcon className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-xs uppercase">Prospect</span>
+                                        <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Lead acquisition track</span>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+
             {/* Identity Card */}
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
               <CardHeader className="bg-muted/30 border-b pb-6">
@@ -403,7 +455,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     )}>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
-                            <p className="text-[10px] font-black uppercase tracking-widest">Rate Adjustment Engine</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Rate Optimization Engine</p>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

@@ -33,7 +33,9 @@ import {
     Camera,
     Loader2,
     ArrowRightLeft,
-    RefreshCw
+    RefreshCw,
+    Zap,
+    Target
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +60,7 @@ import {
 } from '@/components/ui/dialog';
 import ChangeStatusModal from '../components/ChangeStatusModal';
 import TransferPipelineModal from '../components/TransferPipelineModal';
+import ConvertLeadModal from '../components/ConvertLeadModal';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -90,6 +93,7 @@ export default function SchoolDetailPage() {
     
     const [statusModalOpen, setStatusModalOpen] = React.useState(false);
     const [transferModalOpen, setTransferModalOpen] = React.useState(false);
+    const [convertModalOpen, setConvertModalOpen] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -153,11 +157,24 @@ export default function SchoolDetailPage() {
         </div>
     );
 
+    const isProspect = school.track === 'prospect';
+
     return (
         <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.lifecycleStatus === 'Churned' && "grayscale opacity-80")}>
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
+                        {isProspect && (
+                            <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="rounded-xl font-black h-10 px-6 bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-200 transition-all active:scale-95 gap-2"
+                                onClick={() => setConvertModalOpen(true)}
+                            >
+                                <Zap className="h-4 w-4 fill-white" />
+                                Convert to Onboarding
+                            </Button>
+                        )}
                         <Button 
                             variant="outline" 
                             size="sm" 
@@ -228,7 +245,12 @@ export default function SchoolDetailPage() {
                         </div>
                         <div className="flex-1 space-y-4 pt-4 text-left">
                             <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="font-black border-2 text-primary border-primary/20 bg-primary/5">{school.initials}</Badge>
+                                <Badge variant="outline" className={cn(
+                                    "font-black border-2",
+                                    isProspect ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-primary border-primary/20 bg-primary/5"
+                                )}>
+                                    {isProspect ? 'PROSPECT' : school.initials}
+                                </Badge>
                                 <Separator orientation="vertical" className="h-4" />
                                 <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm uppercase tracking-widest"><MapPin className="h-3.5 w-3.5" /> {school.zone?.name}</span>
                             </div>
@@ -239,16 +261,18 @@ export default function SchoolDetailPage() {
 
                 <Tabs defaultValue="overview" className="space-y-8">
                     <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
-                        <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Campus Insights</TabsTrigger>
+                        <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Insights</TabsTrigger>
                         <TabsTrigger value="tasks" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
                             Tasks
                             {tasks && tasks.length > 0 && (
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
-                            <Receipt className="h-4 w-4" /> Billing & Finance
-                        </TabsTrigger>
+                        {!isProspect && (
+                            <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+                                <Receipt className="h-4 w-4" /> Billing & Finance
+                            </TabsTrigger>
+                        )}
                         <TabsTrigger value="timeline" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Activity Feed</TabsTrigger>
                     </TabsList>
 
@@ -256,7 +280,7 @@ export default function SchoolDetailPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                             <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
                                 <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
-                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Staff Focal Directory</CardTitle>
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Focal Directory</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-border/50">
@@ -277,7 +301,7 @@ export default function SchoolDetailPage() {
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="p-12 text-center text-muted-foreground font-medium italic">No staff directory initialized for this campus.</div>
+                                            <div className="p-12 text-center text-muted-foreground font-medium italic">No directory initialized.</div>
                                         )}
                                     </div>
                                 </CardContent>
@@ -290,18 +314,22 @@ export default function SchoolDetailPage() {
                                 <CardContent className="p-8 space-y-8">
                                     <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/5 border border-primary/10 shadow-inner">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Roll</p>
+                                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Network Impact</p>
                                             <p className="text-3xl font-black tabular-nums tracking-tighter text-primary">{school.nominalRoll?.toLocaleString() || '0'}</p>
                                         </div>
                                         <div className="p-3 bg-white rounded-2xl shadow-sm border border-primary/10"><Users className="h-6 w-6 text-primary" /></div>
                                     </div>
                                     <div className="space-y-6">
-                                        <DetailItem icon={ShieldCheck} label="Account Manager" value={school.assignedTo?.name || 'Unassigned'} />
-                                        <DetailItem icon={Calendar} label="Implementation Date" value={school.implementationDate ? format(new Date(school.implementationDate), 'PPP') : 'Pending'} />
+                                        <DetailItem icon={UserCheck} label="Primary Handler" value={school.assignedTo?.name || 'Unassigned'} />
+                                        <DetailItem icon={Target} label="Source Track" value={toTitleCase(school.track)} />
                                         <Separator />
                                         <div className="space-y-3">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Activated Modules</p>
-                                            <div className="flex flex-wrap gap-2">{school.modules?.map(m => <Badge key={m.id} style={{backgroundColor: m.color}} className="text-white border-none font-bold text-[9px] uppercase">{m.abbreviation}</Badge>)}</div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Functional Interests</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {school.modules && school.modules.length > 0 ? school.modules?.map(m => (
+                                                    <Badge key={m.id} style={{backgroundColor: m.color}} className="text-white border-none font-bold text-[9px] uppercase">{m.abbreviation}</Badge>
+                                                )) : <span className="text-[10px] font-medium text-muted-foreground italic">None specified</span>}
+                                            </div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -313,7 +341,7 @@ export default function SchoolDetailPage() {
                         <div className="flex justify-between items-center mb-2 px-2">
                             <h3 className="text-xl font-black uppercase tracking-tight">Active Tasks</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
-                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`}>
+                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${school.track}`}>
                                     <Plus className="h-4 w-4" /> Create Task
                                 </Link>
                             </Button>
@@ -347,16 +375,18 @@ export default function SchoolDetailPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <SchoolBillingTab school={school} />
-                    </TabsContent>
+                    {!isProspect && (
+                        <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                            <SchoolBillingTab school={school} />
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
                             <div className="mb-10 flex items-center gap-3">
                                 <div className="flex flex-col">
                                     <Badge variant="outline" className="w-fit bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary mb-1">Live Feed</Badge>
-                                    <h3 className="text-2xl font-black tracking-tight">Campus Audit Trail</h3>
+                                    <h3 className="text-2xl font-black tracking-tight">Audit Trail</h3>
                                 </div>
                                 <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                             </div>
@@ -401,6 +431,7 @@ export default function SchoolDetailPage() {
             <LogActivityModal school={school} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
             <ChangeStatusModal school={school} open={statusModalOpen} onOpenChange={setStatusModalOpen} />
             <TransferPipelineModal school={school} open={transferModalOpen} onOpenChange={setTransferModalOpen} />
+            {school && <ConvertLeadModal school={school} open={convertModalOpen} onOpenChange={setConvertModalOpen} />}
         </div>
     );
 }

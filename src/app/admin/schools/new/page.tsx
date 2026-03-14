@@ -1,13 +1,12 @@
-
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Target as ProspectIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -31,13 +30,14 @@ import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
 import { MediaSelect } from '../components/media-select';
 import { logActivity } from '@/lib/activity-logger';
-import { type UserProfile, type SubscriptionPackage } from '@/lib/types';
+import { type UserProfile, type SubscriptionPackage, type OnboardingStage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
+  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
   status: z.enum(['Active', 'Inactive', 'Archived']),
   lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
   logoUrl: z.string().url().optional().or(z.literal('')),
@@ -102,6 +102,7 @@ export default function NewSchoolPage() {
       name: '',
       initials: '',
       slogan: '',
+      track: 'onboarding',
       status: 'Active',
       lifecycleStatus: 'Onboarding',
       location: '',
@@ -121,6 +122,7 @@ export default function NewSchoolPage() {
   });
 
   const watchName = methods.watch("name");
+  const watchTrack = methods.watch("track");
   const watchPackageId = methods.watch("subscriptionPackageId");
 
   // Auto-generate initials
@@ -137,7 +139,6 @@ export default function NewSchoolPage() {
       }
   }, [user, methods]);
 
-  // Handle Discount -> Calculate Rate
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
     if (!pkg) return;
@@ -145,7 +146,6 @@ export default function NewSchoolPage() {
     methods.setValue('subscriptionRate', parseFloat(newRate.toFixed(2)), { shouldDirty: true });
   };
 
-  // Handle Rate -> Calculate Discount
   const handleRateChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
     if (!pkg || pkg.ratePerStudent === 0) return;
@@ -162,31 +162,46 @@ export default function NewSchoolPage() {
         : { userId: null, name: 'Unassigned', email: null };
 
     const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    
-    // Resolve Package Name for variables
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
+
+    // 1. Resolve Initial Stage for the chosen Track
+    let initialPipelineId = 'institutional_onboarding';
+    if (data.track === 'prospect') {
+        const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('targetTrack', '==', 'prospect'), limit(1)));
+        if (!pSnap.empty) initialPipelineId = pSnap.docs[0].id;
+    }
+
+    const stagesSnap = await getDocs(query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', initialPipelineId), orderBy('order', 'asc'), limit(1)));
+    const defaultStage = !stagesSnap.empty 
+        ? { id: stagesSnap.docs[0].id, name: stagesSnap.docs[0].data().name, order: stagesSnap.docs[0].data().order, color: stagesSnap.docs[0].data().color }
+        : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
 
     const { assignedToId, ...rest } = data;
     const schoolData = {
       ...rest,
       slug,
       assignedTo,
-      pipelineId: 'institutional_onboarding', // Default pipeline
+      pipelineId: initialPipelineId,
       subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
-      stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
+      stage: defaultStage,
       createdAt: new Date().toISOString(),
     };
 
     const schoolsCol = collection(firestore, 'schools');
     try {
       const docRef = await addDoc(schoolsCol, schoolData);
-      toast({ title: 'School Initialized', description: `${data.name} is now active in the pipeline.` });
+      toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
       await logActivity({
-          schoolId: docRef.id, schoolName: data.name, schoolSlug: slug, userId: user.uid,
-          type: 'school_created', source: 'user_action',
-          description: `registered new school "${data.name}" in ${data.zone.name}`,
+          schoolId: docRef.id, 
+          schoolName: data.name, 
+          schoolSlug: slug, 
+          userId: user.uid,
+          track: data.track,
+          type: 'school_created', 
+          source: 'user_action',
+          description: `registered new ${data.track} record: "${data.name}"`,
       });
       router.push('/admin/schools');
     } catch (error: any) {
@@ -201,6 +216,58 @@ export default function NewSchoolPage() {
           <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
+                {/* Institutional Track Selection */}
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+                    <CardHeader className="bg-primary/5 border-b p-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Zap className="h-4 w-4" /></div>
+                            <CardTitle className="text-sm font-black uppercase tracking-tight">Institutional Track</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <Controller
+                            name="track"
+                            control={methods.control}
+                            render={({ field }) => (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('onboarding')}
+                                        className={cn(
+                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                            field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                        )}
+                                    >
+                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
+                                            <Building className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-xs uppercase">Onboarding</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Implementation track</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('prospect')}
+                                        className={cn(
+                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                            field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                        )}
+                                    >
+                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
+                                            <ProspectIcon className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-xs uppercase">Prospect</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Lead acquisition track</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
                   <CardHeader className="bg-muted/30 border-b pb-6">
                     <div className="flex items-center gap-3">

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -27,9 +27,10 @@ import {
     X,
     ShieldCheck,
     CheckCircle2,
-    Info
+    Info,
+    Target
 } from 'lucide-react';
-import { addDoc, collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
+import { addDoc, collection, query, getDocs, orderBy, limit, where } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
@@ -39,6 +40,7 @@ import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   text: z.string().min(50, { message: 'Please provide at least 50 characters of descriptive text.' }),
+  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,17 +54,18 @@ export default function AiSchoolGenerator() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: { text: '' },
+    defaultValues: { 
+        text: '',
+        track: 'onboarding'
+    },
   });
 
   // Fetch contextual mapping data
   const zonesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
   const modulesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null, [firestore]);
-  const stagesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order'), limit(1)) : null, [firestore]);
 
   const { data: zones } = useCollection<Zone>(zonesQuery);
   const { data: modules } = useCollection<Module>(modulesQuery);
-  const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user) return;
@@ -80,11 +83,27 @@ export default function AiSchoolGenerator() {
             throw new Error('AI failed to identify the school name.');
         }
 
-        // 1. Prepare Smart Mapping
+        // 1. Resolve Target Pipeline and Initial Stage
+        let targetPipelineId = 'institutional_onboarding';
+        if (data.track === 'prospect') {
+            const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('targetTrack', '==', 'prospect'), limit(1)));
+            if (!pSnap.empty) targetPipelineId = pSnap.docs[0].id;
+        }
+
+        const stagesQuery = query(
+            collection(firestore, 'onboardingStages'), 
+            where('pipelineId', '==', targetPipelineId),
+            orderBy('order', 'asc'), 
+            limit(1)
+        );
+        const stagesSnap = await getDocs(stagesQuery);
+        const defaultStage = !stagesSnap.empty 
+            ? { id: stagesSnap.docs[0].id, name: stagesSnap.docs[0].data().name, order: stagesSnap.docs[0].data().order, color: stagesSnap.docs[0].data().color }
+            : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
+
+        // 2. Prepare Smart Mapping
         const slug = result.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        const defaultStage = stages?.[0] || { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
         
-        // 2. Map Suggested Modules
         const mappedModules = (result.suggestedModuleNames || []).map(name => {
             const match = modules?.find(m => m.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(m.name.toLowerCase()));
             return match ? { id: match.id, name: match.name, abbreviation: match.abbreviation, color: match.color } : null;
@@ -98,10 +117,13 @@ export default function AiSchoolGenerator() {
             slogan: result.slogan || '',
             location: result.location || '',
             nominalRoll: result.nominalRoll || 0,
+            track: data.track,
             status: 'Active' as const,
+            lifecycleStatus: data.track === 'prospect' ? 'Onboarding' : 'Onboarding', // Both start in onboarding phase of their respective track
             focalPersons: result.focalPersons || [],
             modules: mappedModules,
-            stage: { id: defaultStage.id, name: defaultStage.name, order: defaultStage.order, color: defaultStage.color },
+            pipelineId: targetPipelineId,
+            stage: defaultStage,
             assignedTo: { userId: user.uid, name: user.displayName || 'Architect', email: user.email || '' },
             createdAt: new Date().toISOString(),
             zone: zones?.[0] || { id: 'unassigned', name: 'Unassigned' }
@@ -114,13 +136,14 @@ export default function AiSchoolGenerator() {
             schoolName: result.name,
             schoolSlug: slug,
             userId: user.uid,
+            track: data.track,
             type: 'school_created',
             source: 'user_action',
-            description: `AI architected new school record for "${result.name}"`,
+            description: `AI architected new ${data.track} record for "${result.name}"`,
             metadata: { aiExplanation: result.explanation }
         });
 
-        toast({ title: 'Institutional Hub Created', description: `AI has successfully onboarded ${result.name}.` });
+        toast({ title: 'Institutional Hub Created', description: `AI has successfully architected ${result.name}.` });
         router.push(`/admin/schools/${docRef.id}/edit`);
 
     } catch (error: any) {
@@ -138,21 +161,66 @@ export default function AiSchoolGenerator() {
                 <Sparkles className="h-8 w-8 text-primary" />
             </div>
             <CardTitle className="text-3xl font-black tracking-tight uppercase">AI Institutional Architect</CardTitle>
-            <CardDescription className="text-base font-medium max-w-md mx-auto mt-2">Paste school profiles, emails, or memos. AI will handle the data entry and stakeholder mapping.</CardDescription>
+            <CardDescription className="text-base font-medium max-w-md mx-auto mt-2">Paste school profiles or memos. AI will handle the track classification and data entry.</CardDescription>
         </CardHeader>
         <CardContent className="p-8 sm:p-12">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    {/* Track Selector */}
+                    <FormField
+                        control={form.control}
+                        name="track"
+                        render={({ field }) => (
+                            <FormItem className="text-left space-y-4">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1">Target Track</FormLabel>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('onboarding')}
+                                        className={cn(
+                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                            field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                        )}
+                                    >
+                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
+                                            <Building className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-xs uppercase">Onboarding</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Direct Signup</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => field.onChange('prospect')}
+                                        className={cn(
+                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                                            field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
+                                        )}
+                                    >
+                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
+                                            <Target className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-xs uppercase">Prospect</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Sales Lead</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+
                     <FormField
                         control={form.control}
                         name="text"
                         render={({ field }) => (
                             <FormItem className="text-left">
-                                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1">Raw Intelligence Source</FormLabel>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1">Source Material</FormLabel>
                                 <FormControl>
                                     <Textarea
-                                        placeholder="e.g. Ghana International School (GIS) located in Accra. We have 1200 students and need help with billing. The principal is Dr. Mary Ashun (principal@gis.edu.gh)..."
-                                        className="min-h-[300px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-8 text-lg leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20 transition-all placeholder:italic"
+                                        placeholder="Paste school data here..."
+                                        className="min-h-[250px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-8 text-lg leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20"
                                         {...field}
                                     />
                                 </FormControl>
@@ -160,27 +228,6 @@ export default function AiSchoolGenerator() {
                             </FormItem>
                         )}
                     />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-                        <div className="flex items-start gap-4 p-5 rounded-2xl bg-blue-50 border border-blue-100 shadow-sm text-left">
-                            <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                            <div className="space-y-1">
-                                <p className="text-xs font-black text-blue-900 uppercase">Automatic Mapping</p>
-                                <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-tighter opacity-70">
-                                    Identifies stakeholders, contact details, and student roll directly from context.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-4 p-5 rounded-2xl bg-purple-50 border border-purple-100 shadow-sm text-left">
-                            <Zap className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
-                            <div className="space-y-1">
-                                <p className="text-xs font-black text-purple-900 uppercase">Pipeline Initialization</p>
-                                <p className="text-[10px] text-purple-700 leading-relaxed font-bold uppercase tracking-tighter opacity-70">
-                                    Generates institutional slug and assigns record to the 'Welcome' workflow stage.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
 
                     <div className="flex items-center justify-between pt-8 border-t border-border/50">
                         <Button
@@ -194,7 +241,7 @@ export default function AiSchoolGenerator() {
                         </Button>
                         <RainbowButton type="submit" disabled={isGenerating || !form.formState.isValid} className="h-14 px-12 font-black text-lg gap-3 shadow-2xl active:scale-95 transition-all">
                             {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                            {isGenerating ? 'Analyzing Logic...' : 'Initialize Hub with AI'}
+                            {isGenerating ? 'Architecting...' : 'Initialize Hub with AI'}
                         </RainbowButton>
                     </div>
                 </form>
@@ -203,7 +250,7 @@ export default function AiSchoolGenerator() {
         <CardFooter className="bg-muted/30 p-6 border-t flex items-center gap-3">
             <Info className="h-4 w-4 text-muted-foreground opacity-40 shrink-0" />
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.1em] text-left">
-                Architect results are pre-filled for your final review. You can adjust all institutional settings in the next step.
+                The architect will automatically map regional zones and managers based on your current institutional settings.
             </p>
         </CardFooter>
     </Card>
