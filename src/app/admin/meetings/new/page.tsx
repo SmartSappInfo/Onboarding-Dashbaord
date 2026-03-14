@@ -96,6 +96,8 @@ export default function NewMeetingPage() {
       adminAlertChannel: 'both',
       adminAlertNotifyManager: true,
       adminAlertSpecificUserIds: [],
+      adminAlertEmailTemplateId: '',
+      adminAlertSmsTemplateId: '',
     },
   });
 
@@ -146,8 +148,8 @@ export default function NewMeetingPage() {
         adminAlertChannel: data.adminAlertChannel,
         adminAlertNotifyManager: data.adminAlertNotifyManager,
         adminAlertSpecificUserIds: data.adminAlertSpecificUserIds,
-        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId,
-        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId,
+        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
+        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
     };
 
     const meetingsCollection = collection(firestore, 'meetings');

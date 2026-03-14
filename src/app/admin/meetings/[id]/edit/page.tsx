@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -58,7 +57,7 @@ const formSchema = z.object({
   type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  borderUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   // Internal Notifications
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
@@ -112,6 +111,8 @@ export default function EditMeetingPage() {
       adminAlertChannel: 'both',
       adminAlertNotifyManager: true,
       adminAlertSpecificUserIds: [],
+      adminAlertEmailTemplateId: '',
+      adminAlertSmsTemplateId: '',
     },
   });
 
@@ -168,16 +169,16 @@ export default function EditMeetingPage() {
         schoolName: data.school.name,
         schoolSlug: data.schoolSlug,
         meetingTime: data.meetingTime.toISOString(),
-        type: data.type,
         meetingLink: data.meetingLink,
+        type: data.type,
         recordingUrl: data.recordingUrl || '',
         brochureUrl: data.brochureUrl || '',
         adminAlertsEnabled: data.adminAlertsEnabled,
         adminAlertChannel: data.adminAlertChannel,
         adminAlertNotifyManager: data.adminAlertNotifyManager,
         adminAlertSpecificUserIds: data.adminAlertSpecificUserIds,
-        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId,
-        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId,
+        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
+        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
     };
 
     const docRef = doc(firestore, 'meetings', meetingId);
