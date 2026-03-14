@@ -14,18 +14,19 @@ import {
     CheckCircle2, 
     XCircle, 
     Clock, 
-    Loader2,
-    Activity,
-    Search,
-    ChevronRight,
-    ToggleLeft,
-    ToggleRight,
-    AlertCircle,
-    Database,
-    Timer,
-    Terminal,
-    ArrowRight,
-    SearchCode
+    Loader2, 
+    Activity, 
+    Search, 
+    ChevronRight, 
+    ToggleLeft, 
+    ToggleRight, 
+    AlertCircle, 
+    Database, 
+    Timer, 
+    ArrowRight, 
+    SearchCode,
+    ShieldAlert,
+    Info
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 /**
  * @fileOverview High-fidelity Automation Hub Client.
- * Upgraded with Phase 5: Run Ledger diagnostics.
+ * Upgraded with Phase 5: Run Ledger diagnostics and import integrity fixes.
  */
 export default function AutomationsClient() {
     const firestore = useFirestore();
@@ -194,7 +195,7 @@ export default function AutomationsClient() {
                                             <div className={cn(
                                                 "p-2.5 rounded-xl shadow-sm transition-all",
                                                 run.status === 'completed' ? "bg-emerald-50 text-emerald-600" : 
-                                                run.status === 'failed' ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-blue-50 text-blue-600 animate-spin-slow"
+                                                run.status === 'failed' ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-blue-50 text-blue-600"
                                             )}>
                                                 {run.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> : 
                                                  run.status === 'failed' ? <XCircle className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
@@ -312,7 +313,7 @@ export default function AutomationsClient() {
                                             size="icon" 
                                             className="h-8 w-8 bg-slate-900 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                                             onClick={() => {
-                                                navigator.clipboard.writeText(JSON.stringify(selectedRun?.triggerData, null, 2));
+                                                if (selectedRun) navigator.clipboard.writeText(JSON.stringify(selectedRun.triggerData, null, 2));
                                                 toast({ title: 'Payload Copied' });
                                             }}
                                         >
@@ -331,7 +332,7 @@ export default function AutomationsClient() {
                                 <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
                                     <p className="text-xs font-black text-blue-900 uppercase">Audit Integrity</p>
-                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-widest">
+                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-widest text-left">
                                         This snapshot reflects the exact institutional state at the moment the trigger fired. 
                                         Subsequent changes to school records will not be reflected in this trace.
                                     </p>
