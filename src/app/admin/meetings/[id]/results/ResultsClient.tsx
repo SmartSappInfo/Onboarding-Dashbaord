@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -37,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 import { 
     BarChart, 
     Bar, 
@@ -338,7 +338,7 @@ function DetailRow({ label, value, sub, icon: Icon }: { label: string, value: st
             <div className="p-2.5 bg-muted rounded-xl transition-transform group-hover:scale-110 shrink-0 h-fit mt-1"><Icon className="h-4 w-4 text-muted-foreground" /></div>
             <div className="space-y-0.5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none">{label}</p>
-                <p className="text-sm font-black uppercase text-foreground leading-tight">{value}</p>
+                <p className="text-sm font-black uppercase tracking-tight text-foreground leading-tight">{value}</p>
                 <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{sub}</p>
             </div>
         </div>
