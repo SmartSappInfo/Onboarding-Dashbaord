@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useEffect, type ReactNode } from 'react';
@@ -58,13 +59,14 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
                 isAuthorized: true,
                 roles: ['administrator'], 
                 permissions: [
-                    'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete',
-                    'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
-                    'tasks_manage', 'activities_view'
+                    'schools_view', 'schools_edit', 'prospects_view', 'prospects_edit',
+                    'finance_view', 'finance_manage', 'contracts_delete',
+                    'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 
+                    'meetings_manage', 'tasks_manage', 'activities_view'
                 ],
                 createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
             }, { merge: true });
-            console.log("Super-Admin record ensured with multi-role permissions.");
+            console.log("Super-Admin record ensured with multi-track permissions.");
         }
 
       } catch (error: any) {
@@ -81,9 +83,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               isAuthorized: true,
               roles: ['administrator'],
               permissions: [
-                'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete',
-                'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
-                'tasks_manage', 'activities_view'
+                'schools_view', 'schools_edit', 'prospects_view', 'prospects_edit',
+                'finance_view', 'finance_manage', 'contracts_delete',
+                'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 
+                'meetings_manage', 'tasks_manage', 'activities_view'
               ],
               createdAt: new Date().toISOString(),
             });

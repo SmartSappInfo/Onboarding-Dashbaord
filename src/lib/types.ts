@@ -12,6 +12,11 @@ export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Pri
 export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
 
+/**
+ * Defines the primary institutional workflow tracks.
+ */
+export type InstitutionalTrack = 'onboarding' | 'prospect';
+
 export interface Attendee {
     id: string;
     parentName: string;
@@ -39,16 +44,19 @@ export interface Pipeline {
   id: string;
   name: string;
   description?: string;
+  targetTrack: InstitutionalTrack; // strictly typed pipeline
   stageIds: string[];
   accessRoles: string[];
   createdAt: string;
 }
 
-export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | string;
+export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | 'sales_rep' | 'sales_supervisor' | string;
 
 export const APP_PERMISSIONS = [
-  { id: 'schools_view', label: 'View Schools', category: 'Operations' },
-  { id: 'schools_edit', label: 'Edit School Profiles', category: 'Operations' },
+  { id: 'schools_view', label: 'View Onboarding Schools', category: 'Operations' },
+  { id: 'schools_edit', label: 'Edit Onboarding Profiles', category: 'Operations' },
+  { id: 'prospects_view', label: 'View Sales Leads', category: 'Sales' },
+  { id: 'prospects_edit', label: 'Edit Lead Profiles', category: 'Sales' },
   { id: 'finance_view', label: 'View Finance Hub', category: 'Finance' },
   { id: 'finance_manage', label: 'Manage Billing & Contracts', category: 'Finance' },
   { id: 'contracts_delete', label: 'Purge Legal Records', category: 'Finance' },
@@ -105,6 +113,7 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
+  track: InstitutionalTrack; // Primary classification
   status: SchoolStatus;
   lifecycleStatus: LifecycleStatus;
   pipelineId: string;
@@ -461,6 +470,7 @@ export interface Activity {
   schoolId: string;
   schoolName?: string;
   schoolSlug?: string;
+  track?: InstitutionalTrack;
   userId?: string | null;
   type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
   source: 'manual' | 'user_action' | 'system' | 'public';
@@ -729,6 +739,7 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
+  track: InstitutionalTrack; // Task classification
   schoolId?: string | null;
   schoolName?: string | null;
   assignedTo: string; // userId
@@ -778,6 +789,7 @@ export interface Automation {
   name: string;
   description?: string;
   trigger: AutomationTrigger;
+  track?: InstitutionalTrack; // Optional scoping
   nodes: any[];
   edges: any[];
   isActive: boolean;

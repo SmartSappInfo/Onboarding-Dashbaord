@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,40 +8,42 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAuthorized() {
       return isSignedIn() && (
         request.auth.token.email == 'admin@smartsapp.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true)
+         getUserData().isAuthorized == true)
       );
     }
 
-    function getRoles() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
-    }
-
-    function hasRole(role) {
-      return isAuthorized() && getRoles().hasAny([role]);
+    function hasPermission(perm) {
+      return isAuthorized() && (
+        getUserData().permissions.hasAny([perm]) || 
+        getUserData().permissions.hasAny(['system_admin'])
+      );
     }
 
     function isAdmin() {
-      return hasRole('admin');
+      return hasPermission('system_admin');
     }
 
     function isFinance() {
-      return hasRole('finance') || isAdmin();
+      return hasPermission('finance_view');
     }
 
     function isSupervisor() {
-      return hasRole('supervisor') || isAdmin();
+      return hasPermission('system_user_switch');
     }
 
-    function isTrainer() {
-      return hasRole('trainer') || isAdmin();
-    }
-
-    function isAnyAdmin() {
-      return isAdmin() || isFinance() || isSupervisor() || isTrainer();
+    // --- Institutional Track Logic ---
+    function canAccessTrack(track) {
+      return (track == 'onboarding' && hasPermission('schools_view')) ||
+             (track == 'prospect' && hasPermission('prospects_view')) ||
+             isAdmin();
     }
 
     match /{document=**} {
@@ -49,56 +52,60 @@ service cloud.firestore {
     
     // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
-      allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow read: if isAuthorized();
+      allow write: if hasPermission('finance_manage');
     }
     match /billing_periods/{periodId} {
-      allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow read: if isAuthorized();
+      allow write: if hasPermission('finance_manage');
     }
     match /invoices/{invoiceId} {
-      allow read: if isAnyAdmin() || true; // Public read for public invoice page
-      allow write: if isFinance();
+      allow read: if isAuthorized() || true; // Public read for public invoice page
+      allow write: if hasPermission('finance_manage');
     }
     match /billing_settings/{settingId} {
-      allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow read: if isAuthorized();
+      allow write: if hasPermission('finance_manage');
     }
     match /contracts/{contractId} {
-      allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow read: if isAuthorized();
+      allow write: if hasPermission('finance_manage');
     }
 
     match /onboardingStages/{document=**} {
       allow read: if isAuthorized();
-      allow write: if isAdmin();
+      allow write: if hasPermission('system_admin');
+    }
+    match /pipelines/{pipelineId} {
+      allow read: if isAuthorized();
+      allow write: if hasPermission('system_admin');
     }
     match /media/{document=**} {
         allow read, write: if isAuthorized();
     }
      match /modules/{document=**} {
       allow read: if isAuthorized();
-      allow write: if isAdmin();
+      allow write: if hasPermission('system_admin');
     }
     match /webhooks/{document=**} {
-      allow read, write: if isAdmin() || isSupervisor();
+      allow read, write: if hasPermission('studios_edit');
     }
     match /zones/{document=**} {
       allow read: if isAuthorized();
-      allow write: if isAdmin();
+      allow write: if hasPermission('system_admin');
     }
     match /messaging_variables/{document=**} {
-      allow read, write: if isAnyAdmin();
+      allow read, write: if isAuthorized();
     }
     
     match /sender_profiles/{profileId} {
-      allow read, write: if isAdmin() || isSupervisor();
+      allow read, write: if hasPermission('studios_edit');
     }
     match /message_styles/{styleId} {
-      allow read, write: if isAdmin() || isSupervisor();
+      allow read, write: if hasPermission('studios_edit');
     }
     match /message_templates/{templateId} {
-      allow read, write: if isAdmin() || isSupervisor();
+      allow read, write: if hasPermission('studios_edit');
     }
     match /message_logs/{logId} {
       allow read, list: if isAuthorized();
@@ -111,16 +118,22 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAuthorized() && (
+        resource == null || 
+        request.auth.uid == resource.data.assignedTo || 
+        canAccessTrack(resource.data.track)
+      );
     }
 
     match /automations/{ruleId} {
-      allow read, write: if isAdmin();
+      allow read, write: if hasPermission('system_admin');
     }
 
     match /schools/{schoolId} {
-      allow write: if isAuthorized();
-      allow read: if true;
+      allow read: if isAuthorized() ? canAccessTrack(resource.data.track) : true;
+      allow create: if isAuthorized();
+      allow update: if isAuthorized() && canAccessTrack(resource.data.track);
+      allow delete: if hasPermission('system_admin');
     }
     
     match /meetings/{meetingId} {
@@ -138,16 +151,21 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow get, create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isAdmin();
-      allow list, delete: if isAdmin();
+      allow update: if hasPermission('system_admin');
+      allow list, delete: if hasPermission('system_admin');
+    }
+    
+    match /roles/{roleId} {
+      allow read: if isAuthorized();
+      allow write: if hasPermission('system_admin');
     }
     
     match /surveys/{surveyId} {
-      allow write, list: if isSupervisor() || isAdmin() || isFinance();
-      allow get: if isAnyAdmin() || resource.data.status == 'published';
+      allow write, list: if hasPermission('studios_edit');
+      allow get: if isAuthorized() || resource.data.status == 'published';
       match /resultPages/{pageId} {
         allow read: if true;
-        allow write: if isSupervisor() || isAdmin() || isFinance();
+        allow write: if hasPermission('studios_edit');
       }
       match /responses/{responseId} {
         allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
@@ -159,8 +177,8 @@ service cloud.firestore {
     }
 
     match /pdfs/{pdfId} {
-      allow write, list: if isSupervisor() || isAdmin() || isFinance();
-      allow get: if isAnyAdmin() || resource.data.status == 'published' || resource.data.resultsShared == true;
+      allow write, list: if hasPermission('studios_edit');
+      allow get: if isAuthorized() || resource.data.status == 'published' || resource.data.resultsShared == true;
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
         allow read, list: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.resultsShared == true || isAuthorized();
@@ -170,7 +188,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized();
+      allow read, list: if isAuthorized() && canAccessTrack(resource.data.track);
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 

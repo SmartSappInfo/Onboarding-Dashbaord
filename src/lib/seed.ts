@@ -1,8 +1,9 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline, InstitutionalTrack } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -62,7 +63,7 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
   },
 ];
 
-const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status' | 'lifecycleStatus' | 'pipelineId'>[] = [
+const baseSchoolData: Omit<School, 'id' | 'slug' | 'track' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status' | 'lifecycleStatus' | 'pipelineId'>[] = [
   { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', focalPersons: [{ name: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163', type: 'Principal', isSignatory: true }] },
   { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', focalPersons: [{ name: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100', type: 'Administrator', isSignatory: true }] },
   { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', focalPersons: [{ name: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543', type: 'Principal', isSignatory: true }] },
@@ -186,6 +187,7 @@ export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore
     const onboardingPipeline: Omit<Pipeline, 'id'> = {
         name: 'Institutional Onboarding',
         description: 'Harvested from current network data. Primary school integration cycle.',
+        targetTrack: 'onboarding',
         stageIds: newStageIds,
         accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
         createdAt: new Date().toISOString()
@@ -240,6 +242,7 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
 
         batch.update(schoolDoc.ref, {
             pipelineId: onboardingId,
+            track: 'onboarding', // Enrich with default track
             stage: {
                 id: targetStage.id,
                 name: targetStage.name,
@@ -309,6 +312,7 @@ export async function seedPipelines(firestore: Firestore): Promise<number> {
     const onboardingPipeline: Omit<Pipeline, 'id'> = {
         name: 'Institutional Onboarding',
         description: 'Standard lifecycle for new campus integration.',
+        targetTrack: 'onboarding',
         stageIds: onboardingStages.map(s => s.id),
         accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
         createdAt: timestamp
@@ -332,8 +336,9 @@ export async function seedPipelines(firestore: Firestore): Promise<number> {
     const salesPipeline: Omit<Pipeline, 'id'> = {
         name: 'Lead Pipeline',
         description: 'Sales cycle for prospective institutions.',
+        targetTrack: 'prospect',
         stageIds: salesStages.map(s => s.id),
-        accessRoles: ['administrator', 'regional_supervisor'],
+        accessRoles: ['administrator', 'sales_supervisor', 'sales_representative'],
         createdAt: timestamp
     };
 
@@ -355,7 +360,21 @@ export async function seedRolesAndPermissions(firestore: Firestore): Promise<num
             name: 'Administrator',
             description: 'Full system control, user management, and configuration.',
             color: '#f72585',
-            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            permissions: ['schools_view', 'schools_edit', 'prospects_view', 'prospects_edit', 'finance_view', 'finance_manage', 'contracts_delete', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Sales Supervisor',
+            description: 'Regional lead oversight, conversion metrics, and sales pipeline architecting.',
+            color: '#10b981',
+            permissions: ['prospects_view', 'prospects_edit', 'studios_view', 'activities_view', 'tasks_manage'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Sales Representative',
+            description: 'Lead acquisition, demos, and prospect documentation.',
+            color: '#fbbf24',
+            permissions: ['prospects_view', 'prospects_edit', 'tasks_manage'],
             createdAt: timestamp
         },
         {
@@ -467,6 +486,7 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
             ...schoolSource,
             name,
             slug,
+            track: schoolSource.track || (index % 4 === 0 ? 'prospect' : 'onboarding'),
             status: schoolSource.status || 'Active',
             lifecycleStatus: schoolSource.lifecycleStatus || (index % 5 === 0 ? 'Active' : 'Onboarding'),
             pipelineId: schoolSource.pipelineId || 'institutional_onboarding',
@@ -628,7 +648,7 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
   const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
   const schoolsMap = new Map(schoolsSnapshot.docs.map(doc => {
     const data = doc.data();
-    return [doc.id, { name: data.name, slug: data.slug }];
+    return [doc.id, { name: data.name, slug: data.slug, track: data.track || 'onboarding' }];
   }));
 
   // 3. Fetch authorized users for context
@@ -645,6 +665,7 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
       ...activity,
       schoolName: schoolData?.name || activity.schoolName,
       schoolSlug: schoolData?.slug || activity.schoolSlug,
+      track: schoolData?.track || activity.track || 'onboarding',
     };
   });
 
@@ -657,6 +678,7 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
               schoolId: school.id,
               schoolName: school.name,
               schoolSlug: school.slug,
+              track: school.track || 'onboarding',
               userId: users.length > 0 ? users[i % users.length].id : null,
               type: 'note',
               source: 'manual',
@@ -857,6 +879,7 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
                 priority,
                 status,
                 category,
+                track: school.track || 'onboarding',
                 schoolId: school.id,
                 schoolName: school.name,
                 assignedTo: user.id,
