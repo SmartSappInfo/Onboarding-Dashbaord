@@ -26,7 +26,7 @@ import {
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Loader2, 
@@ -287,7 +287,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                 {/* Section 1: Core Definitions */}
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Mission Title</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Task Title</Label>
                                         <Input 
                                             {...register('title')} 
                                             placeholder="e.g. Conduct campus security audit" 
@@ -711,7 +711,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             className="rounded-2xl font-black h-14 px-16 shadow-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95 uppercase tracking-widest text-sm gap-2"
                         >
                             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                            Synchronize Mission
+                            Synchronize Task
                         </Button>
                     </DialogFooter>
                 </form>

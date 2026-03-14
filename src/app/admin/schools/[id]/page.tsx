@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -312,7 +311,7 @@ export default function SchoolDetailPage() {
 
                     <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="flex justify-between items-center mb-2 px-2">
-                            <h3 className="text-xl font-black uppercase tracking-tight">Active Missions</h3>
+                            <h3 className="text-xl font-black uppercase tracking-tight">Active Tasks</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
                                 <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`}>
                                     <Plus className="h-4 w-4" /> Create Task

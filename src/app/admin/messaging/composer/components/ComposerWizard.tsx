@@ -1104,7 +1104,7 @@ export default function ComposerWizard() {
                             <div className="mx-auto bg-primary/10 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10">
                                 {jobStatus === 'processing' ? <Loader2 className="h-12 w-12 animate-spin text-primary" /> : <Trophy className="h-12 w-12 text-emerald-600" />}
                             </div>
-                            <CardTitle className="text-4xl font-black tracking-tighter text-foreground uppercase leading-none">Task Force Execution</CardTitle>
+                            <CardTitle className="text-4xl font-black tracking-tighter text-foreground uppercase leading-none">Task Execution</CardTitle>
                             <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-muted-foreground mt-4">Connecting with {csvData.length} identities via secured gateway.</CardDescription>
                         </CardHeader>
                         <CardContent className="py-20 space-y-16">
@@ -1127,7 +1127,7 @@ export default function ComposerWizard() {
                                     <div className="p-8 rounded-[3rem] bg-emerald-50 border-2 border-emerald-100 flex items-center gap-8 shadow-2xl shadow-emerald-500/10">
                                         <div className="bg-emerald-600 text-white p-5 rounded-[1.5rem] shadow-xl"><Check className="h-8 w-8" /></div>
                                         <div className="flex-1">
-                                            <p className="font-black text-xl text-emerald-900 uppercase tracking-tight">Mission Success</p>
+                                            <p className="font-black text-xl text-emerald-900 uppercase tracking-tight">Task Success</p>
                                             <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest opacity-80 mt-1">Audit protocols successfully generated.</p>
                                         </div>
                                         <Button asChild className="rounded-2xl font-black h-14 px-10 shadow-xl bg-emerald-600 hover:bg-emerald-700 uppercase tracking-widest text-xs">

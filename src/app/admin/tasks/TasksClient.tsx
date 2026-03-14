@@ -212,7 +212,7 @@ export default function TasksClient() {
                 toast({ title: 'Task Architecture Synchronized' });
             } else {
                 await createTaskNonBlocking(firestore, payload);
-                toast({ title: 'Mission Initialized' });
+                toast({ title: 'Task Initialized' });
             }
             setEditorOpen(false);
             setEditingTask(null);
@@ -245,7 +245,7 @@ export default function TasksClient() {
         if (!firestore || !taskToComplete) return;
         if (taskToComplete.status === 'done') {
             updateTaskNonBlocking(firestore, taskToComplete.id, { status: 'todo', completedAt: undefined });
-            toast({ title: 'Mission Reopened' });
+            toast({ title: 'Task Reopened' });
         } else {
             completeTaskNonBlocking(firestore, taskToComplete.id);
             toast({ title: 'Protocol Resolved' });
@@ -311,7 +311,7 @@ export default function TasksClient() {
                 {/* Executive KPI Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard 
-                        label="Missions Active" 
+                        label="Tasks Active" 
                         value={isLoading ? '...' : stats.active} 
                         sub="In-flight protocols" 
                         icon={Zap} 
@@ -321,7 +321,7 @@ export default function TasksClient() {
                     <StatCard 
                         label="Resolved Protocols" 
                         value={isLoading ? '...' : stats.resolved} 
-                        sub="Mission success archive" 
+                        sub="Task success archive" 
                         icon={CheckCircle2} 
                         color="text-emerald-600" 
                         bg="bg-emerald-50" 
@@ -381,14 +381,14 @@ export default function TasksClient() {
                         <div className="relative w-full max-w-sm group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                             <Input 
-                                placeholder="Search missions..." 
+                                placeholder="Search tasks..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                             />
                         </div>
                         <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest h-11 px-8 shadow-xl active:scale-95 text-[10px]">
-                            + New Mission
+                            + New Task
                         </Button>
                     </div>
                 </div>
@@ -428,7 +428,7 @@ export default function TasksClient() {
                                 <section key={status} className="space-y-6">
                                     <div className="flex items-center justify-between px-2">
                                         <h2 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-                                            {status === 'todo' ? 'Backlog (To Do)' : status === 'done' ? 'Resolved Archive' : 'Active Missions'}
+                                            {status === 'todo' ? 'Backlog (To Do)' : status === 'done' ? 'Resolved Archive' : 'Active Tasks'}
                                         </h2>
                                         <button className="text-muted-foreground opacity-40 hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
                                     </div>
@@ -537,7 +537,7 @@ export default function TasksClient() {
                                                 }}
                                                 className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-white hover:border-primary/20 hover:text-primary transition-all group"
                                             >
-                                                <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Protocol
+                                                <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
                                             </button>
                                         )}
                                     </div>
@@ -571,7 +571,7 @@ export default function TasksClient() {
                             <CheckCircle2 className="h-10 w-10 text-primary" />
                         </div>
                         <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Resolve Mission?</AlertDialogTitle>
+                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Resolve Task?</AlertDialogTitle>
                             <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
                                 Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
                             </AlertDialogDescription>
@@ -580,7 +580,7 @@ export default function TasksClient() {
                     <div className="bg-muted/30 p-6 border-t flex flex-col sm:flex-row gap-3">
                         <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-black h-12 flex-1 uppercase tracking-widest text-xs">
-                            Commit Outcome
+                            Commit Result
                         </AlertDialogAction>
                     </div>
                 </AlertDialogContent>

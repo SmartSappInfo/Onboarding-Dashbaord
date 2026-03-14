@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -100,7 +99,7 @@ export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
                 });
                 toast({ 
                     title: 'Status Synchronized', 
-                    description: `Moved mission to ${currentLocalTask.status.replace('_', ' ')} phase.` 
+                    description: `Moved task to ${currentLocalTask.status.replace('_', ' ')} phase.` 
                 });
             } catch (e) {
                 setLocalTasks(tasks); // Rollback

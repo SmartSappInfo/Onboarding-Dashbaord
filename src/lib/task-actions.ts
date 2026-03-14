@@ -104,7 +104,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
                 userId: null,
                 type: 'task_completed',
                 source: 'system',
-                description: `successfully resolved task: "${updates.title || 'Mission Record'}"`,
+                description: `successfully resolved task: "${updates.title || 'Task Record'}"`,
                 metadata: { taskId }
             });
         }

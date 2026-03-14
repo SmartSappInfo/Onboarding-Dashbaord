@@ -222,7 +222,7 @@ export default function ReportsClient() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard label="Network Growth" value={`+${velocityData[velocityData.length-1].count}`} sub="New Signups (30D)" icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
                     <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Mission Closure" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Task Closure" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
                     <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Roll" icon={Users} color="text-purple-600" bg="bg-purple-50" />
                 </div>
 
@@ -253,7 +253,7 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <MapPin className="h-4 w-4" /> Regional Strategic Density
@@ -283,7 +283,7 @@ export default function ReportsClient() {
                     <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
                         <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
                             <CardTitle className="text-lg font-black uppercase tracking-tight">Lead-Time Analysis</CardTitle>
-                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Average days to resolution per mission category.</CardDescription>
+                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Average days to resolution per task category.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
                             {categoryMetrics.length > 0 ? categoryMetrics.map((cat, i) => (
@@ -294,7 +294,7 @@ export default function ReportsClient() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-black uppercase tracking-tight">{cat.name}</p>
-                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{cat.count} Missions Resolved</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{cat.count} Tasks Resolved</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -316,7 +316,7 @@ export default function ReportsClient() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
-                            <InsightRow icon={Target} title="Top Zone Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and mission speed." />
+                            <InsightRow icon={Target} title="Top Zone Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and task speed." />
                             <InsightRow icon={CheckCircle2} title="Service Level Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of protocols resolved within institutional targets." />
                             <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} High Priority`} desc="Tasks requiring immediate cross-regional manager intervention." />
                         </CardContent>

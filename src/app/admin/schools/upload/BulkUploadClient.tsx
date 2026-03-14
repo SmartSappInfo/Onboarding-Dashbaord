@@ -317,13 +317,13 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'EXECUTING' && (
-                        <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-black uppercase">Mission Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length} Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
+                        <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-black uppercase">Task Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length} Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
                     )}
 
                     {currentStep === 'COMPLETE' && (
                         <motion.div key="complete" className="space-y-8">
                             <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white text-center">
-                                <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-500" : "bg-orange-500")}>
+                                <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-50" : "bg-orange-50")}>
                                     <div className="mx-auto bg-white/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl"><Check size={48} /></div>
                                     <CardTitle className="text-4xl font-black uppercase">Import Report</CardTitle>
                                     <p className="text-base font-bold uppercase tracking-widest mt-4">{executionResults.filter(r => r.status === 'success').length} Records Synchronized</p>
