@@ -26,7 +26,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "trigger": { "type": "string", "enum": ["SCHOOL_CREATED", "SCHOOL_STAGE_CHANGED", "TASK_COMPLETED", "SURVEY_SUBMITTED", "PDF_SIGNED", "WEBHOOK_RECEIVED"] },
+        "trigger": { "type": "string", "enum": ["SCHOOL_CREATED", "SCHOOL_STAGE_CHANGED", "TASK_COMPLETED", "SURVEY_SUBMITTED", "PDF_SIGNED", "WEBHOOK_RECEIVED", "MEETING_CREATED"] },
         "nodes": { "type": "array" },
         "edges": { "type": "array" },
         "isActive": { "type": "boolean" },
@@ -245,6 +245,7 @@
         "meetingTime": { "type": "string", "format": "date-time" },
         "meetingLink": { "type": "string" },
         "type": { "type": "object" },
+        "heroImageUrl": { "type": "string" },
         "recordingUrl": { "type": "string" },
         "brochureUrl": { "type": "string" }
       }

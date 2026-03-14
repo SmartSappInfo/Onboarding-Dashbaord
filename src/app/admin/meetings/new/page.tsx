@@ -14,7 +14,8 @@ import {
     Globe, 
     Building, 
     Video, 
-    Zap
+    Zap,
+    ImageIcon
 } from 'lucide-react';
 
 import type { School, MeetingType } from '@/lib/types';
@@ -42,6 +43,7 @@ import { Separator } from '@/components/ui/separator';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { format } from 'date-fns';
+import { MediaSelect } from '../../schools/components/media-select';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -53,6 +55,7 @@ const formSchema = z.object({
   }),
   type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
+  heroImageUrl: z.string().url().optional().or(z.literal('')),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   // Internal Notifications
@@ -89,6 +92,7 @@ export default function NewMeetingPage() {
       schoolSlug: '',
       meetingTime: undefined,
       meetingLink: '',
+      heroImageUrl: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
       recordingUrl: '',
       brochureUrl: '',
       type: MEETING_TYPES[0], // Default to Parent Engagement
@@ -143,6 +147,7 @@ export default function NewMeetingPage() {
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
+            heroImageUrl: data.heroImageUrl || 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
             adminAlertsEnabled: data.adminAlertsEnabled,
@@ -157,7 +162,7 @@ export default function NewMeetingPage() {
         
         toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
         
-        // 1. Log to Timeline (Non-blocking to prevent timeout errors)
+        // 1. Log to Timeline (Non-blocking)
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
@@ -329,6 +334,33 @@ export default function NewMeetingPage() {
 
                         <Separator className="bg-border/50" />
 
+                        <div className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="heroImageUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                            <ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media
+                                        </FormLabel>
+                                        <FormControl>
+                                            <MediaSelect 
+                                                value={field.value} 
+                                                onValueChange={field.onChange} 
+                                                className="rounded-2xl"
+                                            />
+                                        </FormControl>
+                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter">
+                                            This image will be the primary visual focus on the meeting page.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <Separator className="bg-border/50" />
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
@@ -362,13 +394,15 @@ export default function NewMeetingPage() {
 
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
                     <CardHeader className="bg-primary/10 border-b pb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                                <Globe className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-black tracking-tight uppercase">Public Presence</CardTitle>
-                                <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                    <Globe className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black tracking-tight uppercase">Public Presence</CardTitle>
+                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                                </div>
                             </div>
                         </div>
                     </CardHeader>

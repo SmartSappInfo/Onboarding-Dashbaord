@@ -216,6 +216,7 @@ export interface Meeting {
   meetingTime: string; // ISO string
   meetingLink: string;
   type: MeetingType;
+  heroImageUrl?: string;
   recordingUrl?: string;
   brochureUrl?: string;
   adminAlertsEnabled?: boolean;
