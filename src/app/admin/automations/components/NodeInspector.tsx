@@ -14,7 +14,11 @@ import {
     ShieldAlert,
     Target,
     Users,
-    ArrowRight
+    ArrowRight,
+    ArrowRightLeft,
+    Timer,
+    Info,
+    Layout
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -22,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { MessageTemplate, SenderProfile, UserProfile, OnboardingStage } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, UserProfile, OnboardingStage, VariableDefinition } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -46,31 +50,44 @@ const ACTION_TYPES = [
     { value: 'UPDATE_SCHOOL', label: 'Mutate School Record', icon: Building },
 ];
 
+const CONDITION_OPERATORS = [
+    { value: 'equals', label: 'Exactly Equals' },
+    { value: 'not_equals', label: 'Does Not Equal' },
+    { value: 'contains', label: 'Contains Keyword' },
+    { value: 'greater_than', label: 'Greater Than' },
+    { value: 'less_than', label: 'Less Than' },
+];
+
 /**
- * @fileOverview Phase 4: Module Binding Inspector.
- * The core configuration engine for automation nodes.
+ * @fileOverview Phase 6: Logic & Temporal Binding Inspector.
+ * Upgraded to support Condition and Delay nodes.
  */
 export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
     const firestore = useFirestore();
     const data = node.data || {};
     const config = data.config || {};
 
-    // Data Loaders for Bindings
+    // Data Loaders
     const templatesQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'message_templates'), where('isActive', '==', true)) : null, 
     [firestore]);
     
     const usersQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true)) : null, 
+        firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name', 'asc')) : null, 
     [firestore]);
 
     const stagesQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, 
     [firestore]);
 
+    const varsQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'messaging_variables')) : null, 
+    [firestore]);
+
     const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+    const { data: variables } = useCollection<VariableDefinition>(varsQuery);
 
     const updateConfig = (updates: any) => {
         onUpdate({ config: { ...config, ...updates } });
@@ -107,6 +124,96 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
         );
     }
 
+    if (node.type === 'conditionNode') {
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Target Data Point</Label>
+                        <Select value={config.field || ''} onValueChange={(v) => updateConfig({ field: v })}>
+                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                <SelectValue placeholder="Pick variable..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-none shadow-2xl">
+                                {variables?.filter(v => !v.hidden).map(v => (
+                                    <SelectItem key={v.id} value={v.key}>{v.label} ({v.key})</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Operator</Label>
+                        <Select value={config.operator || ''} onValueChange={(v) => updateConfig({ operator: v })}>
+                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                <SelectValue placeholder="Logical rule..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-none shadow-2xl">
+                                {CONDITION_OPERATORS.map(op => (
+                                    <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Comparison Value</Label>
+                        <Input 
+                            value={config.value || ''} 
+                            onChange={(e) => updateConfig({ value: e.target.value })}
+                            placeholder="Threshold or keyword..."
+                            className="h-11 rounded-xl bg-muted/20 border-none font-bold px-4"
+                        />
+                    </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-3">
+                    <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[9px] font-bold text-amber-800 leading-relaxed uppercase tracking-tighter">
+                        Condition nodes evaluate the trigger payload. If the rule matches, the "True" handle path is executed.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (node.type === 'delayNode') {
+        return (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Wait Duration</Label>
+                        <div className="flex items-center gap-3">
+                            <Input 
+                                type="number"
+                                value={config.value || 5} 
+                                onChange={(e) => updateConfig({ value: parseInt(e.target.value, 10) })}
+                                className="h-12 w-24 rounded-xl bg-muted/20 border-none font-black text-center text-lg"
+                            />
+                            <Select value={config.unit || 'Minutes'} onValueChange={(v) => updateConfig({ unit: v })}>
+                                <SelectTrigger className="h-12 flex-1 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-none shadow-2xl">
+                                    <SelectItem value="Minutes">Minutes</SelectItem>
+                                    <SelectItem value="Hours">Hours</SelectItem>
+                                    <SelectItem value="Days">Days</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 flex items-start gap-3">
+                    <Timer className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+                    <p className="text-[9px] font-bold text-purple-800 leading-relaxed uppercase tracking-tighter">
+                        This node will pause the protocol execution and queue the next steps for the specified time.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     if (node.type === 'actionNode') {
         return (
             <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -134,7 +241,6 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
                 <Separator className="bg-border/50" />
 
-                {/* Dynamic Configuration Forms based on type */}
                 <div className="space-y-8 pb-10">
                     {data.actionType === 'SEND_MESSAGE' && (
                         <div className="space-y-6">

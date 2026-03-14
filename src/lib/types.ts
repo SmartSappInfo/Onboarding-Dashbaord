@@ -789,6 +789,16 @@ export interface AutomationRun {
   error?: string;
 }
 
+export interface AutomationJob {
+  id: string;
+  automationId: string;
+  runId: string;
+  targetNodeId: string;
+  payload: Record<string, any>;
+  executeAt: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
 export interface AutomationRule {
   id: string;
   name: string;

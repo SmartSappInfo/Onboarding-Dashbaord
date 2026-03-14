@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -47,6 +48,20 @@
         "startedAt": { "type": "string", "format": "date-time" },
         "finishedAt": { "type": "string", "format": "date-time" },
         "error": { "type": "string" }
+      }
+    },
+    "AutomationJob": {
+      "title": "Scheduled Automation Job",
+      "description": "A queued task pending execution after a delay.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "automationId": { "type": "string" },
+        "runId": { "type": "string" },
+        "targetNodeId": { "type": "string" },
+        "payload": { "type": "object" },
+        "executeAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] }
       }
     },
     "Pipeline": {
@@ -365,6 +380,10 @@
     "/automation_runs/{runId}": {
       "schema": "#/entities/AutomationRun",
       "description": "Trace ledger for automated executions."
+    },
+    "/automation_jobs/{jobId}": {
+      "schema": "#/entities/AutomationJob",
+      "description": "Scheduled background tasks."
     }
   }
 }

@@ -16,6 +16,8 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
+import { ConditionNode } from '../[id]/edit/components/nodes/ConditionNode';
+import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
 import { 
     Zap, 
     Play, 
@@ -26,7 +28,10 @@ import {
     Info,
     Layers,
     Wand2,
-    Settings2
+    Settings2,
+    ArrowRightLeft,
+    Clock,
+    X
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,6 +42,8 @@ import { NodeInspector } from './NodeInspector';
 const nodeTypes = {
     triggerNode: TriggerNode,
     actionNode: ActionNode,
+    conditionNode: ConditionNode,
+    delayNode: DelayNode,
 };
 
 interface AutomationBuilderProps {
@@ -47,7 +54,7 @@ interface AutomationBuilderProps {
 
 /**
  * @fileOverview The SmartSapp Visual Automation Architect.
- * Upgraded with a functional Node Inspector for Phase 4: Module Binding.
+ * Upgraded with Logic and Temporal nodes for Phase 6.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, onStateChange }: AutomationBuilderProps) {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes || []);
@@ -87,15 +94,24 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
         onStateChange(nodes, edges);
     }, [nodes, edges, onStateChange]);
 
-    const addNode = (type: 'triggerNode' | 'actionNode') => {
+    const addNode = (type: keyof typeof nodeTypes) => {
         const id = `${type}_${Date.now()}`;
+        let label = 'New Node';
+        
+        switch(type) {
+            case 'triggerNode': label = 'Event Protocol Entry'; break;
+            case 'actionNode': label = 'Task Execution Step'; break;
+            case 'conditionNode': label = 'Logical Decision'; break;
+            case 'delayNode': label = 'Temporal Wait'; break;
+        }
+
         const newNode = {
             id,
             type,
             position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
             data: { 
-                label: type === 'triggerNode' ? 'New Event Trigger' : 'New Task Action',
-                config: {}
+                label,
+                config: type === 'delayNode' ? { value: 5, unit: 'Minutes' } : {}
             },
         };
         setNodes(nds => [...nds, newNode]);
@@ -130,6 +146,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                         <TooltipProvider>
                             <ToolBtn icon={Zap} label="Add Trigger" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('triggerNode')} />
                             <ToolBtn icon={Play} label="Add Action" color="text-blue-600 bg-blue-50" onClick={() => addNode('actionNode')} />
+                            <ToolBtn icon={ArrowRightLeft} label="Add Condition" color="text-amber-600 bg-amber-50" onClick={() => addNode('conditionNode')} />
+                            <ToolBtn icon={Clock} label="Add Delay" color="text-purple-600 bg-purple-50" onClick={() => addNode('delayNode')} />
                             <div className="h-px bg-border/50 mx-2" />
                             <ToolBtn icon={Grid3X3} label="Auto Layout" onClick={() => {}} />
                             <ToolBtn 
@@ -211,25 +229,5 @@ function ToolBtn({ icon: Icon, label, color, onClick }: any) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-black text-[10px] uppercase tracking-widest">{label}</TooltipContent>
         </Tooltip>
-    );
-}
-
-function X({ className }: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={className}
-        >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-        </svg>
     );
 }
