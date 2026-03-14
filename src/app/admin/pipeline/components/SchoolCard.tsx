@@ -20,7 +20,8 @@ import {
     Building,
     MapPin,
     Trophy,
-    ArrowRight
+    ArrowRight,
+    Edit
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
