@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import StageEditor from '../components/StageEditor';
 import { toTitleCase } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
