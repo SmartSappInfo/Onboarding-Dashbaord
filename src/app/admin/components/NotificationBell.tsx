@@ -20,20 +20,23 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { usePerspective } from '@/context/PerspectiveContext';
 
 export default function NotificationBell() {
     const firestore = useFirestore();
+    const { activeTrack } = usePerspective();
     
     // Notifications are essentially Activities.
-    // We pull the pool of recent activities and filter for "system" (team alerts) in frontend.
+    // Query MUST filter by track to satisfy Firestore security rules.
     const notificationsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(
             collection(firestore, 'activities'),
+            where('track', '==', activeTrack),
             orderBy('timestamp', 'desc'),
             limit(50)
         );
-    }, [firestore]);
+    }, [firestore, activeTrack]);
 
     const { data: allActivities, isLoading } = useCollection<Activity>(notificationsQuery);
 
@@ -43,7 +46,6 @@ export default function NotificationBell() {
     }, [allActivities]);
 
     const unreadCount = React.useMemo(() => {
-        // For MVP, we treat anything in the last hour as "new"
         if (!notifications) return 0;
         const oneHourAgo = Date.now() - (60 * 60 * 1000);
         return notifications.filter(n => new Date(n.timestamp).getTime() > oneHourAgo).length;

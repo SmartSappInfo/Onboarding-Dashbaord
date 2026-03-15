@@ -92,6 +92,13 @@
       ]
     },
     {
+      "collectionGroup": "message_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sentAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "automation_runs",
       "queryScope": "COLLECTION",
       "fields": [

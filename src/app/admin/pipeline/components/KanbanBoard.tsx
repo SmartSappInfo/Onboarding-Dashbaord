@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -35,6 +36,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow, Info } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { logActivity } from '@/lib/activity-logger';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import StageColumn from './StageColumn';
@@ -55,6 +57,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+  const { activeTrack } = usePerspective();
   const { user } = useUser();
 
   // 1. Fetch Stages for specific Pipeline
@@ -71,10 +74,14 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   );
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
 
-  // 2. Fetch Schools for specific Pipeline
+  // 2. Fetch Schools for specific Pipeline and track (Track filtering is mandatory for rules)
   const schoolsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'schools'), where('pipelineId', '==', pipelineId)) : null),
-    [firestore, pipelineId]
+    () => (firestore ? query(
+        collection(firestore, 'schools'), 
+        where('pipelineId', '==', pipelineId),
+        where('track', '==', activeTrack)
+    ) : null),
+    [firestore, pipelineId, activeTrack]
   );
   const { data: allSchools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
 
@@ -96,7 +103,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
       }
     }
 
-    // B. Search Filter (School Name or Signatory)
+    // B. Search Filter
     if (filters.searchTerm) {
         const s = filters.searchTerm.toLowerCase();
         temp = temp.filter(school => {
@@ -204,7 +211,6 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     const overContainer = findContainer(over.id as string);
 
     if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
-        toast({ title: 'Logic Restricted', description: 'Reorder stages in Pipeline Configuration.' });
         return;
     } else if (active.data.current?.type === 'SCHOOL' && activeContainer !== overContainer && overContainer) {
       const schoolId = active.id as string;

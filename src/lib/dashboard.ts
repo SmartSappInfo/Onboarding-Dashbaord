@@ -1,16 +1,7 @@
 
-import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { firebaseConfig } from '@/firebase/config';
+import { collection, query, where, getDocs, orderBy, limit, type Firestore } from 'firebase/firestore';
 import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task, InstitutionalTrack } from '@/lib/types';
-import { format, isAfter, startOfToday, subDays } from 'date-fns';
-
-function getDb() {
-  if (!getApps().length) {
-    initializeApp(firebaseConfig);
-  }
-  return getFirestore(getApp());
-}
+import { format, isAfter, startOfToday } from 'date-fns';
 
 /**
  * Resilient fetcher that returns an empty array if a collection is missing or restricted.
@@ -28,9 +19,7 @@ async function safeGetDocs(q: any) {
  * @fileOverview Intelligence Hub Data Aggregator.
  * Synchronized with security rules to perform track-aware listing.
  */
-export async function getDashboardData(track: InstitutionalTrack = 'onboarding') {
-  const db = getDb();
-
+export async function getDashboardData(db: Firestore, track: InstitutionalTrack = 'onboarding') {
   // 1. Fetch Track-Aware Master Data
   // Queries MUST filter by track to satisfy Firestore security rules for list operations.
   const [
@@ -46,7 +35,7 @@ export async function getDashboardData(track: InstitutionalTrack = 'onboarding')
     tasksSnapshot
   ] = await Promise.all([
     safeGetDocs(query(collection(db, 'schools'), where('track', '==', track))),
-    safeGetDocs(collection(db, 'meetings')), // Meetings aren't track-restricted at rule level
+    safeGetDocs(collection(db, 'meetings')), 
     safeGetDocs(collection(db, 'surveys')),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
@@ -180,7 +169,7 @@ export async function getDashboardData(track: InstitutionalTrack = 'onboarding')
     };
   });
 
-  // Messaging Metrics (Scoped by schools in track)
+  // Messaging Metrics
   const emailLogs = logs.filter(l => l.channel === 'email');
   const smsLogs = logs.filter(l => l.channel === 'sms');
   const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;

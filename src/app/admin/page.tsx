@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from "react";
@@ -9,6 +10,7 @@ import { PlusCircle, CalendarPlus, FilePlus, Upload, Sparkles, Loader2 } from "l
 import Link from "next/link";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { usePerspective } from "@/context/PerspectiveContext";
+import { useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -17,14 +19,16 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function AdminDashboardPage() {
     const { activeTrack, isLoading: isPerspectiveLoading } = usePerspective();
+    const firestore = useFirestore();
     const [dashboardData, setDashboardData] = React.useState<any>(null);
     const [isLoadingData, setIsLoadingData] = React.useState(true);
 
     React.useEffect(() => {
         const fetchStats = async () => {
+            if (!firestore) return;
             setIsLoadingData(true);
             try {
-                const data = await getDashboardData(activeTrack);
+                const data = await getDashboardData(firestore, activeTrack);
                 setDashboardData(data);
             } catch (e) {
                 console.error("Dashboard Load Failure:", e);
@@ -36,7 +40,7 @@ export default function AdminDashboardPage() {
         if (!isPerspectiveLoading) {
             fetchStats();
         }
-    }, [activeTrack, isPerspectiveLoading]);
+    }, [activeTrack, isPerspectiveLoading, firestore]);
 
     if (isPerspectiveLoading || isLoadingData) {
         return (
