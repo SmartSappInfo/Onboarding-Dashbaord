@@ -1,3 +1,4 @@
+
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -25,12 +26,13 @@ async function safeGetDocs(q: any) {
 
 /**
  * @fileOverview Intelligence Hub Data Aggregator.
- * Upgraded to support Perspective Filtering (Onboarding vs Prospect tracks).
+ * Synchronized with security rules to perform track-aware listing.
  */
 export async function getDashboardData(track: InstitutionalTrack = 'onboarding') {
   const db = getDb();
 
-  // 1. Fetch Master Data
+  // 1. Fetch Track-Aware Master Data
+  // Queries MUST filter by track to satisfy Firestore security rules for list operations.
   const [
     schoolsSnapshot,
     meetingsSnapshot,
@@ -43,31 +45,22 @@ export async function getDashboardData(track: InstitutionalTrack = 'onboarding')
     logsSnapshot,
     tasksSnapshot
   ] = await Promise.all([
-    safeGetDocs(collection(db, 'schools')),
-    safeGetDocs(collection(db, 'meetings')),
+    safeGetDocs(query(collection(db, 'schools'), where('track', '==', track))),
+    safeGetDocs(collection(db, 'meetings')), // Meetings aren't track-restricted at rule level
     safeGetDocs(collection(db, 'surveys')),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
     safeGetDocs(query(collection(db, 'modules'))),
-    safeGetDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(50))),
+    safeGetDocs(query(collection(db, 'activities'), where('track', '==', track), orderBy('timestamp', 'desc'), limit(50))),
     safeGetDocs(collection(db, 'zones')),
     safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
-    safeGetDocs(collection(db, 'tasks')),
+    safeGetDocs(query(collection(db, 'tasks'), where('track', '==', track))),
   ]); 
 
-  // 2. APPLY TRACK FILTERING (Logic Level)
-  const schools = schoolsSnapshot.docs
-    .map((doc: any) => ({ id: doc.id, ...doc.data() } as School))
-    .filter(s => s.track === track || (!s.track && track === 'onboarding'));
-
-  const tasks = tasksSnapshot.docs
-    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Task))
-    .filter(t => t.track === track || (!t.track && track === 'onboarding'));
-
-  const activities = activitiesSnapshot.docs
-    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity))
-    .filter(a => a.track === track || (!a.track && track === 'onboarding'));
-
+  // 2. APPLY RESOLUTION
+  const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
+  const tasks = tasksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Task));
+  const activities = activitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity));
   const zones = zonesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Zone));
   const logs = logsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as MessageLog));
   
@@ -75,7 +68,7 @@ export async function getDashboardData(track: InstitutionalTrack = 'onboarding')
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
-  // Meetings are tied to schools, so we only show meetings for schools in the active track
+  // Cross-reference meetings with track-specific schools
   const filteredSchoolIds = new Set(schools.map(s => s.id));
   const upcomingMeetings = meetingsSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
@@ -187,7 +180,7 @@ export async function getDashboardData(track: InstitutionalTrack = 'onboarding')
     };
   });
 
-  // Messaging Metrics
+  // Messaging Metrics (Scoped by schools in track)
   const emailLogs = logs.filter(l => l.channel === 'email');
   const smsLogs = logs.filter(l => l.channel === 'sms');
   const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;

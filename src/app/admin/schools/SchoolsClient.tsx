@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
@@ -82,7 +83,11 @@ export default function SchoolsClient() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
-  const schoolsCol = useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]);
+  // Filtered collection based on active perspective track
+  const schoolsCol = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack)) : null, 
+  [firestore, activeTrack]);
+
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
   const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
   
@@ -96,20 +101,17 @@ export default function SchoolsClient() {
     if (!schools) return [];
     let temp = schools;
 
-    // 1. Perspective Context Filter (CRITICAL)
-    temp = temp.filter(s => s.track === activeTrack || (!s.track && activeTrack === 'onboarding'));
-
-    // 2. Global Assignment Filter
+    // 1. Global Assignment Filter
     if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
     
-    // 3. Search & UI Filters
+    // 2. Search & UI Filters
     if (searchTerm) temp = temp.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
     if (stageFilter !== 'all') temp = temp.filter(s => s.stage?.id === stageFilter);
     if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
     
     return temp;
-  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter, activeTrack]);
+  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter]);
   
   const sortedSchools = useMemo(() => {
     let sortable = [...filteredSchools];

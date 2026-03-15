@@ -2,14 +2,15 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Activity, UserProfile, School } from '@/lib/types';
+import type { Activity, UserProfile, School, InstitutionalTrack } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
 
 interface ActivityTimelineProps {
+  track: InstitutionalTrack;
   schoolId?: string | null;
   userId?: string | null;
   type?: string | null;
@@ -19,31 +20,32 @@ interface ActivityTimelineProps {
 
 const DateSeparator = ({ date }: { date: string }) => {
     return (
-        <div className="flex items-center pl-10 my-4">
+        <div className="flex items-center pl-10 my-4 text-left">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{date}</div>
             <div className="flex-grow border-t ml-4"></div>
         </div>
     );
 };
 
-export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ track, schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
 
-  // HIGH PERFORMANCE: Fetch a pool of latest activities once.
-  // We avoid filtering here to bypass index latency and permission complexities.
+  // HIGH PERFORMANCE: Fetch pool of track-specific activities.
+  // We specify the track in the query to satisfy security rules for list operations.
   const activitiesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !track) return null;
     return query(
         collection(firestore, 'activities'), 
+        where('track', '==', track),
         orderBy('timestamp', 'desc'), 
         limit(200)
     );
-  }, [firestore]);
+  }, [firestore, track]);
 
   const { data: allActivities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]));
+  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('track', '==', track)) : null, [firestore, track]));
 
   const isLoading = isLoadingActivities || isLoadingUsers || isLoadingSchools;
 
@@ -57,7 +59,7 @@ export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit
     return new Set(schools.filter(s => s.zone?.id === zoneId).map(s => s.id));
   }, [schools, zoneId]);
 
-  // CLIENT-SIDE FILTERING: Apply filters in memory for instant UX and index-free reliability.
+  // CLIENT-SIDE FILTERING: Refine the track-specific pool by sub-filters.
   const filteredActivities = React.useMemo(() => {
     if (!allActivities) return [];
 
@@ -128,7 +130,7 @@ export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit
   if (filteredActivities.length === 0) {
       return (
           <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
-              <p className="text-muted-foreground font-medium">No activities found matching your criteria.</p>
+              <p className="text-muted-foreground font-medium italic">No activity matching your criteria in this perspective.</p>
           </div>
       );
   }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,7 +6,7 @@ import ActivityTimeline from '../components/ActivityTimeline';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { School, UserProfile, Activity, Zone } from '@/lib/types';
 import { Filter, X, History, Building, User, Tag, MapPin } from 'lucide-react';
@@ -36,9 +37,10 @@ export default function ActivitiesClient() {
     const [type, setType] = React.useState<string | null>('all');
     const [zoneId, setZoneId] = React.useState<string | null>('all');
 
+    // Scoped schools query for the filter dropdown
     const schoolsCol = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'schools'), orderBy('name')) : null, 
-    [firestore]);
+        firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name')) : null, 
+    [firestore, activeTrack]);
     
     const usersCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'users'), orderBy('name')) : null, 
@@ -104,7 +106,7 @@ export default function ActivitiesClient() {
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         <SelectItem value="all">All Schools</SelectItem>
-                                        {schools?.filter(s => (zoneId === 'all' || s.zone?.id === zoneId) && (s.track === activeTrack)).map(s => (
+                                        {schools?.map(s => (
                                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>
