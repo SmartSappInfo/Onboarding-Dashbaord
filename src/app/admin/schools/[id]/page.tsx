@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -43,7 +44,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
@@ -61,6 +62,7 @@ import {
 import ChangeStatusModal from '../components/ChangeStatusModal';
 import TransferPipelineModal from '../components/TransferPipelineModal';
 import ConvertLeadModal from '../components/ConvertLeadModal';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -86,6 +88,7 @@ export default function SchoolDetailPage() {
     const schoolId = params.id as string;
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
+    const { activeWorkspaceId } = useWorkspace();
     
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
@@ -157,7 +160,7 @@ export default function SchoolDetailPage() {
         </div>
     );
 
-    const isProspect = school.track === 'prospect';
+    const isProspect = school.workspaceId === 'prospect';
 
     return (
         <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.lifecycleStatus === 'Churned' && "grayscale opacity-80")}>
@@ -321,7 +324,7 @@ export default function SchoolDetailPage() {
                                     </div>
                                     <div className="space-y-6">
                                         <DetailItem icon={UserCheck} label="Primary Handler" value={school.assignedTo?.name || 'Unassigned'} />
-                                        <DetailItem icon={Target} label="Source Track" value={toTitleCase(school.track)} />
+                                        <DetailItem icon={Target} label="Source Workspace" value={toTitleCase(school.workspaceId)} />
                                         <Separator />
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Functional Interests</p>
@@ -341,7 +344,7 @@ export default function SchoolDetailPage() {
                         <div className="flex justify-between items-center mb-2 px-2">
                             <h3 className="text-xl font-black uppercase tracking-tight">Active Tasks</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
-                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${school.track}`}>
+                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${school.workspaceId}`}>
                                     <Plus className="h-4 w-4" /> Create Task
                                 </Link>
                             </Button>

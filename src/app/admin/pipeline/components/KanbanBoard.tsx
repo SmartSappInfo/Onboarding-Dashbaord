@@ -36,7 +36,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow, Info } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { logActivity } from '@/lib/activity-logger';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import StageColumn from './StageColumn';
@@ -57,7 +57,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
   const { user } = useUser();
 
   // 1. Fetch Stages for specific Pipeline
@@ -74,14 +74,14 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   );
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
 
-  // 2. Fetch Schools for specific Pipeline and track (Track filtering is mandatory for rules)
+  // 2. Fetch Schools for specific Pipeline and track (Workspace filtering is mandatory for rules)
   const schoolsQuery = useMemoFirebase(
     () => (firestore ? query(
         collection(firestore, 'schools'), 
         where('pipelineId', '==', pipelineId),
-        where('track', '==', activeTrack)
+        where('workspaceId', '==', activeWorkspaceId)
     ) : null),
-    [firestore, pipelineId, activeTrack]
+    [firestore, pipelineId, activeWorkspaceId]
   );
   const { data: allSchools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
 
@@ -228,7 +228,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
           
           if (user && school) {
             logActivity({
-                schoolId, userId: user.uid, type: 'pipeline_stage_changed', source: 'user_action',
+                schoolId, userId: user.uid, type: 'pipeline_stage_changed', source: 'user_action', workspaceId: activeWorkspaceId,
                 description: `progressed "${school.name}" from "${oldStageName}" to "${newStage.name}"`,
                 metadata: { from: oldStageName, to: newStage.name, pipelineId }
             });

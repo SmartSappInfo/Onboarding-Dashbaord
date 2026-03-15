@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -31,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Label } from '@/components/ui/label';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Unified Pipeline Hub.
@@ -40,7 +41,7 @@ import { usePerspective } from '@/context/PerspectiveContext';
 
 export default function PipelineClient() {
   const firestore = useFirestore();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
   
   // View State
   const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
@@ -50,10 +51,10 @@ export default function PipelineClient() {
   const pipelinesQuery = useMemoFirebase(() => 
     firestore ? query(
         collection(firestore, 'pipelines'), 
-        where('targetTrack', '==', activeTrack),
+        where('workspaceId', '==', activeWorkspaceId),
         orderBy('createdAt', 'desc')
     ) : null, 
-  [firestore, activeTrack]);
+  [firestore, activeWorkspaceId]);
   const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   // Regional Context
@@ -101,7 +102,7 @@ export default function PipelineClient() {
             <div className="flex items-center gap-4 shrink-0">
                 <div className={cn(
                     "hidden sm:flex p-2.5 text-white rounded-xl shadow-lg rotate-3 transition-transform hover:rotate-0",
-                    activeTrack === 'prospect' ? "bg-emerald-600 shadow-emerald-200" : "bg-primary shadow-primary/20"
+                    activeWorkspaceId === 'prospect' ? "bg-emerald-600 shadow-emerald-200" : "bg-primary shadow-primary/20"
                 )}>
                     <Workflow className="h-5 w-5" />
                 </div>
@@ -118,7 +119,7 @@ export default function PipelineClient() {
                             ))}
                             {(!pipelines || pipelines.length === 0) && (
                                 <div className="p-4 text-center italic text-xs text-muted-foreground">
-                                    No {activeTrack} pipelines defined.
+                                    No active pipelines defined.
                                 </div>
                             )}
                         </SelectContent>
@@ -193,7 +194,7 @@ export default function PipelineClient() {
                                 <PopoverContent className="w-72 p-4 rounded-2xl border-none shadow-2xl space-y-6" align="end">
                                     <div className="space-y-1.5">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Filter Hub</h4>
-                                        <p className="text-[10px] font-medium text-muted-foreground">Narrow down the track-specific view.</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground">Narrow down the workspace view.</p>
                                     </div>
                                     
                                     <div className="space-y-4">
@@ -275,7 +276,7 @@ export default function PipelineClient() {
         <AnimatePresence mode="wait">
             {activeView === 'board' ? (
                 <motion.div 
-                    key={`board-${activeTrack}`}
+                    key={`board-${activeWorkspaceId}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -294,13 +295,13 @@ export default function PipelineClient() {
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
                             <Workflow size={120} className="mb-6" />
-                            <p className="font-black uppercase tracking-[0.4em] text-2xl">Perspective Clear</p>
+                            <p className="font-black uppercase tracking-[0.4em] text-2xl">Workspace Clear</p>
                         </div>
                     )}
                 </motion.div>
             ) : (
                 <motion.div 
-                    key={`config-${activeTrack}`}
+                    key={`config-${activeWorkspaceId}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
@@ -316,7 +317,7 @@ export default function PipelineClient() {
                         ) : (
                             <div className="py-40 text-center opacity-20 flex flex-col items-center gap-6">
                                 <Workflow size={80} />
-                                <p className="text-sm font-semibold uppercase tracking-[0.3em]">Initialize a {activeTrack} pipeline to begin</p>
+                                <p className="text-sm font-semibold uppercase tracking-[0.3em]">Initialize a workspace pipeline to begin</p>
                             </div>
                         )}
                     </div>

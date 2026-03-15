@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -55,7 +56,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function InvoicesClient() {
     const firestore = useFirestore();
@@ -63,7 +64,7 @@ export default function InvoicesClient() {
     const { user } = useUser();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
 
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
@@ -82,10 +83,10 @@ export default function InvoicesClient() {
     const schoolsQuery = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'schools'), 
-            where('track', '==', activeTrack),
+            where('workspaceId', '==', activeWorkspaceId),
             orderBy('name', 'asc')
         ) : null, 
-    [firestore, activeTrack]);
+    [firestore, activeWorkspaceId]);
 
     const periodsQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'billing_periods'), where('status', '==', 'open'), orderBy('startDate', 'desc')) : null, 
@@ -108,7 +109,7 @@ export default function InvoicesClient() {
     const filteredInvoices = React.useMemo(() => {
         if (!invoices || !schools) return [];
         
-        // 1. FILTER BY TRACK (Invoices don't have track, so we use the schools list)
+        // 1. FILTER BY WORKSPACE (Invoices don't have workspaceId, so we use the schools list)
         const validSchoolIds = new Set(schools.map(s => s.id));
         let temp = invoices.filter(i => validSchoolIds.has(i.schoolId));
 
@@ -372,7 +373,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter truncate">{value}</p>
+                    <p className="text-2xl font-black tabular-nums tracking-tighter truncate">{value}</p>
                     <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 truncate">{sub}</p>
                 </div>
             </CardContent>

@@ -77,13 +77,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
@@ -117,10 +117,10 @@ export default function AgreementsClient() {
     const schoolsCol = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'schools'), 
-            where('track', '==', activeTrack),
+            where('workspaceId', '==', activeWorkspaceId),
             orderBy('name', 'asc')
         ) : null, 
-    [firestore, activeTrack]);
+    [firestore, activeWorkspaceId]);
 
     const contractsCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null, 

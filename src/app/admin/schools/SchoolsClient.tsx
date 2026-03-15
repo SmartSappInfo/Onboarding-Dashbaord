@@ -46,7 +46,7 @@ import ChangeStageModal from './components/ChangeStageModal';
 import ChangeStatusModal from './components/ChangeStatusModal';
 import TransferPipelineModal from './components/TransferPipelineModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 
@@ -68,7 +68,7 @@ export default function SchoolsClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
@@ -83,10 +83,10 @@ export default function SchoolsClient() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
-  // Filtered collection based on active perspective track
+  // Filtered collection based on active workspace
   const schoolsCol = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack)) : null, 
-  [firestore, activeTrack]);
+    firestore ? query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId)) : null, 
+  [firestore, activeWorkspaceId]);
 
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
   const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
@@ -315,7 +315,7 @@ export default function SchoolsClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found for the active perspective.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found for the active workspace.</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>
