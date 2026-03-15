@@ -30,7 +30,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthorized() && (
         request.auth.token.email == 'admin@smartsapp.com' ||
-        getUserData().permissions.hasAny(['system_admin'])
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().permissions.hasAny(['system_admin']))
       );
     }
 
