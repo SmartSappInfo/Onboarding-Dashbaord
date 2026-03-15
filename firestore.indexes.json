@@ -20,8 +20,9 @@
       "collectionGroup": "schools",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
         { "fieldPath": "pipelineId", "order": "ASCENDING" },
-        { "fieldPath": "workspaceId", "order": "ASCENDING" }
+        { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
     {
@@ -98,15 +99,6 @@
       "fields": [
         { "fieldPath": "schoolId", "order": "ASCENDING" },
         { "fieldPath": "workspaceId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "activities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
