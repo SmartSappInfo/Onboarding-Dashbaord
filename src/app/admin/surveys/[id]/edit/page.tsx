@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { 
@@ -186,7 +187,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                                     isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
                             </div>
                             <p className={cn(
                                 'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
@@ -219,6 +220,7 @@ export default function EditSurveyPage() {
     const firestore = useFirestore();
     const surveyId = params.id as string;
     const { toast } = useToast();
+    const { activeTrack } = usePerspective();
     
     // UI State
     const [step, setStep] = React.useState(1);
@@ -238,9 +240,9 @@ export default function EditSurveyPage() {
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
-    }, [firestore]);
+        if (!firestore || !activeTrack) return null;
+        return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
+    }, [firestore, activeTrack]);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
     const form = useForm<FormData>({

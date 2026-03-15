@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { 
     Loader2, 
     Save, 
@@ -80,6 +81,7 @@ export default function EditMeetingPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeTrack } = usePerspective();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
@@ -94,9 +96,9 @@ export default function EditMeetingPage() {
   useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'schools');
-  }, [firestore]);
+    if (!firestore || !activeTrack) return null;
+    return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
+  }, [firestore, activeTrack]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
 
@@ -197,6 +199,7 @@ export default function EditMeetingPage() {
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
+            track: activeTrack,
             type: 'school_updated',
             source: 'user_action',
             description: `updated the ${data.type.name} session for "${data.school.name}".`,

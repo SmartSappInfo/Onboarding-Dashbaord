@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,9 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { usePerspective } from '@/context/PerspectiveContext';
+
 import { 
     Calendar, 
     Loader2, 
@@ -75,13 +76,14 @@ export default function NewMeetingPage() {
   const searchParams = useSearchParams();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeTrack } = usePerspective();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'schools');
-  }, [firestore]);
+    if (!firestore || !activeTrack) return null;
+    return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
+  }, [firestore, activeTrack]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
 
@@ -166,6 +168,7 @@ export default function NewMeetingPage() {
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
+            track: activeTrack,
             type: 'meeting_created',
             source: 'user_action',
             description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
@@ -322,7 +325,7 @@ export default function NewMeetingPage() {
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Meeting Link (Google Meet)</FormLabel>
                                     <FormControl>
                                         <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
+                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
                                             <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
                                         </div>
                                     </FormControl>

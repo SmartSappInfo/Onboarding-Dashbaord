@@ -5,7 +5,8 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, usePathname } from 'next/navigation';
-import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { 
     Check, 
     Loader2, 
@@ -183,7 +184,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                                     isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
                             </div>
                             <p className={cn(
                                 'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
@@ -214,6 +215,7 @@ export default function NewSurveyPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { activeTrack } = usePerspective();
     
     // UI State
     const [step, setStep] = React.useState(1);
@@ -223,9 +225,9 @@ export default function NewSurveyPage() {
     const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
-    }, [firestore]);
+        if (!firestore || !activeTrack) return null;
+        return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
+    }, [firestore, activeTrack]);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
     const form = useForm<FormData>({

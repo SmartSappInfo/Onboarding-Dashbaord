@@ -1,9 +1,8 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { collection, orderBy, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, School } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -54,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { usePerspective } from '@/context/PerspectiveContext';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MeetingCalendar from './components/MeetingCalendar';
@@ -67,6 +67,7 @@ export default function MeetingsHubClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { activeTrack } = usePerspective();
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('list');
@@ -83,9 +84,9 @@ export default function MeetingsHubClient() {
   }, [meetingsCol]);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'schools');
-  }, [firestore]);
+    if (!firestore || !activeTrack) return null;
+    return query(collection(firestore, 'schools'), where('track', '==', activeTrack));
+  }, [firestore, activeTrack]);
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
