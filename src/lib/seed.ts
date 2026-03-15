@@ -101,9 +101,8 @@ const surveyData = [
       { id: 'q1', type: 'yes-no', title: 'Do you have stable internet?', isRequired: true, enableScoring: true, yesScore: 20, noScore: 0 },
       { id: 'q2', type: 'multiple-choice', title: 'Total students?', options: ['< 100', '100-500', '500+'], isRequired: true, enableScoring: true, optionScores: [10, 30, 50] },
     ],
-    resultRules: [
-      { id: 'rule1', label: 'Highly Ready', minScore: 70, maxScore: 100, priority: 1, pageId: 'page1' }
-    ]
+    resultPages: [],
+    resultRules: []
   }
 ];
 
