@@ -70,6 +70,127 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
     return data.length;
 }
 
+/**
+ * MIGRATION PROTOCOL 1: Architect
+ * Scans current schools to identify existing stages and builds the master pipeline.
+ */
+export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore): Promise<number> {
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const stagesMap = new Map<string, { name: string, color: string }>();
+
+    schoolsSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.stage && data.stage.name) {
+            stagesMap.set(data.stage.name, { 
+                name: data.stage.name, 
+                color: data.stage.color || ONBOARDING_STAGE_COLORS[0] 
+            });
+        }
+    });
+
+    if (stagesMap.size === 0) {
+        stagesMap.set('Welcome', { name: 'Welcome', color: '#f72585' });
+        stagesMap.set('Identity Setup', { name: 'Identity Setup', color: '#b5179e' });
+        stagesMap.set('Active (Go-Live)', { name: 'Active (Go-Live)', color: '#4361ee' });
+    }
+
+    const pipelineId = 'institutional_onboarding';
+    const batch = writeBatch(firestore);
+    
+    const stageIds: string[] = [];
+    let order = 1;
+    stagesMap.forEach((val, name) => {
+        const id = name.toLowerCase().replace(/\s+/g, '_');
+        stageIds.push(id);
+        batch.set(doc(firestore, 'onboardingStages', id), {
+            id,
+            name: val.name,
+            color: val.color,
+            order: order++,
+            pipelineId
+        });
+    });
+
+    batch.set(doc(firestore, 'pipelines', pipelineId), {
+        id: pipelineId,
+        name: 'Institutional Onboarding',
+        description: 'Primary workflow for school implementation.',
+        workspaceId: 'onboarding',
+        stageIds,
+        accessRoles: ['administrator'],
+        createdAt: new Date().toISOString()
+    });
+
+    await batch.commit();
+    return stagesMap.size;
+}
+
+/**
+ * MIGRATION PROTOCOL 2: Harmonize
+ * Backs up schools and enriches them with the mandatory workspaceId.
+ */
+export async function enrichAndRestoreSchools(firestore: Firestore): Promise<number> {
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    
+    // 1. Safety Backup
+    schoolsSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_schools', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    // 2. Resolve default stage for the target pipeline
+    const stagesSnap = await getDocs(query(
+        collection(firestore, 'onboardingStages'), 
+        where('pipelineId', '==', 'institutional_onboarding'),
+        orderBy('order', 'asc'),
+        limit(1)
+    ));
+    
+    const defaultStage = !stagesSnap.empty 
+        ? stagesSnap.docs[0].data() 
+        : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
+
+    // 3. Dynamic Enrichment
+    let count = 0;
+    schoolsSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        batch.update(docSnap.ref, {
+            workspaceId: 'onboarding',
+            track: 'onboarding',
+            pipelineId: 'institutional_onboarding',
+            // Maintain current stage if it looks like it belongs to the new schema
+            stage: data.stage?.id ? data.stage : defaultStage, 
+            updatedAt: new Date().toISOString()
+        });
+        count++;
+    });
+
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL 3: Recovery
+ * Restores the directory from the pre-migration backup.
+ */
+export async function rollbackSchoolsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_schools'));
+    const batch = writeBatch(firestore);
+    
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'schools', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+
+    await batch.commit();
+    return count;
+}
+
 export async function seedPipelines(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
     const pipelinesCol = collection(firestore, 'pipelines');
@@ -189,7 +310,4 @@ export async function seedMessageLogs(firestore: Firestore) { return 0; }
 export async function seedTasks(firestore: Firestore) { return 0; }
 export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
-export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
-export async function enrichAndRestoreSchools(firestore: Firestore) { return 0; }
-export async function rollbackSchoolsMigration(firestore: Firestore) { return 0; }
 export async function seedMeetings(firestore: Firestore) { return 0; }
