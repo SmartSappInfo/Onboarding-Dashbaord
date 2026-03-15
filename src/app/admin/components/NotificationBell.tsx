@@ -20,23 +20,23 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function NotificationBell() {
     const firestore = useFirestore();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     // Notifications are essentially Activities.
-    // Query MUST filter by track to satisfy Firestore security rules.
+    // Query MUST filter by workspaceId to satisfy Firestore security rules.
     const notificationsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(
             collection(firestore, 'activities'),
-            where('track', '==', activeTrack),
+            where('workspaceId', '==', activeWorkspaceId),
             orderBy('timestamp', 'desc'),
             limit(50)
         );
-    }, [firestore, activeTrack]);
+    }, [firestore, activeWorkspaceId]);
 
     const { data: allActivities, isLoading } = useCollection<Activity>(notificationsQuery);
 

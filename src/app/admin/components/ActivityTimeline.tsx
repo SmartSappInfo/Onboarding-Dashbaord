@@ -4,13 +4,13 @@
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Activity, UserProfile, School, InstitutionalTrack } from '@/lib/types';
+import type { Activity, UserProfile, School } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ActivityTimelineProps {
-  track: InstitutionalTrack;
   schoolId?: string | null;
   userId?: string | null;
   type?: string | null;
@@ -27,25 +27,25 @@ const DateSeparator = ({ date }: { date: string }) => {
     );
 };
 
-export default function ActivityTimeline({ track, schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
+  const { activeWorkspaceId } = useWorkspace();
 
-  // HIGH PERFORMANCE: Fetch pool of track-specific activities.
-  // We specify the track in the query to satisfy security rules for list operations.
+  // HIGH PERFORMANCE: Fetch pool of workspace-specific activities.
   const activitiesQuery = useMemoFirebase(() => {
-    if (!firestore || !track) return null;
+    if (!firestore || !activeWorkspaceId) return null;
     return query(
         collection(firestore, 'activities'), 
-        where('track', '==', track),
+        where('workspaceId', '==', activeWorkspaceId),
         orderBy('timestamp', 'desc'), 
         limit(200)
     );
-  }, [firestore, track]);
+  }, [firestore, activeWorkspaceId]);
 
   const { data: allActivities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('track', '==', track)) : null, [firestore, track]));
+  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId)) : null, [firestore, activeWorkspaceId]));
 
   const isLoading = isLoadingActivities || isLoadingUsers || isLoadingSchools;
 
@@ -59,7 +59,7 @@ export default function ActivityTimeline({ track, schoolId, userId, type, zoneId
     return new Set(schools.filter(s => s.zone?.id === zoneId).map(s => s.id));
   }, [schools, zoneId]);
 
-  // CLIENT-SIDE FILTERING: Refine the track-specific pool by sub-filters.
+  // CLIENT-SIDE FILTERING: Refine the workspace-specific pool by sub-filters.
   const filteredActivities = React.useMemo(() => {
     if (!allActivities) return [];
 
@@ -130,7 +130,7 @@ export default function ActivityTimeline({ track, schoolId, userId, type, zoneId
   if (filteredActivities.length === 0) {
       return (
           <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
-              <p className="text-muted-foreground font-medium italic">No activity matching your criteria in this perspective.</p>
+              <p className="text-muted-foreground font-medium italic">No activity matching your criteria in this workspace.</p>
           </div>
       );
   }

@@ -9,20 +9,20 @@ import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { School, UserProfile, Activity, Zone } from '@/lib/types';
-import { Filter, X, History, Building, User, Tag, MapPin } from 'lucide-react';
+import { X, Building, User, Tag, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const ACTIVITY_TYPES: { value: Activity['type']; label: string }[] = [
     { value: 'note', label: 'Internal Notes' },
     { value: 'call', label: 'Phone Calls' },
     { value: 'visit', label: 'Campus Visits' },
     { value: 'email', label: 'Emails' },
-    { value: 'school_created', label: 'School Onboarding' },
+    { value: 'school_created', label: 'Hub Onboarding' },
     { value: 'school_assigned', label: 'Ownership Changes' },
     { value: 'meeting_created', label: 'Meetings Scheduled' },
-    { value: 'pipeline_stage_changed', label: 'Pipeline Progression' },
+    { value: 'pipeline_stage_changed', label: 'Workflow Progression' },
     { value: 'notification_sent', label: 'Messaging Events' },
     { value: 'pdf_form_submitted', label: 'Doc Submissions' },
     { value: 'pdf_status_changed', label: 'Doc Status' },
@@ -30,7 +30,7 @@ const ACTIVITY_TYPES: { value: Activity['type']; label: string }[] = [
 
 export default function ActivitiesClient() {
     const firestore = useFirestore();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     const [schoolId, setSchoolId] = React.useState<string | null>('all');
     const [userId, setUserId] = React.useState<string | null>('all');
@@ -39,8 +39,8 @@ export default function ActivitiesClient() {
 
     // Scoped schools query for the filter dropdown
     const schoolsCol = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name')) : null, 
-    [firestore, activeTrack]);
+        firestore ? query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name')) : null, 
+    [firestore, activeWorkspaceId]);
     
     const usersCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'users'), orderBy('name')) : null, 
@@ -156,7 +156,6 @@ export default function ActivitiesClient() {
                         <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                     </div>
                     <ActivityTimeline 
-                        track={activeTrack}
                         schoolId={schoolId} 
                         userId={userId} 
                         type={type} 

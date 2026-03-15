@@ -9,26 +9,26 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, CalendarPlus, FilePlus, Upload, Sparkles, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { RainbowButton } from "@/components/ui/rainbow-button";
-import { usePerspective } from "@/context/PerspectiveContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
 import { useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * @fileOverview Intelligence Hub Dashboard.
- * Consumes the active perspective context to display track-specific analytics.
+ * Consumes the active workspace context to display track-specific analytics.
  */
 export default function AdminDashboardPage() {
-    const { activeTrack, isLoading: isPerspectiveLoading } = usePerspective();
+    const { activeWorkspaceId, isLoading: isWorkspaceLoading } = useWorkspace();
     const firestore = useFirestore();
     const [dashboardData, setDashboardData] = React.useState<any>(null);
     const [isLoadingData, setIsLoadingData] = React.useState(true);
 
     React.useEffect(() => {
         const fetchStats = async () => {
-            if (!firestore) return;
+            if (!firestore || !activeWorkspaceId) return;
             setIsLoadingData(true);
             try {
-                const data = await getDashboardData(firestore, activeTrack);
+                const data = await getDashboardData(firestore, activeWorkspaceId);
                 setDashboardData(data);
             } catch (e) {
                 console.error("Dashboard Load Failure:", e);
@@ -37,14 +37,14 @@ export default function AdminDashboardPage() {
             }
         };
 
-        if (!isPerspectiveLoading) {
+        if (!isWorkspaceLoading) {
             fetchStats();
         }
-    }, [activeTrack, isPerspectiveLoading, firestore]);
+    }, [activeWorkspaceId, isWorkspaceLoading, firestore]);
 
-    if (isPerspectiveLoading || isLoadingData) {
+    if (isWorkspaceLoading || isLoadingData) {
         return (
-            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
                 <div className="max-w-7xl mx-auto space-y-8">
                     <div className="flex justify-end h-9">
                         <Skeleton className="h-full w-64 rounded-xl" />
