@@ -5,7 +5,7 @@
       "collectionGroup": "schools",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
@@ -13,7 +13,7 @@
       "collectionGroup": "schools",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -22,14 +22,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "pipelineId", "order": "ASCENDING" },
-        { "fieldPath": "perspectiveId", "order": "ASCENDING" }
+        { "fieldPath": "workspaceId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
         { "fieldPath": "dueDate", "order": "ASCENDING" }
       ]
     },
@@ -46,7 +46,7 @@
       "collectionGroup": "activities",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     }

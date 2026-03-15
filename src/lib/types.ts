@@ -13,9 +13,9 @@ export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
 
 /**
- * Defines a managed Perspective (formerly hardcoded track).
+ * Defines a managed Workspace (formerly Perspective).
  */
-export interface Perspective {
+export interface Workspace {
   id: string;
   name: string;
   description?: string;
@@ -25,6 +25,8 @@ export interface Perspective {
   createdAt: string;
   updatedAt: string;
 }
+
+export type InstitutionalTrack = 'onboarding' | 'prospect' | string;
 
 export interface Attendee {
     id: string;
@@ -53,7 +55,8 @@ export interface Pipeline {
   id: string;
   name: string;
   description?: string;
-  perspectiveId: string; // Linked to Perspective
+  workspaceId: string; // Linked to Workspace
+  targetTrack?: InstitutionalTrack; // Legacy support
   stageIds: string[];
   accessRoles: string[];
   createdAt: string;
@@ -120,7 +123,8 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  perspectiveId: string; // Dynamic Perspective Link
+  workspaceId: string; // Dynamic Workspace Link
+  track: InstitutionalTrack; // Logical track (onboarding/prospect)
   status: SchoolStatus;
   lifecycleStatus: LifecycleStatus;
   pipelineId: string;
@@ -477,7 +481,7 @@ export interface Activity {
   schoolId: string;
   schoolName?: string;
   schoolSlug?: string;
-  perspectiveId: string; // Dynamic perspective context
+  workspaceId: string; // Dynamic workspace context
   userId?: string | null;
   type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
   source: 'manual' | 'user_action' | 'system' | 'public';
@@ -746,7 +750,7 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
-  perspectiveId: string; // dynamic perspective link
+  workspaceId: string; // dynamic workspace link
   schoolId?: string | null;
   schoolName?: string | null;
   assignedTo: string; // userId
@@ -796,7 +800,7 @@ export interface Automation {
   name: string;
   description?: string;
   trigger: AutomationTrigger;
-  perspectiveId?: string; // Dynamic perspective link
+  workspaceId?: string; // Dynamic workspace link
   nodes: any[];
   edges: any[];
   isActive: boolean;

@@ -34,23 +34,22 @@ service cloud.firestore {
       );
     }
 
-    // --- Perspective Access Logic ---
-    function canAccessPerspective(perspectiveId) {
+    // --- Workspace Access Logic ---
+    function canAccessWorkspace(workspaceId) {
       return isAdmin() || 
-             (perspectiveId == 'onboarding' && hasPermission('schools_view')) ||
-             (perspectiveId == 'prospect' && hasPermission('prospects_view'));
+             (workspaceId == 'onboarding' && hasPermission('schools_view')) ||
+             (workspaceId == 'prospect' && hasPermission('prospects_view'));
     }
 
     match /{document=**} {
       allow read, write: if false;
     }
     
-    match /perspectives/{pId} {
+    match /workspaces/{wId} {
         allow read: if isAuthorized();
         allow write: if isAdmin();
     }
 
-    // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
       allow read: if isAuthorized();
       allow write: if hasPermission('finance_manage');
@@ -83,13 +82,6 @@ service cloud.firestore {
     match /media/{document=**} {
         allow read, write: if isAuthorized();
     }
-     match /modules/{document=**} {
-      allow read: if isAuthorized();
-      allow write: if isAdmin();
-    }
-    match /webhooks/{document=**} {
-      allow read, write: if hasPermission('studios_edit');
-    }
     match /zones/{document=**} {
       allow read: if isAuthorized();
       allow write: if isAdmin();
@@ -112,16 +104,13 @@ service cloud.firestore {
     }
     match /message_jobs/{jobId} {
       allow read, write: if isAuthorized();
-      match /tasks/{taskId} {
-        allow read, write: if isAuthorized();
-      }
     }
 
     match /tasks/{taskId} {
       allow read, write: if isAuthorized() && (
         isAdmin() || 
         request.auth.uid == resource.data.assignedTo || 
-        canAccessPerspective(resource.data.perspectiveId)
+        canAccessWorkspace(resource.data.workspaceId)
       );
     }
 
@@ -130,10 +119,10 @@ service cloud.firestore {
     }
 
     match /schools/{schoolId} {
-      allow get: if !isAuthorized() || canAccessPerspective(resource.data.perspectiveId);
-      allow list: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
+      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceId);
+      allow list: if isAuthorized() && canAccessWorkspace(resource.data.workspaceId);
       allow create: if isAuthorized();
-      allow update: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
+      allow update: if isAuthorized() && canAccessWorkspace(resource.data.workspaceId);
       allow delete: if isAdmin();
     }
     
@@ -164,41 +153,28 @@ service cloud.firestore {
     match /surveys/{surveyId} {
       allow write, list: if hasPermission('studios_edit');
       allow get: if isAuthorized() || resource.data.status == 'published';
-      match /resultPages/{pageId} {
-        allow read: if true;
-        allow write: if hasPermission('studios_edit');
-      }
       match /responses/{responseId} {
         allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
         allow read, list, delete: if isAuthorized();
-      }
-      match /summaries/{summaryId} {
-        allow create, read, list, delete: if isAuthorized();
       }
     }
 
     match /pdfs/{pdfId} {
       allow write, list: if hasPermission('studios_edit');
-      allow get: if isAuthorized() || resource.data.status == 'published' || resource.data.resultsShared == true;
+      allow get: if isAuthorized() || resource.data.status == 'published';
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
-        allow read, list: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.resultsShared == true || isAuthorized();
-        allow update, delete: if isAuthorized();
+        allow read, list: if isAuthorized();
       }
     }
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
+      allow read, list: if isAuthorized() && canAccessWorkspace(resource.data.workspaceId);
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
     match /survey_sessions/{sessionId} {
-      allow create, update: if true;
-      allow read, list: if isAuthorized();
-    }
-
-    match /pdf_sessions/{sessionId} {
       allow create, update: if true;
       allow read, list: if isAuthorized();
     }

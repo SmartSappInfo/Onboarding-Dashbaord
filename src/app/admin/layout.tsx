@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -31,7 +32,6 @@ import {
     Workflow, 
     History, 
     FileText, 
-    RefreshCw, 
     MessageSquareText,
     Globe,
     CheckSquare,
@@ -42,8 +42,6 @@ import {
     Timer,
     Settings2,
     FileCheck,
-    GraduationCap,
-    ShieldAlert,
     Target
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
@@ -55,7 +53,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
 import NotificationBell from './components/NotificationBell';
-import PerspectiveSwitcher from './components/PerspectiveSwitcher';
+import WorkspaceSwitcher from './components/WorkspaceSwitcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,10 +67,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { NavigationProvider } from '@/context/NavigationContext';
-import { PerspectiveProvider } from '@/context/PerspectiveContext';
+import { WorkspaceProvider } from '@/context/WorkspaceContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
-import type { UserRole, AppPermissionId, Role } from '@/lib/types';
+import type { AppPermissionId, Role } from '@/lib/types';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -98,40 +96,26 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .then(async (docSnap) => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
             const data = docSnap.data();
-            
-            // 1. Resolve Permissions
             let perms = data.permissions || [];
-            
-            // 2. Fetch Role Names for Display
             const roleIds = data.roles || [];
             const roleDocs = await Promise.all(
                 roleIds.map((id: string) => getDoc(doc(firestore, 'roles', id)))
             );
-            
             const resolvedRoles = roleDocs
                 .filter(d => d.exists())
                 .map(d => ({ id: d.id, name: (d.data() as Role).name }));
             
             setUserRolesData(resolvedRoles);
             setUserPermissions(perms);
-            
             setLoaderStatus('success');
             setTimeout(() => setIsReady(true), 800);
           } else {
             setLoaderStatus('failed');
-            toast({
-              variant: "destructive",
-              title: 'Authorization Required',
-              description: 'Your account is not authorized to access this area.',
-            });
-            setTimeout(() => {
-              auth.signOut();
-              router.push('/login');
-            }, 1200);
+            toast({ variant: "destructive", title: 'Authorization Required' });
+            setTimeout(() => { auth.signOut(); router.push('/login'); }, 1200);
           }
         })
-        .catch(error => {
-          console.error("Authorization check failed:", error);
+        .catch(() => {
           setLoaderStatus('failed');
           setTimeout(() => { auth.signOut(); router.push('/login'); }, 1200);
         });
@@ -144,11 +128,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [isUserLoading, user, userError, router, firestore, auth, toast]);
 
   if (!isReady) {
-    return (
-        <div className="relative h-screen w-full">
-            <AuthorizationLoader status={loaderStatus} />
-        </div>
-    );
+    return <div className="relative h-screen w-full"><AuthorizationLoader status={loaderStatus} /></div>;
   }
 
   const hasPerm = (perm: AppPermissionId) => userPermissions.includes(perm) || userPermissions.includes('system_admin' as any);
@@ -190,7 +170,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <NavigationProvider>
         <GlobalFilterProvider>
-          <PerspectiveProvider>
+          <WorkspaceProvider>
             <SidebarProvider defaultOpen={false}>
               <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
                 <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
@@ -203,12 +183,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         </Link>
                     </div>
                   </SidebarHeader>
-                  <SidebarContent className="text-left">
+                  <SidebarContent className="text-left text-white">
                     <SidebarGroup>
-                      <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
-                        <SidebarGroupLabel className="text-left">Operations</SidebarGroupLabel>
-                        <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
-                      </div>
+                      <SidebarGroupLabel className="text-left text-white/60">Operations</SidebarGroupLabel>
                       <SidebarMenu>
                         {coreNavItems.filter(i => i.visible).map((item) => (
                           <SidebarMenuItem key={item.href}>
@@ -222,7 +199,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
                     {hasPerm('finance_view') && (
                       <SidebarGroup>
-                          <SidebarGroupLabel className="text-left">Finance Hub</SidebarGroupLabel>
+                          <SidebarGroupLabel className="text-left text-white/60">Finance Hub</SidebarGroupLabel>
                           <SidebarMenu>
                           {financeNavItems.filter(i => i.visible).map((item) => (
                               <SidebarMenuItem key={item.href}>
@@ -236,7 +213,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     )}
 
                     <SidebarGroup>
-                      <SidebarGroupLabel className="text-left">Studios</SidebarGroupLabel>
+                      <SidebarGroupLabel className="text-left text-white/60">Studios</SidebarGroupLabel>
                       <SidebarMenu>
                         {studioNavItems.filter(i => i.visible).map((item) => (
                           <SidebarMenuItem key={item.href}>
@@ -249,7 +226,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </SidebarGroup>
 
                     <SidebarGroup className="mt-auto">
-                        <SidebarGroupLabel className="text-left">Management</SidebarGroupLabel>
+                        <SidebarGroupLabel className="text-left text-white/60">Management</SidebarGroupLabel>
                         <SidebarMenu>
                         {systemNavItems.filter(i => i.visible).map((item) => (
                             <SidebarMenuItem key={item.href}>
@@ -277,7 +254,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <SidebarTrigger className="md:hidden" />
                     <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <PerspectiveSwitcher />
+                        <WorkspaceSwitcher />
                         {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
                         <NotificationBell />
                         <ThemeToggle />
@@ -290,7 +267,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-64 text-left" align="end" forceMount>
+                        <DropdownMenuContent className="w-64 text-left" align="end">
                             <DropdownMenuLabel className="font-normal">
                             <div className="flex flex-col space-y-1">
                                 <p className="text-sm font-black leading-none">{user?.displayName}</p>
@@ -304,12 +281,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild><Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link></DropdownMenuItem>
-                            {hasPerm('system_admin') && (
-                              <>
-                                  <DropdownMenuItem asChild><Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link></DropdownMenuItem>
-                                  <DropdownMenuItem asChild><Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link></DropdownMenuItem>
-                              </>
-                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => auth.signOut()}><LogOut className="mr-2 h-4 w-4" /><span>Log out</span></DropdownMenuItem>
                         </DropdownMenuContent>
@@ -320,7 +291,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </SidebarInset>
               </div>
             </SidebarProvider>
-          </PerspectiveProvider>
+          </WorkspaceProvider>
         </GlobalFilterProvider>
       </NavigationProvider>
     </ThemeProvider>
