@@ -49,11 +49,11 @@ export default function ConvertLeadModal({ school, open, onOpenChange }: Convert
     const [targetPipelineId, setTargetPipelineId] = React.useState<string | null>(null);
     const [isConverting, setIsConverting] = React.useState(false);
 
-    // Fetch only Onboarding Pipelines
+    // Fetch only Onboarding Pipelines using standard field naming
     const pipelinesQuery = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'pipelines'), 
-            where('targetTrack', '==', 'onboarding'),
+            where('workspaceId', '==', 'onboarding'),
             orderBy('name', 'asc')
         ) : null, 
     [firestore]);
@@ -132,7 +132,7 @@ export default function ConvertLeadModal({ school, open, onOpenChange }: Convert
                         </div>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
+                    <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 shadow-inner">
                         <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                             <p className="text-xs font-black text-blue-900 uppercase">Track Synchronisation</p>

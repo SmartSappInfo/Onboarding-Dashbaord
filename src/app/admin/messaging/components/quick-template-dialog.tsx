@@ -84,12 +84,11 @@ export default function QuickTemplateDialog({
     const bodyRef = React.useRef<HTMLTextAreaElement>(null);
     const subjectRef = React.useRef<HTMLInputElement>(null);
 
-    // Queries
+    // Queries optimized for indices
     const surveysQuery = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'surveys'), 
-            where('status', '!=', 'archived'), 
-            orderBy('status', 'asc'),
+            where('status', '==', 'published'), 
             orderBy('internalName', 'asc')
         ) : null, 
     [firestore]);
@@ -208,6 +207,7 @@ export default function QuickTemplateDialog({
             active.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => {
                 active.focus();
+                active.setRangeText ? active.setRangeText(tag) : null;
                 active.setSelectionRange(start + tag.length, start + tag.length);
             }, 0);
         } else {
@@ -310,7 +310,7 @@ export default function QuickTemplateDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
                 <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between text-left">
                         <div className="flex items-center gap-4">
                             <div className={cn(
                                 "p-3 rounded-2xl border shadow-xl",
@@ -350,7 +350,7 @@ export default function QuickTemplateDialog({
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background relative">
+                    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background relative text-left">
                         {isLoadingTemplate && (
                             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
                                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -434,7 +434,7 @@ export default function QuickTemplateDialog({
                     </div>
 
                     {/* VARIABLE PANEL */}
-                    <div className="w-full lg:w-80 border-l bg-muted/10 p-6 shrink-0 overflow-hidden flex flex-col gap-6">
+                    <div className="w-full lg:w-80 border-l bg-muted/10 p-6 shrink-0 overflow-hidden flex flex-col gap-6 text-left">
                         <div className="space-y-4 shrink-0">
                             <div className="flex items-center gap-2">
                                 <Database className="h-4 w-4 text-primary" />
