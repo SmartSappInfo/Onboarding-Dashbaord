@@ -93,7 +93,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 
@@ -128,7 +128,7 @@ export default function TasksClient() {
     const { user: currentUser } = useUser();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     // View State
     const [activeTab, setActiveTab] = React.useState('list');
@@ -151,17 +151,17 @@ export default function TasksClient() {
     const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
 
     const tasksQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'tasks'), 
-            where('track', '==', activeTrack),
+            where('workspaceId', '==', activeWorkspaceId),
             orderBy('dueDate', 'asc'), 
             limit(200)
         );
-    }, [firestore, activeTrack]);
+    }, [firestore, activeWorkspaceId]);
 
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true)) : null, [firestore]);
-    const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc')) : null, [firestore, activeTrack]);
+    const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc')) : null, [firestore, activeWorkspaceId]);
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
@@ -214,7 +214,7 @@ export default function TasksClient() {
         if (!firestore || !currentUser) return;
         setIsSaving(true);
         try {
-            const finalPayload = { ...payload, track: activeTrack };
+            const finalPayload = { ...payload, workspaceId: activeWorkspaceId };
             if (editingTask) {
                 updateTaskNonBlocking(firestore, editingTask.id, finalPayload);
                 toast({ title: 'Task Architecture Synchronized' });
@@ -239,7 +239,7 @@ export default function TasksClient() {
             priority: 'medium',
             status: 'todo',
             category: category,
-            track: activeTrack,
+            workspaceId: activeWorkspaceId,
             assignedTo: currentUser?.uid || '',
             dueDate: new Date().toISOString(),
             createdAt: new Date().toISOString(),
@@ -322,10 +322,10 @@ export default function TasksClient() {
                     <StatCard 
                         label="Active Actions" 
                         value={isLoading ? '...' : stats.active} 
-                        sub={`${toTitleCase(activeTrack)} track focus`} 
+                        sub={`${toTitleCase(activeWorkspaceId)} workspace focus`} 
                         icon={Zap} 
-                        color={activeTrack === 'prospect' ? "text-emerald-600" : "text-primary"} 
-                        bg={activeTrack === 'prospect' ? "bg-emerald-50" : "bg-primary/10"} 
+                        color={activeWorkspaceId === 'prospect' ? "text-emerald-600" : "text-primary"} 
+                        bg={activeWorkspaceId === 'prospect' ? "bg-emerald-50" : "bg-primary/10"} 
                     />
                     <StatCard 
                         label="Resolved Protocols" 

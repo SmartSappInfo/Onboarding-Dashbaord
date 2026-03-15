@@ -1,6 +1,7 @@
+'use client';
 
 import { collection, query, where, getDocs, orderBy, limit, type Firestore } from 'firebase/firestore';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task, InstitutionalTrack } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task } from '@/lib/types';
 import { format, isAfter, startOfToday } from 'date-fns';
 
 /**
@@ -17,11 +18,11 @@ async function safeGetDocs(q: any) {
 
 /**
  * @fileOverview Intelligence Hub Data Aggregator.
- * Synchronized with security rules to perform track-aware listing.
+ * Synchronized with security rules to perform workspace-aware listing.
  */
-export async function getDashboardData(db: Firestore, track: InstitutionalTrack = 'onboarding') {
-  // 1. Fetch Track-Aware Master Data
-  // Queries MUST filter by track to satisfy Firestore security rules for list operations.
+export async function getDashboardData(db: Firestore, workspaceId: string = 'onboarding') {
+  // 1. Fetch Workspace-Aware Master Data
+  // Queries MUST filter by workspaceId to satisfy Firestore security rules for list operations.
   const [
     schoolsSnapshot,
     meetingsSnapshot,
@@ -34,16 +35,16 @@ export async function getDashboardData(db: Firestore, track: InstitutionalTrack 
     logsSnapshot,
     tasksSnapshot
   ] = await Promise.all([
-    safeGetDocs(query(collection(db, 'schools'), where('track', '==', track))),
+    safeGetDocs(query(collection(db, 'schools'), where('workspaceId', '==', workspaceId))),
     safeGetDocs(collection(db, 'meetings')), 
     safeGetDocs(collection(db, 'surveys')),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
     safeGetDocs(query(collection(db, 'modules'))),
-    safeGetDocs(query(collection(db, 'activities'), where('track', '==', track), orderBy('timestamp', 'desc'), limit(50))),
+    safeGetDocs(query(collection(db, 'activities'), where('workspaceId', '==', workspaceId), orderBy('timestamp', 'desc'), limit(50))),
     safeGetDocs(collection(db, 'zones')),
     safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
-    safeGetDocs(query(collection(db, 'tasks'), where('track', '==', track))),
+    safeGetDocs(query(collection(db, 'tasks'), where('workspaceId', '==', workspaceId))),
   ]); 
 
   // 2. APPLY RESOLUTION
@@ -57,7 +58,7 @@ export async function getDashboardData(db: Firestore, track: InstitutionalTrack 
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
-  // Cross-reference meetings with track-specific schools
+  // Cross-reference meetings with workspace-specific schools
   const filteredSchoolIds = new Set(schools.map(s => s.id));
   const upcomingMeetings = meetingsSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
