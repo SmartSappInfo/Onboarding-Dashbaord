@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, getDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { School, Contract, UserProfile } from '@/lib/types';
 import { 
@@ -32,7 +33,8 @@ import {
     ListChecks,
     RotateCcw,
     ExternalLink,
-    ShieldAlert
+    ShieldAlert,
+    History
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,11 +77,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePerspective } from '@/context/PerspectiveContext';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+    const { activeTrack } = usePerspective();
     
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
@@ -111,8 +115,12 @@ export default function AgreementsClient() {
 
     // Data Subscriptions
     const schoolsCol = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, 
-    [firestore]);
+        firestore ? query(
+            collection(firestore, 'schools'), 
+            where('track', '==', activeTrack),
+            orderBy('name', 'asc')
+        ) : null, 
+    [firestore, activeTrack]);
 
     const contractsCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null, 

@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Invoice, BillingPeriod, School } from '@/lib/types';
+import type { Invoice, BillingPeriod, School, UserProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
     Receipt, 
@@ -55,6 +56,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { usePerspective } from '@/context/PerspectiveContext';
 
 export default function InvoicesClient() {
     const firestore = useFirestore();
@@ -62,6 +64,7 @@ export default function InvoicesClient() {
     const { user } = useUser();
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+    const { activeTrack } = usePerspective();
 
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
@@ -78,16 +81,25 @@ export default function InvoicesClient() {
     [firestore]);
 
     const schoolsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, 
-    [firestore]);
+        firestore ? query(
+            collection(firestore, 'schools'), 
+            where('track', '==', activeTrack),
+            orderBy('name', 'asc')
+        ) : null, 
+    [firestore, activeTrack]);
 
     const periodsQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'billing_periods'), where('status', '==', 'open'), orderBy('startDate', 'desc')) : null, 
     [firestore]);
 
+    const usersQuery = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, 
+    [firestore]);
+
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
     const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
+    const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
     const schoolAssignmentMap = React.useMemo(() => {
         if (!schools) return new Map<string, string | null>();
@@ -95,10 +107,13 @@ export default function InvoicesClient() {
     }, [schools]);
 
     const filteredInvoices = React.useMemo(() => {
-        if (!invoices) return [];
-        let temp = invoices;
+        if (!invoices || !schools) return [];
+        
+        // 1. FILTER BY TRACK (Invoices don't have track, so we use the schools list)
+        const validSchoolIds = new Set(schools.map(s => s.id));
+        let temp = invoices.filter(i => validSchoolIds.has(i.schoolId));
 
-        // 1. GLOBAL USER FILTER (Resolves via school assignment)
+        // 2. GLOBAL USER FILTER (Resolves via school assignment)
         if (assignedUserId) {
             temp = temp.filter(invoice => {
                 const assignedTo = schoolAssignmentMap.get(invoice.schoolId);
@@ -113,7 +128,7 @@ export default function InvoicesClient() {
             temp = temp.filter(i => i.schoolName.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
         }
         return temp;
-    }, [invoices, statusFilter, searchTerm, assignedUserId, schoolAssignmentMap]);
+    }, [invoices, schools, statusFilter, searchTerm, assignedUserId, schoolAssignmentMap]);
 
     const handleGenerate = async () => {
         if (!selectedSchoolId || !selectedPeriodId || !user) return;
@@ -145,7 +160,7 @@ export default function InvoicesClient() {
         }
     };
 
-    const isLoading = isLoadingInvoices || isLoadingFilter;
+    const isLoading = isLoadingInvoices || isLoadingFilter || isLoadingUsers || isLoadingSchools;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
@@ -284,13 +299,12 @@ export default function InvoicesClient() {
                                             <Receipt className="h-12 w-12" />
                                             <p className="text-xs font-black uppercase tracking-widest">Registry Clear</p>
                                         </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
-            </div>
 
             {/* Creation Dialog */}
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
