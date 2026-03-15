@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * @fileOverview Perspective Architect Console.
