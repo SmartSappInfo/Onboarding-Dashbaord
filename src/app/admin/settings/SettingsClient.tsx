@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,15 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, enrichAndRestoreSchools, rollbackSchoolsMigration } from '@/lib/seed';
-import { Loader2, RefreshCw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert, Workflow, Zap, ArrowRightLeft, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, enrichAndRestoreSchools, rollbackSchoolsMigration, seedPerspectives } from '@/lib/seed';
+import { Loader2, RefreshCw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert, Workflow, Zap, ArrowRightLeft, RotateCcw, CheckCircle2, Layout } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 import RoleEditor from './components/RoleEditor';
+import PerspectiveEditor from './components/PerspectiveEditor';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'perspectives';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -30,7 +32,7 @@ export default function SettingsClient() {
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
-    harvest: 'idle', enrich: 'idle', rollback: 'idle'
+    harvest: 'idle', enrich: 'idle', rollback: 'idle', perspectives: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -70,6 +72,7 @@ export default function SettingsClient() {
         else if (seeder === 'billing') { count = await seedBillingData(firestore); name = 'Billing Hubs'; }
         else if (seeder === 'roles') { count = await seedRolesAndPermissions(firestore); name = 'Roles & Permissions'; }
         else if (seeder === 'pipelines') { count = await seedPipelines(firestore); name = 'Workflows'; }
+        else if (seeder === 'perspectives') { count = await seedPerspectives(firestore); name = 'Global Perspectives'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -111,15 +114,26 @@ export default function SettingsClient() {
                         <h4 className="text-[10px] font-black uppercase tracking-widest">1. Architect</h4>
                     </div>
                     <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Extracts unique stages from your current school records and builds the master onboarding pipeline.</p>
-                    <Button 
-                        variant="outline" 
-                        onClick={() => handleSeed('harvest')} 
-                        disabled={seedingStatus.harvest === 'seeding'} 
-                        className="w-full rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary"
-                    >
-                        {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4" />}
-                        Initialize Master Pipeline
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('harvest')} 
+                            disabled={seedingStatus.harvest === 'seeding'} 
+                            className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary"
+                        >
+                            {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4" />}
+                            Pipeline
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('perspectives')} 
+                            disabled={seedingStatus.perspectives === 'seeding'} 
+                            className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary"
+                        >
+                            {seedingStatus.perspectives === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layout className="mr-2 h-4 w-4" />}
+                            Perspectives
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
@@ -156,6 +170,8 @@ export default function SettingsClient() {
                 </div>
             </CardContent>
         </Card>
+
+        <PerspectiveEditor />
 
         <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
             <CardHeader className="bg-muted/30 border-b pb-6">

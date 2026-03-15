@@ -13,9 +13,18 @@ export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
 
 /**
- * Defines the primary institutional workflow tracks.
+ * Defines a managed Perspective (formerly hardcoded track).
  */
-export type InstitutionalTrack = 'onboarding' | 'prospect';
+export interface Perspective {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string; // Lucide icon name
+  color?: string; // HSL or Hex
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Attendee {
     id: string;
@@ -44,7 +53,7 @@ export interface Pipeline {
   id: string;
   name: string;
   description?: string;
-  targetTrack: InstitutionalTrack; // strictly typed pipeline
+  perspectiveId: string; // Linked to Perspective
   stageIds: string[];
   accessRoles: string[];
   createdAt: string;
@@ -53,15 +62,13 @@ export interface Pipeline {
 export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | 'sales_rep' | 'sales_supervisor' | string;
 
 export const APP_PERMISSIONS = [
-  { id: 'schools_view', label: 'View Onboarding Schools', category: 'Operations' },
-  { id: 'schools_edit', label: 'Edit Onboarding Profiles', category: 'Operations' },
-  { id: 'prospects_view', label: 'View Sales Leads', category: 'Sales' },
-  { id: 'prospects_edit', label: 'Edit Lead Profiles', category: 'Sales' },
+  { id: 'schools_view', label: 'View Schools', category: 'Operations' },
+  { id: 'schools_edit', label: 'Edit Profiles', category: 'Operations' },
   { id: 'finance_view', label: 'View Finance Hub', category: 'Finance' },
   { id: 'finance_manage', label: 'Manage Billing & Contracts', category: 'Finance' },
   { id: 'contracts_delete', label: 'Purge Legal Records', category: 'Finance' },
   { id: 'studios_view', label: 'View Design Studios', category: 'Studios' },
-  { id: 'studios_edit', label: 'Create Surveys/PDFs/Messages', category: 'Studios' },
+  { id: 'studios_edit', label: 'Create Content', category: 'Studios' },
   { id: 'system_admin', label: 'Full System Management', category: 'Management' },
   { id: 'system_user_switch', label: 'Switch User Context', category: 'Management' },
   { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
@@ -113,7 +120,7 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  track: InstitutionalTrack; // Primary classification
+  perspectiveId: string; // Dynamic Perspective Link
   status: SchoolStatus;
   lifecycleStatus: LifecycleStatus;
   pipelineId: string;
@@ -470,7 +477,7 @@ export interface Activity {
   schoolId: string;
   schoolName?: string;
   schoolSlug?: string;
-  track?: InstitutionalTrack;
+  perspectiveId: string; // Dynamic perspective context
   userId?: string | null;
   type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
   source: 'manual' | 'user_action' | 'system' | 'public';
@@ -739,7 +746,7 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
-  track: InstitutionalTrack; // Task classification
+  perspectiveId: string; // dynamic perspective link
   schoolId?: string | null;
   schoolName?: string | null;
   assignedTo: string; // userId
@@ -789,7 +796,7 @@ export interface Automation {
   name: string;
   description?: string;
   trigger: AutomationTrigger;
-  track?: InstitutionalTrack; // Optional scoping
+  perspectiveId?: string; // Dynamic perspective link
   nodes: any[];
   edges: any[];
   isActive: boolean;

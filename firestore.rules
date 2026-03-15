@@ -34,17 +34,22 @@ service cloud.firestore {
       );
     }
 
-    // --- Institutional Track Logic ---
-    function canAccessTrack(track) {
+    // --- Perspective Access Logic ---
+    function canAccessPerspective(perspectiveId) {
       return isAdmin() || 
-             (track == 'onboarding' && hasPermission('schools_view')) ||
-             (track == 'prospect' && hasPermission('prospects_view'));
+             (perspectiveId == 'onboarding' && hasPermission('schools_view')) ||
+             (perspectiveId == 'prospect' && hasPermission('prospects_view'));
     }
 
     match /{document=**} {
       allow read, write: if false;
     }
     
+    match /perspectives/{pId} {
+        allow read: if isAuthorized();
+        allow write: if isAdmin();
+    }
+
     // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
       allow read: if isAuthorized();
@@ -116,7 +121,7 @@ service cloud.firestore {
       allow read, write: if isAuthorized() && (
         isAdmin() || 
         request.auth.uid == resource.data.assignedTo || 
-        canAccessTrack(resource.data.track)
+        canAccessPerspective(resource.data.perspectiveId)
       );
     }
 
@@ -125,10 +130,10 @@ service cloud.firestore {
     }
 
     match /schools/{schoolId} {
-      allow get: if !isAuthorized() || canAccessTrack(resource.data.track);
-      allow list: if isAuthorized() && canAccessTrack(resource.data.track);
+      allow get: if !isAuthorized() || canAccessPerspective(resource.data.perspectiveId);
+      allow list: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
       allow create: if isAuthorized();
-      allow update: if isAuthorized() && canAccessTrack(resource.data.track);
+      allow update: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
       allow delete: if isAdmin();
     }
     
@@ -184,7 +189,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && canAccessTrack(resource.data.track);
+      allow read, list: if isAuthorized() && canAccessPerspective(resource.data.perspectiveId);
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 

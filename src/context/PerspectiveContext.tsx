@@ -1,21 +1,23 @@
+
 'use client';
 
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import type { UserProfile, InstitutionalTrack } from '@/lib/types';
+import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import type { UserProfile, Perspective } from '@/lib/types';
 
 /**
  * @fileOverview Perspective Context Provider.
- * Manages the global institutional track ('onboarding' vs 'prospect') across the app.
- * Synchronizes with URL params and enforces permission-based access.
+ * Manages the dynamic global perspective (Onboarding, Prospects, etc.) across the app.
+ * Fetches perspectives from Firestore and allows administrators to manage them.
  */
 
 type PerspectiveContextType = {
-  activeTrack: InstitutionalTrack;
-  setActiveTrack: (track: InstitutionalTrack) => void;
-  allowedTracks: InstitutionalTrack[];
+  activeTrack: string; // The Perspective ID
+  activePerspective?: Perspective;
+  setActiveTrack: (perspectiveId: string) => void;
+  allowedPerspectives: Perspective[];
   isLoading: boolean;
 };
 
@@ -28,68 +30,82 @@ export function PerspectiveProvider({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [activeTrack, setActiveTrackState] = React.useState<InstitutionalTrack>('onboarding');
-  const [allowedTracks, setAllowedTracks] = React.useState<InstitutionalTrack[]>(['onboarding']);
+  const [activeTrack, setActiveTrackState] = React.useState<string>('onboarding');
   const [isInitialized, setIsInitialized] = React.useState(false);
 
+  // 1. Fetch Dynamic Perspectives from Firestore
+  const perspectivesQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'perspectives'), orderBy('createdAt', 'asc')) : null, 
+  [firestore]);
+  const { data: perspectives, isLoading: isPerspectivesLoading } = useCollection<Perspective>(perspectivesQuery);
+
+  // 2. Fetch User Profile for Permission Resolution
   const userRef = useMemoFirebase(() => 
     firestore && user ? doc(firestore, 'users', user.uid) : null, 
   [firestore, user]);
-  
   const { data: profile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
 
-  // 1. Resolve Permissions & Allowed Tracks
-  React.useEffect(() => {
-    if (isUserLoading || isProfileLoading || !profile) return;
+  // 3. Resolve Allowed Perspectives based on User Permissions
+  const allowedPerspectives = React.useMemo(() => {
+    if (!perspectives || isUserLoading || isProfileLoading || !profile) return [];
 
     const perms = profile.permissions || [];
     const isAdmin = perms.includes('system_admin' as any);
-    const canSeeSchools = perms.includes('schools_view') || isAdmin;
-    const canSeeProspects = perms.includes('prospects_view') || isAdmin;
-
-    const allowed: InstitutionalTrack[] = [];
-    if (canSeeSchools) allowed.push('onboarding');
-    if (canSeeProspects) allowed.push('prospect');
-
-    setAllowedTracks(allowed);
-
-    // Initial preference resolution: URL > Storage > Permission Default
-    const urlTrack = searchParams.get('track') as InstitutionalTrack;
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('activePerspective') as InstitutionalTrack : null;
     
-    let initial: InstitutionalTrack = 'onboarding';
+    // In a dynamic model, we could link permissions to perspective IDs.
+    // For now, we maintain the onboarding/prospect logic but map them to dynamic objects.
+    return perspectives.filter(p => {
+        if (isAdmin) return true;
+        if (p.id === 'onboarding') return perms.includes('schools_view');
+        if (p.id === 'prospect') return perms.includes('prospects_view');
+        return false; // New custom perspectives might require specific permissions logic
+    });
+  }, [perspectives, isUserLoading, isProfileLoading, profile]);
 
-    if (urlTrack && allowed.includes(urlTrack)) {
-        initial = urlTrack;
-    } else if (stored && allowed.includes(stored)) {
-        initial = stored;
-    } else if (canSeeProspects && !canSeeSchools) {
-        initial = 'prospect';
-    }
-
-    setActiveTrackState(initial);
-    setIsInitialized(true);
-  }, [isUserLoading, isProfileLoading, profile, searchParams]);
-
-  // 2. Perspective Switcher Handler
-  const setActiveTrack = React.useCallback((track: InstitutionalTrack) => {
-    if (allowedTracks.includes(track)) {
-        setActiveTrackState(track);
-        localStorage.setItem('activePerspective', track);
+  // 4. Initial Synchronization
+  React.useEffect(() => {
+    if (isPerspectivesLoading || isProfileLoading || !isInitialized && allowedPerspectives.length > 0) {
+        const urlTrack = searchParams.get('track');
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('activePerspective') : null;
         
-        // Sync to URL
+        let initialId = 'onboarding';
+
+        if (urlTrack && allowedPerspectives.find(p => p.id === urlTrack)) {
+            initialId = urlTrack;
+        } else if (stored && allowedPerspectives.find(p => p.id === stored)) {
+            initialId = stored;
+        } else if (allowedPerspectives.length > 0) {
+            initialId = allowedPerspectives[0].id;
+        }
+
+        setActiveTrackState(initialId);
+        setIsInitialized(true);
+    }
+  }, [isPerspectivesLoading, isProfileLoading, allowedPerspectives, searchParams, isInitialized]);
+
+  // 5. Perspective Switcher Handler
+  const setActiveTrack = React.useCallback((perspectiveId: string) => {
+    if (allowedPerspectives.find(p => p.id === perspectiveId)) {
+        setActiveTrackState(perspectiveId);
+        localStorage.setItem('activePerspective', perspectiveId);
+        
         const params = new URLSearchParams(searchParams.toString());
-        params.set('track', track);
+        params.set('track', perspectiveId);
         router.replace(`${pathname}?${params.toString()}`);
     }
-  }, [allowedTracks, pathname, router, searchParams]);
+  }, [allowedPerspectives, pathname, router, searchParams]);
+
+  const activePerspective = React.useMemo(() => 
+    perspectives?.find(p => p.id === activeTrack),
+  [perspectives, activeTrack]);
 
   const value = React.useMemo(() => ({
     activeTrack,
+    activePerspective,
     setActiveTrack,
-    allowedTracks,
-    isLoading: !isInitialized || isUserLoading || isProfileLoading
-  }), [activeTrack, setActiveTrack, allowedTracks, isInitialized, isUserLoading, isProfileLoading]);
+    allowedPerspectives,
+    isLoading: !isInitialized || isUserLoading || isProfileLoading || isPerspectivesLoading
+  }), [activeTrack, activePerspective, setActiveTrack, allowedPerspectives, isInitialized, isUserLoading, isProfileLoading, isPerspectivesLoading]);
 
   return (
     <PerspectiveContext.Provider value={value}>

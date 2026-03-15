@@ -5,7 +5,7 @@
       "collectionGroup": "schools",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "track", "order": "ASCENDING" },
+        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
         { "fieldPath": "name", "order": "ASCENDING" }
       ]
     },
@@ -13,7 +13,7 @@
       "collectionGroup": "schools",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "track", "order": "ASCENDING" },
+        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -22,30 +22,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "pipelineId", "order": "ASCENDING" },
-        { "fieldPath": "track", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "pipelines",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "targetTrack", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "onboardingStages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pipelineId", "order": "ASCENDING" },
-        { "fieldPath": "order", "order": "ASCENDING" }
+        { "fieldPath": "perspectiveId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "track", "order": "ASCENDING" },
+        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
         { "fieldPath": "dueDate", "order": "ASCENDING" }
       ]
     },
@@ -59,83 +43,11 @@
       ]
     },
     {
-      "collectionGroup": "tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "dueDate", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "activities",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "track", "order": "ASCENDING" },
+        { "fieldPath": "perspectiveId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "activities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "message_logs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "sentAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "message_logs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "sentAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "automation_runs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "automationId", "order": "ASCENDING" },
-        { "fieldPath": "startedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "automation_jobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "executeAt", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "surveys",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "surveys",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "internalName", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "pdfs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

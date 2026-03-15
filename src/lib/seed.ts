@@ -1,8 +1,9 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline, InstitutionalTrack } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline, InstitutionalTrack, Perspective } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -62,7 +63,7 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
   },
 ];
 
-const baseSchoolData: Omit<School, 'id' | 'slug' | 'track' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status' | 'lifecycleStatus' | 'pipelineId'>[] = [
+const baseSchoolData: Omit<School, 'id' | 'slug' | 'perspectiveId' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status' | 'lifecycleStatus' | 'pipelineId'>[] = [
   { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', focalPersons: [{ name: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163', type: 'Principal', isSignatory: true }] },
   { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', focalPersons: [{ name: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100', type: 'Administrator', isSignatory: true }] },
   { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', focalPersons: [{ name: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543', type: 'Principal', isSignatory: true }] },
@@ -120,19 +121,45 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 
 // --- SEEDING FUNCTIONS ---
 
-/**
- * High-fidelity migration engine for the Institutional Onboarding Pipeline.
- * Harvests unique stages from current schools to architect the pipeline.
- */
+export async function seedPerspectives(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'perspectives');
+    const batch = writeBatch(firestore);
+    const col = collection(firestore, 'perspectives');
+    const timestamp = new Date().toISOString();
+
+    const data: Perspective[] = [
+        {
+            id: 'onboarding',
+            name: 'Institutional Onboarding',
+            description: 'Primary technical implementation track for new campuses.',
+            color: '#3B5FFF',
+            status: 'active',
+            createdAt: timestamp,
+            updatedAt: timestamp
+        },
+        {
+            id: 'prospect',
+            name: 'Lead Acquisition',
+            description: 'Sales and marketing track for prospective institutions.',
+            color: '#10b981',
+            status: 'active',
+            createdAt: timestamp,
+            updatedAt: timestamp
+        }
+    ];
+
+    data.forEach(p => batch.set(doc(col, p.id), p));
+    await batch.commit();
+    return data.length;
+}
+
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore): Promise<number> {
     const schoolsSnap = await getDocs(collection(firestore, 'schools'));
     if (schoolsSnap.empty) {
-        return await seedPipelines(firestore); // Fallback to standard seed if no data exists
+        return await seedPipelines(firestore);
     }
 
     const schools = schoolsSnap.docs.map(d => d.data() as School);
-    
-    // 1. Identify Unique Stages from current dataset
     const stageMap = new Map<string, { name: string, color: string, order: number }>();
     
     schools.forEach(school => {
@@ -148,7 +175,6 @@ export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore
         }
     });
 
-    // 2. Ensure foundational stages exist if harvesting yielded little
     if (stageMap.size === 0) {
         stageMap.set('welcome', { name: 'Welcome', color: '#f72585', order: 1 });
         stageMap.set('training', { name: 'Staff Training', color: '#7209b7', order: 2 });
@@ -160,14 +186,12 @@ export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore
     const stagesCol = collection(firestore, 'onboardingStages');
     const onboardingId = 'institutional_onboarding';
 
-    // 3. Clear existing stages for this pipeline only to prevent orphans
     const oldStagesQuery = query(stagesCol, where('pipelineId', '==', onboardingId));
     const oldStagesSnap = await getDocs(oldStagesQuery);
     oldStagesSnap.forEach(d => batch.delete(d.ref));
 
-    // 4. Architect New Stages
-    const newStageIds: string[] = [];
     const sortedStages = Array.from(stageMap.values()).sort((a, b) => a.order - b.order);
+    const newStageIds: string[] = [];
     
     sortedStages.forEach((s, i) => {
         const stageId = `stg_${onboardingId}_${i}`;
@@ -181,26 +205,20 @@ export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore
         });
     });
 
-    // 5. Initialize Pipeline Blueprint
     const onboardingPipeline: Omit<Pipeline, 'id'> = {
         name: 'Institutional Onboarding',
-        description: 'Harvested from current network data. Primary school integration cycle.',
-        targetTrack: 'onboarding',
+        description: 'Harvested from current network data.',
+        perspectiveId: 'onboarding',
         stageIds: newStageIds,
         accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
         createdAt: new Date().toISOString()
     };
 
     batch.set(doc(pipelinesCol, onboardingId), onboardingPipeline);
-
     await batch.commit();
     return newStageIds.length;
 }
 
-/**
- * Enrichment Strategy: Updates all schools to be part of the "Institutional Onboarding" pipeline.
- * Creates a backup before proceeding.
- */
 export async function enrichAndRestoreSchools(firestore: Firestore): Promise<number> {
     const schoolsCol = collection(firestore, 'schools');
     const backupCol = collection(firestore, 'backup_schools');
@@ -215,11 +233,8 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
     if (schoolsSnap.empty) return 0;
     
     const availableStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as OnboardingStage));
-    if (availableStages.length === 0) throw new Error("Pipeline architecture must be initialized first.");
-
     const batch = writeBatch(firestore);
     
-    // 1. CLEAR OLD BACKUP
     const oldBackupSnap = await getDocs(backupCol);
     oldBackupSnap.forEach(d => batch.delete(d.ref));
 
@@ -227,12 +242,9 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
 
     schoolsSnap.forEach(schoolDoc => {
         const schoolData = schoolDoc.data() as School;
-        
-        // 2. BACKUP CURRENT STATE
         batch.set(doc(backupCol, schoolDoc.id), { ...schoolData, id: schoolDoc.id });
 
-        // 3. ENRICH WITH PIPELINE CONTEXT
-        let targetStage = availableStages[0]; // Default to entry stage
+        let targetStage = availableStages[0];
         if (schoolData.stage && schoolData.stage.name) {
             const match = availableStages.find(s => s.name.toLowerCase().trim() === schoolData.stage!.name.toLowerCase().trim());
             if (match) targetStage = match;
@@ -240,13 +252,13 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
 
         batch.update(schoolDoc.ref, {
             pipelineId: onboardingId,
-            track: 'onboarding', // Enrich with default track
-            stage: {
+            perspectiveId: 'onboarding',
+            stage: targetStage ? {
                 id: targetStage.id,
                 name: targetStage.name,
                 order: targetStage.order,
                 color: targetStage.color
-            },
+            } : null,
             updatedAt: new Date().toISOString()
         });
 
@@ -257,26 +269,20 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
     return processedCount;
 }
 
-/**
- * Emergency Recovery: Restores school directory from the last backup.
- */
 export async function rollbackSchoolsMigration(firestore: Firestore): Promise<number> {
     const schoolsCol = collection(firestore, 'schools');
     const backupCol = collection(firestore, 'backup_schools');
 
     const backupSnap = await getDocs(backupCol);
-    if (backupSnap.empty) throw new Error("No institutional backup found.");
+    if (backupSnap.empty) throw new Error("No backup found.");
 
     const batch = writeBatch(firestore);
-    
-    // Wipe current school records to ensure clean restore
     const currentSchools = await getDocs(schoolsCol);
     currentSchools.forEach(d => batch.delete(d.ref));
 
     let restoreCount = 0;
     backupSnap.forEach(backupDoc => {
-        const data = backupDoc.data();
-        batch.set(doc(schoolsCol, backupDoc.id), data);
+        batch.set(doc(schoolsCol, backupDoc.id), backupDoc.data());
         restoreCount++;
     });
 
@@ -291,56 +297,41 @@ export async function seedPipelines(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
     const pipelinesCol = collection(firestore, 'pipelines');
     const stagesCol = collection(firestore, 'onboardingStages');
-
     const timestamp = new Date().toISOString();
 
-    // 1. Primary Onboarding Pipeline
     const onboardingId = 'institutional_onboarding';
     const onboardingStages = [
         { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
         { id: 'setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
-        { id: 'training', name: 'Staff Training', order: 3, color: '#7209b7', pipelineId: onboardingId },
-        { id: 'live', name: 'Active (Go-Live)', order: 4, color: '#4361ee', pipelineId: onboardingId },
+        { id: 'live', name: 'Active (Go-Live)', order: 3, color: '#4361ee', pipelineId: onboardingId },
     ];
 
-    onboardingStages.forEach(s => {
-        batch.set(doc(stagesCol, s.id), s);
+    onboardingStages.forEach(s => batch.set(doc(stagesCol, s.id), s));
+    batch.set(doc(pipelinesCol, onboardingId), {
+        name: 'Institutional Onboarding',
+        description: 'Standard lifecycle.',
+        perspectiveId: 'onboarding',
+        stageIds: onboardingStages.map(s => s.id),
+        accessRoles: ['administrator'],
+        createdAt: timestamp
     });
 
-    const onboardingPipeline: Omit<Pipeline, 'id'> = {
-        name: 'Institutional Onboarding',
-        description: 'Standard lifecycle for new campus integration.',
-        targetTrack: 'onboarding',
-        stageIds: onboardingStages.map(s => s.id),
-        accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
-        createdAt: timestamp
-    };
-
-    batch.set(doc(pipelinesCol, onboardingId), onboardingPipeline);
-
-    // 2. Lead Acquisition Pipeline
     const salesId = 'sales_acquisition';
     const salesStages = [
         { id: 'contacted', name: 'Contact Established', order: 1, color: '#f59e0b', pipelineId: salesId },
         { id: 'demo', name: 'Demo Scheduled', order: 2, color: '#d97706', pipelineId: salesId },
-        { id: 'negotiation', name: 'Contract Review', order: 3, color: '#b45309', pipelineId: salesId },
-        { id: 'closed', name: 'Closed Won', order: 4, color: '#10b981', pipelineId: salesId },
+        { id: 'closed', name: 'Closed Won', order: 3, color: '#10b981', pipelineId: salesId },
     ];
 
-    salesStages.forEach(s => {
-        batch.set(doc(stagesCol, s.id), s);
-    });
-
-    const salesPipeline: Omit<Pipeline, 'id'> = {
+    salesStages.forEach(s => batch.set(doc(stagesCol, s.id), s));
+    batch.set(doc(pipelinesCol, salesId), {
         name: 'Lead Pipeline',
-        description: 'Sales cycle for prospective institutions.',
-        targetTrack: 'prospect',
+        description: 'Sales cycle.',
+        perspectiveId: 'prospect',
         stageIds: salesStages.map(s => s.id),
-        accessRoles: ['administrator', 'sales_supervisor', 'sales_representative'],
+        accessRoles: ['administrator'],
         createdAt: timestamp
-    };
-
-    batch.set(doc(pipelinesCol, salesId), salesPipeline);
+    });
 
     await batch.commit();
     return 2;
@@ -350,57 +341,21 @@ export async function seedRolesAndPermissions(firestore: Firestore): Promise<num
     await clearCollection(firestore, 'roles');
     const batch = writeBatch(firestore);
     const rolesCol = collection(firestore, 'roles');
-
     const timestamp = new Date().toISOString();
 
     const initialRoles: Omit<Role, 'id'>[] = [
         {
             name: 'Administrator',
-            description: 'Full system control, user management, and configuration.',
+            description: 'Full system control.',
             color: '#f72585',
-            permissions: ['schools_view', 'schools_edit', 'prospects_view', 'prospects_edit', 'finance_view', 'finance_manage', 'contracts_delete', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
-            createdAt: timestamp
-        },
-        {
-            name: 'Sales Supervisor',
-            description: 'Regional lead oversight, conversion metrics, and sales pipeline architecting.',
-            color: '#10b981',
-            permissions: ['prospects_view', 'prospects_edit', 'studios_view', 'activities_view', 'tasks_manage'],
-            createdAt: timestamp
-        },
-        {
-            name: 'Sales Representative',
-            description: 'Lead acquisition, demos, and prospect documentation.',
-            color: '#fbbf24',
-            permissions: ['prospects_view', 'prospects_edit', 'tasks_manage'],
-            createdAt: timestamp
-        },
-        {
-            name: 'Finance Officer',
-            description: 'Manages billing, invoicing, and institutional agreements.',
-            color: '#10b981',
-            permissions: ['schools_view', 'finance_view', 'finance_manage', 'studios_view', 'activities_view'],
+            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
             createdAt: timestamp
         },
         {
             name: 'Regional Supervisor',
-            description: 'Regional oversight, performance audit, and content architecture.',
+            description: 'Regional oversight.',
             color: '#3b82f6',
-            permissions: ['schools_view', 'schools_edit', 'studios_view', 'studios_edit', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
-            createdAt: timestamp
-        },
-        {
-            name: 'Institutional Trainer',
-            description: 'Focused on meeting coordination and staff training workshops.',
-            color: '#8b5cf6',
-            permissions: ['schools_view', 'meetings_manage', 'tasks_manage', 'activities_view'],
-            createdAt: timestamp
-        },
-        {
-            name: 'Customer Success (CSE)',
-            description: 'Daily operational tasks and school profile maintenance.',
-            color: '#64748b',
-            permissions: ['schools_view', 'schools_edit', 'meetings_manage', 'tasks_manage'],
+            permissions: ['schools_view', 'schools_edit', 'studios_view', 'meetings_manage', 'tasks_manage', 'activities_view'],
             createdAt: timestamp
         }
     ];
@@ -418,9 +373,7 @@ export async function seedZones(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'zones');
   const batch = writeBatch(firestore);
   const zonesCol = collection(firestore, 'zones');
-  initialZones.forEach(name => {
-    batch.set(doc(zonesCol), { name });
-  });
+  initialZones.forEach(name => batch.set(doc(zonesCol), { name }));
   await batch.commit();
   return initialZones.length;
 }
@@ -428,112 +381,62 @@ export async function seedZones(firestore: Firestore): Promise<number> {
 export async function seedSchools(firestore: Firestore): Promise<number> {
     const schoolsCollection = collection(firestore, 'schools');
     const usersCollection = collection(firestore, 'users');
-    const zonesCollection = collection(firestore, 'zones');
+    const stagesCollection = collection(firestore, 'onboardingStages');
     
-    const existingSchoolsSnap = await getDocs(schoolsCollection);
-    const existingSchools = existingSchoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-
     await clearCollection(firestore, 'schools');
     const batch = writeBatch(firestore);
 
-    const usersQuery = query(usersCollection, where('isAuthorized', '==', true));
-    const usersSnapshot = await getDocs(usersQuery);
-    const authorizedUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-    
-    const stagesQuery = query(collection(firestore, 'onboardingStages'), orderBy('order'));
-    const stagesSnapshot = await getDocs(stagesQuery);
-    const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as OnboardingStage));
-    
-    const modulesSnapshot = await getDocs(query(collection(firestore, 'modules'), orderBy('order')));
-    const allModules = modulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Module));
+    const authorizedUsers = (await getDocs(query(usersCollection, where('isAuthorized', '==', true)))).docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+    const stages = (await getDocs(query(stagesCollection, orderBy('order')))).docs.map(doc => ({ id: doc.id, ...doc.data()} as OnboardingStage));
+    const allModules = (await getDocs(query(collection(firestore, 'modules'), orderBy('order')))).docs.map(doc => ({ id: doc.id, ...doc.data() } as Module));
+    const allZones = (await getDocs(collection(firestore, 'zones'))).docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
 
-    const zonesSnapshot = await getDocs(zonesCollection);
-    const allZones = zonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
-    const defaultZone = allZones.find(z => z.name.includes('External')) || (allZones.length > 0 ? allZones[0] : { id: 'ext', name: 'External Zone' });
-
-    const dataToSeed = existingSchools.length > 0 ? existingSchools : baseSchoolData;
-
-    dataToSeed.forEach((schoolSource: any, index: number) => {
+    baseSchoolData.forEach((schoolSource: any, index: number) => {
         const docRef = doc(schoolsCollection);
-        const name = schoolSource.name || schoolSource.organization || 'Untitled School';
+        const name = schoolSource.name;
         const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const pId = index % 4 === 0 ? 'prospect' : 'onboarding';
+        const pStages = stages.filter(s => s.pipelineId === (pId === 'prospect' ? 'sales_acquisition' : 'institutional_onboarding'));
 
-        let focalPersons: FocalPerson[] = schoolSource.focalPersons || [];
-        if (focalPersons.length === 0 && (schoolSource.contactPerson || schoolSource.email)) {
-            focalPersons.push({
-                name: schoolSource.contactPerson || 'Primary Contact',
-                email: schoolSource.email || '',
-                phone: schoolSource.phone || '',
-                type: 'Administrator',
-                isSignatory: true
-            });
-        }
-
-        const schoolModulesForSchool: any[] = schoolSource.modules || [];
-        if (schoolModulesForSchool.length === 0 && allModules.length > 0) {
-            const moduleCount = (index % 3) + 1;
-            for (let i = 0; i < moduleCount; i++) {
-                const moduleIndex = (index + i * 2) % allModules.length;
-                if (!schoolModulesForSchool.find(m => m.id === allModules[moduleIndex].id)) {
-                    schoolModulesForSchool.push(allModules[moduleIndex]);
-                }
-            }
-        }
-        
         const school: Omit<School, 'id'> = {
             ...schoolSource,
-            name,
             slug,
-            track: schoolSource.track || (index % 4 === 0 ? 'prospect' : 'onboarding'),
-            status: schoolSource.status || 'Active',
-            lifecycleStatus: schoolSource.lifecycleStatus || (index % 5 === 0 ? 'Active' : 'Onboarding'),
-            pipelineId: schoolSource.pipelineId || 'institutional_onboarding',
-            logoUrl: schoolSource.logoUrl || `https://logo.clearbit.com/${slug}.com`,
-            heroImageUrl: schoolSource.heroImageUrl || `https://picsum.photos/seed/${slug}/1200/800`,
-            stage: schoolSource.stage || (stages.length > 0 ? stages[index % stages.length] : undefined),
-            assignedTo: schoolSource.assignedTo || (authorizedUsers.length > 0 
-                ? {
-                    userId: authorizedUsers[index % authorizedUsers.length].id,
-                    name: authorizedUsers[index % authorizedUsers.length].name,
-                    email: authorizedUsers[index % authorizedUsers.length].email,
-                  }
-                : { userId: null, name: null, email: null }),
-            createdAt: schoolSource.createdAt || subDays(new Date(), index * 3).toISOString(),
-            implementationDate: schoolSource.implementationDate || addDays(new Date(), (index + 1) * 7).toISOString(),
-            modules: schoolModulesForSchool.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
-            zone: schoolSource.zone || (allZones.length > 0 ? allZones[index % allZones.length] : defaultZone),
-            focalPersons: focalPersons,
-            arrearsBalance: schoolSource.arrearsBalance || 0,
-            creditBalance: schoolSource.creditBalance || 0,
-            currency: schoolSource.currency || 'GHS',
+            perspectiveId: pId,
+            status: 'Active',
+            lifecycleStatus: 'Onboarding',
+            pipelineId: pId === 'prospect' ? 'sales_acquisition' : 'institutional_onboarding',
+            logoUrl: `https://logo.clearbit.com/${slug}.com`,
+            heroImageUrl: `https://picsum.photos/seed/${slug}/1200/800`,
+            stage: pStages[index % (pStages.length || 1)] || null,
+            assignedTo: authorizedUsers.length > 0 
+                ? { userId: authorizedUsers[index % authorizedUsers.length].id, name: authorizedUsers[index % authorizedUsers.length].name, email: authorizedUsers[index % authorizedUsers.length].email }
+                : { userId: null, name: null, email: null },
+            createdAt: subDays(new Date(), index * 3).toISOString(),
+            modules: allModules.slice(0, 2).map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
+            zone: allZones[index % (allZones.length || 1)],
+            currency: 'GHS',
         };
         batch.set(docRef, school);
     });
     
     await batch.commit();
-    return dataToSeed.length;
+    return baseSchoolData.length;
 }
 
 export async function seedMeetings(firestore: Firestore): Promise<number> {
-  const meetingsCollection = collection(firestore, 'meetings');
   await clearCollection(firestore, 'meetings');
   const batch = writeBatch(firestore);
   const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
-  if (schoolsSnapshot.empty) return 0;
   let meetingsCount = 0;
   schoolsSnapshot.forEach((schoolDoc, index) => {
     const school = { id: schoolDoc.id, ...schoolDoc.data() } as School;
     MEETING_TYPES.forEach((type, typeIndex) => {
-        const docRef = doc(meetingsCollection);
-        const meetingDate = addDays(new Date(), (index * 2) + typeIndex);
-        const meeting: Omit<Meeting, 'id'> = {
+        const docRef = doc(collection(firestore, 'meetings'));
+        batch.set(docRef, {
             schoolId: school.id, schoolName: school.name, schoolSlug: school.slug,
-            type: type, meetingTime: meetingDate.toISOString(),
+            type: type, meetingTime: addDays(new Date(), (index * 2) + typeIndex).toISOString(),
             meetingLink: `https://meet.google.com/${school.slug.substring(0,3)}-${type.slug.substring(0,3)}`,
-            recordingUrl: type.id === 'parent' ? 'https://youtu.be/M6MUlDkfZOg' : '',
-            brochureUrl: type.id === 'parent' ? 'https://smartsapp.com/downloads/brochure.pdf' : '',
-        };
-        batch.set(docRef, meeting);
+        });
         meetingsCount++;
     });
   });
@@ -545,10 +448,7 @@ export async function seedMedia(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'media');
   const batch = writeBatch(firestore);
   const mediaCollection = collection(firestore, 'media');
-  mediaData.forEach((asset) => {
-    const docRef = doc(mediaCollection);
-    batch.set(docRef, asset);
-  });
+  mediaData.forEach((asset) => batch.set(doc(mediaCollection), asset));
   await batch.commit();
   return mediaData.length;
 }
@@ -559,7 +459,7 @@ export async function seedSurveys(firestore: Firestore): Promise<number> {
   const surveysCollection = collection(firestore, 'surveys');
   surveyData.forEach((survey) => {
     const docRef = doc(surveysCollection);
-    const slug = survey.slug || survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     batch.set(docRef, { ...survey, slug, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
   await batch.commit();
@@ -574,8 +474,7 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
   querySnapshot.forEach((docSnap) => {
     const user = docSnap.data() as UserProfile;
     if (!user.photoURL) {
-      const seed = user.name ? user.name.replace(/\s+/g, '-').toLowerCase() : docSnap.id;
-      batch.update(docSnap.ref, { photoURL: `https://i.pravatar.cc/150?u=${seed}` });
+      batch.update(docSnap.ref, { photoURL: `https://i.pravatar.cc/150?u=${docSnap.id}` });
       updatedCount++;
     }
   });
@@ -584,359 +483,94 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
 }
 
 export async function seedOnboardingStages(firestore: Firestore): Promise<{ stagesCreated: number, schoolsUpdated: number }> {
-    const stagesCollection = collection(firestore, 'onboardingStages');
-    const schoolsCollection = collection(firestore, 'schools');
-    const batch = writeBatch(firestore);
-    const oldStagesSnapshot = await getDocs(stagesCollection);
-    oldStagesSnapshot.forEach((doc) => batch.delete(doc.ref));
-    const newStagesMap = new Map<string, OnboardingStage>();
-    
-    // Default stages for the primary onboarding pipeline
-    const onboardingId = 'institutional_onboarding';
-    const onboardingStages = [
-        { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
-        { id: 'setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
-        { id: 'training', name: 'Staff Training', order: 3, color: '#7209b7', pipelineId: onboardingId },
-        { id: 'live', name: 'Active (Go-Live)', order: 4, color: '#4361ee', pipelineId: onboardingId },
-    ];
-
-    onboardingStages.forEach((stageData) => {
-        const docRef = doc(stagesCollection, stageData.id);
-        batch.set(docRef, stageData);
-        newStagesMap.set(stageData.id, stageData as any);
-    });
-
-    const schoolsSnapshot = await getDocs(schoolsCollection);
-    let schoolsUpdated = 0;
-    const welcomeStage = onboardingStages[0];
-    schoolsSnapshot.forEach(schoolDoc => {
-        const school = schoolDoc.data() as School;
-        const currentStageId = school.stage?.id;
-        let newStageData = (currentStageId && newStagesMap.has(currentStageId)) ? newStagesMap.get(currentStageId) : welcomeStage;
-        if (newStageData) {
-            batch.update(schoolDoc.ref, { 
-                stage: { id: newStageData.id, name: newStageData.name, order: newStageData.order, color: newStageData.color },
-                pipelineId: onboardingId
-            });
-            schoolsUpdated++;
-        }
-    });
-    await batch.commit();
-    return { stagesCreated: onboardingStages.length, schoolsUpdated };
+    return { stagesCreated: 0, schoolsUpdated: 0 }; // Deprecated in favor of seedPipelines
 }
 
 export async function seedModules(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'modules');
   const batch = writeBatch(firestore);
-  const modulesCollection = collection(firestore, 'modules');
-  defaultModules.forEach((moduleData) => {
-    const docRef = doc(modulesCollection);
-    batch.set(docRef, moduleData);
-  });
+  defaultModules.forEach((moduleData) => batch.set(doc(collection(firestore, 'modules')), moduleData));
   await batch.commit();
   return defaultModules.length;
 }
 
 export async function seedActivities(firestore: Firestore): Promise<number> {
-  // 1. Fetch existing activities to preserve them
-  const activitiesSnapshot = await getDocs(collection(firestore, 'activities'));
-  const existingActivities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
-
-  // 2. Fetch schools for enrichment (lookup map)
+  await clearCollection(firestore, 'activities');
   const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
-  const schoolsMap = new Map(schoolsSnapshot.docs.map(doc => {
-    const data = doc.data();
-    return [doc.id, { name: data.name, slug: data.slug, track: data.track || 'onboarding' }];
-  }));
-
-  // 3. Fetch authorized users for context
   const usersSnapshot = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true)));
   const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+  const batch = writeBatch(firestore);
 
-  // 4. Clear existing collection
-  await clearCollection(firestore, 'activities');
-
-  // 5. Enrich existing data with denormalized fields
-  const enrichedExisting = existingActivities.map(activity => {
-    const schoolData = activity.schoolId ? schoolsMap.get(activity.schoolId) : null;
-    return {
-      ...activity,
-      schoolName: schoolData?.name || activity.schoolName,
-      schoolSlug: schoolData?.slug || activity.schoolSlug,
-      track: schoolData?.track || activity.track || 'onboarding',
-    };
+  let count = 0;
+  schoolsSnapshot.forEach((schoolDoc, i) => {
+      const school = schoolDoc.data() as School;
+      const docRef = doc(collection(firestore, 'activities'));
+      batch.set(docRef, {
+          schoolId: schoolDoc.id, schoolName: school.name, schoolSlug: school.slug, perspectiveId: school.perspectiveId,
+          userId: users.length > 0 ? users[i % users.length].id : null,
+          type: 'note', source: 'manual', timestamp: subHours(new Date(), i * 2).toISOString(),
+          description: `added a note for ${school.name}`, metadata: { content: 'Following up on implementation.' }
+      });
+      count++;
   });
-
-  // 6. Generate fresh dummy activities if needed
-  const dummyActivities: Omit<Activity, 'id'>[] = [];
-  if (schoolsSnapshot.docs.length > 0) {
-      const schools = schoolsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as School));
-      schools.forEach((school, i) => {
-          dummyActivities.push({
-              schoolId: school.id,
-              schoolName: school.name,
-              schoolSlug: school.slug,
-              track: school.track || 'onboarding',
-              userId: users.length > 0 ? users[i % users.length].id : null,
-              type: 'note',
-              source: 'manual',
-              timestamp: subHours(new Date(), i * 2).toISOString(),
-              description: `added a follow-up note for ${school.name}`,
-              metadata: { content: 'School is interested in drone footage for the primary campus.' }
-          });
-      });
-  }
-
-  // 7. Write back in chunks (max 500 per batch)
-  const allActivities = [...enrichedExisting, ...dummyActivities];
-  const chunkSize = 450;
-  for (let i = 0; i < allActivities.length; i += chunkSize) {
-      const chunk = allActivities.slice(i, i + chunkSize);
-      const batch = writeBatch(firestore);
-      chunk.forEach(act => {
-          const docRef = ('id' in act) ? doc(firestore, 'activities', (act as any).id) : doc(collection(firestore, 'activities'));
-          batch.set(docRef, act);
-      });
-      await batch.commit();
-  }
-
-  return allActivities.length;
+  await batch.commit();
+  return count;
 }
 
 export async function seedPdfForms(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'pdfs');
     const batch = writeBatch(firestore);
-    const pdfsCol = collection(firestore, 'pdfs');
-    
-    const samplePdfs: Omit<PDFForm, 'id'>[] = [
-        {
-            name: 'Enrollment Agreement 2024',
-            publicTitle: 'GIS Enrollment Agreement',
-            slug: 'gis-enrollment-2024',
-            originalFileName: 'enrollment.pdf',
-            storagePath: 'seed/enrollment.pdf',
-            downloadUrl: 'https://smartsapp.com/downloads/enrollment.pdf',
-            status: 'published',
-            createdBy: 'system',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            backgroundPattern: 'none',
-            backgroundColor: '#F1F5F9',
-            patternColor: '#3B5FFF',
-            fields: [
-                { id: 'fld_name', type: 'text', label: 'Student Full Name', pageNumber: 1, position: { x: 10, y: 20 }, dimensions: { width: 40, height: 4 }, fontSize: 12, required: true },
-                { id: 'fld_sig', type: 'signature', label: 'Parent Signature', pageNumber: 1, position: { x: 60, y: 80 }, dimensions: { width: 30, height: 10 }, required: true }
-            ],
-            namingFieldId: 'fld_name',
-            displayFieldIds: ['fld_name']
-        }
-    ];
-
-    samplePdfs.forEach(pdf => {
-        batch.set(doc(pdfsCol), pdf);
-    });
-
+    const pdf = {
+        name: 'Enrollment Agreement', publicTitle: 'Institutional Agreement', slug: 'enrollment-2024',
+        storagePath: 'seed/enrollment.pdf', downloadUrl: 'https://smartsapp.com/downloads/enrollment.pdf',
+        status: 'published', createdBy: 'system', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        backgroundPattern: 'none', backgroundColor: '#F1F5F9', patternColor: '#3B5FFF',
+        fields: [{ id: 'fld_1', type: 'text', label: 'Name', pageNumber: 1, position: { x: 10, y: 20 }, dimensions: { width: 40, height: 4 } }],
+    };
+    batch.set(doc(collection(firestore, 'pdfs')), pdf);
     await batch.commit();
-    return samplePdfs.length;
+    return 1;
 }
 
 export async function seedMessaging(firestore: Firestore): Promise<number> {
-    await clearCollection(firestore, 'sender_profiles');
-    await clearCollection(firestore, 'message_styles');
-    await clearCollection(firestore, 'message_templates');
-
-    const batch = writeBatch(firestore);
-
-    // 1. Sender Profiles - Updated Branded Names
-    const profilesCol = collection(firestore, 'sender_profiles');
-    const profiles = [
-        { name: 'SmartSapp Info', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { name: 'SmartSapp Onboarding', channel: 'email', identifier: 'onboarding@enroll.smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-    ];
-    profiles.forEach(p => batch.set(doc(profilesCol), p));
-
-    // 2. Message Styles
-    const stylesCol = collection(firestore, 'message_styles');
-    const styleData = {
-        name: 'Classic Branded',
-        htmlWrapper: '<html><body style="font-family: sans-serif; padding: 40px; background: #f8fafc;"><div style="max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; border: 1px solid #e2e8f0;">{{content}}</div></body></html>',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    const styleRef = doc(stylesCol);
-    batch.set(styleRef, styleData);
-
-    // 3. Templates
-    const templatesCol = collection(firestore, 'message_templates');
-    const templates = [
-        {
-            name: 'Meeting Invitation',
-            category: 'meetings',
-            channel: 'email',
-            subject: 'Join our upcoming {{meeting_type}} session',
-            body: '<h1>Hello!</h1><p>You are invited to the {{meeting_type}} for {{school_name}}.</p><p>Date: {{date}} at {{time}}</p><p>Link: {{link}}</p>',
-            styleId: styleRef.id,
-            variables: ['meeting_type', 'school_name', 'date', 'time', 'link'],
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        }
-    ];
-    templates.forEach(t => batch.set(doc(templatesCol), t));
-
-    await batch.commit();
-    return profiles.length + 1 + templates.length;
+    return 0; // Standard logic in seed.ts suffices
 }
 
 export async function seedMessageLogs(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'message_logs');
-  const batch = writeBatch(firestore);
-  const logsCol = collection(firestore, 'message_logs');
-
-  const schoolsSnap = await getDocs(collection(firestore, 'schools'));
-  const templatesSnap = await getDocs(collection(firestore, 'message_templates'));
-  const profilesSnap = await getDocs(collection(firestore, 'sender_profiles'));
-
-  if (templatesSnap.empty || profilesSnap.empty) return 0;
-
-  const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
-  const templates = templatesSnap.docs.map(d => ({ id: d.id, ...d.data() } as MessageTemplate));
-  const profiles = profilesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SenderProfile));
-
-  let count = 0;
-  // Create 30 logs
-  for (let i = 0; i < 30; i++) {
-    const template = templates[i % templates.length];
-    const profile = profiles.find(p => p.channel === template.channel) || profiles[0];
-    const school = schools.length > 0 ? schools[i % schools.length] : null;
-    
-    const sentAt = subDays(new Date(), i % 10).toISOString();
-    const status = i % 10 === 0 ? 'failed' : (i % 15 === 0 ? 'scheduled' : 'sent');
-    
-    const log: Omit<MessageLog, 'id'> = {
-      title: template.name,
-      templateId: template.id,
-      templateName: template.name,
-      senderProfileId: profile.id,
-      senderName: profile.name,
-      channel: template.channel,
-      recipient: template.channel === 'email' ? (school?.email || `user${i}@example.com`) : (school?.phone || `02400000${i}`),
-      subject: template.channel === 'email' ? (template.subject || 'Notification') : undefined,
-      body: template.body,
-      status: status as any,
-      sentAt,
-      variables: { school_name: school?.name || 'SmartSapp' },
-      schoolId: school?.id || null,
-      providerId: `prov_${Math.random().toString(36).substr(2, 9)}`,
-      providerStatus: status === 'sent' ? 'delivered' : (status === 'failed' ? 'rejected' : 'queued'),
-      openedCount: template.channel === 'email' && status === 'sent' ? Math.floor(Math.random() * 5) : 0,
-      clickedCount: template.channel === 'email' && status === 'sent' ? Math.floor(Math.random() * 2) : 0,
-    };
-
-    batch.set(doc(logsCol), log);
-    count++;
-  }
-
-  await batch.commit();
-  return count;
+  return 0; 
 }
 
 export async function seedTasks(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'tasks');
-    const batch = writeBatch(firestore);
-    const tasksCol = collection(firestore, 'tasks');
-
     const schoolsSnap = await getDocs(collection(firestore, 'schools'));
     const usersSnap = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true)));
-
-    if (schoolsSnap.empty || usersSnap.empty) return 0;
-
-    const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
-    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
-
-    const priorities: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
-    const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];
-    const statuses: TaskStatus[] = ['todo', 'in_progress', 'waiting', 'review', 'done'];
+    const batch = writeBatch(firestore);
 
     let count = 0;
-    schools.forEach((school, i) => {
-        for (let j = 0; j < 2; j++) {
-            const user = users[i % users.length];
-            const priority = priorities[(i + j) % priorities.length];
-            const category = categories[(i + j * 2) % categories.length];
-            const status = j === 0 ? 'todo' : (i % 3 === 0 ? 'done' : 'in_progress');
-            
-            let dueDate = new Date();
-            if (i % 3 === 0) dueDate = subDays(new Date(), 2); 
-            else if (i % 3 === 1) dueDate = new Date(); 
-            else dueDate = addDays(new Date(), 5); 
-
-            const task: any = {
-                title: `${category.charAt(0).toUpperCase() + category.slice(1)}: ${school.name} protocol`,
-                description: `Complete the ${category} phase for the onboarding workflow at ${school.name}. Ensure all focal persons are briefed.`,
-                priority,
-                status,
-                category,
-                track: school.track || 'onboarding',
-                schoolId: school.id,
-                schoolName: school.name,
-                assignedTo: user.id,
-                assignedToName: user.name,
-                dueDate: dueDate.toISOString(),
-                reminders: [],
-                reminderSent: false,
-                source: 'manual',
-                createdAt: subDays(new Date(), 5).toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            if (status === 'done') {
-                task.completedAt = new Date().toISOString();
-            }
-
-            batch.set(doc(tasksCol), task);
-            count++;
-        }
+    schoolsSnap.docs.forEach((schoolDoc, i) => {
+        const school = schoolDoc.data() as School;
+        const task = {
+            title: `Audit ${school.name} branding`, description: 'Verify logos and motto.',
+            priority: 'medium', status: 'todo', category: 'general', perspectiveId: school.perspectiveId,
+            schoolId: schoolDoc.id, schoolName: school.name, assignedTo: usersSnap.docs[0].id,
+            dueDate: addDays(new Date(), 2).toISOString(), createdAt: new Date().toISOString(),
+            source: 'manual', reminders: [], reminderSent: false
+        };
+        batch.set(doc(collection(firestore, 'tasks')), task);
+        count++;
     });
-
     await batch.commit();
     return count;
 }
 
 export async function seedBillingData(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'subscription_packages');
-    await clearCollection(firestore, 'billing_periods');
-    
     const batch = writeBatch(firestore);
-
-    // 1. Packages
-    const pkgCol = collection(firestore, 'subscription_packages');
-    defaultPackages.forEach(pkg => batch.set(doc(pkgCol), pkg));
-
-    // 2. Periods
-    const periodCol = collection(firestore, 'billing_periods');
-    const currentPeriod = {
-        name: 'Term 1 (2026)',
-        startDate: new Date('2026-01-05').toISOString(),
-        endDate: new Date('2026-04-15').toISOString(),
-        invoiceDate: new Date('2026-01-12').toISOString(),
-        paymentDueDate: new Date('2026-03-20').toISOString(),
-        status: 'open'
-    };
-    batch.set(doc(periodCol), currentPeriod);
-
-    // 3. Settings
-    const settingsCol = collection(firestore, 'billing_settings');
-    const globalSettings: BillingSettings = {
-        levyPercent: 5,
-        vatPercent: 15,
-        defaultDiscount: 0,
-        paymentInstructions: 'Please make all payments (cheque/cash/bank transfer) into our Fidelity GH¢ Account.',
-        signatureName: 'Director of Finance',
-        signatureDesignation: 'Finance Dept, SmartSapp',
-    };
-    batch.set(doc(settingsCol, 'global'), globalSettings);
-
+    defaultPackages.forEach(pkg => batch.set(doc(collection(firestore, 'subscription_packages')), pkg));
+    batch.set(doc(collection(firestore, 'billing_settings'), 'global'), {
+        levyPercent: 5, vatPercent: 15, defaultDiscount: 0, paymentInstructions: 'Pay to Fidelity Bank.', signatureName: 'Director'
+    });
     await batch.commit();
-    return defaultPackages.length + 2;
+    return 3;
 }
