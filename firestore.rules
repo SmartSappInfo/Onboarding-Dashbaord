@@ -20,25 +20,24 @@ service cloud.firestore {
     }
 
     function hasPermission(perm) {
-      return isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        getUserData().permissions.hasAny([perm]) || 
-        getUserData().permissions.hasAny(['system_admin'])
-      );
+      if (!isAuthorized()) return false;
+      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      let data = getUserData();
+      return data.permissions.hasAny([perm]) || data.permissions.hasAny(['system_admin']);
     }
 
     function isAdmin() {
-      return isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().permissions.hasAny(['system_admin']))
-      );
+      if (!isAuthorized()) return false;
+      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      return getUserData().permissions.hasAny(['system_admin']);
     }
 
     // --- Workspace Access Logic ---
     function canAccessWorkspace(workspaceId) {
-      return isAdmin() || 
-             (workspaceId == 'onboarding' && hasPermission('schools_view')) ||
-             (workspaceId == 'prospect' && hasPermission('prospects_view'));
+      if (isAdmin()) return true;
+      if (workspaceId == 'onboarding') return hasPermission('schools_view');
+      if (workspaceId == 'prospect') return hasPermission('prospects_view');
+      return false;
     }
 
     match /{document=**} {
