@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -299,62 +298,65 @@ export default function InvoicesClient() {
                                             <Receipt className="h-12 w-12" />
                                             <p className="text-xs font-black uppercase tracking-widest">Registry Clear</p>
                                         </div>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </div>
+            </div>
 
             {/* Creation Dialog */}
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
                 <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                <Plus className="h-6 w-6" />
+                    <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
+                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                    <Plus className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight text-left">Generate Bill</DialogTitle>
+                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-left">Initialize a new draft for review.</DialogDescription>
+                                </div>
                             </div>
-                            <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight text-left">Generate Bill</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-left">Initialize a new draft for review.</DialogDescription>
+                        </DialogHeader>
+                        <div className="p-8 space-y-8 text-left">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">1. Target Institution</Label>
+                                <Select onValueChange={setSelectedSchoolId} value={selectedSchoolId || ''}>
+                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                        <SelectValue placeholder="Select school..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">2. Billing Period</Label>
+                                <Select onValueChange={setSelectedPeriodId} value={selectedPeriodId || ''}>
+                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                        <SelectValue placeholder="Select cycle..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        {periods?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
-                    </DialogHeader>
-                    <div className="p-8 space-y-8 text-left">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">1. Target Institution</Label>
-                            <Select onValueChange={setSelectedSchoolId} value={selectedSchoolId || ''}>
-                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                    <SelectValue placeholder="Select school..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">2. Billing Period</Label>
-                            <Select onValueChange={setSelectedPeriodId} value={selectedPeriodId || ''}>
-                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                    <SelectValue placeholder="Select cycle..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {periods?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center">
-                        <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold rounded-xl h-12 px-8">Discard</Button>
-                        <Button 
-                            onClick={handleGenerate} 
-                            disabled={isGenerating || !selectedSchoolId || !selectedPeriodId}
-                            className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-sm"
-                        >
-                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                            Execute Logic
-                        </Button>
-                    </DialogFooter>
+                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center">
+                            <Button type="button" variant="ghost" onClick={() => setIsAdding(false)} className="font-bold rounded-xl h-12 px-8">Discard</Button>
+                            <Button 
+                                onClick={handleGenerate} 
+                                disabled={isGenerating || !selectedSchoolId || !selectedPeriodId}
+                                className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-sm"
+                            >
+                                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                Execute Logic
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>
