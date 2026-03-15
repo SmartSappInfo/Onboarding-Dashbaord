@@ -12,31 +12,39 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         getUserData().isAuthorized == true)
-      );
+      if (!isSignedIn()) return false;
+      // Hardcoded bypass for the system admin email to ensure initial access
+      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) && get(userPath).data.isAuthorized == true;
+    }
+
+    function isAdmin() {
+      if (!isSignedIn()) return false;
+      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) && get(userPath).data.permissions.hasAny(['system_admin']);
     }
 
     function hasPermission(perm) {
       if (!isAuthorized()) return false;
       if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      
       let data = getUserData();
       return data.permissions.hasAny([perm]) || data.permissions.hasAny(['system_admin']);
     }
 
-    function isAdmin() {
-      if (!isAuthorized()) return false;
-      if (request.auth.token.email == 'admin@smartsapp.com') return true;
-      return getUserData().permissions.hasAny(['system_admin']);
-    }
-
     // --- Workspace Access Logic ---
     function canAccessWorkspace(workspaceId) {
-      if (isAdmin()) return true;
-      if (workspaceId == 'onboarding') return hasPermission('schools_view');
-      if (workspaceId == 'prospect') return hasPermission('prospects_view');
+      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      if (!isAuthorized()) return false;
+      
+      let perms = getUserData().permissions;
+      if (perms.hasAny(['system_admin'])) return true;
+      if (workspaceId == 'onboarding') return perms.hasAny(['schools_view']);
+      if (workspaceId == 'prospect') return perms.hasAny(['prospects_view']);
       return false;
     }
 
@@ -107,6 +115,7 @@ service cloud.firestore {
 
     match /tasks/{taskId} {
       allow read, write: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isAdmin() || 
         request.auth.uid == resource.data.assignedTo || 
         canAccessWorkspace(resource.data.workspaceId)
@@ -169,7 +178,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && canAccessWorkspace(resource.data.workspaceId);
+      allow read, list: if isAuthorized() && (request.auth.token.email == 'admin@smartsapp.com' || canAccessWorkspace(resource.data.workspaceId));
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
