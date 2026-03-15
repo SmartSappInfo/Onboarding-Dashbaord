@@ -1,9 +1,36 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatusState, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline, InstitutionalTrack, Workspace, WorkspaceStatus } from '@/lib/types';
+import type { 
+    School, 
+    Meeting, 
+    MediaAsset, 
+    Survey, 
+    UserProfile, 
+    OnboardingStage, 
+    Module, 
+    Activity, 
+    PDFForm, 
+    SenderProfile, 
+    MessageStyle, 
+    MessageTemplate, 
+    MessageLog, 
+    Zone, 
+    FocalPerson, 
+    Task, 
+    TaskPriority, 
+    TaskCategory, 
+    TaskStatus, 
+    SubscriptionPackage, 
+    BillingPeriod, 
+    BillingSettings, 
+    Role, 
+    AppPermissionId, 
+    Pipeline, 
+    Workspace, 
+    WorkspaceStatus 
+} from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, subDays, subHours } from 'date-fns';
@@ -19,24 +46,6 @@ const initialZones = [
   'North Legon/Adenta/Madina/Dodowa Zone',
   'Pokuase Zone',
   'External Zone (Other Regions)',
-];
-
-const mediaData: Omit<MediaAsset, 'id'>[] = [
-  {
-    name: 'smartsapp-logo.png',
-    url: 'https://smartsapp.com/wp-content/uploads/2023/08/logo-blue.png',
-    originalName: 'smartsapp-logo.png',
-    fullPath: 'seed/smartsapp-logo.png',
-    type: 'image', mimeType: 'image/png', size: 15000, width: 256, height: 256,
-    uploadedBy: 'system-seed', createdAt: new Date('2024-01-01T10:00:00Z').toISOString(),
-  },
-];
-
-const baseSchoolData: any[] = [
-  { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', focalPersons: [{ name: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163', type: 'Principal', isSignatory: true }] },
-  { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', focalPersons: [{ name: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100', type: 'Administrator', isSignatory: true }] },
-  { name: 'Ridge Church School', initials: 'RCS', slogan: 'Fear of the Lord is the beginning of wisdom.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: true, referee: 'Parent Referral', focalPersons: [{ name: 'Mrs. Afua Dako', email: 'admin@ridgechurchschool.edu.gh', phone: '+233 30 222 2222', type: 'Administrator', isSignatory: true }] },
-  { name: 'Morning Star School', initials: 'MSS', slogan: 'Quality Education for a Brighter Future.', location: 'Accra, Ghana', nominalRoll: 950, includeDroneFootage: false, referee: 'Google Search', focalPersons: [{ name: 'Mr. Kofi Boateng', email: 'info@morningstar.edu.gh', phone: '+233 30 233 3333', type: 'Principal', isSignatory: true }] },
 ];
 
 const DEFAULT_ONBOARDING_STATUSES: WorkspaceStatus[] = [
@@ -89,7 +98,7 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 
 /**
  * MIGRATION PROTOCOL: School Status Enrichment
- * Maps legacy lifecycleStatus to schoolStatus and performs the "Support -> Active" logic.
+ * Sets schools in "Support" stage to "Active", the rest to "Onboarding".
  */
 export async function enrichSchoolStatuses(firestore: Firestore): Promise<number> {
     const schoolsSnap = await getDocs(collection(firestore, 'schools'));
@@ -125,7 +134,6 @@ export async function enrichSchoolStatuses(firestore: Firestore): Promise<number
 
 /**
  * MIGRATION PROTOCOL: Status Rollback
- * Restores the schoolStatus state from the last backup.
  */
 export async function rollbackSchoolStatuses(firestore: Firestore): Promise<number> {
     const backupSnap = await getDocs(collection(firestore, 'backup_schools_status'));
@@ -193,39 +201,69 @@ export async function seedPipelines(firestore: Firestore): Promise<number> {
 export async function seedSchools(firestore: Firestore): Promise<number> {
     const schoolsCollection = collection(firestore, 'schools');
     const batch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
 
-    baseSchoolData.forEach((schoolSource: any, index: number) => {
+    const baseSchoolData = [
+        { name: 'Ghana International School', initials: 'GIS', nominalRoll: 1500, location: 'Accra' },
+        { name: 'Lincoln Community School', initials: 'LCS', nominalRoll: 800, location: 'Accra' },
+        { name: 'Ridge Church School', initials: 'RCS', nominalRoll: 1200, location: 'Accra' },
+        { name: 'Morning Star School', initials: 'MSS', nominalRoll: 950, location: 'Accra' },
+    ];
+
+    baseSchoolData.forEach((data, index) => {
         const docRef = doc(schoolsCollection);
-        const name = schoolSource.name;
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         const wId = index % 2 === 0 ? 'onboarding' : 'prospect';
         const pId = wId === 'prospect' ? 'sales_acquisition' : 'institutional_onboarding';
-        
         const stage = wId === 'prospect' 
             ? { id: 'stage_prospect_discovery', name: 'Discovery', order: 1, color: '#4cc9f0' }
             : { id: 'stage_onboarding_welcome', name: 'Welcome', order: 1, color: '#f72585' };
 
-        const school = {
-            ...schoolSource,
-            slug,
+        batch.set(docRef, {
+            ...data,
+            slug: data.name.toLowerCase().replace(/\s+/g, '-'),
             workspaceId: wId,
             track: wId,
             status: 'Active',
             schoolStatus: wId === 'prospect' ? 'Lead' : 'Onboarding',
             pipelineId: pId,
             stage,
-            createdAt: subDays(new Date(), index * 3).toISOString(),
             currency: 'GHS',
-        };
-        batch.set(docRef, school);
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            focalPersons: [{ name: 'Admin', email: 'admin@school.edu', phone: '0000000000', type: 'Principal', isSignatory: true }]
+        });
     });
     
     await batch.commit();
     return baseSchoolData.length;
 }
 
-// ... rest of seeding functions remain unchanged ...
+export async function seedModules(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    const col = collection(firestore, 'modules');
+    const modules = [
+        { name: 'Student Billing', abbreviation: 'BIL', color: '#3B5FFF', order: 0 },
+        { name: 'Child Security', abbreviation: 'SEC', color: '#ef4444', order: 1 },
+        { name: 'Attendance', abbreviation: 'ATT', color: '#10b981', order: 2 },
+        { name: 'Academic Reports', abbreviation: 'REP', color: '#8b5cf6', order: 3 },
+    ];
+    modules.forEach(m => batch.set(doc(col), m));
+    await batch.commit();
+    return modules.length;
+}
+
+export async function seedZones(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    const col = collection(firestore, 'zones');
+    initialZones.forEach(z => batch.set(doc(col), { name: z }));
+    await batch.commit();
+    return initialZones.length;
+}
+
+// --- STUBS FOR REMAINING EXPORTS ---
+
 export async function seedMedia(firestore: Firestore): Promise<number> { return 0; }
+export async function seedMeetings(firestore: Firestore): Promise<number> { return 0; }
 export async function seedSurveys(firestore: Firestore): Promise<number> { return 0; }
 export async function seedUserAvatars(firestore: Firestore): Promise<number> { return 0; }
 export async function seedOnboardingStages(firestore: Firestore) { return { stagesCreated: 0, schoolsUpdated: 0 }; }
@@ -235,9 +273,7 @@ export async function rollbackSchoolsMigration(firestore: Firestore) { return 0;
 export async function seedActivities(firestore: Firestore) { return 0; }
 export async function seedPdfForms(firestore: Firestore) { return 0; }
 export async function seedMessaging(firestore: Firestore) { return 0; }
-export async function seedZones(firestore: Firestore) { return 0; }
 export async function seedMessageLogs(firestore: Firestore) { return 0; }
 export async function seedTasks(firestore: Firestore) { return 0; }
 export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
-export async function seedMeetings(firestore: Firestore) { return 0; }
