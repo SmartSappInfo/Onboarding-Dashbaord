@@ -7,14 +7,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isSystemAdmin() {
+      return isSignedIn() && request.auth.token.email == 'admin@smartsapp.com';
+    }
+
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAuthorized() {
       if (!isSignedIn()) return false;
-      // Hardcoded bypass for the system admin email to ensure initial access
-      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      if (isSystemAdmin()) return true;
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(userPath) && get(userPath).data.isAuthorized == true;
@@ -22,15 +25,15 @@ service cloud.firestore {
 
     function isAdmin() {
       if (!isSignedIn()) return false;
-      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      if (isSystemAdmin()) return true;
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(userPath) && get(userPath).data.permissions.hasAny(['system_admin']);
     }
 
     function hasPermission(perm) {
+      if (isSystemAdmin()) return true;
       if (!isAuthorized()) return false;
-      if (request.auth.token.email == 'admin@smartsapp.com') return true;
       
       let data = getUserData();
       return data.permissions.hasAny([perm]) || data.permissions.hasAny(['system_admin']);
@@ -38,7 +41,7 @@ service cloud.firestore {
 
     // --- Workspace Access Logic ---
     function canAccessWorkspace(workspaceId) {
-      if (request.auth.token.email == 'admin@smartsapp.com') return true;
+      if (isSystemAdmin()) return true;
       if (!isAuthorized()) return false;
       
       let perms = getUserData().permissions;
@@ -115,7 +118,7 @@ service cloud.firestore {
 
     match /tasks/{taskId} {
       allow read, write: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
         isAdmin() || 
         request.auth.uid == resource.data.assignedTo || 
         canAccessWorkspace(resource.data.workspaceId)
@@ -178,7 +181,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && (request.auth.token.email == 'admin@smartsapp.com' || canAccessWorkspace(resource.data.workspaceId));
+      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId));
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
