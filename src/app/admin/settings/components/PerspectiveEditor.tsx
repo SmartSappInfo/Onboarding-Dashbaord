@@ -34,6 +34,7 @@ import { savePerspectiveAction, deletePerspectiveAction, archivePerspectiveActio
 import { cn } from '@/lib/utils';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
 
 /**
  * @fileOverview Perspective Architect Console.
@@ -119,8 +120,8 @@ export default function PerspectiveEditor() {
         <div className="space-y-6">
             <div className="flex items-center justify-between px-1">
                 <div className="text-left">
-                    <h3 className="text-xl font-black uppercase tracking-tight">Perspective Architect</h3>
-                    <p className="text-sm text-muted-foreground font-medium">Define managed institutional tracks and workspaces.</p>
+                    <h3 className="text-xl font-black uppercase tracking-tight text-foreground">Perspective Architect</h3>
+                    <p className="text-sm text-muted-foreground font-medium">Define custom identities and tracks.</p>
                 </div>
                 <Button onClick={() => handleOpenEdit()} className="rounded-xl font-black h-11 px-6 shadow-lg gap-2">
                     <Plus className="h-4 w-4" /> New Perspective
@@ -129,7 +130,7 @@ export default function PerspectiveEditor() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
-                    Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-48 bg-muted animate-pulse rounded-[2rem]" />)
+                    Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : perspectives?.map(p => (
                     <Card key={p.id} className={cn(
                         "rounded-[2.5rem] border-none ring-1 transition-all duration-500 overflow-hidden bg-white text-left group",
@@ -190,7 +191,7 @@ export default function PerspectiveEditor() {
                                     value={name} 
                                     onChange={e => setName(e.target.value)} 
                                     placeholder="e.g. Higher Education Onboarding" 
-                                    className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-4" 
+                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
                                     required 
                                 />
                             </div>
@@ -232,8 +233,8 @@ export default function PerspectiveEditor() {
                                 <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
                                     <p className="text-xs font-black text-blue-900 uppercase">Seamless Linking</p>
-                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-tighter">
-                                        Perspectives are linked to schools via unique identifiers. Renaming a perspective will instantly update its display name across all linked records.
+                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-tighter text-left">
+                                        Perspectives are linked via persistent IDs. Renaming a perspective will instantly update its display name across all linked records.
                                     </p>
                                 </div>
                             </div>
