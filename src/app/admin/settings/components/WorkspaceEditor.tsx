@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -28,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
@@ -106,7 +106,7 @@ export default function WorkspaceEditor() {
         );
 
         if (result.success) {
-            toast({ title: activeWorkspace ? 'Workspace Updated' : 'Workspace Created' });
+            toast({ title: 'Workspace Updated', description: 'Institutional record updated successfully.' });
             setIsEditing(false);
         } else {
             toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
@@ -121,7 +121,11 @@ export default function WorkspaceEditor() {
         if (result.success) {
             toast({ title: 'Workspace Purged' });
         } else {
-            toast({ variant: 'destructive', title: 'Constraint Alert', description: result.error });
+            toast({ 
+                variant: 'destructive', 
+                title: 'Constraint Alert', 
+                description: result.error 
+            });
         }
     };
 
