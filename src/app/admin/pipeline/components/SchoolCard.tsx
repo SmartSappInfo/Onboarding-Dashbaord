@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -38,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import Link from 'next/link';
 import ChangeStatusModal from '../../schools/components/ChangeStatusModal';
 import TransferPipelineModal from '../../schools/components/TransferPipelineModal';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface SchoolCardProps {
     school: School;
@@ -46,12 +48,12 @@ interface SchoolCardProps {
 
 /**
  * @fileOverview High-fidelity Institutional Card for Kanban boards.
- * Optimized for data density and professional SaaS aesthetic.
- * Fixed horizontal overflow issues with strict truncation and min-w-0.
+ * Updated to use dynamic School Status labels and independent workspace lifecycles.
  */
 export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [transferModalOpen, setTransferModalOpen] = React.useState(false);
+  const { activeWorkspace } = useWorkspace();
 
   const {
     attributes,
@@ -71,6 +73,11 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
   const signatory = school.focalPersons?.find(p => p.isSignatory) || school.focalPersons?.[0];
   const schoolTitle = toTitleCase(school.name);
 
+  // Resolve status color from active workspace config
+  const statusMeta = React.useMemo(() => {
+      return activeWorkspace?.statuses?.find(s => s.value === school.schoolStatus);
+  }, [activeWorkspace, school.schoolStatus]);
+
   return (
     <TooltipProvider>
         <Card
@@ -79,7 +86,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
         className={cn(
             "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
             isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
-            school.lifecycleStatus === 'Churned' && "grayscale opacity-60"
+            school.schoolStatus === 'Churned' && "grayscale opacity-60"
         )}
         >
         <CardHeader 
@@ -98,11 +105,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                             {school.initials || school.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
-                    <div className={cn(
-                        "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm",
-                        school.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
-                        school.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-400"
-                    )} />
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: statusMeta?.color || '#cbd5e1' }} />
                 </div>
                 <div className="min-w-0 flex-1 text-left">
                     <Tooltip>
@@ -140,7 +143,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                     <DropdownMenuItem className="rounded-lg p-2 gap-2.5" onClick={() => setStatusModalOpen(true)}>
                         <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                        <span className="font-bold text-xs uppercase">Lifecycle</span>
+                        <span className="font-bold text-xs uppercase">Status</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem className="rounded-lg p-2 gap-2.5" onClick={() => setTransferModalOpen(true)}>
@@ -160,7 +163,6 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
         </CardHeader>
 
         <CardContent className="p-4 pt-3 space-y-4">
-            {/* Metrics Row */}
             <div className="flex items-center justify-between gap-2 overflow-hidden">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="flex flex-col text-left shrink-0">
@@ -184,13 +186,10 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                 <Badge 
                     variant="outline" 
-                    className={cn(
-                        "h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0",
-                        school.lifecycleStatus === 'Active' ? "bg-emerald-50 text-emerald-600" :
-                        school.lifecycleStatus === 'Onboarding' ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-500"
-                    )}
+                    className="h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0"
+                    style={{ backgroundColor: `${statusMeta?.color || '#cbd5e1'}15`, color: statusMeta?.color || '#64748b' }}
                 >
-                    {school.lifecycleStatus}
+                    {school.schoolStatus}
                 </Badge>
             </div>
 

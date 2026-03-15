@@ -26,7 +26,9 @@ import {
     seedOnboardingPipelineFromCurrentData, 
     enrichAndRestoreSchools, 
     rollbackSchoolsMigration, 
-    seedWorkspaces 
+    seedWorkspaces,
+    enrichSchoolStatuses,
+    rollbackSchoolStatuses
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -56,7 +58,7 @@ import RoleEditor from './components/RoleEditor';
 import WorkspaceEditor from './components/WorkspaceEditor';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -73,7 +75,8 @@ export default function SettingsClient() {
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
-    harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle'
+    harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle',
+    enrich_status: 'idle', rollback_status: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -94,6 +97,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback') {
           const count = await rollbackSchoolsMigration(firestore);
           toast({ title: 'Rollback Successful', description: `Restored ${count} schools from backup.` });
+      } else if (seeder === 'enrich_status') {
+          const count = await enrichSchoolStatuses(firestore);
+          toast({ title: 'Status Enrich Complete', description: `Updated ${count} schools based on stage logic.` });
+      } else if (seeder === 'rollback_status') {
+          const count = await rollbackSchoolStatuses(firestore);
+          toast({ title: 'Status Rollback Success', description: `Restored status for ${count} schools.` });
       } else {
         let count = 0;
         let name = '';
@@ -148,65 +157,47 @@ export default function SettingsClient() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Zap className="h-4 w-4 text-primary" />
-                        <h4 className="text-[10px] font-black uppercase tracking-widest">1. Architect</h4>
+            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Status Specific Migration */}
+                <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-emerald-600 border border-emerald-100"><ShieldCheck className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Status Harmonization</h4>
+                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Surgical update of "School Status". Maps Support stage to "Active" and others to "Onboarding".</p>
                     </div>
-                    <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Extracts unique stages from your current school records and builds the master onboarding pipeline.</p>
                     <div className="flex gap-2">
                         <Button 
-                            variant="outline" 
-                            onClick={() => handleSeed('harvest')} 
-                            disabled={seedingStatus.harvest === 'seeding'} 
-                            className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary"
+                            onClick={() => handleSeed('enrich_status')} 
+                            disabled={seedingStatus.enrich_status === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700"
                         >
-                            {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4" />}
-                            Pipeline
+                            {seedingStatus.enrich_status === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Enrich Status
                         </Button>
                         <Button 
                             variant="outline" 
-                            onClick={() => handleSeed('workspaces')} 
-                            disabled={seedingStatus.workspaces === 'seeding'} 
-                            className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary"
+                            onClick={() => handleSeed('rollback_status')} 
+                            disabled={seedingStatus.rollback_status === 'seeding'} 
+                            className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11"
                         >
-                            {seedingStatus.workspaces === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layout className="mr-2 h-4 w-4" />}
-                            Workspaces
+                            <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                        <h4 className="text-[10px] font-black uppercase tracking-widest">2. Harmonize</h4>
+                <div className="p-6 rounded-3xl bg-primary/[0.03] border-2 border-primary/10 flex flex-col justify-between gap-6 transition-all hover:bg-primary/[0.05]">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-primary text-white rounded-xl w-fit shadow-lg shadow-primary/20"><Layout className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Workspace Sync</h4>
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Maps all existing schools to the new workspace structure and ensure track consistency.</p>
                     </div>
-                    <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Maps all existing schools to the new workspace structure and ensures stage data consistency (Backs up directory first).</p>
                     <Button 
                         onClick={() => handleSeed('enrich')} 
                         disabled={seedingStatus.enrich === 'seeding'} 
-                        className="w-full rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest"
+                        className="w-full rounded-xl font-black shadow-xl uppercase text-[10px] tracking-widest h-11"
                     >
                         {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                        Enrich & Sync Schools
-                    </Button>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                        <RotateCcw className="h-4 w-4 text-rose-600" />
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-rose-600">3. Recovery</h4>
-                    </div>
-                    <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Reverts the school directory to the state captured in the most recent enrichment backup.</p>
-                    <Button 
-                        variant="ghost" 
-                        onClick={() => handleSeed('rollback')} 
-                        disabled={seedingStatus.rollback === 'seeding'} 
-                        className="w-full rounded-xl font-bold text-rose-600 hover:bg-rose-50"
-                    >
-                        {seedingStatus.rollback === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
-                        Emergency Rollback
+                        Enrich & Sync Workspaces
                     </Button>
                 </div>
             </CardContent>
@@ -230,6 +221,10 @@ export default function SettingsClient() {
             <div>
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Structural Configuration</h3>
                 <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('workspaces')} disabled={seedingStatus.workspaces === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.workspaces === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layout className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Workspaces
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('pipelines')} disabled={seedingStatus.pipelines === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.pipelines === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4 text-primary" />}
                         Seed Workflows
@@ -245,18 +240,6 @@ export default function SettingsClient() {
                     <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.zones === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4 text-primary" />}
                         Seed Zones
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleSeed('billing')} disabled={seedingStatus.billing === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.billing === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4 text-primary" />}
-                        Seed Billing Hubs
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
-                        Update Avatars
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
-                        Reset Layout
                     </Button>
                 </div>
             </div>
@@ -280,26 +263,6 @@ export default function SettingsClient() {
                         {seedingStatus.surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardList className="mr-2 h-4 w-4" />}
                         Seed Surveys
                     </Button>
-                    <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                        Seed Doc Signing
-                    </Button>
-                    <Button onClick={() => handleSeed('tasks')} disabled={seedingStatus.tasks === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
-                        Seed CRM Tasks
-                    </Button>
-                    <Button onClick={() => handleSeed('messaging')} disabled={seedingStatus.messaging === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.messaging === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
-                        Seed Messaging
-                    </Button>
-                    <Button onClick={() => handleSeed('logs')} disabled={seedingStatus.logs === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.logs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                        Seed Message Logs
-                    </Button>
-                    <Button onClick={() => handleSeed('activities')} disabled={seedingStatus.activities === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                        Seed Activity Feed
-                    </Button>
                 </div>
             </div>
             </CardContent>
@@ -315,4 +278,32 @@ export default function SettingsClient() {
       </div>
     </div>
   );
+}
+
+function SeedButton({ label, seeder, status, onClick, icon: Icon }: { label: string, seeder: string, status: SeedingState, onClick: () => void, icon: any }) {
+    return (
+        <Button 
+            variant="outline" 
+            onClick={onClick} 
+            disabled={status === 'seeding'} 
+            className={cn(
+                "h-14 w-full rounded-2xl border-2 flex items-center justify-between px-6 transition-all duration-300",
+                status === 'seeding' ? "bg-muted/50 border-border animate-pulse" :
+                status === 'success' ? "bg-emerald-50 border-emerald-500 text-emerald-700" :
+                status === 'error' ? "bg-rose-50 border-rose-500 text-rose-700" :
+                "bg-background border-border/50 hover:border-primary hover:bg-primary/5 hover:scale-[1.02]"
+            )}
+        >
+            <div className="flex items-center gap-4">
+                <div className={cn(
+                    "p-2 rounded-xl transition-colors",
+                    status === 'success' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground group-hover:text-primary"
+                )}>
+                    {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                </div>
+                <span className="font-black uppercase text-[10px] tracking-widest">{label}</span>
+            </div>
+            {status === 'success' ? <CheckCircle2 className="h-5 w-5" /> : status === 'error' ? <AlertCircle className="h-5 w-5" /> : <ChevronRight className="h-4 w-4 opacity-20" />}
+        </Button>
+    );
 }

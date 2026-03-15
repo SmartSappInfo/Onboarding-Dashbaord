@@ -9,8 +9,17 @@ export type MeetingType = typeof MEETING_TYPES[number];
 
 export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
 
-export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
-export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
+export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived';
+
+/**
+ * Defines a specific status option within a workspace lifecycle.
+ */
+export interface WorkspaceStatus {
+  value: string;
+  label: string;
+  color: string;
+  description?: string;
+}
 
 /**
  * Defines a managed Workspace (formerly Perspective).
@@ -22,6 +31,7 @@ export interface Workspace {
   icon?: string; // Lucide icon name
   color?: string; // HSL or Hex
   status: 'active' | 'archived';
+  statuses: WorkspaceStatus[]; // Independent lifecycles per workspace
   createdAt: string;
   updatedAt: string;
 }
@@ -125,8 +135,8 @@ export interface School {
   heroImageUrl?: string;
   workspaceId: string; // Dynamic Workspace Link
   track: InstitutionalTrack; // Logical track (onboarding/prospect)
-  status: SchoolStatus;
-  lifecycleStatus: LifecycleStatus;
+  status: SchoolStatusState; // Operational status (Active/Inactive)
+  schoolStatus: string; // Dynamic Lifecycle Status (renamed from lifecycleStatus)
   pipelineId: string;
   zone?: Zone;
   focalPersons: FocalPerson[];

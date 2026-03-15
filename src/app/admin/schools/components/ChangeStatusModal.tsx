@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import type { School, LifecycleStatus } from '@/lib/types';
+import type { School, WorkspaceStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { 
     Dialog, 
@@ -21,10 +22,12 @@ import {
     Loader2, 
     ShieldCheck,
     AlertCircle,
-    Info
+    Info,
+    Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ChangeStatusModalProps {
   school: School | null;
@@ -32,39 +35,29 @@ interface ChangeStatusModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const STATUS_CONFIG: { value: LifecycleStatus; label: string; icon: any; color: string; description: string }[] = [
-    { 
-        value: 'Onboarding', 
-        label: 'Onboarding', 
-        icon: Zap, 
-        color: 'text-blue-600 bg-blue-50 border-blue-100',
-        description: 'Currently in the initialization and training phase.'
-    },
-    { 
-        value: 'Active', 
-        label: 'Active', 
-        icon: CheckCircle2, 
-        color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-        description: 'System is fully deployed and operational at this campus.'
-    },
-    { 
-        value: 'Churned', 
-        label: 'Churned', 
-        icon: UserMinus, 
-        color: 'text-rose-600 bg-rose-50 border-rose-100',
-        description: 'The school is no longer utilizing the SmartSapp platform.'
-    },
-];
-
 export default function ChangeStatusModal({ school, open, onOpenChange }: ChangeStatusModalProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspace } = useWorkspace();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
-  const handleStatusChange = async (newStatus: LifecycleStatus) => {
+  // Statuses are now dynamic and independent per workspace
+  const workspaceStatuses = React.useMemo(() => {
+      if (activeWorkspace?.statuses && activeWorkspace.statuses.length > 0) {
+          return activeWorkspace.statuses;
+      }
+      // Fallback to standard Onboarding statuses
+      return [
+          { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF', description: 'Initialization phase.' },
+          { value: 'Active', label: 'Active', color: '#10b981', description: 'Institutional go-live.' },
+          { value: 'Churned', label: 'Churned', color: '#ef4444', description: 'No longer operational.' }
+      ];
+  }, [activeWorkspace]);
+
+  const handleStatusChange = async (newStatus: string) => {
     if (!firestore || !school || !user || isUpdating) return;
-    if (school.lifecycleStatus === newStatus) {
+    if (school.schoolStatus === newStatus) {
         onOpenChange(false);
         return;
     }
@@ -74,22 +67,23 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
 
     try {
       await updateDoc(schoolRef, {
-        lifecycleStatus: newStatus,
+        schoolStatus: newStatus,
         updatedAt: new Date().toISOString()
       });
       
       toast({ 
-        title: 'Lifecycle Updated', 
-        description: `"${school.name}" is now marked as ${newStatus}.` 
+        title: 'Status Updated', 
+        description: `"${school.name}" state set to ${newStatus}.` 
       });
 
       logActivity({
           schoolId: school.id,
           userId: user.uid,
+          workspaceId: school.workspaceId,
           type: 'school_updated',
           source: 'user_action',
-          description: `changed lifecycle status of "${school.name}" from ${school.lifecycleStatus} to ${newStatus}`,
-          metadata: { from: school.lifecycleStatus, to: newStatus }
+          description: `changed status of "${school.name}" from ${school.schoolStatus} to ${newStatus}`,
+          metadata: { from: school.schoolStatus, to: newStatus }
       });
 
       onOpenChange(false);
@@ -111,16 +105,15 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div className="text-left">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">Institutional Lifecycle</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Adjust status for {school.name}</DialogDescription>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">School Status Architect</DialogTitle>
+              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify lifecycle for {school.name}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <div className="p-6 space-y-4 bg-background">
-            {STATUS_CONFIG.map((status) => {
-                const Icon = status.icon;
-                const isActive = school.lifecycleStatus === status.value;
+            {workspaceStatuses.map((status) => {
+                const isActive = school.schoolStatus === status.value;
 
                 return (
                     <button
@@ -133,11 +126,14 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
                             isUpdating && "opacity-50 cursor-not-allowed"
                         )}
                     >
-                        <div className={cn(
-                            "p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
-                            isActive ? "bg-primary text-white" : status.color
-                        )}>
-                            <Icon className="h-5 w-5" />
+                        <div 
+                            className={cn(
+                                "p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
+                                isActive ? "bg-primary text-white" : "bg-white border"
+                            )}
+                            style={!isActive ? { color: status.color, borderColor: `${status.color}40` } : {}}
+                        >
+                            {status.value === 'Active' ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
@@ -145,7 +141,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
                                 {isActive && <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in" />}
                             </div>
                             <p className="text-[10px] font-medium text-muted-foreground mt-0.5 leading-relaxed">
-                                {status.description}
+                                {status.description || 'Lifecycle phase entry.'}
                             </p>
                         </div>
                     </button>
@@ -155,7 +151,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 mt-4">
                 <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                 <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
-                    Changing the status updates the school's priority across all reporting hubs and can trigger automated retention protocols.
+                    "School Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
                 </p>
             </div>
         </div>
