@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, usePathname } from 'next/navigation';
 import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { 
     Check, 
     Loader2, 
@@ -211,11 +211,10 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
 
 export default function NewSurveyPage() {
     const router = useRouter();
-    const pathname = usePathname();
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     // UI State
     const [step, setStep] = React.useState(1);
@@ -225,9 +224,9 @@ export default function NewSurveyPage() {
     const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeTrack) return null;
-        return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
-    }, [firestore, activeTrack]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    }, [firestore, activeWorkspaceId]);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
     const form = useForm<FormData>({
@@ -470,7 +469,7 @@ export default function NewSurveyPage() {
 
                         {/* Sticky Navigation Footer */}
                         <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                            <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
                                 <div className="flex items-center gap-4">
                                     {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}

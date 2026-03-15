@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { 
     Loader2, 
     Save, 
@@ -81,7 +81,7 @@ export default function EditMeetingPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
@@ -92,13 +92,13 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
-  // Phase 2: Dynamic Label Resolution
+  // Dynamic Label Resolution
   useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore || !activeTrack) return null;
-    return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
-  }, [firestore, activeTrack]);
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
 
@@ -110,7 +110,7 @@ export default function EditMeetingPage() {
       meetingTime: undefined,
       type: undefined,
       meetingLink: '',
-      heroImageUrl: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
+      heroImageUrl: '',
       recordingUrl: '',
       brochureUrl: '',
       adminAlertsEnabled: false,
@@ -125,7 +125,7 @@ export default function EditMeetingPage() {
   const watchedType = form.watch('type');
   const watchedSlug = form.watch('schoolSlug');
 
-  // Robust synchronization of DB data to form state
+  // Synchronization of DB data to form state
   React.useEffect(() => {
     if (meeting && schools && !hasInitialized) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
@@ -141,7 +141,7 @@ export default function EditMeetingPage() {
             meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
             type: selectedType,
             meetingLink: meeting.meetingLink || '',
-            heroImageUrl: meeting.heroImageUrl || 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
+            heroImageUrl: meeting.heroImageUrl || '',
             recordingUrl: meeting.recordingUrl || '',
             brochureUrl: meeting.brochureUrl || '',
             adminAlertsEnabled: meeting.adminAlertsEnabled || false,
@@ -179,7 +179,7 @@ export default function EditMeetingPage() {
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
-            heroImageUrl: data.heroImageUrl || 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
+            heroImageUrl: data.heroImageUrl || '',
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
             adminAlertsEnabled: data.adminAlertsEnabled,
@@ -195,18 +195,18 @@ export default function EditMeetingPage() {
         await updateDoc(docRef, meetingData);
         toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
         
-        // 1. Log Activity (Non-blocking)
+        // Log Activity
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
-            track: activeTrack,
+            workspaceId: activeWorkspaceId,
             type: 'school_updated',
             source: 'user_action',
             description: `updated the ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // 2. Trigger Internal Notification (Non-blocking)
+        // Trigger Internal Notification
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
                 schoolId: data.school.id,
@@ -257,7 +257,7 @@ export default function EditMeetingPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8 text-left">
         <div className="flex items-center justify-end">
             <div className="flex items-center gap-2">
                 {publicUrl && (
@@ -287,7 +287,7 @@ export default function EditMeetingPage() {
                             </div>
                             <div>
                                 <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
-                                <CardDescription className="text-xs font-medium">Core institutional setup, logistics, and supporting assets.</CardDescription>
+                                <CardDescription className="text-xs font-medium text-left">Core institutional setup, logistics, and supporting assets.</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
@@ -364,7 +364,7 @@ export default function EditMeetingPage() {
                                 control={form.control}
                                 name="meetingTime"
                                 render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem className="flex flex-col text-left">
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
                                     <FormControl>
                                         <DateTimePicker
@@ -414,7 +414,7 @@ export default function EditMeetingPage() {
                                                 className="rounded-2xl"
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter">
+                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
                                             The primary visual for the session portal.
                                         </FormDescription>
                                         <FormMessage />
@@ -470,7 +470,7 @@ export default function EditMeetingPage() {
                                 </div>
                                 <div>
                                     <CardTitle className="text-lg font-black tracking-tight uppercase">Public Addressing</CardTitle>
-                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest text-left">Define the public URL identity.</CardDescription>
                                 </div>
                             </div>
                             {publicUrl && (

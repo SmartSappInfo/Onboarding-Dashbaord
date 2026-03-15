@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 import { 
     Calendar, 
@@ -76,14 +76,14 @@ export default function NewMeetingPage() {
   const searchParams = useSearchParams();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore || !activeTrack) return null;
-    return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
-  }, [firestore, activeTrack]);
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
 
@@ -94,7 +94,7 @@ export default function NewMeetingPage() {
       schoolSlug: '',
       meetingTime: undefined,
       meetingLink: '',
-      heroImageUrl: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
+      heroImageUrl: '',
       recordingUrl: '',
       brochureUrl: '',
       type: MEETING_TYPES[0], // Default to Parent Engagement
@@ -149,7 +149,7 @@ export default function NewMeetingPage() {
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
-            heroImageUrl: data.heroImageUrl || 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0',
+            heroImageUrl: data.heroImageUrl || '',
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
             adminAlertsEnabled: data.adminAlertsEnabled,
@@ -164,18 +164,18 @@ export default function NewMeetingPage() {
         
         toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
         
-        // 1. Log to Timeline (Non-blocking)
+        // Log to Timeline
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
-            track: activeTrack,
+            workspaceId: activeWorkspaceId,
             type: 'meeting_created',
             source: 'user_action',
             description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // 2. Trigger Internal Notification (Non-blocking)
+        // Trigger Internal Notification
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
                 schoolId: data.school.id,
@@ -206,7 +206,7 @@ export default function NewMeetingPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center justify-end">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
@@ -227,7 +227,7 @@ export default function NewMeetingPage() {
                             </div>
                             <div>
                                 <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
-                                <CardDescription className="text-xs font-medium">Core setup, timing, and assets.</CardDescription>
+                                <CardDescription className="text-xs font-medium text-left">Core setup, timing, and assets.</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
@@ -304,7 +304,7 @@ export default function NewMeetingPage() {
                                 control={form.control}
                                 name="meetingTime"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col">
+                                    <FormItem className="flex flex-col text-left">
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Time</FormLabel>
                                     <FormControl>
                                         <DateTimePicker
@@ -353,7 +353,7 @@ export default function NewMeetingPage() {
                                                 className="rounded-2xl"
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter">
+                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
                                             This image will be the primary visual focus on the meeting page.
                                         </FormDescription>
                                         <FormMessage />
@@ -404,7 +404,7 @@ export default function NewMeetingPage() {
                                 </div>
                                 <div>
                                     <CardTitle className="text-lg font-black tracking-tight uppercase">Public Presence</CardTitle>
-                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest text-left">Define the public URL identity.</CardDescription>
                                 </div>
                             </div>
                         </div>
@@ -428,7 +428,7 @@ export default function NewMeetingPage() {
                                             />
                                         </FormControl>
                                     </div>
-                                <FormDescription className="text-[10px] uppercase font-black text-muted-foreground/40 mt-2 ml-1">
+                                <FormDescription className="text-[10px] uppercase font-black text-muted-foreground/40 mt-2 ml-1 text-left">
                                     MUST MATCH THE OFFICIAL SCHOOL SLUG FOR AUTOMATIC ROUTING.
                                 </FormDescription>
                                 <FormMessage />

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { 
@@ -220,7 +220,7 @@ export default function EditSurveyPage() {
     const firestore = useFirestore();
     const surveyId = params.id as string;
     const { toast } = useToast();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     // UI State
     const [step, setStep] = React.useState(1);
@@ -237,12 +237,13 @@ export default function EditSurveyPage() {
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
     
+    // Dynamic Label Resolution
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeTrack) return null;
-        return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
-    }, [firestore, activeTrack]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    }, [firestore, activeWorkspaceId]);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
     const form = useForm<FormData>({
@@ -370,14 +371,14 @@ export default function EditSurveyPage() {
     const handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
     const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
 
-    if (isLoading || !hasInitialized) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    if (isLoading || !hasInitialized) return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     return (
         <FormProvider {...form}>
             <div className="h-full flex flex-col bg-muted/30">
                 {/* Header Actions */}
                 <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-left">
                         <div className="p-2 bg-primary/10 rounded-xl">
                             <SmartSappIcon className="h-6 w-6 text-primary" />
                         </div>
@@ -471,9 +472,9 @@ export default function EditSurveyPage() {
 
                         {/* Sticky Navigation Footer */}
                         <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                            <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 text-left">
                                     {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
                                     {step < 4 ? (
                                         <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">

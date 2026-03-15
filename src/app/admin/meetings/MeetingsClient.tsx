@@ -53,7 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MeetingCalendar from './components/MeetingCalendar';
@@ -67,7 +67,7 @@ export default function MeetingsHubClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { activeTrack } = usePerspective();
+  const { activeWorkspaceId } = useWorkspace();
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('list');
@@ -84,9 +84,9 @@ export default function MeetingsHubClient() {
   }, [meetingsCol]);
 
   const schoolsCol = useMemoFirebase(() => {
-    if (!firestore || !activeTrack) return null;
-    return query(collection(firestore, 'schools'), where('track', '==', activeTrack));
-  }, [firestore, activeTrack]);
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId));
+  }, [firestore, activeWorkspaceId]);
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
@@ -106,8 +106,11 @@ export default function MeetingsHubClient() {
   const filteredMeetings = useMemo(() => {
     if (!meetings || !schools) return [];
     
-    // Filter by assigned user first
-    let userFilteredMeetings = meetings;
+    // Only show meetings for schools in the current workspace
+    const schoolIdsInWorkspace = new Set(schools.map(s => s.id));
+    let workspaceFilteredMeetings = meetings.filter(m => schoolIdsInWorkspace.has(m.schoolId));
+
+    // Filter by assigned user
     if (assignedUserId) {
         const filteredSchoolIds = new Set(
             schools.filter(school => {
@@ -117,12 +120,12 @@ export default function MeetingsHubClient() {
                 return school.assignedTo?.userId === assignedUserId;
             }).map(s => s.id)
         );
-        userFilteredMeetings = meetings.filter(m => filteredSchoolIds.has(m.schoolId));
+        workspaceFilteredMeetings = workspaceFilteredMeetings.filter(m => filteredSchoolIds.has(m.schoolId));
     }
 
     // Then filter by type
-    if (typeFilter === 'all') return userFilteredMeetings;
-    return userFilteredMeetings.filter(m => m.type?.id === typeFilter);
+    if (typeFilter === 'all') return workspaceFilteredMeetings;
+    return workspaceFilteredMeetings.filter(m => m.type?.id === typeFilter);
   }, [meetings, schools, typeFilter, assignedUserId]);
 
   const handleDeleteMeeting = () => {
@@ -153,7 +156,7 @@ export default function MeetingsHubClient() {
   };
 
   if (error) {
-    return <div className="text-destructive">Error loading meetings: {error.message}</div>;
+    return <div className="text-destructive p-8 text-left">Error loading meetings: {error.message}</div>;
   }
 
   const renderActions = (meeting: Meeting) => {
