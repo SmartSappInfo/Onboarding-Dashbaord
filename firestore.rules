@@ -32,6 +32,7 @@ service cloud.firestore {
     }
 
     function hasPermission(perm) {
+      if (!isSignedIn()) return false;
       if (isSystemAdmin()) return true;
       if (!isAuthorized()) return false;
       
@@ -69,7 +70,7 @@ service cloud.firestore {
       allow write: if hasPermission('finance_manage');
     }
     match /invoices/{invoiceId} {
-      allow read: if isAuthorized() || true; 
+      allow read: if isAuthorized();
       allow write: if hasPermission('finance_manage');
     }
     match /billing_settings/{settingId} {
