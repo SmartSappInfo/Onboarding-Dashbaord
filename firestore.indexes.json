@@ -123,6 +123,14 @@
       ]
     },
     {
+      "collectionGroup": "surveys",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "internalName", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "pdfs",
       "queryScope": "COLLECTION",
       "fields": [
