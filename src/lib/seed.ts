@@ -35,6 +35,8 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
 const baseSchoolData: any[] = [
   { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', focalPersons: [{ name: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163', type: 'Principal', isSignatory: true }] },
   { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', focalPersons: [{ name: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100', type: 'Administrator', isSignatory: true }] },
+  { name: 'Ridge Church School', initials: 'RCS', slogan: 'Fear of the Lord is the beginning of wisdom.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: true, referee: 'Parent Referral', focalPersons: [{ name: 'Mrs. Afua Dako', email: 'admin@ridgechurchschool.edu.gh', phone: '+233 30 222 2222', type: 'Administrator', isSignatory: true }] },
+  { name: 'Morning Star School', initials: 'MSS', slogan: 'Quality Education for a Brighter Future.', location: 'Accra, Ghana', nominalRoll: 950, includeDroneFootage: false, referee: 'Google Search', focalPersons: [{ name: 'Mr. Kofi Boateng', email: 'info@morningstar.edu.gh', phone: '+233 30 233 3333', type: 'Principal', isSignatory: true }] },
 ];
 
 // --- SEEDING FUNCTIONS ---
@@ -100,7 +102,7 @@ export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore
     const stageIds: string[] = [];
     let order = 1;
     stagesMap.forEach((val, name) => {
-        const id = name.toLowerCase().replace(/\s+/g, '_');
+        const id = `stage_${pipelineId}_${name.toLowerCase().replace(/\s+/g, '_')}`;
         stageIds.push(id);
         batch.set(doc(firestore, 'onboardingStages', id), {
             id,
@@ -151,7 +153,7 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
     
     const defaultStage = !stagesSnap.empty 
         ? stagesSnap.docs[0].data() 
-        : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
+        : { id: 'stage_onboarding_welcome', name: 'Welcome', order: 1, color: '#f72585' };
 
     // 3. Dynamic Enrichment
     let count = 0;
@@ -197,25 +199,47 @@ export async function seedPipelines(firestore: Firestore): Promise<number> {
     const stagesCol = collection(firestore, 'onboardingStages');
     const timestamp = new Date().toISOString();
 
+    // 1. Onboarding Pipeline
     const onboardingId = 'institutional_onboarding';
     const onboardingStages = [
-        { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
-        { id: 'setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
-        { id: 'live', name: 'Active (Go-Live)', order: 3, color: '#4361ee', pipelineId: onboardingId },
+        { id: 'stage_onboarding_welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
+        { id: 'stage_onboarding_setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
+        { id: 'stage_onboarding_live', name: 'Active (Go-Live)', order: 3, color: '#4361ee', pipelineId: onboardingId },
     ];
 
     onboardingStages.forEach(s => batch.set(doc(stagesCol, s.id), s));
     batch.set(doc(pipelinesCol, onboardingId), {
+        id: onboardingId,
         name: 'Institutional Onboarding',
-        description: 'Standard lifecycle.',
+        description: 'Standard technical implementation lifecycle.',
         workspaceId: 'onboarding',
         stageIds: onboardingStages.map(s => s.id),
         accessRoles: ['administrator'],
         createdAt: timestamp
     });
 
+    // 2. Lead Acquisition Pipeline (Prospects)
+    const prospectId = 'sales_acquisition';
+    const prospectStages = [
+        { id: 'stage_prospect_discovery', name: 'Discovery', order: 1, color: '#4cc9f0', pipelineId: prospectId },
+        { id: 'stage_prospect_proposal', name: 'Proposal Sent', order: 2, color: '#4361ee', pipelineId: prospectId },
+        { id: 'stage_prospect_negotiation', name: 'Negotiation', order: 3, color: '#7209b7', pipelineId: prospectId },
+        { id: 'stage_prospect_contract', name: 'Contract Signed', order: 4, color: '#22c55e', pipelineId: prospectId },
+    ];
+
+    prospectStages.forEach(s => batch.set(doc(stagesCol, s.id), s));
+    batch.set(doc(pipelinesCol, prospectId), {
+        id: prospectId,
+        name: 'Lead Acquisition',
+        description: 'Sales funnel for prospective campuses.',
+        workspaceId: 'prospect',
+        stageIds: prospectStages.map(s => s.id),
+        accessRoles: ['administrator'],
+        createdAt: timestamp
+    });
+
     await batch.commit();
-    return 1;
+    return 2;
 }
 
 export async function seedSchools(firestore: Firestore): Promise<number> {
@@ -226,7 +250,13 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
         const docRef = doc(schoolsCollection);
         const name = schoolSource.name;
         const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        const wId = index % 4 === 0 ? 'prospect' : 'onboarding';
+        const wId = index % 2 === 0 ? 'onboarding' : 'prospect';
+        const pId = wId === 'prospect' ? 'sales_acquisition' : 'institutional_onboarding';
+        
+        // Resolve default stage based on pipeline
+        const stage = wId === 'prospect' 
+            ? { id: 'stage_prospect_discovery', name: 'Discovery', order: 1, color: '#4cc9f0' }
+            : { id: 'stage_onboarding_welcome', name: 'Welcome', order: 1, color: '#f72585' };
 
         const school = {
             ...schoolSource,
@@ -235,7 +265,8 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
             track: wId,
             status: 'Active',
             lifecycleStatus: 'Onboarding',
-            pipelineId: wId === 'prospect' ? 'sales_acquisition' : 'institutional_onboarding',
+            pipelineId: pId,
+            stage,
             createdAt: subDays(new Date(), index * 3).toISOString(),
             currency: 'GHS',
         };
@@ -302,6 +333,7 @@ export async function seedZones(firestore: Firestore): Promise<number> {
   return initialZones.length;
 }
 
+// These are handled by specific seeders above
 export async function seedOnboardingStages(firestore: Firestore) { return { stagesCreated: 0, schoolsUpdated: 0 }; }
 export async function seedActivities(firestore: Firestore) { return 0; }
 export async function seedPdfForms(firestore: Firestore) { return 0; }

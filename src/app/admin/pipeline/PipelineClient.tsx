@@ -55,7 +55,7 @@ export default function PipelineClient() {
         orderBy('createdAt', 'desc')
     ) : null, 
   [firestore, activeWorkspaceId]);
-  const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+  const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   // Regional Context
   const zonesQuery = useMemoFirebase(() => 
@@ -73,6 +73,7 @@ export default function PipelineClient() {
   // Initialization: Reset selection when perspective changes
   React.useEffect(() => {
     if (pipelines && pipelines.length > 0) {
+        // Automatically select the first pipeline for the workspace
         setCurrentPipelineId(pipelines[0].id);
     } else {
         setCurrentPipelineId(null);
@@ -109,7 +110,7 @@ export default function PipelineClient() {
                 <div className="text-left min-w-0">
                     <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
                         <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-lg sm:text-xl font-black uppercase tracking-tighter gap-2 w-auto bg-transparent hover:text-primary transition-colors">
-                            <SelectValue placeholder={pipelines?.length ? "Pipeline Context" : "No Active Pipeline"} />
+                            <SelectValue placeholder={isLoadingPipelines ? "Loading..." : pipelines?.length ? "Pipeline Context" : "No Active Pipeline"} />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
                             {pipelines?.map(p => (
@@ -117,7 +118,7 @@ export default function PipelineClient() {
                                     <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
                                 </SelectItem>
                             ))}
-                            {(!pipelines || pipelines.length === 0) && (
+                            {(!pipelines || pipelines.length === 0) && !isLoadingPipelines && (
                                 <div className="p-4 text-center italic text-xs text-muted-foreground">
                                     No active pipelines defined.
                                 </div>
