@@ -39,7 +39,8 @@ export default function MediaClient() {
     if (!mediaCol || !activeWorkspaceId) return null;
     return query(
         mediaCol, 
-        where('workspaceId', '==', activeWorkspaceId),
+        // Changed to use array-contains for shared assets
+        where('workspaceIds', 'array-contains', activeWorkspaceId),
         orderBy('createdAt', 'desc')
     );
   }, [mediaCol, activeWorkspaceId]);

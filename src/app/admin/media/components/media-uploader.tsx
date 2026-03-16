@@ -8,13 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { File as FileIcon, X, CheckCircle, Upload, Loader2, Info } from 'lucide-react';
+import { File as FileIcon, X, CheckCircle, Upload, Loader2, Info, Layout } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
 import { processImage, getImageDimensions } from '@/lib/image-processing';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
@@ -56,12 +57,25 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<string[]>([]);
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const storage = getStorage();
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+
+  // Initialize selected workspace
+  useEffect(() => {
+    if (activeWorkspaceId && selectedWorkspaces.length === 0) {
+        setSelectedWorkspaces([activeWorkspaceId]);
+    }
+  }, [activeWorkspaceId, selectedWorkspaces.length]);
+
+  const workspaceOptions = React.useMemo(() => 
+    allowedWorkspaces.map(w => ({ label: w.name, value: w.id })), 
+  [allowedWorkspaces]);
 
   const getMediaType = (file: File): z.infer<typeof mediaAssetTypeEnum> | null => {
     const mimeType = file.type;
@@ -159,9 +173,9 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
 
   const handleUpload = async () => {
-    if (stagedFiles.length === 0 || !user || !firestore || !activeWorkspaceId) {
+    if (stagedFiles.length === 0 || !user || !firestore || selectedWorkspaces.length === 0) {
         if(!user) toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
-        if(!firestore) toast({ variant: 'destructive', title: 'Database Error', description: 'Cannot connect to the database.' });
+        if(selectedWorkspaces.length === 0) toast({ variant: 'destructive', title: 'Workspace Selection Required', description: 'Select at least one workspace.' });
         return;
     }
     setIsUploading(true);
@@ -180,7 +194,6 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         const mediaType = getMediaType(fileState.file);
         if (!mediaType) throw new Error("Invalid file type");
 
-        // BYPASS FOR GIFs: Standard processImage strips frames. We bypass for GIFs to preserve animation.
         const isGif = fileState.file.type === 'image/gif' || fileState.file.name.toLowerCase().endsWith('.gif');
 
         if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels && fileState.dataUrl && !isGif) {
@@ -207,7 +220,6 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
             ? `${fileState.editingState.filename}.${fileState.file.name.split('.').pop()}` 
             : fileState.file.name;
           
-          // For GIFs and other raw images, we use the dimensions captured during staging
           if (fileState.dimensions) {
               finalWidth = fileState.dimensions.width;
               finalHeight = fileState.dimensions.height;
@@ -237,7 +249,8 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
                 mimeType: finalMimeType,
                 size: blobToUpload.size,
                 uploadedBy: user.uid,
-                workspaceId: activeWorkspaceId,
+                // Changed: use workspaceIds array
+                workspaceIds: selectedWorkspaces,
                 createdAt: new Date().toISOString()
               };
 
@@ -292,7 +305,21 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   }, [activeFileId]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-dashed text-left">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+              <Layout className="h-3 w-3" /> Targeted Workspaces
+          </Label>
+          <MultiSelect 
+              options={workspaceOptions}
+              value={selectedWorkspaces}
+              onChange={setSelectedWorkspaces}
+              placeholder="Select destination hubs..."
+              className="bg-white border-primary/10 rounded-xl shadow-sm h-11"
+          />
+          <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 px-1">Asset will be shared across all selected hubs.</p>
+      </div>
+
       {!activeFileState && (
         <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative">
           <Input ref={inputRef} id="file-upload" type="file" multiple onChange={e => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
@@ -370,9 +397,9 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
       
       {stagedFiles.length > 0 && (
         <div className="flex justify-end pt-4">
-          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto">
+          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto h-12 rounded-xl font-black uppercase text-xs shadow-lg">
             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-            {isUploading ? 'Uploading...' : `Upload ${stagedFiles.length} file(s) to ${activeWorkspaceId}`}
+            {isUploading ? 'Uploading...' : `Upload to ${selectedWorkspaces.length} Hubs`}
           </Button>
         </div>
       )}

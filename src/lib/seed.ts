@@ -267,6 +267,7 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
 
 /**
  * MIGRATION PROTOCOL: Media Asset Enrichment
+ * Upgraded to use workspaceIds array.
  */
 export async function enrichMediaWithWorkspace(firestore: Firestore): Promise<number> {
     const mediaSnap = await getDocs(collection(firestore, 'media'));
@@ -284,11 +285,15 @@ export async function enrichMediaWithWorkspace(firestore: Firestore): Promise<nu
     let count = 0;
     mediaSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (!data.workspaceId) {
+        if (!data.workspaceIds || data.workspaceIds.length === 0) {
+            // Support legacy single workspaceId or default to onboarding
+            const wId = data.workspaceId || 'onboarding';
             batch.update(docSnap.ref, {
-                workspaceId: 'onboarding',
+                workspaceIds: [wId],
                 updatedAt: timestamp
             });
+            // Cleanup legacy field
+            batch.update(docSnap.ref, { workspaceId: null });
             count++;
         }
     });
