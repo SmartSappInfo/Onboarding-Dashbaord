@@ -1,10 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Target as ProspectIcon } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Target as ProspectIcon, Layout } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
@@ -35,14 +36,16 @@ import { logActivity } from '@/lib/activity-logger';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const schoolEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
-  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
+  workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
   status: z.enum(['Active', 'Inactive', 'Archived']),
-  lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
+  schoolStatus: z.string().min(1, 'Status is required.'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
@@ -91,6 +94,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const pathname = usePathname();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeWorkspace, allowedWorkspaces } = useWorkspace();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
@@ -118,7 +122,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const methods = useForm<SchoolEditValues>({
     resolver: zodResolver(schoolEditSchema),
     defaultValues: {
-      name: '', initials: '', slogan: '', track: 'onboarding', status: 'Active', lifecycleStatus: 'Onboarding',
+      name: '', initials: '', slogan: '', workspaceIds: [], status: 'Active', schoolStatus: 'Onboarding',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
       referee: '', includeDroneFootage: false, assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
@@ -127,6 +131,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   });
 
   const watchPackageId = methods.watch("subscriptionPackageId");
+  const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   React.useEffect(() => {
     if (school && !hasInitialized) {
@@ -134,9 +139,9 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         name: school.name || '',
         initials: school.initials || '',
         slogan: school.slogan || '',
-        track: school.track || 'onboarding',
+        workspaceIds: school.workspaceIds || [school.track || 'onboarding'],
         status: school.status || 'Active',
-        lifecycleStatus: school.lifecycleStatus || 'Onboarding',
+        schoolStatus: school.schoolStatus || 'Onboarding',
         logoUrl: school.logoUrl || '',
         heroImageUrl: school.heroImageUrl || '',
         zone: school.zone || undefined,
@@ -190,7 +195,8 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         assignedTo, 
         subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
         subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
-        implementationDate: data.implementationDate?.toISOString() || null 
+        implementationDate: data.implementationDate?.toISOString() || null,
+        updatedAt: new Date().toISOString()
     };
 
     const docRef = doc(firestore, 'schools', schoolId);
@@ -199,10 +205,10 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         logActivity({ 
             schoolId, 
             userId: user.uid,
-            track: data.track,
+            workspaceId: data.workspaceIds[0],
             type: 'school_updated', 
             source: 'user_action', 
-            description: `updated school profile for "${data.name}"` 
+            description: `updated school profile for "${data.name}" across ${data.workspaceIds.length} hubs` 
         });
         router.push('/admin/schools');
     }).catch((error) => {
@@ -230,55 +236,33 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
       <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            {/* Track Selector Card */}
+            {/* Hub Authorization Card */}
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                 <CardHeader className="bg-primary/5 border-b p-6">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Zap className="h-4 w-4" /></div>
-                        <CardTitle className="text-sm font-black uppercase tracking-tight">Institutional track</CardTitle>
+                        <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Layout className="h-4 w-4" /></div>
+                        <CardTitle className="text-sm font-black uppercase tracking-tight">Hub Authorization</CardTitle>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6">
-                    <Controller
-                        name="track"
+                <CardContent className="p-6 space-y-4">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
+                        <Zap className="h-3 w-3" /> Targeted Workspaces
+                    </Label>
+                    <Controller 
+                        name="workspaceIds"
                         control={methods.control}
                         render={({ field }) => (
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => field.onChange('onboarding')}
-                                    className={cn(
-                                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                        field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                    )}
-                                >
-                                    <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
-                                        <Building className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="font-black text-xs uppercase">Onboarding</span>
-                                        <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Implementation track</span>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => field.onChange('prospect')}
-                                    className={cn(
-                                        "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                        field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                    )}
-                                >
-                                    <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
-                                        <ProspectIcon className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="font-black text-xs uppercase">Prospect</span>
-                                        <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Lead acquisition track</span>
-                                    </div>
-                                </button>
-                            </div>
+                            <MultiSelect 
+                                options={workspaceOptions}
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="Map to workspaces..."
+                            />
                         )}
                     />
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight leading-relaxed">
+                        Determines which pipelines and directories this record is shared with.
+                    </p>
                 </CardContent>
             </Card>
 
@@ -337,7 +321,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <FormField 
                         control={methods.control} 
-                        name="lifecycleStatus" 
+                        name="schoolStatus" 
                         render={({ field }) => (
                             <FormItem className="md:col-span-1">
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Lifecycle Status</FormLabel>
@@ -348,9 +332,9 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="rounded-xl shadow-2xl border-none">
-                                        <SelectItem value="Onboarding" className="font-black">Onboarding</SelectItem>
-                                        <SelectItem value="Active" className="font-black">Active</SelectItem>
-                                        <SelectItem value="Churned" className="font-black">Churned</SelectItem>
+                                        {(activeWorkspace?.statuses || []).map(s => (
+                                            <SelectItem key={s.value} value={s.value} className="font-black">{s.label}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -359,7 +343,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     />
                     <div className="md:col-span-2 pt-2">
                         <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic">
-                            Changing the lifecycle status affects regional health reporting and mission priorities in the Task Manager.
+                            Changing the lifecycle status affects reporting and priorities in the Task Manager for the active hub.
                         </p>
                     </div>
                 </div>

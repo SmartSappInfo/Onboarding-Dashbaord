@@ -1,6 +1,7 @@
+
 'use client';
 
-import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc, deleteField } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { 
     School, 
@@ -102,7 +103,7 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 
 /**
  * MIGRATION PROTOCOL: School Workspace Enrichment
- * Upgraded to use workspaceIds array.
+ * Upgraded to migrate legacy 'workspaceId' and 'track' fields to the new 'workspaceIds' array.
  */
 export async function enrichAndRestoreSchools(firestore: Firestore): Promise<number> {
     const schoolsSnap = await getDocs(collection(firestore, 'schools'));
@@ -110,7 +111,7 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
     const backupBatch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
     
-    // Safety Snapshot
+    // 1. Safety Snapshot
     schoolsSnap.forEach(docSnap => {
         const backupRef = doc(firestore, 'backup_schools_migration', docSnap.id);
         backupBatch.set(backupRef, docSnap.data());
@@ -118,13 +119,20 @@ export async function enrichAndRestoreSchools(firestore: Firestore): Promise<num
     await backupBatch.commit();
 
     let count = 0;
+    // 2. Surgical Enrichment
     schoolsSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (!data.workspaceIds || data.workspaceIds.length === 0) {
-            const wId = data.workspaceId || data.track || 'onboarding';
+        
+        // Only enrich if array is missing or empty
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            const legacyId = data.workspaceId || data.track || 'onboarding';
+            
             batch.update(docSnap.ref, {
-                workspaceIds: [wId],
-                updatedAt: timestamp
+                workspaceIds: [legacyId],
+                updatedAt: timestamp,
+                // Remove legacy fields to maintain schema purity
+                workspaceId: deleteField(),
+                track: deleteField()
             });
             count++;
         }
@@ -149,7 +157,6 @@ export async function rollbackSchoolsMigration(firestore: Firestore): Promise<nu
 
 /**
  * MIGRATION PROTOCOL: School Status Enrichment
- * Resolves lifecycle status based on current stage mapping.
  */
 export async function enrichSchoolStatuses(firestore: Firestore): Promise<number> {
     const schoolsSnap = await getDocs(collection(firestore, 'schools'));
@@ -271,7 +278,6 @@ export async function enrichAutomationsWithWorkspace(firestore: Firestore): Prom
 }
 
 export async function rollbackAutomationsMigration(firestore: Firestore): Promise<number> {
-    // Basic rollback: default all to onboarding
     const snap = await getDocs(collection(firestore, 'automations'));
     const batch = writeBatch(firestore);
     snap.forEach(docSnap => {
@@ -296,7 +302,8 @@ export async function enrichMediaWithWorkspace(firestore: Firestore): Promise<nu
             const wId = data.workspaceId || 'onboarding';
             batch.update(docSnap.ref, { 
                 workspaceIds: [wId],
-                updatedAt: timestamp
+                updatedAt: timestamp,
+                workspaceId: deleteField()
             });
             count++;
         }
@@ -322,7 +329,14 @@ export async function rollbackMediaMigration(firestore: Firestore): Promise<numb
 export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<number> {
     const snap = await getDocs(collection(firestore, 'roles'));
     const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_roles_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
 
     let count = 0;
     snap.forEach(docSnap => {
@@ -341,13 +355,16 @@ export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<n
 }
 
 export async function rollbackRolesMigration(firestore: Firestore): Promise<number> {
-    const snap = await getDocs(collection(firestore, 'roles'));
+    const backupSnap = await getDocs(collection(firestore, 'backup_roles_migration'));
     const batch = writeBatch(firestore);
-    snap.forEach(docSnap => {
-        batch.update(docSnap.ref, { workspaceIds: ['onboarding'] });
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'roles', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
     });
     await batch.commit();
-    return snap.size;
+    return count;
 }
 
 /**
@@ -356,7 +373,14 @@ export async function rollbackRolesMigration(firestore: Firestore): Promise<numb
 export async function enrichActivitiesWithWorkspace(firestore: Firestore): Promise<number> {
     const snap = await getDocs(collection(firestore, 'activities'));
     const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_activities_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
 
     let count = 0;
     for (const docSnap of snap.docs) {
@@ -383,13 +407,16 @@ export async function enrichActivitiesWithWorkspace(firestore: Firestore): Promi
 }
 
 export async function rollbackActivitiesMigration(firestore: Firestore): Promise<number> {
-    const snap = await getDocs(collection(firestore, 'activities'));
+    const backupSnap = await getDocs(collection(firestore, 'backup_activities_migration'));
     const batch = writeBatch(firestore);
-    snap.forEach(docSnap => {
-        batch.update(docSnap.ref, { workspaceId: 'onboarding' });
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'activities', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
     });
     await batch.commit();
-    return snap.size;
+    return count;
 }
 
 export async function seedSchools(firestore: Firestore): Promise<number> {
@@ -416,7 +443,6 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
             ...data,
             slug: data.name.toLowerCase().replace(/\s+/g, '-'),
             workspaceIds: [wId],
-            track: wId,
             status: 'Active',
             schoolStatus: wId === 'prospect' ? 'Lead' : 'Onboarding',
             pipelineId: pId,
