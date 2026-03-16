@@ -131,9 +131,10 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
     };
 
     return (
-        <div className="flex flex-col h-full text-left">
-            <ScrollArea className="flex-1 -mx-2 px-2">
-                <div className="space-y-10 pb-20">
+        <div className="flex flex-col h-full text-left min-h-0">
+            {/* ScrollArea wraps the main configuration sections */}
+            <ScrollArea className="flex-1 -mx-4 px-4">
+                <div className="space-y-10 pb-32 pt-2">
                     {/* Node Header Context */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
@@ -223,7 +224,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                         <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner px-4">
                                             <SelectValue placeholder="Pick variable to evaluate..." />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px]">
+                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                                             {variables?.filter(v => !v.hidden).map(v => (
                                                 <SelectItem key={v.id} value={v.key} className="rounded-lg p-3">
                                                     <div className="flex flex-col">
@@ -245,6 +246,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             <SelectValue placeholder="Select logic rule..." />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl border-none shadow-2xl">
+                                            {/* Operators list is short, standard max-h applies */}
                                             {CONDITION_OPERATORS.map(op => (
                                                 <SelectItem key={op.value} value={op.value} className="font-bold">{op.label}</SelectItem>
                                             ))}
@@ -325,7 +327,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     <SelectTrigger className="h-14 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-lg px-6">
                                         <SelectValue placeholder="Select action type..." />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
+                                    <SelectContent className="rounded-2xl border-none shadow-2xl p-2 max-h-[400px] overflow-y-auto">
                                         {ACTION_TYPES.map(action => (
                                             <SelectItem key={action.value} value={action.value} className="rounded-xl p-4 my-1">
                                                 <div className="flex items-start gap-4">
@@ -343,7 +345,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
 
                             <Separator className="opacity-50" />
 
-                            <div className="space-y-10 pb-10">
+                            <div className="space-y-10">
                                 {data.actionType === 'SEND_MESSAGE' && (
                                     <div className="space-y-6">
                                         <div className="space-y-2">
@@ -352,7 +354,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-bold px-4">
                                                     <SelectValue placeholder="Choose blueprint..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl p-2 max-h-[300px]">
+                                                <SelectContent className="rounded-xl p-2 max-h-[300px] overflow-y-auto">
                                                     {templates?.map(t => (
                                                         <SelectItem key={t.id} value={t.id} className="rounded-lg py-2.5">
                                                             <div className="flex items-center gap-3">
@@ -422,7 +424,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                     <Input 
                                                         type="number" 
                                                         value={config.dueOffsetDays || 3} 
-                                                        onChange={(e) => updateConfig({ dueOffsetDays: parseInt(e.target.value, 10) })} 
+                                                        onChange={(e) => updateConfig({ dueOffsetDays: parseInt(e.target.value, 10) || 0 })} 
                                                         className="h-10 rounded-xl bg-white text-center font-black w-16"
                                                     />
                                                     <span className="text-[9px] font-bold uppercase opacity-40">Days</span>
@@ -435,7 +437,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-bold">
                                                     <SelectValue placeholder="Auto-Resolve from School" />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px]">
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                                                     <SelectItem value="auto" className="font-black italic text-primary rounded-lg py-2.5">Auto-Resolve (Manager)</SelectItem>
                                                     {users?.map(u => (
                                                         <SelectItem key={u.id} value={u.id} className="rounded-lg py-2.5">{u.name}</SelectItem>
@@ -466,7 +468,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 updateConfig({ updates: { ...config.updates, stage: { id: stage?.id, name: stage?.name, order: stage?.order, color: stage?.color } } });
                                             }}>
                                                 <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-black uppercase text-xs"><SelectValue placeholder="No movement" /></SelectTrigger>
-                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2">
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                                                     {stages?.map(s => (
                                                         <SelectItem key={s.id} value={s.id} className="rounded-lg py-2.5">
                                                             <div className="flex items-center gap-2">
@@ -486,7 +488,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                 </div>
             </ScrollArea>
 
-            {/* Variable Glossary Drawer */}
+            {/* Variable Glossary Drawer - Pinned to bottom but doesn't overlap scroll content */}
             <div className="mt-auto border-t bg-muted/30 p-6 -mx-6 -mb-6 shrink-0 text-left">
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -514,7 +516,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                     </div>
 
                     <ScrollArea className="h-40 -mx-2 px-2">
-                        <div className="grid grid-cols-1 gap-2 pr-2">
+                        <div className="grid grid-cols-1 gap-2 pr-2 pb-4">
                             {filteredVars.map(v => (
                                 <button 
                                     key={v.id} 

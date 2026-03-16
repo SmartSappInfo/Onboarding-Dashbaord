@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -194,7 +193,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             {/* Sidebar Inspector Context */}
             <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
                 <Card className={cn(
-                    "rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-white/95 backdrop-blur-md p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] flex flex-col ring-1 ring-black/5",
+                    "rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-white/95 backdrop-blur-md p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] h-full flex flex-col ring-1 ring-black/5 overflow-hidden",
                     selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
                 )}>
                     <div className="flex items-center justify-between mb-6 shrink-0">
@@ -207,7 +206,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                         </Button>
                     </div>
                     
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-hidden min-h-0">
                         {selectedNode ? (
                             <NodeInspector 
                                 node={selectedNode} 
