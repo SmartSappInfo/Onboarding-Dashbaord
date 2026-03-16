@@ -18,11 +18,12 @@ async function safeGetDocs(q: any) {
 
 /**
  * @fileOverview Intelligence Hub Data Aggregator.
- * Synchronized with security rules to perform workspace-aware listing.
+ * Optimized for Multi-Workspace Sharing logic using array-contains filters.
  */
 export async function getDashboardData(db: Firestore, workspaceId: string = 'onboarding') {
-  // 1. Fetch Workspace-Aware Master Data
-  // Queries MUST filter by workspaceId to satisfy Firestore security rules for list operations.
+  // 1. Fetch Master Data
+  // We filter Schools by the new workspaceIds array. 
+  // Tasks and Activities are already bound to a single workspaceId.
   const [
     schoolsSnapshot,
     meetingsSnapshot,
@@ -35,7 +36,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
     logsSnapshot,
     tasksSnapshot
   ] = await Promise.all([
-    safeGetDocs(query(collection(db, 'schools'), where('workspaceId', '==', workspaceId))),
+    safeGetDocs(query(collection(db, 'schools'), where('workspaceIds', 'array-contains', workspaceId))),
     safeGetDocs(collection(db, 'meetings')), 
     safeGetDocs(collection(db, 'surveys')),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
@@ -43,11 +44,11 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
     safeGetDocs(query(collection(db, 'modules'))),
     safeGetDocs(query(collection(db, 'activities'), where('workspaceId', '==', workspaceId), orderBy('timestamp', 'desc'), limit(50))),
     safeGetDocs(collection(db, 'zones')),
-    safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
+    safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(500))),
     safeGetDocs(query(collection(db, 'tasks'), where('workspaceId', '==', workspaceId))),
   ]); 
 
-  // 2. APPLY RESOLUTION
+  // 2. Data Resolution
   const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
   const tasks = tasksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Task));
   const activities = activitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity));
@@ -58,8 +59,10 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
-  // Cross-reference meetings with workspace-specific schools
+  // 3. Resolve Workspace-Authorized IDs for cross-referencing
   const filteredSchoolIds = new Set(schools.map(s => s.id));
+
+  // 4. Meeting Intelligence (Filtered by Workspace Schools)
   const upcomingMeetings = meetingsSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
     .filter(m => filteredSchoolIds.has(m.schoolId) && m.meetingTime && isAfter(new Date(m.meetingTime), now))
@@ -89,6 +92,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
     })
     .slice(0, 3);
 
+  // 5. Workflow Architecture
   const stages = stagesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as OnboardingStage));
   const pipelineCounts = stages.map(stage => {
     const schoolsInStage = schools.filter(school => school.stage?.id === stage.id);
@@ -102,6 +106,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
     };
   });
 
+  // 6. User Load Balancing
   const users = usersSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map(user => {
       const assignedSchools = schools.filter(s => s.assignedTo?.userId === user.id);
@@ -128,6 +133,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
       });
   }
 
+  // 7. Time-Series Trends
   const monthlySchools = schools.reduce((acc, school) => {
     if (school.implementationDate) {
         try {
@@ -170,19 +176,21 @@ export async function getDashboardData(db: Firestore, workspaceId: string = 'onb
     };
   });
 
-  // Messaging Metrics
-  const emailLogs = logs.filter(l => l.channel === 'email');
-  const smsLogs = logs.filter(l => l.channel === 'sms');
+  // 8. Workspace-Bound Messaging Analytics
+  // Only include logs for schools visible in the current workspace
+  const workspaceLogs = logs.filter(l => !l.schoolId || filteredSchoolIds.has(l.schoolId));
+  const emailLogs = workspaceLogs.filter(l => l.channel === 'email');
+  const smsLogs = workspaceLogs.filter(l => l.channel === 'sms');
   const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;
   const smsSuccess = smsLogs.length > 0 ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 : 100;
 
   const messagingMetrics = {
     emailSuccess: Math.round(emailSuccess),
     smsSuccess: Math.round(smsSuccess),
-    recentLogs: logs.slice(0, 5)
+    recentLogs: workspaceLogs.slice(0, 5)
   };
 
-  // Task Force Performance
+  // 9. Task Force Efficiency
   const taskPerformance = {
       total: tasks.length,
       completed: tasks.filter(t => t.status === 'done').length,
