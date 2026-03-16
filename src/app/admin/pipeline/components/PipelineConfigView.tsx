@@ -7,9 +7,7 @@ import {
     query, 
     orderBy, 
     doc, 
-    deleteDoc, 
     updateDoc,
-    getDocs,
     where
 } from 'firebase/firestore';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -17,15 +15,12 @@ import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { 
     ShieldCheck, 
-    Zap, 
     Loader2,
-    Info,
     Settings2,
     CheckCircle2,
-    Maximize,
-    Trash2
+    Maximize
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,8 +62,11 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
             setName(pipeline.name);
             setDescription(pipeline.description || '');
             setAccessRoles(pipeline.accessRoles || []);
+            if (pipeline.columnWidth) {
+                onWidthChange(pipeline.columnWidth);
+            }
         }
-    }, [pipeline]);
+    }, [pipeline, onWidthChange]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,10 +78,10 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 name: name.trim(),
                 description: description.trim(),
                 accessRoles,
+                columnWidth,
                 updatedAt: new Date().toISOString()
             });
             
-            localStorage.setItem('onboarding_column_width', String(columnWidth));
             toast({ title: 'Logic Synchronized', description: 'Pipeline architecture updated.' });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
@@ -185,7 +183,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                         />
                         <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 mt-2">
                             <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
                                 Restricted context: Only members of these roles can view schools in this pipeline.
                             </p>
                         </div>

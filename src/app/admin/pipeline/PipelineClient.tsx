@@ -8,21 +8,22 @@ import {
     Workflow, 
     Search, 
     MapPin, 
-    ShieldCheck, 
     RotateCcw,
     Settings2,
     Zap,
     Layout,
     Filter,
-    X
+    X,
+    Plus,
+    PlusCircle,
+    Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, where, addDoc } from 'firebase/firestore';
 import type { Pipeline, Zone, LifecycleStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { toTitleCase } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,19 +34,23 @@ import {
 } from "@/components/ui/popover";
 import { Label } from '@/components/ui/label';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Unified Pipeline Hub.
- * Optimized with Perspective Filtering to isolate Onboarding and Prospect workflows.
+ * Optimized with Workspace Filtering and Multi-Pipeline support.
  */
 
 export default function PipelineClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
+  const { user } = useUser();
+  const { toast } = useToast();
   
   // View State
   const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(false);
 
   // Pipeline Registry - Filtered by Track
   const pipelinesQuery = useMemoFirebase(() => 
@@ -70,21 +75,43 @@ export default function PipelineClient() {
   const [statusFilter, setStatusFilter] = React.useState<LifecycleStatus | 'all'>('all');
   const [columnWidth, setColumnWidth] = React.useState(320);
 
-  // Initialization: Reset selection when perspective changes
+  // Initialization: Reset selection when perspective changes or when pipelines are loaded
   React.useEffect(() => {
     if (pipelines && pipelines.length > 0) {
-        // Automatically select the first pipeline for the workspace
-        setCurrentPipelineId(pipelines[0].id);
+        if (!currentPipelineId || !pipelines.find(p => p.id === currentPipelineId)) {
+            setCurrentPipelineId(pipelines[0].id);
+        }
     } else {
         setCurrentPipelineId(null);
     }
-  }, [pipelines]);
+  }, [pipelines, currentPipelineId]);
 
-  // Load UI preferences
-  React.useEffect(() => {
-    const savedWidth = localStorage.getItem('onboarding_column_width');
-    if (savedWidth) setColumnWidth(parseInt(savedWidth, 10));
-  }, []);
+  const handleAddPipeline = async () => {
+    if (!firestore || !user || !activeWorkspaceId) return;
+    setIsInitializing(true);
+    
+    try {
+        const timestamp = new Date().toISOString();
+        const docRef = await addDoc(collection(firestore, 'pipelines'), {
+            name: 'New Pipeline Architect',
+            description: `Custom operational track for ${activeWorkspaceId}.`,
+            workspaceId: activeWorkspaceId,
+            accessRoles: [],
+            stageIds: [],
+            columnWidth: 320,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+        
+        setCurrentPipelineId(docRef.id);
+        setActiveView('config');
+        toast({ title: 'Pipeline Space Initialized', description: 'Configure your stages and access below.' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Initialization Failed', description: e.message });
+    } finally {
+        setIsInitializing(false);
+    }
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -108,23 +135,35 @@ export default function PipelineClient() {
                     <Workflow className="h-5 w-5" />
                 </div>
                 <div className="text-left min-w-0">
-                    <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
-                        <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-lg sm:text-xl font-black uppercase tracking-tighter gap-2 w-auto bg-transparent hover:text-primary transition-colors">
-                            <SelectValue placeholder={isLoadingPipelines ? "Loading..." : pipelines?.length ? "Pipeline Context" : "No Active Pipeline"} />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
-                            {pipelines?.map(p => (
-                                <SelectItem key={p.id} value={p.id} className="rounded-lg p-2.5 my-0.5">
-                                    <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
-                                </SelectItem>
-                            ))}
-                            {(!pipelines || pipelines.length === 0) && !isLoadingPipelines && (
-                                <div className="p-4 text-center italic text-xs text-muted-foreground">
-                                    No active pipelines defined.
-                                </div>
-                            )}
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                        <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
+                            <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-lg sm:text-xl font-black uppercase tracking-tighter gap-2 w-auto bg-transparent hover:text-primary transition-colors">
+                                <SelectValue placeholder={isLoadingPipelines ? "Loading..." : pipelines?.length ? "Pipeline Context" : "No Active Pipeline"} />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
+                                {pipelines?.map(p => (
+                                    <SelectItem key={p.id} value={p.id} className="rounded-lg p-2.5 my-0.5">
+                                        <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
+                                    </SelectItem>
+                                ))}
+                                {(!pipelines || pipelines.length === 0) && !isLoadingPipelines && (
+                                    <div className="p-4 text-center italic text-xs text-muted-foreground">
+                                        No active pipelines defined.
+                                    </div>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={handleAddPipeline} disabled={isInitializing} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5">
+                                        {isInitializing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Add New Pipeline to this Workspace</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                 </div>
             </div>
 
@@ -277,7 +316,7 @@ export default function PipelineClient() {
         <AnimatePresence mode="wait">
             {activeView === 'board' ? (
                 <motion.div 
-                    key={`board-${activeWorkspaceId}`}
+                    key={`board-${activeWorkspaceId}-${currentPipelineId}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -294,15 +333,21 @@ export default function PipelineClient() {
                             }}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full p-8 opacity-10">
-                            <Workflow size={120} className="mb-6" />
-                            <p className="font-black uppercase tracking-[0.4em] text-2xl">Workspace Clear</p>
+                        <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6">
+                            <div className="p-10 bg-muted rounded-[3rem] shadow-inner border opacity-20"><Workflow size={120} /></div>
+                            <div className="space-y-2">
+                                <p className="font-black uppercase tracking-[0.4em] text-2xl opacity-20">Workspace Clear</p>
+                                <Button onClick={handleAddPipeline} disabled={isInitializing} className="rounded-xl font-bold gap-2">
+                                    {isInitializing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle size={16} />}
+                                    Initialize First Pipeline
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </motion.div>
             ) : (
                 <motion.div 
-                    key={`config-${activeWorkspaceId}`}
+                    key={`config-${activeWorkspaceId}-${currentPipelineId}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
@@ -316,7 +361,7 @@ export default function PipelineClient() {
                                 columnWidth={columnWidth}
                             />
                         ) : (
-                            <div className="py-40 text-center opacity-20 flex flex-col items-center gap-6">
+                            <div className="py-40 text-center opacity-20 flex flex-col items-center gap-6 text-left">
                                 <Workflow size={80} />
                                 <p className="text-sm font-semibold uppercase tracking-[0.3em]">Initialize a workspace pipeline to begin</p>
                             </div>

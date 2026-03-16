@@ -69,7 +69,9 @@ export interface Pipeline {
   targetTrack?: InstitutionalTrack; // Legacy support
   stageIds: string[];
   accessRoles: string[];
+  columnWidth?: number; // Per-pipeline UI width preference
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | 'sales_rep' | 'sales_supervisor' | string;
