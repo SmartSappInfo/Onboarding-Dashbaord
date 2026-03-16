@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -90,7 +91,7 @@ service cloud.firestore {
       allow read: if isAuthorized();
       allow write: if isAdmin();
     }
-    match /media/{document=**} {
+    match /media/{mediaId} {
         allow read, write: if isAuthorized();
     }
     match /zones/{document=**} {
@@ -127,7 +128,7 @@ service cloud.firestore {
     }
 
     match /automations/{ruleId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || isSystemAdmin();
     }
 
     match /schools/{schoolId} {
