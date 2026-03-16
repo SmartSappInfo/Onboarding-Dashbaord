@@ -540,6 +540,122 @@ export async function seedZones(firestore: Firestore): Promise<number> {
     return initialZones.length;
 }
 
+export async function seedActivities(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    const activitiesCol = collection(firestore, 'activities');
+    const now = new Date();
+
+    // Fetch context to make logs realistic
+    const schoolsSnap = await getDocs(query(collection(firestore, 'schools'), where('workspaceId', '==', 'onboarding'), limit(10)));
+    const usersSnap = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true), limit(5)));
+
+    if (schoolsSnap.empty) return 0;
+
+    const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
+    const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+
+    let count = 0;
+
+    schools.forEach((school, sIdx) => {
+        const schoolUser = users[sIdx % users.length];
+        
+        // 1. Creation Event
+        const creationTime = subDays(now, 30 + sIdx).toISOString();
+        batch.set(doc(activitiesCol), {
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
+            workspaceId: 'onboarding',
+            userId: null,
+            type: 'school_created',
+            source: 'system',
+            timestamp: creationTime,
+            description: `successfully initialized campus node: "${school.name}"`
+        } as Omit<Activity, 'id'>);
+        count++;
+
+        // 2. Assignment Event
+        batch.set(doc(activitiesCol), {
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
+            workspaceId: 'onboarding',
+            userId: schoolUser?.id || null,
+            type: 'school_assigned',
+            source: 'user_action',
+            timestamp: subDays(now, 28 + sIdx).toISOString(),
+            description: `assigned as primary account manager for "${school.name}"`,
+            metadata: { to: schoolUser?.name || 'Manager' }
+        } as Omit<Activity, 'id'>);
+        count++;
+
+        // 3. Stage Change
+        batch.set(doc(activitiesCol), {
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
+            workspaceId: 'onboarding',
+            userId: schoolUser?.id || null,
+            type: 'pipeline_stage_changed',
+            source: 'user_action',
+            timestamp: subDays(now, 15 + sIdx).toISOString(),
+            description: `progressed "${school.name}" from "Welcome" to "Identity Setup"`,
+            metadata: { from: 'Welcome', to: 'Identity Setup' }
+        } as Omit<Activity, 'id'>);
+        count++;
+
+        // 4. Meeting Scheduled
+        batch.set(doc(activitiesCol), {
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
+            workspaceId: 'onboarding',
+            userId: schoolUser?.id || null,
+            type: 'meeting_created',
+            source: 'user_action',
+            timestamp: subDays(now, 10 + sIdx).toISOString(),
+            description: `scheduled an Institutional Kickoff session for "${school.name}"`,
+            metadata: { meetingId: 'seed_meeting_' + sIdx }
+        } as Omit<Activity, 'id'>);
+        count++;
+
+        // 5. Internal Note
+        batch.set(doc(activitiesCol), {
+            schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
+            workspaceId: 'onboarding',
+            userId: schoolUser?.id || null,
+            type: 'note',
+            source: 'manual',
+            timestamp: subDays(now, 5 + sIdx).toISOString(),
+            description: `added a technical implementation note`,
+            metadata: { content: `Verified the student roll counts with the principal. Proceeding with billing module configuration.` }
+        } as Omit<Activity, 'id'>);
+        count++;
+
+        // 6. Public Submission (If older school)
+        if (sIdx % 2 === 0) {
+            batch.set(doc(activitiesCol), {
+                schoolId: school.id,
+                schoolName: school.name,
+                schoolSlug: school.slug,
+                workspaceId: 'onboarding',
+                userId: null,
+                type: 'pdf_form_submitted',
+                source: 'public',
+                timestamp: subDays(now, 2 + sIdx).toISOString(),
+                description: `Institution successfully signed the Onboarding Agreement.`,
+                metadata: { submissionId: 'seed_sub_' + sIdx }
+            } as Omit<Activity, 'id'>);
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
 export async function seedMedia(firestore: Firestore): Promise<number> { return 0; }
 export async function seedMeetings(firestore: Firestore): Promise<number> { return 0; }
 export async function seedSurveys(firestore: Firestore): Promise<number> { return 0; }
@@ -548,7 +664,6 @@ export async function seedOnboardingStages(firestore: Firestore) { return { stag
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
 export async function enrichAndRestoreSchools(firestore: Firestore) { return 0; }
 export async function rollbackSchoolsMigration(firestore: Firestore) { return 0; }
-export async function seedActivities(firestore: Firestore) { return 0; }
 export async function seedPdfForms(firestore: Firestore) { return 0; }
 export async function seedMessaging(firestore: Firestore) { return 0; }
 export async function seedMessageLogs(firestore: Firestore) { return 0; }
