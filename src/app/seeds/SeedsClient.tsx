@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -41,7 +41,8 @@ import {
     Globe,
     Workflow,
     ArrowRightLeft,
-    RotateCcw
+    RotateCcw,
+    X
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
