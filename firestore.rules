@@ -2,7 +2,7 @@
 rules_version = '2';
 
 // Triggering synchronization for the master index plan.
-// Update: Consolidated shared media and task force logic.
+// Update: Aligned media repository index order (Equality > Array-Contains > Sort).
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -113,6 +113,9 @@ service cloud.firestore {
     }
     match /message_templates/{templateId} {
       allow read, write: if hasPermission('studios_edit');
+    }
+    match /message_logs/{logId} {
+      allow read, list: if isAuthorized();
     }
     match /message_logs/{logId} {
       allow read, list: if isAuthorized();
