@@ -60,7 +60,8 @@ import {
     RotateCcw, 
     CheckCircle2, 
     Layout,
-    Lock
+    Lock,
+    Building
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
@@ -204,6 +205,33 @@ export default function SettingsClient() {
             </CardHeader>
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
+                {/* School Registry Sync */}
+                <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100"><Building className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">School Directory Sync</h4>
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Migrates schools to multi-workspace array schema. Ensures visibility across all institutional tracks.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={() => handleSeed('enrich')} 
+                            disabled={seedingStatus.enrich === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-primary hover:bg-primary/90 h-11 text-white"
+                        >
+                            {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Directory
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('rollback')} 
+                            disabled={seedingStatus.rollback === 'seeding'} 
+                            className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Activity Sync */}
                 <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
                     <div className="space-y-3">
