@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -7,11 +6,17 @@ import { saveAutomationAction } from '@/lib/automation-actions';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * @fileOverview Initialization page for new Automations.
+ * Automatically binds the new blueprint to the active workspace track.
+ */
 export default function NewAutomationPage() {
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
+    const { activeWorkspaceId } = useWorkspace();
 
     React.useEffect(() => {
         if (!user) return;
@@ -20,6 +25,7 @@ export default function NewAutomationPage() {
             const res = await saveAutomationAction(null, {
                 name: 'Untitled Workflow',
                 trigger: 'SCHOOL_CREATED',
+                workspaceId: activeWorkspaceId,
                 nodes: [
                     {
                         id: 'trigger',
@@ -40,12 +46,15 @@ export default function NewAutomationPage() {
         };
 
         init();
-    }, [user, router, toast]);
+    }, [user, router, toast, activeWorkspaceId]);
 
     return (
         <div className="h-full flex flex-col items-center justify-center gap-4 bg-muted/5">
             <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Architecting Workflow Space...</p>
+            <div className="text-center">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Architecting Workflow Space...</p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1">Binding to {activeWorkspaceId} track</p>
+            </div>
         </div>
     );
 }

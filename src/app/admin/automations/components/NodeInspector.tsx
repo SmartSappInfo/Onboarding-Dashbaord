@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -17,11 +16,12 @@ import {
     Globe, 
     Copy, 
     Check, 
-    Smartphone,
-    Layout,
-    Search,
-    BadgeAlert,
-    FlaskConical
+    Smartphone, 
+    Layout, 
+    Search, 
+    BadgeAlert, 
+    FlaskConical,
+    PlusCircle
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useParams } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NodeInspectorProps {
     node: any;

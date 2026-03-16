@@ -39,6 +39,14 @@
       ]
     },
     {
+      "collectionGroup": "automations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "onboardingStages",
       "queryScope": "COLLECTION",
       "fields": [

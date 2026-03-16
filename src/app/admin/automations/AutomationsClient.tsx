@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Automation, AutomationRun } from '@/lib/types';
 import { 
@@ -46,32 +45,55 @@ import {
     DialogContent, 
     DialogHeader, 
     DialogTitle, 
-    DialogDescription,
+    DialogDescription, 
     DialogFooter
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview High-fidelity Automation Hub Client.
- * Upgraded with Phase 8: Engine Pulse (Heartbeat) for delayed protocols.
+ * Upgraded with Workspace-Binding to isolate protocols by track.
  */
 export default function AutomationsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { activeWorkspaceId } = useWorkspace();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
     const [isPulsing, setIsPulsing] = React.useState(false);
 
+    // Workspace-Bound Blueprints Query
     const automationsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'automations'), orderBy('createdAt', 'desc')) : null, 
-    [firestore]);
+        firestore ? query(
+            collection(firestore, 'automations'), 
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('createdAt', 'desc')
+        ) : null, 
+    [firestore, activeWorkspaceId]);
 
+    // Workspace-Bound Runs Query
     const runsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'automation_runs'), orderBy('startedAt', 'desc'), limit(100)) : null, 
+        firestore ? query(
+            collection(firestore, 'automation_runs'), 
+            // Note: Runs also need workspace context for filtering if rules are strict
+            // For now we filter locally to match the UI perspective
+            orderBy('startedAt', 'desc'), 
+            limit(100)
+        ) : null, 
     [firestore]);
 
     const { data: automations, isLoading: isLoadingAuth } = useCollection<Automation>(automationsQuery);
-    const { data: runs, isLoading: isLoadingRuns } = useCollection<AutomationRun>(runsQuery);
+    const { data: allRuns, isLoading: isLoadingRuns } = useCollection<AutomationRun>(runsQuery);
+
+    // Filter runs by workspace based on trigger data if available
+    const filteredRuns = React.useMemo(() => {
+        if (!allRuns) return [];
+        return allRuns.filter(run => {
+            const runWorkspaceId = run.triggerData?.workspaceId;
+            return !runWorkspaceId || runWorkspaceId === activeWorkspaceId;
+        });
+    }, [allRuns, activeWorkspaceId]);
 
     const filteredAutomations = React.useMemo(() => {
         if (!automations) return [];
@@ -121,7 +143,7 @@ export default function AutomationsClient() {
                             <Zap className="h-10 w-10 text-primary" />
                             Automation Hub
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">Design and audit proactive institutional logic.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">Design and audit proactive institutional logic for the {activeWorkspaceId} track.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button 
@@ -219,8 +241,8 @@ export default function AutomationsClient() {
                             </div>
                             <div className="divide-y divide-border/50">
                                 {isLoadingRuns ? (
-                                    Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-                                ) : runs && runs.length > 0 ? runs.map(run => (
+                                    Array.from({ length: 5 }).map((_, i) => <Skeleton className="h-16 w-full" />)
+                                ) : filteredRuns && filteredRuns.length > 0 ? filteredRuns.map(run => (
                                     <div key={run.id} className="p-4 px-8 flex items-center justify-between group hover:bg-muted/30 transition-colors">
                                         <div className="flex items-center gap-6">
                                             <div className={cn(
