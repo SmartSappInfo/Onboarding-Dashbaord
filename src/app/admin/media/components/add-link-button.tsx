@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { addDoc, collection } from 'firebase/firestore';
 
 import { getLinkMetadata } from '@/ai/flows/get-link-metadata-flow';
-import { Link as LinkIcon, Loader2, Layout } from 'lucide-react';
+import { Link as LinkIcon, Loader2, Layout, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
