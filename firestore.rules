@@ -11,10 +11,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email == 'admin@smartsapp.com';
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isAuthorized() {
       if (!isSignedIn()) return false;
       if (isSystemAdmin()) return true;
@@ -29,6 +25,10 @@ service cloud.firestore {
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(userPath) && get(userPath).data.permissions.hasAny(['system_admin']);
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function hasPermission(perm) {
