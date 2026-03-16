@@ -151,51 +151,6 @@ export async function rollbackActivitiesMigration(firestore: Firestore): Promise
     return count;
 }
 
-/**
- * MIGRATION PROTOCOL: Role Alignment
- */
-export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<number> {
-    const rolesSnap = await getDocs(collection(firestore, 'roles'));
-    const batch = writeBatch(firestore);
-    const backupBatch = writeBatch(firestore);
-    const timestamp = new Date().toISOString();
-    
-    // Safety Snapshot
-    rolesSnap.forEach(docSnap => {
-        const backupRef = doc(firestore, 'backup_roles_migration', docSnap.id);
-        backupBatch.set(backupRef, docSnap.data());
-    });
-    await backupBatch.commit();
-
-    let count = 0;
-    rolesSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (!data.workspaceIds || data.workspaceIds.length === 0) {
-            batch.update(docSnap.ref, {
-                workspaceIds: ['onboarding'],
-                updatedAt: timestamp
-            });
-            count++;
-        }
-    });
-
-    await batch.commit();
-    return count;
-}
-
-export async function rollbackRolesMigration(firestore: Firestore): Promise<number> {
-    const backupSnap = await getDocs(collection(firestore, 'backup_roles_migration'));
-    const batch = writeBatch(firestore);
-    let count = 0;
-    backupSnap.forEach(docSnap => {
-        const originalRef = doc(firestore, 'roles', docSnap.id);
-        batch.set(originalRef, docSnap.data());
-        count++;
-    });
-    await batch.commit();
-    return count;
-}
-
 export async function seedBillingData(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
@@ -707,7 +662,57 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
     return count;
 }
 
-export async function seedMedia(firestore: Firestore): Promise<number> { return 0; }
+export async function seedMedia(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    const col = collection(firestore, 'media');
+    const timestamp = new Date().toISOString();
+
+    const sampleMedia: Omit<MediaAsset, 'id'>[] = [
+        {
+            name: 'Campus Main Entrance',
+            type: 'image',
+            url: 'https://picsum.photos/seed/1/1200/800',
+            workspaceIds: ['onboarding'],
+            uploadedBy: 'system',
+            createdAt: timestamp,
+            mimeType: 'image/jpeg',
+            size: 1024 * 500
+        },
+        {
+            name: 'Institutional Brochure 2026',
+            type: 'document',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            workspaceIds: ['onboarding', 'prospect'],
+            uploadedBy: 'system',
+            createdAt: timestamp,
+            mimeType: 'application/pdf',
+            size: 1024 * 1500
+        },
+        {
+            name: 'Parent Onboarding Video',
+            type: 'video',
+            url: 'https://www.youtube.com/watch?v=M6MUlDkfZOg',
+            workspaceIds: ['onboarding'],
+            uploadedBy: 'system',
+            createdAt: timestamp
+        },
+        {
+            name: 'Prospect Welcome Kit',
+            type: 'document',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            workspaceIds: ['prospect'],
+            uploadedBy: 'system',
+            createdAt: timestamp,
+            mimeType: 'application/pdf',
+            size: 1024 * 800
+        }
+    ];
+
+    sampleMedia.forEach(m => batch.set(doc(col), m));
+    await batch.commit();
+    return sampleMedia.length;
+}
+
 export async function seedMeetings(firestore: Firestore): Promise<number> { return 0; }
 export async function seedSurveys(firestore: Firestore): Promise<number> { return 0; }
 export async function seedUserAvatars(firestore: Firestore): Promise<number> { return 0; }
