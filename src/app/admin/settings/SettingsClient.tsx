@@ -29,7 +29,9 @@ import {
     enrichSchoolStatuses,
     rollbackSchoolStatuses,
     enrichTasksWithWorkspace,
-    rollbackTasksMigration
+    rollbackTasksMigration,
+    enrichAutomationsWithWorkspace,
+    rollbackAutomationsMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -60,7 +62,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -78,7 +80,8 @@ export default function SettingsClient() {
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
     harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle',
-    enrich_status: 'idle', rollback_status: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle'
+    enrich_status: 'idle', rollback_status: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle',
+    enrich_automations: 'idle', rollback_automations: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -111,6 +114,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback_tasks') {
           const count = await rollbackTasksMigration(firestore);
           toast({ title: 'CRM Rollback Success', description: `Restored ${count} tasks from backup.` });
+      } else if (seeder === 'enrich_automations') {
+          const count = await enrichAutomationsWithWorkspace(firestore);
+          toast({ title: 'Automation Sync Complete', description: `Enriched ${count} blueprints with workspace context.` });
+      } else if (seeder === 'rollback_automations') {
+          const count = await rollbackAutomationsMigration(firestore);
+          toast({ title: 'Logic Rollback Success', description: `Restored ${count} blueprints from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -184,27 +193,27 @@ export default function SettingsClient() {
                     </Button>
                 </div>
 
-                {/* Status Specific Migration */}
-                <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
+                {/* Automation Integrity Migration */}
+                <div className="p-6 rounded-3xl bg-purple-50/50 border-2 border-dashed border-purple-100 flex flex-col justify-between gap-6 transition-all hover:bg-purple-50">
                     <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-emerald-600 border border-emerald-100"><ShieldCheck className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Status Harmonization</h4>
-                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Surgical update of "School Status". Maps Support stage to "Active" and others to "Onboarding".</p>
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-purple-600 border border-purple-100"><Zap className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Automation Protocol Sync</h4>
+                        <p className="text-[10px] font-medium text-purple-800 leading-relaxed uppercase tracking-tighter">Binds all logic blueprints to the default onboarding workspace to resolve permission barriers.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button 
-                            onClick={() => handleSeed('enrich_status')} 
-                            disabled={seedingStatus.enrich_status === 'seeding'} 
-                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 h-11"
+                            onClick={() => handleSeed('enrich_automations')} 
+                            disabled={seedingStatus.enrich_automations === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-purple-600 hover:bg-purple-700 h-11"
                         >
-                            {seedingStatus.enrich_status === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Enrich Status
+                            {seedingStatus.enrich_automations === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                            Sync Automations
                         </Button>
                         <Button 
                             variant="outline" 
-                            onClick={() => handleSeed('rollback_status')} 
-                            disabled={seedingStatus.rollback_status === 'seeding'} 
-                            className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11"
+                            onClick={() => handleSeed('rollback_automations')} 
+                            disabled={seedingStatus.rollback_automations === 'seeding'} 
+                            className="rounded-xl font-bold border-purple-200 text-purple-700 h-11"
                         >
                             <RotateCcw className="h-4 w-4" />
                         </Button>

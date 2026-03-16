@@ -31,7 +31,8 @@ import type {
     Workspace, 
     WorkspaceStatus,
     Invoice,
-    InvoiceItem
+    InvoiceItem,
+    Automation
 } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
@@ -255,6 +256,51 @@ export async function rollbackTasksMigration(firestore: Firestore): Promise<numb
     let count = 0;
     backupSnap.forEach(docSnap => {
         const originalRef = doc(firestore, 'tasks', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: Automation Enrichment
+ */
+export async function enrichAutomationsWithWorkspace(firestore: Firestore): Promise<number> {
+    const autoSnap = await getDocs(collection(firestore, 'automations'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+    
+    // Backup existing state
+    autoSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_automations_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    autoSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceId) {
+            batch.update(docSnap.ref, {
+                workspaceId: 'onboarding',
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackAutomationsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_automations_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'automations', docSnap.id);
         batch.set(originalRef, docSnap.data());
         count++;
     });

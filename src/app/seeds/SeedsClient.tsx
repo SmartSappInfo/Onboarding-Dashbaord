@@ -11,7 +11,8 @@ import {
     seedOnboardingStages, seedModules, seedActivities, seedPdfForms, 
     seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
     seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, 
-    enrichAndRestoreSchools, rollbackSchoolsMigration, enrichTasksWithWorkspace, rollbackTasksMigration 
+    enrichAndRestoreSchools, rollbackSchoolsMigration, enrichTasksWithWorkspace, rollbackTasksMigration,
+    enrichAutomationsWithWorkspace, rollbackAutomationsMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -53,7 +54,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'enrich_tasks' | 'rollback_tasks';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -74,7 +75,8 @@ export default function SeedsClient() {
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
-    harvest: 'idle', enrich: 'idle', rollback: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle'
+    harvest: 'idle', enrich: 'idle', rollback: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle',
+    enrich_automations: 'idle', rollback_automations: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -116,6 +118,12 @@ export default function SeedsClient() {
       } else if (seeder === 'rollback_tasks') {
           const count = await rollbackTasksMigration(firestore);
           toast({ title: 'CRM Rollback Success', description: `Restored ${count} tasks from backup.` });
+      } else if (seeder === 'enrich_automations') {
+          const count = await enrichAutomationsWithWorkspace(firestore);
+          toast({ title: 'Automation Sync Complete', description: `Enriched ${count} blueprints with workspace context.` });
+      } else if (seeder === 'rollback_automations') {
+          const count = await rollbackAutomationsMigration(firestore);
+          toast({ title: 'Logic Rollback Success', description: `Restored ${count} blueprints from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -260,19 +268,24 @@ export default function SeedsClient() {
 
                         <div className="p-6 rounded-3xl bg-muted/20 border-2 border-dashed border-border flex flex-col justify-between gap-6 transition-all hover:bg-muted/30">
                             <div className="space-y-3">
-                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary"><Workflow className="h-5 w-5" /></div>
-                                <h4 className="text-sm font-black uppercase tracking-tight">2. Architect</h4>
-                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Harvests unique stages from schools to build the primary pipeline blueprint.</p>
+                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary"><Zap className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight">2. Automation Sync</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches all blueprints with 'onboarding' workspace context.</p>
                             </div>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => handleSeed('harvest')} 
-                                disabled={seedingStatus.harvest === 'seeding'} 
-                                className="w-full rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
-                            >
-                                {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layers className="mr-2 h-4 w-4" />}
-                                Initialize Hub
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => handleSeed('enrich_automations')} 
+                                    disabled={seedingStatus.enrich_automations === 'seeding'} 
+                                    className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
+                                >
+                                    {seedingStatus.enrich_automations === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                    Sync Logic
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => handleSeed('rollback_automations')} disabled={seedingStatus.rollback_automations === 'seeding'} className="h-11 w-11 rounded-xl border-rose-200 text-rose-600">
+                                    <RotateCcw size={16} />
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="p-6 rounded-3xl bg-primary/[0.03] border-2 border-primary/10 flex flex-col justify-between gap-6 transition-all hover:bg-primary/[0.05]">
