@@ -1,4 +1,3 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
@@ -98,6 +97,53 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
     data.forEach(w => batch.set(doc(col, w.id), w));
     await batch.commit();
     return data.length;
+}
+
+/**
+ * MIGRATION PROTOCOL: Role Enrichment
+ * Ensures legacy roles are explicitly bound to at least one workspace.
+ */
+export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<number> {
+    const rolesSnap = await getDocs(collection(firestore, 'roles'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    // 1. Safety Snapshot
+    rolesSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_roles_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    // 2. Enrichment
+    let count = 0;
+    rolesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: ['onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackRolesMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_roles_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'roles', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
 }
 
 /**
@@ -217,6 +263,8 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
     const invoiceCol = collection(firestore, 'invoices');
     let invoiceCount = 0;
 
+    const currentYear = new Date().getFullYear();
+
     schoolsSnap.forEach((schoolDoc, idx) => {
         const school = schoolDoc.data() as School;
         const pkgIdx = idx % packages.length;
@@ -230,7 +278,7 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
 
         const invRef = doc(invoiceCol);
         const invData: Omit<Invoice, 'id'> = {
-            invoiceNumber: `INV-2026-${1000 + idx}`,
+            invoiceNumber: `INV-${currentYear}-${1000 + idx}`,
             schoolId: schoolDoc.id,
             schoolName: school.name,
             periodId: periodIds[0],
