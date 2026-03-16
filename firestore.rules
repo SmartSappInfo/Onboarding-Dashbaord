@@ -164,7 +164,7 @@ service cloud.firestore {
     
     match /surveys/{surveyId} {
       allow write, list: if hasPermission('studios_edit');
-      allow get: if isAuthorized() || resource.data.status == 'published';
+      allow get: if isAuthorized() || (exists(/databases/$(database)/documents/surveys/$(surveyId)) && get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published');
       match /responses/{responseId} {
         allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
         allow read, list, delete: if isAuthorized();
@@ -173,7 +173,7 @@ service cloud.firestore {
 
     match /pdfs/{pdfId} {
       allow write, list: if hasPermission('studios_edit');
-      allow get: if isAuthorized() || resource.data.status == 'published';
+      allow get: if isAuthorized() || (exists(/databases/$(database)/documents/pdfs/$(pdfId)) && get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published');
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
         allow read, list: if isAuthorized();
@@ -182,7 +182,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId));
+      allow read, list: if isAuthorized() && (isSystemAdmin() || (exists(resource) && canAccessWorkspace(resource.data.workspaceId)));
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
