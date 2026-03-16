@@ -3,14 +3,14 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, ArrowRight, Mail, Clock, Building } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Functional Action Node for Automation Canvas.
- * Represents a discrete task performed by the system.
+ * @fileOverview Refined Action Node for Automation Canvas.
+ * Provides high-visibility feedback on the specific task being executed.
  */
 export function ActionNode({ data, selected }: any) {
     const actionType = data.actionType;
@@ -42,19 +42,32 @@ export function ActionNode({ data, selected }: any) {
                         <Icon className="h-4 w-4" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Execute Action</span>
                     </div>
-                    <Settings2 className={cn("h-3.5 w-3.5 transition-all", selected ? "text-white" : "text-white/40")} />
+                    {selected && <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />}
                 </div>
-                <div className="p-4 space-y-2">
-                    <p className="text-xs font-black uppercase text-foreground leading-tight truncate">{data.label || 'Task Step'}</p>
+                <div className="p-4 space-y-3">
+                    <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-foreground leading-tight truncate">{data.label || 'Task Step'}</p>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Logic Implementation</p>
+                    </div>
+                    
                     {actionType && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                            <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4 border-blue-100 bg-blue-50 text-blue-600">
-                                {actionType.replace('_', ' ')}
-                            </Badge>
-                            {config.priority && (
-                                <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4 opacity-60">
-                                    {config.priority}
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4 border-blue-100 bg-blue-50 text-blue-600">
+                                    {actionType.replace('_', ' ')}
                                 </Badge>
+                                {config.priority && (
+                                    <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4 bg-muted/50 border-none">
+                                        {config.priority}
+                                    </Badge>
+                                )}
+                            </div>
+                            
+                            {actionType === 'SEND_MESSAGE' && config.recipient && (
+                                <div className="flex items-center gap-1.5 text-[8px] font-bold text-muted-foreground truncate italic bg-muted/30 p-1 rounded">
+                                    <MousePointer2 className="h-2.5 w-2.5 opacity-40" />
+                                    To: {config.recipient}
+                                </div>
                             )}
                         </div>
                     )}

@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, ChevronDown, Target, Building, CheckSquare, Database, Globe } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -15,11 +15,12 @@ const TRIGGER_ICONS: Record<string, any> = {
     'SURVEY_SUBMITTED': Database,
     'PDF_SIGNED': Target,
     'WEBHOOK_RECEIVED': Globe,
+    'MEETING_CREATED': Play,
 };
 
 /**
  * @fileOverview High-fidelity Trigger Node for Automation Canvas.
- * Anchors the start of every operational flow.
+ * Represents the entry point of an institutional protocol.
  */
 export function TriggerNode({ data, selected }: any) {
     const trigger = data.trigger;
@@ -39,20 +40,28 @@ export function TriggerNode({ data, selected }: any) {
                         <Zap className="h-4 w-4 fill-white" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Protocol Entry</span>
                     </div>
-                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    <div className="flex gap-1">
+                        <div className="h-1 w-1 rounded-full bg-white opacity-40" />
+                        <div className="h-1 w-1 rounded-full bg-white opacity-40" />
+                    </div>
                 </div>
-                <div className="p-4 space-y-2 text-left">
-                    <p className="text-xs font-black uppercase text-foreground leading-tight">{data.label || 'Event Detected'}</p>
+                <div className="p-4 space-y-3 text-left">
+                    <div className="space-y-1">
+                        <p className="text-xs font-black uppercase text-foreground leading-tight">{data.label || 'Event Detected'}</p>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 tracking-widest italic">Source Signal</p>
+                    </div>
+                    
                     <div className="flex items-center gap-2">
                         <div className={cn(
-                            "p-1.5 rounded-lg border",
+                            "p-1.5 rounded-lg border shadow-sm",
                             trigger === 'WEBHOOK_RECEIVED' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
                         )}>
-                            <Icon className="h-3 w-3" />
+                            <Icon className="h-3.5 w-3.5" />
                         </div>
-                        <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-widest border-none p-0 opacity-60">
-                            Trigger: {trigger?.replace('_', ' ') || 'None'}
-                        </Badge>
+                        <div className="flex flex-col">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-0.5">Event Type</span>
+                            <span className="text-[10px] font-bold uppercase truncate max-w-[140px]">{trigger?.replace('_', ' ') || 'Awaiting Selection'}</span>
+                        </div>
                     </div>
                 </div>
             </Card>
