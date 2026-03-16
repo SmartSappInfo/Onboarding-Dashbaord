@@ -19,7 +19,9 @@ import {
     ShieldCheck,
     AlertCircle,
     Download,
-    Eye
+    Eye,
+    FileText,
+    Users
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
