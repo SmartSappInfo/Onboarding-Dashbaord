@@ -1,10 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Target as ProspectIcon } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Target as ProspectIcon, Layout } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 
@@ -16,7 +17,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  Form,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,12 +34,14 @@ import { MediaSelect } from '../components/media-select';
 import { logActivity } from '@/lib/activity-logger';
 import { type UserProfile, type SubscriptionPackage, type OnboardingStage } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
-  track: z.enum(['onboarding', 'prospect']).default('onboarding'),
+  workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
   status: z.enum(['Active', 'Inactive', 'Archived']),
   lifecycleStatus: z.enum(['Onboarding', 'Active', 'Churned']),
   logoUrl: z.string().url().optional().or(z.literal('')),
@@ -85,6 +87,7 @@ export default function NewSchoolPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -104,7 +107,7 @@ export default function NewSchoolPage() {
       name: '',
       initials: '',
       slogan: '',
-      track: 'onboarding',
+      workspaceIds: [activeWorkspaceId],
       status: 'Active',
       lifecycleStatus: 'Onboarding',
       location: '',
@@ -124,7 +127,6 @@ export default function NewSchoolPage() {
   });
 
   const watchName = methods.watch("name");
-  const watchTrack = methods.watch("track");
   const watchPackageId = methods.watch("subscriptionPackageId");
 
   // Auto-generate initials
@@ -166,12 +168,10 @@ export default function NewSchoolPage() {
     const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    // 1. Resolve Initial Stage for the chosen Track
-    let initialPipelineId = 'institutional_onboarding';
-    if (data.track === 'prospect') {
-        const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('targetTrack', '==', 'prospect'), limit(1)));
-        if (!pSnap.empty) initialPipelineId = pSnap.docs[0].id;
-    }
+    // 1. Resolve Initial Pipeline (Priority: Onboarding if present in array, else first selected)
+    const primaryWId = data.workspaceIds.includes('onboarding') ? 'onboarding' : data.workspaceIds[0];
+    const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('workspaceId', '==', primaryWId), limit(1)));
+    const initialPipelineId = !pSnap.empty ? pSnap.docs[0].id : 'institutional_onboarding';
 
     const stagesSnap = await getDocs(query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', initialPipelineId), orderBy('order', 'asc'), limit(1)));
     const defaultStage = !stagesSnap.empty 
@@ -184,6 +184,7 @@ export default function NewSchoolPage() {
       slug,
       assignedTo,
       pipelineId: initialPipelineId,
+      track: primaryWId, // Legacy context
       subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
@@ -200,10 +201,10 @@ export default function NewSchoolPage() {
           schoolName: data.name, 
           schoolSlug: slug, 
           userId: user.uid,
-          track: data.track,
+          workspaceId: activeWorkspaceId,
           type: 'school_created', 
           source: 'user_action',
-          description: `registered new ${data.track} record: "${data.name}"`,
+          description: `registered new record: "${data.name}" in ${data.workspaceIds.length} hubs`,
       });
       router.push('/admin/schools');
     } catch (error: any) {
@@ -211,8 +212,10 @@ export default function NewSchoolPage() {
     }
   };
 
+  const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
       <div className="max-w-5xl mx-auto space-y-8">
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
@@ -222,51 +225,29 @@ export default function NewSchoolPage() {
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                     <CardHeader className="bg-primary/5 border-b p-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Zap className="h-4 w-4" /></div>
-                            <CardTitle className="text-sm font-black uppercase tracking-tight">Institutional Track</CardTitle>
+                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Layout className="h-4 w-4" /></div>
+                            <CardTitle className="text-sm font-black uppercase tracking-tight">Hub Authorization</CardTitle>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-6">
-                        <Controller
-                            name="track"
+                    <CardContent className="p-6 space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
+                            <Zap className="h-3 w-3" /> Targeted Workspaces
+                        </Label>
+                        <Controller 
+                            name="workspaceIds"
                             control={methods.control}
                             render={({ field }) => (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => field.onChange('onboarding')}
-                                        className={cn(
-                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                            field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                        )}
-                                    >
-                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
-                                            <Building className="h-5 w-5" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-xs uppercase">Onboarding</span>
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Implementation track</span>
-                                        </div>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => field.onChange('prospect')}
-                                        className={cn(
-                                            "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                                            field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
-                                        )}
-                                    >
-                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
-                                            <ProspectIcon className="h-5 w-5" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-xs uppercase">Prospect</span>
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Lead acquisition track</span>
-                                        </div>
-                                    </button>
-                                </div>
+                                <MultiSelect 
+                                    options={workspaceOptions}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="Assign to hubs..."
+                                />
                             )}
                         />
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight leading-relaxed">
+                            Shared records appear in the directory and pipelines of all selected workspaces.
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -499,7 +480,7 @@ export default function NewSchoolPage() {
               </div>
               <div className="space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle></div></CardHeader><CardContent className="p-6 space-y-6"><FormField control={methods.control} name="zone" render={({ field, fieldState }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel><FormControl><ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</FormLabel><FormControl><Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="nominalRoll" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Total Roll</FormLabel><FormControl><Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
-                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" disabled={methods.formState.isSubmitting || isUsersLoading}>{methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Building className="h-6 w-6" />} Initialize School</Button></div>
+                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95 uppercase tracking-widest" disabled={methods.formState.isSubmitting || isUsersLoading}>{methods.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize School</Button></div>
               </div>
             </div>
           </form>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,9 +83,9 @@ export default function SchoolsClient() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
-  // Filtered collection based on active workspace
+  // MULTI-WORKSPACE QUERY: Use array-contains to find schools shared with the current hub
   const schoolsCol = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId)) : null, 
+    firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId)) : null, 
   [firestore, activeWorkspaceId]);
 
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
@@ -216,6 +217,7 @@ export default function SchoolsClient() {
                         <TableHead className="w-[80px]"></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">School Name <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
+                        <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Visibility</span></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('stage.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
@@ -225,7 +227,7 @@ export default function SchoolsClient() {
                     <TableBody>
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+                        <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                         ))
                     ) : sortedSchools.length > 0 ? (
                         sortedSchools.map((school) => {
@@ -239,7 +241,7 @@ export default function SchoolsClient() {
                             </Avatar>
                             </TableCell>
                             <TableCell className="py-4">
-                                <div className="flex flex-col">
+                                <div className="flex flex-col text-left">
                                     <Link href={`/admin/schools/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
                                     <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
                                         <User className="h-2 w-2" /> {signatory?.name || 'No Primary Contact'}
@@ -248,6 +250,23 @@ export default function SchoolsClient() {
                             </TableCell>
                             <TableCell className="text-center">
                                 <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                                <div className="flex justify-center items-center gap-1">
+                                    {school.workspaceIds?.length > 1 ? (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary cursor-help"><Share2 className="h-3.5 w-3.5" /></div>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="p-2 space-y-1">
+                                                    <p className="text-[9px] font-black uppercase text-primary border-b pb-1">Shared Visibility</p>
+                                                    {school.workspaceIds.map(w => <p key={w} className="text-[10px] font-bold uppercase">• {w}</p>)}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    ) : <span className="text-[10px] font-black text-muted-foreground/30">—</span>}
+                                </div>
                             </TableCell>
                             <TableCell><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><MapPin className="h-3 w-3" /> {school.zone?.name || 'Unassigned'}</div></TableCell>
                             <TableCell>
@@ -314,7 +333,7 @@ export default function SchoolsClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found for the active workspace.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground italic">No school records found for the active workspace.</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>

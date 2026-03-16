@@ -135,10 +135,10 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  workspaceId: string; // Dynamic Workspace Link
-  track: InstitutionalTrack; // Logical track (onboarding/prospect)
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  track: InstitutionalTrack; // Logical primary track (legacy context)
   status: SchoolStatusState; // Operational status (Active/Inactive)
-  schoolStatus: string; // Dynamic Lifecycle Status (renamed from lifecycleStatus)
+  schoolStatus: string; // Dynamic Lifecycle Status
   pipelineId: string;
   zone?: Zone;
   focalPersons: FocalPerson[];
@@ -798,26 +798,6 @@ export interface Task {
 
 export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON' | 'INVOICE_OVERDUE' | 'PAYMENT_RECEIVED' | 'TASK_COMPLETED' | 'WEBHOOK_RECEIVED' | 'MEETING_CREATED';
 
-export interface AutomationCondition {
-  field: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
-  value: any;
-}
-
-export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_RECORD' | 'WEBHOOK' | 'UPDATE_SCHOOL';
-  templateId?: string;
-  senderProfileId?: string;
-  recipientType?: 'manager' | 'fixed' | 'focal_person' | 'respondent';
-  focalPersonType?: FocalPersonType;
-  fixedRecipient?: string;
-  taskTitle?: string;
-  taskDescription?: string;
-  taskPriority?: TaskPriority;
-  taskCategory?: TaskCategory;
-  taskDueOffsetDays?: number;
-}
-
 export interface Automation {
   id: string;
   name: string;
@@ -851,15 +831,4 @@ export interface AutomationJob {
   payload: Record<string, any>;
   executeAt: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-}
-
-export interface AutomationRule {
-  id: string;
-  name: string;
-  trigger: AutomationTrigger;
-  conditions: AutomationCondition[];
-  actions: AutomationAction[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
