@@ -100,6 +100,51 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
     return data.length;
 }
 
+/**
+ * MIGRATION PROTOCOL: Role Alignment
+ */
+export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<number> {
+    const rolesSnap = await getDocs(collection(firestore, 'roles'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+    
+    // Safety Snapshot
+    rolesSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_roles_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    rolesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: ['onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackRolesMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_roles_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'roles', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
 export async function seedBillingData(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
     const timestamp = new Date().toISOString();

@@ -34,7 +34,9 @@ import {
     enrichAutomationsWithWorkspace,
     rollbackAutomationsMigration,
     enrichMediaWithWorkspace,
-    rollbackMediaMigration
+    rollbackMediaMigration,
+    enrichRolesWithWorkspaces,
+    rollbackRolesMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -55,7 +57,8 @@ import {
     ArrowRightLeft, 
     RotateCcw, 
     CheckCircle2, 
-    Layout 
+    Layout,
+    Lock
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
@@ -65,7 +68,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -85,7 +88,7 @@ export default function SettingsClient() {
     harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle',
     enrich_status: 'idle', rollback_status: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle',
     enrich_automations: 'idle', rollback_automations: 'idle',
-    enrich_media: 'idle', rollback_media: 'idle'
+    enrich_media: 'idle', rollback_media: 'idle', enrich_roles: 'idle', rollback_roles: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -130,6 +133,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback_media') {
           const count = await rollbackMediaMigration(firestore);
           toast({ title: 'Media Hub Rollback', description: `Restored ${count} assets from backup.` });
+      } else if (seeder === 'enrich_roles') {
+          const count = await enrichRolesWithWorkspaces(firestore);
+          toast({ title: 'Role Architecture Synced', description: `Enriched ${count} roles with default workspace.` });
+      } else if (seeder === 'rollback_roles') {
+          const count = await rollbackRolesMigration(firestore);
+          toast({ title: 'Role Rollback Success', description: `Restored ${count} roles from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -186,6 +195,33 @@ export default function SettingsClient() {
             </CardHeader>
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 
+                {/* Role Sync */}
+                <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-100 flex flex-col justify-between gap-6 transition-all hover:bg-amber-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-amber-600 border border-amber-100"><Lock className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Role Architecture Sync</h4>
+                        <p className="text-[10px] font-medium text-amber-800 leading-relaxed uppercase tracking-tighter">Binds all existing roles to the onboarding track to ensure no users are blocked by the new workspace logic.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={() => handleSeed('enrich_roles')} 
+                            disabled={seedingStatus.enrich_roles === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-amber-600 hover:bg-amber-700 h-11 text-white"
+                        >
+                            {seedingStatus.enrich_roles === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Roles
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('rollback_roles')} 
+                            disabled={seedingStatus.rollback_roles === 'seeding'} 
+                            className="rounded-xl font-bold border-amber-200 text-amber-700 h-11 bg-white"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Media Sync */}
                 <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-100 flex flex-col justify-between gap-6 transition-all hover:bg-blue-50">
                     <div className="space-y-3">
@@ -265,23 +301,6 @@ export default function SettingsClient() {
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>
-                </div>
-
-                {/* Billing Logic Migration */}
-                <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-100 flex flex-col justify-between gap-6 transition-all hover:bg-amber-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-amber-600 border border-amber-100"><Banknote className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Financial Seeding</h4>
-                        <p className="text-[10px] font-medium text-amber-800 leading-relaxed uppercase tracking-tighter">Initializes global tax settings, subscription tiers, and generates sample invoices.</p>
-                    </div>
-                    <Button 
-                        onClick={() => handleSeed('billing')} 
-                        disabled={seedingStatus.billing === 'seeding'} 
-                        className="w-full rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-amber-600 hover:bg-amber-700 h-11 text-white"
-                    >
-                        {seedingStatus.billing === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                        Seed Billing
-                    </Button>
                 </div>
             </CardContent>
         </Card>
