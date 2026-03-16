@@ -1,7 +1,7 @@
 
 rules_version = '2';
 
-// Triggering synchronization for index build and permission refresh.
+// Triggering synchronization for the master index plan.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -178,7 +178,7 @@ service cloud.firestore {
       allow write, list: if hasPermission('studios_edit');
       allow get: if isAuthorized() || (exists(/databases/$(database)/documents/pdfs/$(pdfId)) && get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published');
       match /submissions/{submissionId} {
-        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
+        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)) != null && get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
         allow read, list: if isAuthorized();
       }
     }
