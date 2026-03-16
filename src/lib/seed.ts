@@ -97,6 +97,59 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 }
 
 /**
+ * MIGRATION PROTOCOL: Task Enrichment
+ * Ensures all existing tasks carry the 'onboarding' workspace ID.
+ */
+export async function enrichTasksWithWorkspace(firestore: Firestore): Promise<number> {
+    const tasksSnap = await getDocs(collection(firestore, 'tasks'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+    
+    // 1. Safety Backup
+    tasksSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_tasks_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    // 2. Resolve enrichment logic
+    let count = 0;
+    tasksSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        // If it doesn't have a workspaceId, set it to onboarding
+        if (!data.workspaceId) {
+            batch.update(docSnap.ref, {
+                workspaceId: 'onboarding',
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: Tasks Rollback
+ */
+export async function rollbackTasksMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_tasks_migration'));
+    const batch = writeBatch(firestore);
+    
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'tasks', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+
+    await batch.commit();
+    return count;
+}
+
+/**
  * MIGRATION PROTOCOL: School Status Enrichment
  * Sets schools in "Support" stage to "Active", the rest to "Onboarding".
  */

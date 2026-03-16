@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -28,7 +27,9 @@ import {
     rollbackSchoolsMigration, 
     seedWorkspaces,
     enrichSchoolStatuses,
-    rollbackSchoolStatuses
+    rollbackSchoolStatuses,
+    enrichTasksWithWorkspace,
+    rollbackTasksMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -56,9 +57,10 @@ import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 import RoleEditor from './components/RoleEditor';
 import WorkspaceEditor from './components/WorkspaceEditor';
+import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -76,7 +78,7 @@ export default function SettingsClient() {
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
     harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle',
-    enrich_status: 'idle', rollback_status: 'idle'
+    enrich_status: 'idle', rollback_status: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -103,6 +105,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback_status') {
           const count = await rollbackSchoolStatuses(firestore);
           toast({ title: 'Status Rollback Success', description: `Restored status for ${count} schools.` });
+      } else if (seeder === 'enrich_tasks') {
+          const count = await enrichTasksWithWorkspace(firestore);
+          toast({ title: 'CRM Sync Complete', description: `Enriched ${count} tasks with workspace context.` });
+      } else if (seeder === 'rollback_tasks') {
+          const count = await rollbackTasksMigration(firestore);
+          toast({ title: 'CRM Rollback Success', description: `Restored ${count} tasks from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -157,7 +165,7 @@ export default function SettingsClient() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Status Specific Migration */}
                 <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
                     <div className="space-y-3">
@@ -169,7 +177,7 @@ export default function SettingsClient() {
                         <Button 
                             onClick={() => handleSeed('enrich_status')} 
                             disabled={seedingStatus.enrich_status === 'seeding'} 
-                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700"
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 h-11"
                         >
                             {seedingStatus.enrich_status === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Enrich Status
@@ -179,6 +187,33 @@ export default function SettingsClient() {
                             onClick={() => handleSeed('rollback_status')} 
                             disabled={seedingStatus.rollback_status === 'seeding'} 
                             className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Task Specific Migration */}
+                <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-100 flex flex-col justify-between gap-6 transition-all hover:bg-blue-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-blue-600 border border-blue-100"><CheckSquare className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">CRM Integrity Hub</h4>
+                        <p className="text-[10px] font-medium text-blue-800 leading-relaxed uppercase tracking-tighter">Synchronizes legacy tasks with the new Workspace architecture. Ensures all records are authorized.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={() => handleSeed('enrich_tasks')} 
+                            disabled={seedingStatus.enrich_tasks === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-blue-600 hover:bg-blue-700 h-11"
+                        >
+                            {seedingStatus.enrich_tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Enrich CRM Tasks
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('rollback_tasks')} 
+                            disabled={seedingStatus.rollback_tasks === 'seeding'} 
+                            className="rounded-xl font-bold border-blue-200 text-blue-700 h-11"
                         >
                             <RotateCcw className="h-4 w-4" />
                         </Button>
@@ -278,32 +313,4 @@ export default function SettingsClient() {
       </div>
     </div>
   );
-}
-
-function SeedButton({ label, seeder, status, onClick, icon: Icon }: { label: string, seeder: string, status: SeedingState, onClick: () => void, icon: any }) {
-    return (
-        <Button 
-            variant="outline" 
-            onClick={onClick} 
-            disabled={status === 'seeding'} 
-            className={cn(
-                "h-14 w-full rounded-2xl border-2 flex items-center justify-between px-6 transition-all duration-300",
-                status === 'seeding' ? "bg-muted/50 border-border animate-pulse" :
-                status === 'success' ? "bg-emerald-50 border-emerald-500 text-emerald-700" :
-                status === 'error' ? "bg-rose-50 border-rose-500 text-rose-700" :
-                "bg-background border-border/50 hover:border-primary hover:bg-primary/5 hover:scale-[1.02]"
-            )}
-        >
-            <div className="flex items-center gap-4">
-                <div className={cn(
-                    "p-2 rounded-xl transition-colors",
-                    status === 'success' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground group-hover:text-primary"
-                )}>
-                    {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-                </div>
-                <span className="font-black uppercase text-[10px] tracking-widest">{label}</span>
-            </div>
-            {status === 'success' ? <CheckCircle2 className="h-5 w-5" /> : status === 'error' ? <AlertCircle className="h-5 w-5" /> : <ChevronRight className="h-4 w-4 opacity-20" />}
-        </Button>
-    );
 }

@@ -10,7 +10,8 @@ import {
     seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, 
     seedOnboardingStages, seedModules, seedActivities, seedPdfForms, 
     seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
-    seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, enrichAndRestoreSchools, rollbackSchoolsMigration 
+    seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, 
+    enrichAndRestoreSchools, rollbackSchoolsMigration, enrichTasksWithWorkspace, rollbackTasksMigration 
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -51,7 +52,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'enrich_tasks' | 'rollback_tasks';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -72,7 +73,7 @@ export default function SeedsClient() {
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
-    harvest: 'idle', enrich: 'idle', rollback: 'idle'
+    harvest: 'idle', enrich: 'idle', rollback: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -108,6 +109,12 @@ export default function SeedsClient() {
       } else if (seeder === 'rollback') {
           const count = await rollbackSchoolsMigration(firestore);
           toast({ title: 'Rollback Successful', description: `Restored ${count} schools from backup.` });
+      } else if (seeder === 'enrich_tasks') {
+          const count = await enrichTasksWithWorkspace(firestore);
+          toast({ title: 'CRM Sync Complete', description: `Enriched ${count} tasks with workspace context.` });
+      } else if (seeder === 'rollback_tasks') {
+          const count = await rollbackTasksMigration(firestore);
+          toast({ title: 'CRM Rollback Success', description: `Restored ${count} tasks from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -225,14 +232,36 @@ export default function SeedsClient() {
                             </div>
                             <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px]">Non-Destructive</Badge>
                         </div>
-                        <CardDescription className="text-xs font-medium uppercase tracking-widest mt-1 opacity-60">Surgical enrichment of existing school data for multi-pipeline support.</CardDescription>
+                        <CardDescription className="text-xs font-medium uppercase tracking-widest mt-1 opacity-60">Surgical enrichment of existing data for multi-pipeline support.</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         <div className="p-6 rounded-3xl bg-muted/20 border-2 border-dashed border-border flex flex-col justify-between gap-6 transition-all hover:bg-muted/30">
                             <div className="space-y-3">
                                 <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary"><Zap className="h-5 w-5" /></div>
-                                <h4 className="text-sm font-black uppercase tracking-tight">1. Architect Discovery</h4>
-                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Harvests unique stages from your current schools to build the Onboarding Pipeline blueprint.</p>
+                                <h4 className="text-sm font-black uppercase tracking-tight">1. CRM Sync</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches all tasks with 'onboarding' workspace context to fix permission gaps.</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => handleSeed('enrich_tasks')} 
+                                    disabled={seedingStatus.enrich_tasks === 'seeding'} 
+                                    className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
+                                >
+                                    {seedingStatus.enrich_tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
+                                    Enrich CRM
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => handleSeed('rollback_tasks')} disabled={seedingStatus.rollback_tasks === 'seeding'} className="h-11 w-11 rounded-xl border-rose-200 text-rose-600">
+                                    <RotateCcw size={16} />
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 rounded-3xl bg-muted/20 border-2 border-dashed border-border flex flex-col justify-between gap-6 transition-all hover:bg-muted/30">
+                            <div className="space-y-3">
+                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary"><Workflow className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight">2. Architect</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Harvests unique stages from schools to build the primary pipeline blueprint.</p>
                             </div>
                             <Button 
                                 variant="outline" 
@@ -240,16 +269,16 @@ export default function SeedsClient() {
                                 disabled={seedingStatus.harvest === 'seeding'} 
                                 className="w-full rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
                             >
-                                {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4" />}
-                                Initialize Master Pipeline
+                                {seedingStatus.harvest === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layers className="mr-2 h-4 w-4" />}
+                                Initialize Hub
                             </Button>
                         </div>
 
                         <div className="p-6 rounded-3xl bg-primary/[0.03] border-2 border-primary/10 flex flex-col justify-between gap-6 transition-all hover:bg-primary/[0.05]">
                             <div className="space-y-3">
                                 <div className="p-2.5 bg-primary text-white rounded-xl w-fit shadow-lg shadow-primary/20"><ShieldCheck className="h-5 w-5" /></div>
-                                <h4 className="text-sm font-black uppercase tracking-tight">2. Synchronize Network</h4>
-                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches schools with pipeline IDs and syncs stage logic. Performs auto-backup before execution.</p>
+                                <h4 className="text-sm font-black uppercase tracking-tight">3. Hub Migration</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches schools with workspace context and syncs stage logic.</p>
                             </div>
                             <Button 
                                 onClick={() => handleSeed('enrich')} 
@@ -257,15 +286,15 @@ export default function SeedsClient() {
                                 className="w-full rounded-xl font-black shadow-xl uppercase text-[10px] tracking-widest h-11"
                             >
                                 {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                                Execute Migration
+                                Sync Hubs
                             </Button>
                         </div>
 
                         <div className="p-6 rounded-3xl bg-rose-50 border-2 border-dashed border-rose-100 flex flex-col justify-between gap-6 transition-all hover:bg-rose-100/50">
                             <div className="space-y-3">
                                 <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-rose-600 border border-rose-100"><RotateCcw className="h-5 w-5" /></div>
-                                <h4 className="text-sm font-black uppercase tracking-tight text-rose-900">3. Emergency Rollback</h4>
-                                <p className="text-[10px] font-medium text-rose-700 leading-relaxed uppercase tracking-tighter opacity-70">Instantly restores the school directory from the last captured pre-migration snapshot.</p>
+                                <h4 className="text-sm font-black uppercase tracking-tight text-rose-900">4. Hub Rollback</h4>
+                                <p className="text-[10px] font-medium text-rose-700 leading-relaxed uppercase tracking-tighter opacity-70">Restores the school directory from the last pre-migration snapshot.</p>
                             </div>
                             <Button 
                                 variant="ghost" 
@@ -274,7 +303,7 @@ export default function SeedsClient() {
                                 className="w-full rounded-xl font-bold text-rose-600 hover:bg-rose-100/50 h-11"
                             >
                                 {seedingStatus.rollback === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
-                                Restore Directory
+                                Restore Hubs
                             </Button>
                         </div>
                     </CardContent>
@@ -289,12 +318,12 @@ export default function SeedsClient() {
                         <CardDescription className="text-xs font-medium uppercase tracking-widest text-primary/60">Initialize foundational collections and logical hubs.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 gap-4">
+                        <SeedButton label="Workspaces" seeder="workspaces" status={seedingStatus.workspaces} onClick={() => handleSeed('workspaces')} icon={Layout} />
                         <SeedButton label="Workflows & Pipelines" seeder="pipelines" status={seedingStatus.pipelines} onClick={() => handleSeed('pipelines')} icon={Workflow} />
                         <SeedButton label="Roles & Permissions" seeder="roles" status={seedingStatus.roles} onClick={() => handleSeed('roles')} icon={ShieldAlert} />
                         <SeedButton label="Onboarding Stages" seeder="stages" status={seedingStatus.stages} onClick={() => handleSeed('stages')} icon={RefreshCw} />
                         <SeedButton label="Functional Modules" seeder="modules" status={seedingStatus.modules} onClick={() => handleSeed('modules')} icon={RefreshCw} />
                         <SeedButton label="Regional Zones" seeder="zones" status={seedingStatus.zones} onClick={() => handleSeed('zones')} icon={MapPin} />
-                        <SeedButton label="Billing Protocols" seeder="billing" status={seedingStatus.billing} onClick={() => handleSeed('billing')} icon={Banknote} />
                         <SeedButton label="Dashboard Layout" seeder="layout" status={seedingStatus.layout} onClick={() => handleSeed('layout')} icon={Layout} />
                     </CardContent>
                 </Card>
@@ -305,7 +334,7 @@ export default function SeedsClient() {
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
                             <Layers className="h-5 w-5 text-orange-600" /> Operational Data
                         </CardTitle>
-                        <CardDescription className="text-xs font-medium uppercase tracking-widest text-orange-600/60">Populate the directory with sample institutions and records.</CardDescription>
+                        <CardDescription className="text-xs font-medium uppercase tracking-widest text-orange-600/60">Populate the directory with sample records.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 gap-4">
                         <SeedButton label="Schools Directory" seeder="schools" status={seedingStatus.schools} onClick={() => handleSeed('schools')} icon={SchoolIcon} />
@@ -315,40 +344,6 @@ export default function SeedsClient() {
                         <SeedButton label="Doc Signing Studio" seeder="pdfs" status={seedingStatus.pdfs} onClick={() => handleSeed('pdfs')} icon={ShieldCheck} />
                         <SeedButton label="CRM Tasks & Protocols" seeder="tasks" status={seedingStatus.tasks} onClick={() => handleSeed('tasks')} icon={CheckSquare} />
                     </CardContent>
-                </Card>
-
-                {/* Communication Infrastructure */}
-                <Card className="rounded-[2.5rem] border-none bg-white shadow-sm ring-1 ring-border overflow-hidden">
-                    <CardHeader className="bg-blue-50 border-b p-8">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
-                            <Globe className="h-5 w-5 text-blue-600" /> Messaging Hub
-                        </CardTitle>
-                        <CardDescription className="text-xs font-medium uppercase tracking-widest text-blue-600/60">Initialize templates, profiles, and historical logs.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-8 grid grid-cols-1 gap-4">
-                        <SeedButton label="Messaging Assets" seeder="messaging" status={seedingStatus.messaging} onClick={() => handleSeed('messaging')} icon={MessageSquareText} />
-                        <SeedButton label="Communication Logs" seeder="logs" status={seedingStatus.logs} onClick={() => handleSeed('logs')} icon={History} />
-                        <SeedButton label="Activity Audit Trail" seeder="activities" status={seedingStatus.activities} onClick={() => handleSeed('activities')} icon={History} />
-                        <SeedButton label="Update User Avatars" seeder="users" status={seedingStatus.users} onClick={() => handleSeed('users')} icon={RefreshCw} />
-                    </CardContent>
-                </Card>
-
-                {/* Info Card */}
-                <Card className="rounded-[2.5rem] border-none bg-slate-900 text-white overflow-hidden p-8 shadow-2xl flex flex-col justify-center gap-6">
-                    <div className="p-4 bg-white/10 rounded-3xl w-fit">
-                        <Info className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                        <h3 className="text-2xl font-black uppercase tracking-tight">System Notice</h3>
-                        <p className="text-sm font-medium text-white/60 leading-relaxed uppercase tracking-tighter">
-                            Seeding will overwrite current collections to ensure environment parity. Historical data will be purged. Use with caution in environments with active user data.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3 opacity-40 grayscale pt-4">
-                        <SmartSappIcon variant="white" className="h-10 w-10" />
-                        <div className="h-8 w-px bg-white/20" />
-                        <span className="text-xs font-black uppercase tracking-[0.2em]">Institutional Engine</span>
-                    </div>
                 </Card>
             </div>
         </main>
