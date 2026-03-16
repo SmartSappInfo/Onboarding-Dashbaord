@@ -45,6 +45,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Separator } from '@/components/ui/separator';
 
 /**
  * @fileOverview Role & Permission Architect.
@@ -357,7 +358,7 @@ export default function RoleEditor() {
                             </ScrollArea>
                         </div>
 
-                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between items-center sm:justify-between">
+                        <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex justify-between items-center sm:justify-between gap-4">
                             <Button type="button" variant="ghost" onClick={() => setIsEditing(false)} className="font-bold rounded-xl h-12 px-10">Discard</Button>
                             <Button 
                                 type="submit" 
