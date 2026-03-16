@@ -2,7 +2,7 @@
 rules_version = '2';
 
 // Triggering synchronization for the master index plan.
-// Update: Added composite index for subscription_packages.
+// Update: Added composite index for subscription_packages, surveys, and pdfs status.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -131,7 +131,7 @@ service cloud.firestore {
     }
 
     match /automations/{ruleId} {
-      allow read, write: if isAdmin() || isSystemAdmin();
+      allow read, write: if isAdmin() || isSystemAdmin() || (exists(resource) && canAccessWorkspace(resource.data.workspaceId));
     }
 
     match /schools/{schoolId} {
