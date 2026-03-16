@@ -10,14 +10,15 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /**
- * @fileOverview High-fidelity Breadcrumb Navigation with Adaptive Truncation.
- * Maps technical path segments to human-readable labels and collapses 
- * intermediate steps on mobile to prevent overflow.
+ * @fileOverview High-fidelity Breadcrumb Navigation with Adaptive Truncation and ID Filtering.
+ * Maps technical path segments to human-readable labels. Technical IDs (like Firestore UIDs)
+ * are automatically suppressed unless they have a resolved custom label (e.g. School Name).
  */
 
 const segmentMap: Record<string, string> = {
   admin: 'Operational Hub',
   schools: 'Schools Directory',
+  prospects: 'Lead Pipeline',
   pipeline: 'Onboarding Pipeline',
   meetings: 'Session Registry',
   portals: 'Public Portals',
@@ -40,6 +41,12 @@ const segmentMap: Record<string, string> = {
   profiles: 'Sender Profiles',
   ai: 'AI Architect',
   submissions: 'Records',
+  finance: 'Finance Hub',
+  automations: 'Automations',
+  reports: 'Intelligence',
+  invoices: 'Invoices',
+  packages: 'Pricing Tiers',
+  periods: 'Billing Cycles'
 };
 
 export function BreadcrumbNav() {
@@ -50,12 +57,35 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split('/').filter(Boolean);
   
-  const breadcrumbItems = segments.map((segment, index) => {
-    const path = `/${segments.slice(0, index + 1).join('/')}`;
-    const label = customLabels[path] || segmentMap[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
+  // LOGIC: Build items while filtering out technical IDs
+  const breadcrumbItems = React.useMemo(() => {
+    const items = [];
+    let currentPath = '';
     
-    return { label, path, isLast: index === segments.length - 1 };
-  });
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      currentPath += `/${segment}`;
+      
+      const customLabel = customLabels[currentPath];
+      const mapLabel = segmentMap[segment];
+      
+      // If we have a human-readable label (from map or resolved from DB), include it.
+      // Technical IDs (Firestore UIDs) that don't have a label are skipped.
+      if (customLabel || mapLabel) {
+        items.push({
+          label: customLabel || mapLabel,
+          path: currentPath,
+          isLast: false // Calculated later
+        });
+      }
+    }
+
+    if (items.length > 0) {
+      items[items.length - 1].isLast = true;
+    }
+
+    return items;
+  }, [segments, customLabels]);
 
   // ADAPTIVE LOGIC: Collapse intermediate steps on mobile if path is deep
   const displayItems = React.useMemo(() => {
@@ -70,6 +100,7 @@ export function BreadcrumbNav() {
 
   const handleBack = () => {
     if (segments.length > 1) {
+      // Find the previous human-readable step in history if possible
       const parentPath = `/${segments.slice(0, segments.length - 1).join('/')}`;
       router.push(parentPath);
     } else {
@@ -97,9 +128,9 @@ export function BreadcrumbNav() {
       <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-widest overflow-hidden">
         {displayItems.map((item, index) => {
           // Hide 'admin' segment in breadcrumbs if we're deeper
-          if (item.path === '/admin' && segments.length > 1) return null;
+          if (item.path === '/admin' && breadcrumbItems.length > 1) return null;
 
-          const showSeparator = index > (segments[0] === 'admin' ? 1 : 0);
+          const showSeparator = index > 0 && !(item.path === '/admin' && index === 0);
 
           return (
             <React.Fragment key={index}>

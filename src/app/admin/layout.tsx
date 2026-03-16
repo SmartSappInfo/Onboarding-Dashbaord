@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -232,7 +231,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
                                 <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
-                            </SidebarMenuButton>
                             </SidebarMenuItem>
                         ))}
                         </SidebarMenu>
@@ -251,7 +249,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 
                 <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden">
                   <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm print:hidden">
-                    <SidebarTrigger className="md:hidden" />
+                    <SidebarTrigger className="-ml-1" />
                     <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
                     <div className="flex items-center gap-2 shrink-0">
                         <WorkspaceSwitcher />
