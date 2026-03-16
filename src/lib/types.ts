@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -626,6 +625,7 @@ export interface MessageStyle {
   id: string;
   name: string;
   htmlWrapper: string;
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
   createdAt: string;
   updatedAt: string;
 }
@@ -668,6 +668,7 @@ export interface MessageTemplate {
   name: string;
   category: 'forms' | 'surveys' | 'meetings' | 'general' | 'contracts' | 'finance';
   channel: 'sms' | 'email';
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
   subject?: string;
   previewText?: string;
   body: string; 

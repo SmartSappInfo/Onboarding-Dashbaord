@@ -33,16 +33,19 @@ import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Messaging Templates Management Page.
  * Features an AI Architect for generative drafting and a Manual Workshop for precision design.
+ * Upgraded with Multi-Workspace Sharing logic.
  */
 
 export default function MessageTemplatesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { activeWorkspaceId } = useWorkspace();
     
     // Global Navigation State
     const [isAdding, setIsAdding] = React.useState(false);
@@ -56,11 +59,15 @@ export default function MessageTemplatesPage() {
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [isAiProcessing, setIsAiProcessing] = React.useState(false);
 
-    // Data Subscriptions
+    // Data Subscriptions - Filtered by Active Workspace
     const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'), orderBy('createdAt', 'desc'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_templates'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('createdAt', 'desc')
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const varsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -68,14 +75,18 @@ export default function MessageTemplatesPage() {
     }, [firestore]);
 
     const stylesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_styles'), orderBy('name', 'asc'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_styles'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+    }, [firestore, activeWorkspaceId]);
 
     const meetingsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -114,7 +125,6 @@ export default function MessageTemplatesPage() {
         if (!aiPrompt.trim()) return;
         setIsAiProcessing(true);
         try {
-            // Harvest all available variable keys for AI context
             const availableKeys = (variables || []).map(v => v.key);
             
             const result = await generateEmailTemplate({
@@ -123,14 +133,14 @@ export default function MessageTemplatesPage() {
                 availableVariables: availableKeys
             });
 
-            // Initialize the workshop with AI-generated draft
             const draftTemplate: any = {
                 name: result.name,
                 subject: result.subject || '',
                 body: result.body,
                 blocks: result.blocks || [],
                 channel: 'email',
-                category: 'general', // AI usually starts with general, user can refine in step 1
+                category: 'general',
+                workspaceIds: [activeWorkspaceId], // Automatically bind to current hub
                 isActive: true
             };
 
@@ -138,7 +148,7 @@ export default function MessageTemplatesPage() {
             setIsAdding(true);
             setIsAiModalOpen(false);
             setAiPrompt('');
-            toast({ title: 'AI Draft Ready', description: 'The template architecture has been generated.' });
+            toast({ title: 'AI Architecture Generated', description: result.explanation });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Architect Failure', description: e.message });
         } finally {
@@ -147,15 +157,20 @@ export default function MessageTemplatesPage() {
     };
 
     const handleSave = async (data: any) => {
-        if (!firestore) return;
+        if (!firestore || !user) return;
         
-        // Extract technical tags from all content fields
         const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
+        // Ensure workspaceIds exists
+        const workspaceIds = data.workspaceIds && data.workspaceIds.length > 0 
+            ? data.workspaceIds 
+            : [activeWorkspaceId];
+
         const templateData = {
             ...data,
+            workspaceIds,
             variables: variableList,
             isActive: true,
             updatedAt: new Date().toISOString(),
@@ -172,7 +187,7 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
-            toast({ title: 'Template Saved' });
+            toast({ title: 'Template Protocol Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
         } catch (e: any) {
@@ -259,7 +274,6 @@ export default function MessageTemplatesPage() {
                 )}
             </AnimatePresence>
 
-            {/* AI Architect Dialog */}
             <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
                 <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
                     <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10 shrink-0">
@@ -278,8 +292,8 @@ export default function MessageTemplatesPage() {
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Communication Goal</Label>
                             <Textarea 
                                 value={aiPrompt} 
-                                onChange={e => setAiPrompt(e.target.value)}
-                                placeholder="e.g. Create a formal email inviting parents to a meeting. Mention that we'll discuss the new security module and include their child's name."
+                                onChange={e => setAiPrompt(e.target.value)} 
+                                placeholder="e.g. Create a formal email inviting parents to a meeting. Mention that we'll discuss the new security module."
                                 className="min-h-[180px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-lg"
                                 autoFocus
                             />
@@ -287,9 +301,9 @@ export default function MessageTemplatesPage() {
                         <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
                             <Zap className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
                             <div className="space-y-1">
-                                <p className="text-sm font-black text-blue-800 uppercase tracking-tighter">Institutional Intelligence</p>
+                                <p className="text-sm font-black text-blue-900 uppercase tracking-tighter">Institutional Track Context</p>
                                 <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                    The AI will automatically scan your Variable Registry to inject the correct dynamic tags for schools, students, and sessions.
+                                    The AI will bind the new template to the **{activeWorkspaceId}** hub and automatically scan for relevant dynamic tags.
                                 </p>
                             </div>
                         </div>
@@ -308,7 +322,6 @@ export default function MessageTemplatesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation */}
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>

@@ -19,7 +19,8 @@ import {
     Code,
     Sparkles,
     ChevronRight,
-    FlaskConical
+    FlaskConical,
+    Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -42,6 +43,8 @@ import { BlockInspector } from './block-inspector';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -69,6 +72,8 @@ export function TemplateWorkshop({
     isSaving
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
+    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    
     const [step, setStep] = React.useState(1);
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
@@ -82,11 +87,14 @@ export function TemplateWorkshop({
     const [name, setName] = React.useState(initialTemplate?.name || '');
     const [category, setCategory] = React.useState(initialTemplate?.category || 'general');
     const [channel, setChannel] = React.useState(initialTemplate?.channel || 'email');
+    const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
     const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
     const [styleId, setStyleId] = React.useState(initialTemplate?.styleId || 'none');
+
+    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     // Simulation State
     const [simEntity, setSimEntity] = React.useState('none');
@@ -99,7 +107,6 @@ export function TemplateWorkshop({
     // Sync Designers
     React.useEffect(() => {
         if (channel === 'email' && editorMode === 'designer') {
-            // Internal sync uses empty variables but we need to ensure formatting is consistent
             const html = renderBlocksToHtml(blocks, {});
             if (html !== body) setBody(html);
         }
@@ -134,7 +141,7 @@ export function TemplateWorkshop({
     }, [isResizing]);
 
     const handleCommit = () => {
-        onSave({ name, category, channel, subject, previewText, body, blocks, styleId });
+        onSave({ name, category, channel, workspaceIds, subject, previewText, body, blocks, styleId });
     };
 
     const resolvedPreviewHtml = React.useMemo(() => {
@@ -179,7 +186,7 @@ export function TemplateWorkshop({
                                 </div>
                                 <p className={cn('mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', step >= s.n ? 'text-primary' : 'text-muted-foreground opacity-60')}>{s.label}</p>
                             </button>
-                            {i < 2 && <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden"><motion.div initial={false} animate={{ width: step > s.n ? '100%' : '0%' }} className="h-full bg-primary" /></div>}
+                            {i < 2 && <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative"><motion.div initial={false} animate={{ width: step > s.n ? '100%' : '0%' }} className="h-full bg-primary" /></div>}
                         </React.Fragment>
                     ))}
                 </div>
@@ -205,14 +212,14 @@ export function TemplateWorkshop({
                 <AnimatePresence mode="wait">
                     {step === 1 && (
                         <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
-                            <div className="max-w-2xl mx-auto space-y-8 pb-20 text-left">
+                            <div className="max-w-3xl mx-auto space-y-8 pb-20 text-left">
                                 <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
                                     <CardHeader className="bg-muted/30 border-b p-8">
                                         <div className="flex items-center gap-4">
                                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
                                             <div>
-                                                <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Parameters</CardTitle>
-                                                <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters for this template.</CardDescription>
+                                                <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Authorization</CardTitle>
+                                                <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters and shared context.</CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -221,9 +228,30 @@ export function TemplateWorkshop({
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
                                             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Admission Confirmation" className="h-14 rounded-2xl border-none bg-muted/20 px-6 py-2 text-xl font-black shadow-inner ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" />
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                                        <div className="space-y-4">
+                                            <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
+                                                <Share2 className="h-3 w-3" /> Shared Visibility
+                                            </Label>
+                                            <MultiSelect 
+                                                options={workspaceOptions}
+                                                value={workspaceIds}
+                                                onChange={setWorkspaceIds}
+                                                placeholder="Map to hubs..."
+                                            />
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase px-1 leading-relaxed">Shared templates are available for logic and manual dispatch across selected hubs.</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
                                             <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Context</Label>
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Channel Logic</Label>
+                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                                                    <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'email' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
+                                                    <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'sms' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Category</Label>
                                                 <Select value={category} onValueChange={(v: any) => setCategory(v)}>
                                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
                                                     <SelectContent className="rounded-xl">
@@ -235,13 +263,6 @@ export function TemplateWorkshop({
                                                         <SelectItem value="forms">Forms</SelectItem>
                                                     </SelectContent>
                                                 </Select>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Medium</Label>
-                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                                                    <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'email' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
-                                                    <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'sms' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
-                                                </div>
                                             </div>
                                         </div>
                                         {channel === 'email' && (
@@ -258,7 +279,7 @@ export function TemplateWorkshop({
                                         <Button 
                                             type="button" 
                                             onClick={() => setStep(2)} 
-                                            disabled={!name}
+                                            disabled={!name || workspaceIds.length === 0}
                                             className="px-12 rounded-xl font-black shadow-2xl h-12 uppercase tracking-widest text-sm transition-all active:scale-95 gap-2 group"
                                         >
                                             Next Phase 

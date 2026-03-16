@@ -12,7 +12,9 @@ import {
     Pencil, 
     CopyPlus, 
     Trash2, 
-    Zap 
+    Zap,
+    Layout,
+    Share2
 } from 'lucide-react';
 import { Card, CardTitle, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TemplateCardProps {
     template: MessageTemplate;
@@ -74,8 +77,24 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
 
             <CardHeader className="p-5 shrink-0 bg-background border-t">
                 <div className="min-w-0">
-                    <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight uppercase">{template.name}</CardTitle>
-                    <p className="text-[8px] uppercase font-bold tracking-[0.2em] text-muted-foreground opacity-60 mt-1">{template.category}</p>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight uppercase tracking-tight">{template.name}</CardTitle>
+                        {template.workspaceIds && template.workspaceIds.length > 1 && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="p-1 rounded-md bg-primary/10 text-primary shrink-0 cursor-help">
+                                            <Share2 className="h-3 w-3" />
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="text-[8px] font-bold uppercase p-2">
+                                        Shared with {template.workspaceIds.length} hubs
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                    <p className="text-[8px] uppercase font-bold tracking-[0.2em] text-muted-foreground opacity-60">{template.category}</p>
                 </div>
             </CardHeader>
         </Card>
