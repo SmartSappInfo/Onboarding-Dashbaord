@@ -29,11 +29,13 @@ import type {
     AppPermissionId, 
     Pipeline, 
     Workspace, 
-    WorkspaceStatus 
+    WorkspaceStatus,
+    Invoice,
+    InvoiceItem
 } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
-import { addDays, format, subDays, subHours } from 'date-fns';
+import { addDays, format, subDays, subHours, startOfMonth, endOfMonth } from 'date-fns';
 
 // --- SEED DATA ---
 
@@ -94,6 +96,126 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
     data.forEach(w => batch.set(doc(col, w.id), w));
     await batch.commit();
     return data.length;
+}
+
+export async function seedBillingData(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    // 1. Global Settings
+    const settingsRef = doc(firestore, 'billing_settings', 'global');
+    const settings: BillingSettings = {
+        id: 'global',
+        levyPercent: 5,
+        vatPercent: 15,
+        defaultDiscount: 0,
+        paymentInstructions: 'Account Name: SmartSapp Services\nBank: Fidelity Bank Ghana\nAccount Number: 1050349221014\nBranch: Ridge, Accra\n\nPlease use the Invoice Number as the payment reference.',
+        signatureName: 'Joseph Aidoo',
+        signatureDesignation: 'Director of Finance',
+        signatureUrl: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2Fsignature-sample.png?alt=media'
+    };
+    batch.set(settingsRef, settings);
+
+    // 2. Subscription Packages
+    const pkgCol = collection(firestore, 'subscription_packages');
+    const packages: Partial<SubscriptionPackage>[] = [
+        { name: 'Starter Hub', description: 'Essential communication and attendance for small campuses.', ratePerStudent: 45.00, billingTerm: 'term', currency: 'GHS', isActive: true },
+        { name: 'Professional Suite', description: 'Advanced billing and results management for growing schools.', ratePerStudent: 85.00, billingTerm: 'term', currency: 'GHS', isActive: true },
+        { name: 'Elite Enterprise', description: 'Full institutional logic, drone footage, and priority support.', ratePerStudent: 125.00, billingTerm: 'term', currency: 'GHS', isActive: true }
+    ];
+
+    const packageIds: string[] = [];
+    packages.forEach(p => {
+        const ref = doc(pkgCol);
+        batch.set(ref, p);
+        packageIds.push(ref.id);
+    });
+
+    // 3. Billing Periods
+    const periodCol = collection(firestore, 'billing_periods');
+    const periods: Partial<BillingPeriod>[] = [
+        { 
+            name: 'Term 1 (Jan - Apr 2026)', 
+            startDate: new Date('2026-01-01').toISOString(), 
+            endDate: new Date('2026-04-30').toISOString(), 
+            invoiceDate: new Date('2026-01-15').toISOString(), 
+            paymentDueDate: new Date('2026-02-15').toISOString(), 
+            status: 'open' 
+        },
+        { 
+            name: 'Term 3 (Sept - Dec 2025)', 
+            startDate: new Date('2025-09-01').toISOString(), 
+            endDate: new Date('2025-12-31').toISOString(), 
+            invoiceDate: new Date('2025-09-15').toISOString(), 
+            paymentDueDate: new Date('2025-10-15').toISOString(), 
+            status: 'closed' 
+        }
+    ];
+
+    const periodIds: string[] = [];
+    periods.forEach(p => {
+        const ref = doc(periodCol);
+        batch.set(ref, p);
+        periodIds.push(ref.id);
+    });
+
+    // 4. Sample Invoices for Existing Schools
+    const schoolsSnap = await getDocs(query(collection(firestore, 'schools'), limit(10)));
+    const invoiceCol = collection(firestore, 'invoices');
+    let invoiceCount = 0;
+
+    schoolsSnap.forEach((schoolDoc, idx) => {
+        const school = schoolDoc.data() as School;
+        const pkgIdx = idx % packages.length;
+        const selectedPkg = packages[pkgIdx];
+        const nominalRoll = school.nominalRoll || 250;
+        const rate = selectedPkg.ratePerStudent || 45;
+        const subtotal = nominalRoll * rate;
+        const levy = (subtotal * 0.05);
+        const vat = (subtotal * 0.15);
+        const total = subtotal + levy + vat;
+
+        const invRef = doc(invoiceCol);
+        const invData: Omit<Invoice, 'id'> = {
+            invoiceNumber: `INV-2026-${1000 + idx}`,
+            schoolId: schoolDoc.id,
+            schoolName: school.name,
+            periodId: periodIds[0],
+            periodName: periods[0].name!,
+            nominalRoll,
+            packageId: packageIds[pkgIdx],
+            packageName: selectedPkg.name!,
+            ratePerStudent: rate,
+            currency: 'GHS',
+            subtotal,
+            discount: 0,
+            levyAmount: levy,
+            vatAmount: vat,
+            arrearsAdded: 0,
+            creditDeducted: 0,
+            totalPayable: total,
+            status: idx === 0 ? 'paid' : 'sent',
+            items: [{
+                name: `Subscription: ${selectedPkg.name}`,
+                description: `Billing for ${nominalRoll} students.`,
+                quantity: nominalRoll,
+                unitPrice: rate,
+                amount: subtotal
+            }],
+            paymentInstructions: settings.paymentInstructions,
+            signatureName: settings.signatureName,
+            signatureDesignation: settings.signatureDesignation,
+            signatureUrl: settings.signatureUrl,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            sentAt: timestamp
+        };
+        batch.set(invRef, invData);
+        invoiceCount++;
+    });
+
+    await batch.commit();
+    return invoiceCount;
 }
 
 /**
@@ -328,5 +450,4 @@ export async function seedPdfForms(firestore: Firestore) { return 0; }
 export async function seedMessaging(firestore: Firestore) { return 0; }
 export async function seedMessageLogs(firestore: Firestore) { return 0; }
 export async function seedTasks(firestore: Firestore) { return 0; }
-export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
