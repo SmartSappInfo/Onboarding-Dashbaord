@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -55,7 +54,7 @@ const getInitials = (name?: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
-const getStatusBadgeVariant = (status: SchoolStatus) => {
+const getStatusBadgeVariant = (status: any) => {
     switch (status) {
         case 'Active': return 'default';
         case 'Inactive': return 'secondary';
@@ -287,7 +286,7 @@ export default function SchoolsClient() {
                                     
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
                                         <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" /></div>
-                                        <span className="font-bold text-sm">Update Lifecycle</span>
+                                        <span className="font-bold text-sm">Update School Status</span>
                                     </DropdownMenuItem>
 
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringSchool(school)}>

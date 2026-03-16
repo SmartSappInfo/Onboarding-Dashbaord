@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -106,7 +105,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
             </div>
             <div className="text-left">
               <DialogTitle className="text-xl font-black uppercase tracking-tight">School Status Architect</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify lifecycle for {school.name}</DialogDescription>
+              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify current status for {school.name}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -128,7 +127,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
                     >
                         <div 
                             className={cn(
-                                "p-2.5 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
+                                "p-2 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
                                 isActive ? "bg-primary text-white" : "bg-white border"
                             )}
                             style={!isActive ? { color: status.color, borderColor: `${status.color}40` } : {}}

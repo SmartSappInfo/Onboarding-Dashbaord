@@ -57,7 +57,7 @@ import {
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder, TaskNote, TaskAttachment } from '@/lib/types';
-import { usePerspective } from '@/context/PerspectiveContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -114,14 +114,14 @@ interface TaskEditorProps {
 export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving }: TaskEditorProps) {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
-    const { activeTrack } = usePerspective();
+    const { activeWorkspaceId } = useWorkspace();
     
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name')) : null, [firestore]);
     
     const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeTrack) return null;
-        return query(collection(firestore, 'schools'), where('track', '==', activeTrack), orderBy('name', 'asc'));
-    }, [firestore, activeTrack]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    }, [firestore, activeWorkspaceId]);
 
     const surveysQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore]);
     const pdfsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore]);

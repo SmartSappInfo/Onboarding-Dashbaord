@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -70,7 +69,7 @@ const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline
 
 const LogActivityModal = dynamic(() => import('../components/LogActivityModal'), { ssr: false });
 
-const getStatusBadgeVariant = (status: School['status']) => {
+const getStatusBadgeVariant = (status: any) => {
     switch (status) {
         case 'Active': return 'default';
         case 'Inactive': return 'secondary';
@@ -163,7 +162,7 @@ export default function SchoolDetailPage() {
     const isProspect = school.workspaceId === 'prospect';
 
     return (
-        <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.lifecycleStatus === 'Churned' && "grayscale opacity-80")}>
+        <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.schoolStatus === 'Churned' && "grayscale opacity-80")}>
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -185,7 +184,7 @@ export default function SchoolDetailPage() {
                             onClick={() => setStatusModalOpen(true)}
                         >
                             <ShieldCheck className="mr-2 h-4 w-4" /> 
-                            Update Lifecycle
+                            Update School Status
                         </Button>
                         <Button 
                             variant="outline" 
@@ -222,11 +221,11 @@ export default function SchoolDetailPage() {
                              <Badge 
                                 className={cn(
                                     "h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md",
-                                    school.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
-                                    school.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-500"
+                                    school.schoolStatus === 'Active' ? "bg-emerald-500" : 
+                                    school.schoolStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-500"
                                 )}
                              >
-                                {school.lifecycleStatus}
+                                {school.schoolStatus}
                              </Badge>
                              <Badge className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md" style={{ backgroundColor: school.stage?.color || '#3B5FFF' }}>{school.stage?.name || 'Welcome'}</Badge>
                         </div>
