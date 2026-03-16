@@ -9,13 +9,14 @@ import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { 
     seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, 
-    seedOnboardingStages, seedModules, seedActivities, seedPdfForms, 
-    seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
+    seedOnboardingStages, seedModules, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
     seedRolesAndPermissions, seedPipelines, seedOnboardingPipelineFromCurrentData, 
     enrichAndRestoreSchools, rollbackSchoolsMigration, enrichTasksWithWorkspace, rollbackTasksMigration,
     enrichAutomationsWithWorkspace, rollbackAutomationsMigration,
     enrichMediaWithWorkspace, rollbackMediaMigration,
-    enrichRolesWithWorkspaces, rollbackRolesMigration
+    enrichRolesWithWorkspaces, rollbackRolesMigration,
+    enrichActivitiesWithWorkspace,
+    rollbackActivitiesMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -57,7 +58,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -80,7 +81,8 @@ export default function SeedsClient() {
     logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
     harvest: 'idle', enrich: 'idle', rollback: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle',
     enrich_automations: 'idle', rollback_automations: 'idle',
-    enrich_media: 'idle', rollback_media: 'idle', enrich_roles: 'idle', rollback_roles: 'idle'
+    enrich_media: 'idle', rollback_media: 'idle', enrich_roles: 'idle', rollback_roles: 'idle',
+    enrich_activities: 'idle', rollback_activities: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -140,6 +142,12 @@ export default function SeedsClient() {
       } else if (seeder === 'rollback_roles') {
           const count = await rollbackRolesMigration(firestore);
           toast({ title: 'Roles Restored', description: `Rollback complete for ${count} roles.` });
+      } else if (seeder === 'enrich_activities') {
+          const count = await enrichActivitiesWithWorkspace(firestore);
+          toast({ title: 'Timeline Enriched', description: `Updated ${count} activities.` });
+      } else if (seeder === 'rollback_activities') {
+          const count = await rollbackActivitiesMigration(firestore);
+          toast({ title: 'Timeline Restored', description: `Rollback complete for ${count} activities.` });
       } else {
         let count = 0;
         let name = '';
@@ -260,6 +268,29 @@ export default function SeedsClient() {
                         <CardDescription className="text-xs font-medium uppercase tracking-widest mt-1 opacity-60">Surgical enrichment of existing data for multi-workspace support.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {/* Activity Sync */}
+                        <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
+                            <div className="space-y-3">
+                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100"><History className="h-5 w-5" /></div>
+                                <h4 className="text-sm font-black uppercase tracking-tight">Timeline Sync</h4>
+                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches activities with workspace context based on school links.</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => handleSeed('enrich_activities')} 
+                                    disabled={seedingStatus.enrich_activities === 'seeding'} 
+                                    className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
+                                >
+                                    {seedingStatus.enrich_activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                                    Enrich Logs
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => handleSeed('rollback_activities')} disabled={seedingStatus.rollback_activities === 'seeding'} className="h-11 w-11 rounded-xl border-rose-200 text-rose-600">
+                                    <RotateCcw size={16} />
+                                </Button>
+                            </div>
+                        </div>
+
                         {/* Role Sync */}
                         <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-100 flex flex-col justify-between gap-6 transition-all hover:bg-amber-50">
                             <div className="space-y-3">
@@ -328,38 +359,16 @@ export default function SeedsClient() {
                                 </Button>
                             </div>
                         </div>
-
-                        {/* Automation Sync */}
-                        <div className="p-6 rounded-3xl bg-purple-50/50 border-2 border-dashed border-purple-100 flex flex-col justify-between gap-6 transition-all hover:bg-purple-50">
-                            <div className="space-y-3">
-                                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-purple-600 border border-purple-100"><Zap className="h-5 w-5" /></div>
-                                <h4 className="text-sm font-black uppercase tracking-tight">Logic Sync</h4>
-                                <p className="text-[10px] font-medium text-purple-800 leading-relaxed uppercase tracking-tighter">Binds logic blueprints to the onboarding track.</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => handleSeed('enrich_automations')} 
-                                    disabled={seedingStatus.enrich_automations === 'seeding'} 
-                                    className="flex-1 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary h-11"
-                                >
-                                    {seedingStatus.enrich_automations === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                                    Sync Logic
-                                </Button>
-                                <Button variant="outline" size="icon" onClick={() => handleSeed('rollback_automations')} disabled={seedingStatus.rollback_automations === 'seeding'} className="h-11 w-11 rounded-xl border-rose-200 text-rose-600">
-                                    <RotateCcw size={16} />
-                                </Button>
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Structural Infrastructure */}
                 <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
                     <CardHeader className="bg-primary/5 border-b p-8">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
-                            <Zap className="h-5 w-5 text-primary" /> System Architecture
-                        </CardTitle>
+                        <div className="flex items-center gap-3 text-primary">
+                            <Zap className="h-5 w-5" />
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">System Architecture</CardTitle>
+                        </div>
                         <CardDescription className="text-xs font-medium uppercase tracking-widest text-primary/60 text-left">Initialize foundational collections and logical hubs.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 gap-4">
@@ -376,9 +385,10 @@ export default function SeedsClient() {
                 {/* Operations & Media */}
                 <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
                     <CardHeader className="bg-orange-50 border-b p-8">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
-                            <Layers className="h-5 w-5 text-orange-600" /> Operational Data
-                        </CardTitle>
+                        <div className="flex items-center gap-3 text-orange-600">
+                            <Layers className="h-5 w-5" />
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Operational Data</CardTitle>
+                        </div>
                         <CardDescription className="text-xs font-medium uppercase tracking-widest text-orange-600/60 text-left">Populate the directory with sample records.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 gap-4">

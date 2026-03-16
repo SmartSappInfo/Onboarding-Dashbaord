@@ -36,7 +36,9 @@ import {
     enrichMediaWithWorkspace,
     rollbackMediaMigration,
     enrichRolesWithWorkspaces,
-    rollbackRolesMigration
+    rollbackRolesMigration,
+    enrichActivitiesWithWorkspace,
+    rollbackActivitiesMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -68,7 +70,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -88,7 +90,8 @@ export default function SettingsClient() {
     harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle',
     enrich_status: 'idle', rollback_status: 'idle', enrich_tasks: 'idle', rollback_tasks: 'idle',
     enrich_automations: 'idle', rollback_automations: 'idle',
-    enrich_media: 'idle', rollback_media: 'idle', enrich_roles: 'idle', rollback_roles: 'idle'
+    enrich_media: 'idle', rollback_media: 'idle', enrich_roles: 'idle', rollback_roles: 'idle',
+    enrich_activities: 'idle', rollback_activities: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -139,6 +142,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback_roles') {
           const count = await rollbackRolesMigration(firestore);
           toast({ title: 'Role Rollback Success', description: `Restored ${count} roles from backup.` });
+      } else if (seeder === 'enrich_activities') {
+          const count = await enrichActivitiesWithWorkspace(firestore);
+          toast({ title: 'Timeline Protocols Synced', description: `Enriched ${count} activities with workspace context.` });
+      } else if (seeder === 'rollback_activities') {
+          const count = await rollbackActivitiesMigration(firestore);
+          toast({ title: 'Timeline Rollback Success', description: `Restored ${count} activities from backup.` });
       } else {
         let count = 0;
         let name = '';
@@ -193,8 +202,35 @@ export default function SettingsClient() {
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
+                {/* Activity Sync */}
+                <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100"><History className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Timeline Protocol Sync</h4>
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches all activity logs with workspace context to ensure audit trails load correctly across tracks.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button 
+                            onClick={() => handleSeed('enrich_activities')} 
+                            disabled={seedingStatus.enrich_activities === 'seeding'} 
+                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-primary hover:bg-primary/90 h-11 text-white"
+                        >
+                            {seedingStatus.enrich_activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Timeline
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleSeed('rollback_activities')} 
+                            disabled={seedingStatus.rollback_activities === 'seeding'} 
+                            className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Role Sync */}
                 <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-100 flex flex-col justify-between gap-6 transition-all hover:bg-amber-50">
                     <div className="space-y-3">
@@ -243,60 +279,6 @@ export default function SettingsClient() {
                             onClick={() => handleSeed('rollback_media')} 
                             disabled={seedingStatus.rollback_media === 'seeding'} 
                             className="rounded-xl font-bold border-blue-200 text-blue-700 h-11 bg-white"
-                        >
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Automation Integrity Migration */}
-                <div className="p-6 rounded-3xl bg-purple-50/50 border-2 border-dashed border-purple-100 flex flex-col justify-between gap-6 transition-all hover:bg-purple-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-purple-600 border border-purple-100"><Zap className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Logic Protocol Sync</h4>
-                        <p className="text-[10px] font-medium text-purple-800 leading-relaxed uppercase tracking-tighter">Binds all logic blueprints to the default onboarding workspace to resolve permission barriers.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button 
-                            onClick={() => handleSeed('enrich_automations')} 
-                            disabled={seedingStatus.enrich_automations === 'seeding'} 
-                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-purple-600 hover:bg-purple-700 h-11 text-white"
-                        >
-                            {seedingStatus.enrich_automations === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                            Sync Logic
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            onClick={() => handleSeed('rollback_automations')} 
-                            disabled={seedingStatus.rollback_automations === 'seeding'} 
-                            className="rounded-xl font-bold border-purple-200 text-purple-700 h-11 bg-white"
-                        >
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Task Specific Migration */}
-                <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-slate-600 border border-slate-200"><CheckSquare className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">CRM Integrity Hub</h4>
-                        <p className="text-[10px] font-medium text-slate-800 leading-relaxed uppercase tracking-tighter">Ensures all tasks carry workspace context to resolve data-listing permission barriers.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button 
-                            onClick={() => handleSeed('enrich_tasks')} 
-                            disabled={seedingStatus.enrich_tasks === 'seeding'} 
-                            className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-slate-600 hover:bg-slate-700 h-11 text-white"
-                        >
-                            {seedingStatus.enrich_tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync CRM
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            onClick={() => handleSeed('rollback_tasks')} 
-                            disabled={seedingStatus.rollback_tasks === 'seeding'} 
-                            className="rounded-xl font-bold border-slate-200 text-slate-700 h-11 bg-white"
                         >
                             <RotateCcw className="h-4 w-4" />
                         </Button>

@@ -101,6 +101,57 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 }
 
 /**
+ * MIGRATION PROTOCOL: Activity Enrichment
+ * Binds legacy logs to workspace context.
+ */
+export async function enrichActivitiesWithWorkspace(firestore: Firestore): Promise<number> {
+    const activitiesSnap = await getDocs(collection(firestore, 'activities'));
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const schoolWorkspaceMap = new Map(schoolsSnap.docs.map(d => [d.id, d.data().workspaceId || 'onboarding']));
+
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    // 1. Safety Snapshot
+    activitiesSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_activities_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    // 2. Enrichment
+    let count = 0;
+    activitiesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceId) {
+            const wId = data.schoolId ? (schoolWorkspaceMap.get(data.schoolId) || 'onboarding') : 'onboarding';
+            batch.update(docSnap.ref, {
+                workspaceId: wId,
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackActivitiesMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_activities_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'activities', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
  * MIGRATION PROTOCOL: Role Alignment
  */
 export async function enrichRolesWithWorkspaces(firestore: Firestore): Promise<number> {
