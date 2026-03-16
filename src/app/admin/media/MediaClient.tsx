@@ -16,6 +16,11 @@ import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * @fileOverview Media Hub Client.
+ * Displays a workspace-bound gallery of digital assets.
+ */
+
 const TABS = [
   { id: 'images', label: 'Images' },
   { id: 'videos', label: 'Videos' },
@@ -26,7 +31,7 @@ const TABS = [
 
 export default function MediaClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, isLoading: isWorkspaceLoading } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('images');
   
@@ -39,13 +44,12 @@ export default function MediaClient() {
     if (!mediaCol || !activeWorkspaceId) return null;
     return query(
         mediaCol, 
-        // Changed to use array-contains for shared assets
         where('workspaceIds', 'array-contains', activeWorkspaceId),
         orderBy('createdAt', 'desc')
     );
   }, [mediaCol, activeWorkspaceId]);
   
-  const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
+  const { data: assets, isLoading: isMediaLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
@@ -70,6 +74,8 @@ export default function MediaClient() {
     );
   }, [assets, activeTab, searchTerm]);
 
+  const isLoading = isWorkspaceLoading || isMediaLoading;
+
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-7xl mx-auto space-y-8 text-left">
@@ -77,7 +83,9 @@ export default function MediaClient() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex flex-col items-start">
                 <h1 className="text-3xl font-black uppercase tracking-tight">Media Hub</h1>
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Workspace Assets for {activeWorkspaceId}</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                    Workspace Assets for {activeWorkspaceId || 'Global Hub'}
+                </p>
             </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
                 <AddLinkButton />
@@ -115,9 +123,12 @@ export default function MediaClient() {
         <div className="min-h-[600px]">
           {error && (
             <Card className="border-destructive/20 bg-destructive/5 mb-8">
-                <CardContent className="p-6 flex items-center gap-3 text-destructive">
+                <CardContent className="p-6 flex items-center gap-3 text-destructive text-left">
                     <LayoutList className="h-5 w-5" />
-                    <p className="font-bold text-sm uppercase tracking-tight">Repository Sync Failure: {error.message}</p>
+                    <div className="space-y-1">
+                        <p className="font-bold text-sm uppercase tracking-tight">Repository Sync Failure</p>
+                        <p className="text-xs opacity-70 leading-relaxed">The system encountered an error while polling the media registry. This is usually due to a missing search index in Firestore.</p>
+                    </div>
                 </CardContent>
             </Card>
           )}
