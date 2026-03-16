@@ -18,15 +18,15 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Media Hub Client.
- * Displays a workspace-bound gallery of digital assets.
+ * Displays a workspace-bound gallery of digital assets using server-side filtering.
  */
 
 const TABS = [
-  { id: 'images', label: 'Images' },
-  { id: 'videos', label: 'Videos' },
-  { id: 'audio', label: 'Audio' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'links', label: 'Links' },
+  { id: 'images', label: 'Images', type: 'image' },
+  { id: 'videos', label: 'Videos', type: 'video' },
+  { id: 'audio', label: 'Audio', type: 'audio' },
+  { id: 'documents', label: 'Documents', type: 'document' },
+  { id: 'links', label: 'Links', type: 'link' },
 ];
 
 export default function MediaClient() {
@@ -35,44 +35,42 @@ export default function MediaClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('images');
   
+  const currentType = useMemo(() => 
+    TABS.find(t => t.id === activeTab)?.type || 'image', 
+  [activeTab]);
+
   const mediaCol = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'media');
   }, [firestore]);
 
+  // HIGH PERFORMANCE: Filter by workspace AND type on the server
   const mediaQuery = useMemoFirebase(() => {
     if (!mediaCol || !activeWorkspaceId) return null;
     return query(
         mediaCol, 
         where('workspaceIds', 'array-contains', activeWorkspaceId),
+        where('type', '==', currentType),
         orderBy('createdAt', 'desc')
     );
-  }, [mediaCol, activeWorkspaceId]);
+  }, [mediaCol, activeWorkspaceId, currentType]);
   
   const { data: assets, isLoading: isMediaLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     
-    const tabFiltered = assets.filter(asset => {
-        if (activeTab === 'images') return asset.type === 'image';
-        if (activeTab === 'videos') return asset.type === 'video';
-        if (activeTab === 'audio') return asset.type === 'audio';
-        if (activeTab === 'documents') return asset.type === 'document';
-        if (activeTab === 'links') return asset.type === 'link';
-        return false;
-    });
-
+    // type is already filtered on server, we only handle search here
     if (!searchTerm) {
-      return tabFiltered;
+      return assets;
     }
 
     const s = searchTerm.toLowerCase();
-    return tabFiltered.filter(asset =>
+    return assets.filter(asset =>
       asset.name.toLowerCase().includes(s) || 
       asset.linkTitle?.toLowerCase().includes(s)
     );
-  }, [assets, activeTab, searchTerm]);
+  }, [assets, searchTerm]);
 
   const isLoading = isWorkspaceLoading || isMediaLoading;
 

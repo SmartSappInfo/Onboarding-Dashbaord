@@ -50,27 +50,26 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
     if (!mediaCol || !activeWorkspaceId) return null;
     return query(
         mediaCol, 
-        // Changed to use array-contains for shared assets
         where('workspaceIds', 'array-contains', activeWorkspaceId),
+        where('type', '==', activeTab),
         orderBy('createdAt', 'desc')
     );
-  }, [mediaCol, activeWorkspaceId]);
+  }, [mediaCol, activeWorkspaceId, activeTab]);
   
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     
-    let currentAssets = assets.filter(asset => asset.type === activeTab);
-    
+    // type is already filtered on server
     if (!searchTerm) {
-      return currentAssets;
+      return assets;
     }
 
-    return currentAssets.filter(asset =>
+    return assets.filter(asset =>
       asset.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [assets, activeTab, searchTerm]);
+  }, [assets, searchTerm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

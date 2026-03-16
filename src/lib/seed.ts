@@ -54,8 +54,8 @@ const initialZones = [
 
 const DEFAULT_ONBOARDING_STATUSES: WorkspaceStatus[] = [
     { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF', description: 'Institutional initialization phase.' },
-    { value: 'Active', label: 'Active', color: '#10b981', description: 'Campus is fully deployed.' },
-    { value: 'Churned', label: 'Churned', color: '#ef4444', description: 'No longer using the platform.' },
+    { value: 'Active', label: 'Active', color: '#10b981', description: 'Institutional go-live.' },
+    { value: 'Churned', label: 'Churned', color: '#ef4444', description: 'No longer operational.' },
 ];
 
 const DEFAULT_PROSPECT_STATUSES: WorkspaceStatus[] = [
