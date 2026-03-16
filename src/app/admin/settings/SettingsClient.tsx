@@ -166,6 +166,24 @@ export default function SettingsClient() {
                 </div>
             </CardHeader>
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                {/* Billing Logic Migration */}
+                <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-100 flex flex-col justify-between gap-6 transition-all hover:bg-amber-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-amber-600 border border-amber-100"><Banknote className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Financial Seeding</h4>
+                        <p className="text-[10px] font-medium text-amber-800 leading-relaxed uppercase tracking-tighter">Initializes global tax settings, subscription tiers, and generates sample invoices for all directory schools.</p>
+                    </div>
+                    <Button 
+                        onClick={() => handleSeed('billing')} 
+                        disabled={seedingStatus.billing === 'seeding'} 
+                        className="w-full rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-amber-600 hover:bg-amber-700 h-11"
+                    >
+                        {seedingStatus.billing === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                        Seed Billing Data
+                    </Button>
+                </div>
+
                 {/* Status Specific Migration */}
                 <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
                     <div className="space-y-3">
@@ -198,7 +216,7 @@ export default function SettingsClient() {
                     <div className="space-y-3">
                         <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-blue-600 border border-blue-100"><CheckSquare className="h-5 w-5" /></div>
                         <h4 className="text-sm font-black uppercase tracking-tight">CRM Integrity Hub</h4>
-                        <p className="text-[10px] font-medium text-blue-800 leading-relaxed uppercase tracking-tighter">Synchronizes legacy tasks with the new Workspace architecture. Ensures all records are authorized.</p>
+                        <p className="text-[10px] font-medium text-blue-800 leading-relaxed uppercase tracking-tighter">Ensures all tasks carry workspace context to resolve data-listing permission barriers.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button 
@@ -207,7 +225,7 @@ export default function SettingsClient() {
                             className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-blue-600 hover:bg-blue-700 h-11"
                         >
                             {seedingStatus.enrich_tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Enrich CRM Tasks
+                            Sync CRM
                         </Button>
                         <Button 
                             variant="outline" 
@@ -218,22 +236,6 @@ export default function SettingsClient() {
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>
-                </div>
-
-                <div className="p-6 rounded-3xl bg-primary/[0.03] border-2 border-primary/10 flex flex-col justify-between gap-6 transition-all hover:bg-primary/[0.05]">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-primary text-white rounded-xl w-fit shadow-lg shadow-primary/20"><Layout className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Workspace Sync</h4>
-                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Maps all existing schools to the new workspace structure and ensure track consistency.</p>
-                    </div>
-                    <Button 
-                        onClick={() => handleSeed('enrich')} 
-                        disabled={seedingStatus.enrich === 'seeding'} 
-                        className="w-full rounded-xl font-black shadow-xl uppercase text-[10px] tracking-widest h-11"
-                    >
-                        {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                        Enrich & Sync Workspaces
-                    </Button>
                 </div>
             </CardContent>
         </Card>

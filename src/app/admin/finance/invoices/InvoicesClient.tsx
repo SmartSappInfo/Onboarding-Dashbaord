@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -24,7 +23,9 @@ import {
     AlertCircle,
     FileText,
     TrendingUp,
-    Zap
+    Zap,
+    Database,
+    RotateCcw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { generateInvoiceAction, deleteInvoiceAction } from '@/lib/billing-actions';
+import { seedBillingData } from '@/lib/seed';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -70,6 +72,7 @@ export default function InvoicesClient() {
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [isAdding, setIsAdding] = React.useState(false);
     const [isGenerating, setIsGenerating] = React.useState(false);
+    const [isSeeding, setIsSeeding] = React.useState(false);
 
     // Form State for new invoice
     const [selectedSchoolId, setSelectedSchoolId] = React.useState<string | null>(null);
@@ -109,11 +112,11 @@ export default function InvoicesClient() {
     const filteredInvoices = React.useMemo(() => {
         if (!invoices || !schools) return [];
         
-        // 1. FILTER BY WORKSPACE (Invoices don't have workspaceId, so we use the schools list)
+        // 1. FILTER BY WORKSPACE
         const validSchoolIds = new Set(schools.map(s => s.id));
         let temp = invoices.filter(i => validSchoolIds.has(i.schoolId));
 
-        // 2. GLOBAL USER FILTER (Resolves via school assignment)
+        // 2. GLOBAL USER FILTER
         if (assignedUserId) {
             temp = temp.filter(invoice => {
                 const assignedTo = schoolAssignmentMap.get(invoice.schoolId);
@@ -142,6 +145,19 @@ export default function InvoicesClient() {
             toast({ variant: 'destructive', title: 'Generation Failed', description: result.error });
         }
         setIsGenerating(false);
+    };
+
+    const handleSeedData = async () => {
+        if (!firestore || isSeeding) return;
+        setIsSeeding(true);
+        try {
+            const count = await seedBillingData(firestore);
+            toast({ title: 'Financial Seeding Complete', description: `Initialized settings and ${count} invoices.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seeding Failed', description: e.message });
+        } finally {
+            setIsSeeding(false);
+        }
     };
 
     const handleDelete = async (invoice: Invoice) => {
@@ -173,9 +189,15 @@ export default function InvoicesClient() {
                         </h1>
                         <p className="text-muted-foreground font-medium mt-1">Audit, manage, and finalize institutional billing records.</p>
                     </div>
-                    <Button onClick={() => setIsAdding(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
-                        <Plus className="mr-2 h-5 w-5" /> Create Bill
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" onClick={handleSeedData} disabled={isSeeding} className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-white shadow-sm transition-all active:scale-95">
+                            {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}
+                            Seed Sample Data
+                        </Button>
+                        <Button onClick={() => setIsAdding(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
+                            <Plus className="mr-2 h-5 w-5" /> Create Bill
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -295,9 +317,17 @@ export default function InvoicesClient() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={6} className="h-64 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-3 opacity-20">
-                                            <Receipt className="h-12 w-12" />
-                                            <p className="text-xs font-black uppercase tracking-widest">Registry Clear</p>
+                                        <div className="flex flex-col items-center justify-center gap-6 opacity-30">
+                                            <div className="p-6 bg-muted/50 rounded-[2.5rem] shadow-inner">
+                                                <Receipt className="h-12 w-12" />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <p className="text-xs font-black uppercase tracking-widest">Registry Clear</p>
+                                                <Button onClick={handleSeedData} disabled={isSeeding} className="rounded-xl font-bold h-10 px-6 gap-2">
+                                                    {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                                    Seed Initial Invoices
+                                                </Button>
+                                            </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>
