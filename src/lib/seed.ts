@@ -1,3 +1,4 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc } from 'firebase/firestore';
@@ -217,6 +218,51 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
 
     await batch.commit();
     return invoiceCount;
+}
+
+/**
+ * MIGRATION PROTOCOL: Media Asset Enrichment
+ */
+export async function enrichMediaWithWorkspace(firestore: Firestore): Promise<number> {
+    const mediaSnap = await getDocs(collection(firestore, 'media'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+    
+    // Safety Snapshot
+    mediaSnap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_media_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    mediaSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceId) {
+            batch.update(docSnap.ref, {
+                workspaceId: 'onboarding',
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackMediaMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_media_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const originalRef = doc(firestore, 'media', docSnap.id);
+        batch.set(originalRef, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
 }
 
 /**

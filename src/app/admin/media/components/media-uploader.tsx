@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
 import { processImage, getImageDimensions } from '@/lib/image-processing';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
@@ -60,6 +61,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspaceId } = useWorkspace();
 
   const getMediaType = (file: File): z.infer<typeof mediaAssetTypeEnum> | null => {
     const mimeType = file.type;
@@ -157,7 +159,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
 
   const handleUpload = async () => {
-    if (stagedFiles.length === 0 || !user || !firestore) {
+    if (stagedFiles.length === 0 || !user || !firestore || !activeWorkspaceId) {
         if(!user) toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         if(!firestore) toast({ variant: 'destructive', title: 'Database Error', description: 'Cannot connect to the database.' });
         return;
@@ -235,6 +237,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
                 mimeType: finalMimeType,
                 size: blobToUpload.size,
                 uploadedBy: user.uid,
+                workspaceId: activeWorkspaceId,
                 createdAt: new Date().toISOString()
               };
 
@@ -336,7 +339,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
       {stagedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-medium">Staged Files ({stagedFiles.length})</h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2">
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2 text-left">
             {stagedFiles.map((fileState) => (
               <div 
                 key={fileState.id} 
@@ -369,7 +372,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         <div className="flex justify-end pt-4">
           <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto">
             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-            {isUploading ? 'Uploading...' : `Upload ${stagedFiles.length} file(s)`}
+            {isUploading ? 'Uploading...' : `Upload ${stagedFiles.length} file(s) to ${activeWorkspaceId}`}
           </Button>
         </div>
       )}

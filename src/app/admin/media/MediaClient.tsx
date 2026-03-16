@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
 
@@ -13,6 +14,7 @@ import { Search, Film, LayoutList } from 'lucide-react';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const TABS = [
   { id: 'images', label: 'Images' },
@@ -24,6 +26,7 @@ const TABS = [
 
 export default function MediaClient() {
   const firestore = useFirestore();
+  const { activeWorkspaceId } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('images');
   
@@ -33,9 +36,13 @@ export default function MediaClient() {
   }, [firestore]);
 
   const mediaQuery = useMemoFirebase(() => {
-    if (!mediaCol) return null;
-    return query(mediaCol, orderBy('createdAt', 'desc'));
-  }, [mediaCol]);
+    if (!mediaCol || !activeWorkspaceId) return null;
+    return query(
+        mediaCol, 
+        where('workspaceId', '==', activeWorkspaceId),
+        orderBy('createdAt', 'desc')
+    );
+  }, [mediaCol, activeWorkspaceId]);
   
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
@@ -64,9 +71,13 @@ export default function MediaClient() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8 text-left">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col items-start">
+                <h1 className="text-3xl font-black uppercase tracking-tight">Media Hub</h1>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Workspace Assets for {activeWorkspaceId}</p>
+            </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
                 <AddLinkButton />
                 <UploadButton />
@@ -74,7 +85,7 @@ export default function MediaClient() {
         </div>
 
         <Card className="border-none shadow-sm ring-1 ring-border rounded-3xl overflow-hidden bg-card">
-            <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+            <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4 text-left">
                 <div className="relative flex-grow w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                     <Input 
@@ -122,7 +133,7 @@ export default function MediaClient() {
             ) : (
               <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-card/50 flex flex-col items-center justify-center gap-4 opacity-30">
                 <Film className="h-16 w-16" />
-                <p className="font-black uppercase tracking-widest text-xs">No {activeTab} in your library</p>
+                <p className="font-black uppercase tracking-widest text-xs">No {activeTab} in this workspace</p>
               </div>
             )}
           </div>

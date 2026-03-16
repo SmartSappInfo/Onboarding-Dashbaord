@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb, adminStorage } from './firebase-admin';
@@ -409,7 +410,7 @@ export async function purgeContractAction(schoolId: string, submissionIds: strin
     }
 }
 
-export async function createPdfForm(data: any, userId: string) {
+export async function createPdfForm(data: any, userId: string, workspaceId: string) {
   const { size, mimeType, ...formData } = data;
   const slug = formData.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const timestamp = new Date().toISOString();
@@ -421,6 +422,7 @@ export async function createPdfForm(data: any, userId: string) {
     status: 'draft',
     fields: [],
     createdBy: userId,
+    workspaceId,
     createdAt: timestamp,
     updatedAt: timestamp,
     backgroundPattern: 'none',
@@ -438,6 +440,7 @@ export async function createPdfForm(data: any, userId: string) {
       mimeType: mimeType,
       size: size,
       uploadedBy: userId,
+      workspaceId,
       createdAt: timestamp,
     });
   }
@@ -445,6 +448,7 @@ export async function createPdfForm(data: any, userId: string) {
   await logActivity({
       schoolId: '', 
       userId,
+      workspaceId,
       type: 'pdf_uploaded',
       source: 'user_action',
       description: `uploaded a new PDF form: "${formData.name}"`,

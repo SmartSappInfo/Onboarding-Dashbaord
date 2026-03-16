@@ -271,6 +271,7 @@ export interface MediaAsset {
   url: string;
   fullPath?: string;
   type: 'image' | 'video' | 'audio' | 'document' | 'link';
+  workspaceId: string; // Dynamic link to track
   mimeType?: string;
   size?: number;
   width?: number;

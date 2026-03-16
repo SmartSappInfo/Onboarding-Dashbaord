@@ -24,6 +24,7 @@ import type { MediaAsset } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { createPdfForm } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function UploadPDFButton() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -31,6 +32,7 @@ export default function UploadPDFButton() {
   const router = useRouter();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspaceId } = useWorkspace();
 
   const handleUploadSuccess = (pdfId: string) => {
     setIsSheetOpen(false);
@@ -38,8 +40,8 @@ export default function UploadPDFButton() {
   };
 
   const handleMediaSelect = async (asset: MediaAsset) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+    if (!user || !activeWorkspaceId) {
+        toast({ variant: 'destructive', title: 'Context Missing', description: 'Authentication and Workspace required.' });
         return;
     }
     
@@ -50,7 +52,7 @@ export default function UploadPDFButton() {
         originalFileName: asset.originalName || asset.name,
         storagePath: asset.fullPath || '',
         downloadUrl: asset.url,
-    }, user.uid);
+    }, user.uid, activeWorkspaceId);
 
     if (result.success && result.id) {
         toast({ title: 'Success', description: `"${asset.name}" added from library.` });
@@ -64,32 +66,37 @@ export default function UploadPDFButton() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className="gap-2">
+          <Button className="gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg h-11 px-6">
             <Plus className="h-4 w-4" />
             Add Document
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={() => setIsSheetOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            <span>Upload from Computer</span>
+        <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
+          <DropdownMenuItem onClick={() => setIsSheetOpen(true)} className="rounded-xl p-2.5 gap-3">
+            <Upload className="mr-2 h-4 w-4 text-primary" />
+            <span className="font-bold text-sm">Upload from Computer</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsMediaDialogOpen(true)}>
-            <Library className="mr-2 h-4 w-4" />
-            <span>Choose from Media</span>
+          <DropdownMenuItem onClick={() => setIsMediaDialogOpen(true)} className="rounded-xl p-2.5 gap-3">
+            <Library className="mr-2 h-4 w-4 text-primary" />
+            <span className="font-bold text-sm">Choose from Media</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full">
-          <SheetHeader className="px-6 pt-6 pb-4 border-b">
-            <SheetTitle>Upload a New Document</SheetTitle>
-            <SheetDescription>
-              Upload a PDF document to begin mapping fields for public use.
-            </SheetDescription>
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full border-none shadow-2xl rounded-l-[3rem]">
+          <SheetHeader className="p-8 border-b bg-muted/30 shrink-0">
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                    <FileText className="h-6 w-6" />
+                </div>
+                <div className="text-left">
+                    <SheetTitle className="text-2xl font-black uppercase tracking-tight">Import Document</SheetTitle>
+                    <SheetDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Initializing record for {activeWorkspaceId}.</SheetDescription>
+                </div>
+            </div>
           </SheetHeader>
-          <div className="flex-grow p-6 overflow-y-auto">
+          <div className="flex-grow p-8 overflow-y-auto bg-background">
             <PdfUploader onUploadSuccess={handleUploadSuccess} />
           </div>
         </SheetContent>
@@ -104,3 +111,5 @@ export default function UploadPDFButton() {
     </>
   );
 }
+
+function FileText(props: any) { return <Plus {...props} /> }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
 
@@ -16,6 +16,7 @@ import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
 import { Search, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document', 'link'];
 const TAB_NAMES: Record<MediaAsset['type'], string> = {
@@ -36,6 +37,7 @@ interface MediaSelectorDialogProps {
 
 export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset, filterType }: MediaSelectorDialogProps) {
   const firestore = useFirestore();
+  const { activeWorkspaceId } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(filterType || 'image');
 
@@ -45,9 +47,13 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
   }, [firestore]);
 
   const mediaQuery = useMemoFirebase(() => {
-    if (!mediaCol) return null;
-    return query(mediaCol, orderBy('createdAt', 'desc'));
-  }, [mediaCol]);
+    if (!mediaCol || !activeWorkspaceId) return null;
+    return query(
+        mediaCol, 
+        where('workspaceId', '==', activeWorkspaceId),
+        orderBy('createdAt', 'desc')
+    );
+  }, [mediaCol, activeWorkspaceId]);
   
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
@@ -70,8 +76,8 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
         <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30 shrink-0">
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">Media Library</DialogTitle>
-          <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            Choose an institutional asset or upload a new one to the repository.
+          <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">
+            Choose an institutional asset for the <strong>{activeWorkspaceId}</strong> workspace or upload a new one.
           </DialogDescription>
         </DialogHeader>
         

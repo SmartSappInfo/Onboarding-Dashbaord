@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -28,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'A name is required for the link.' }),
@@ -42,6 +44,7 @@ export default function AddLinkButton() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { activeWorkspaceId } = useWorkspace();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,8 +55,8 @@ export default function AddLinkButton() {
   });
 
   const onSubmit = async (data: FormData) => {
-    if (!user || !firestore) {
-      toast({ variant: 'destructive', title: 'You must be logged in to add a link.' });
+    if (!user || !firestore || !activeWorkspaceId) {
+      toast({ variant: 'destructive', title: 'Context Missing', description: 'You must be logged in and within a workspace.' });
       return;
     }
     
@@ -69,6 +72,7 @@ export default function AddLinkButton() {
           url: data.url,
           type: 'link' as const,
           uploadedBy: user.uid,
+          workspaceId: activeWorkspaceId,
           createdAt: new Date().toISOString(),
           linkTitle: metadata?.title,
           linkDescription: metadata?.description,
@@ -120,16 +124,16 @@ export default function AddLinkButton() {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
+      <Button variant="outline" onClick={() => setIsDialogOpen(true)} className="rounded-xl font-bold border-primary/20 text-primary">
         <LinkIcon className="mr-2 h-4 w-4" />
         Add Link
       </Button>
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl text-left">
           <DialogHeader>
             <DialogTitle>Add a New Link</DialogTitle>
             <DialogDescription>
-              Save a URL to your media library. We'll try to fetch a preview.
+              Save a URL to the <strong>{activeWorkspaceId}</strong> workspace media library.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -139,9 +143,9 @@ export default function AddLinkButton() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fallback Name</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest opacity-60">Fallback Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., SmartSapp Website" {...field} disabled={isProcessing} />
+                      <Input placeholder="e.g., SmartSapp Website" {...field} disabled={isProcessing} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -152,19 +156,19 @@ export default function AddLinkButton() {
                 name="url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>URL</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-widest opacity-60">URL</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://www.smartsapp.com" {...field} disabled={isProcessing}/>
+                      <Input type="url" placeholder="https://www.smartsapp.com" {...field} disabled={isProcessing} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-mono text-sm" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isProcessing}>
+              <DialogFooter className="pt-4 flex justify-between sm:justify-between">
+                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isProcessing} className="font-bold rounded-xl">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isProcessing}>
+                <Button type="submit" disabled={isProcessing} className="rounded-xl font-black px-8">
                   {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isProcessing ? 'Saving...' : 'Save Link'}
                 </Button>
