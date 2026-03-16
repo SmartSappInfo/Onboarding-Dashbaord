@@ -1,6 +1,8 @@
 
 rules_version = '2';
 
+// Triggering synchronization for index build and permission refresh.
+
 service cloud.firestore {
   match /databases/{database}/documents {
     // --- Helper Functions ---
