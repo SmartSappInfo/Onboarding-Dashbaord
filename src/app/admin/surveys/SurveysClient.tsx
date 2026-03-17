@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, orderBy, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
 import { cloneSurvey } from '@/lib/survey-actions';
@@ -26,9 +27,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
@@ -43,6 +44,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -64,6 +66,7 @@ export default function SurveysClient() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
+  const { activeWorkspaceId } = useWorkspace();
   const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
   
@@ -76,9 +79,14 @@ export default function SurveysClient() {
   }, [firestore]);
   
   const surveysQuery = useMemoFirebase(() => {
-    if (!surveysCol) return null;
-    return query(surveysCol, orderBy('createdAt', 'desc'));
-  }, [surveysCol]);
+    if (!surveysCol || !activeWorkspaceId) return null;
+    // Apply Workspace Filter via array-contains
+    return query(
+        surveysCol, 
+        where('workspaceIds', 'array-contains', activeWorkspaceId),
+        orderBy('createdAt', 'desc')
+    );
+  }, [surveysCol, activeWorkspaceId]);
 
   const { data: surveys, isLoading, error } = useCollection<Survey>(surveysQuery);
 
@@ -295,8 +303,12 @@ export default function SurveysClient() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
+        <div className="max-w-7xl mx-auto space-y-8 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-black uppercase tracking-tight">Survey Intelligence</h1>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Authorized Protocol Blueprints</p>
+                </div>
                 <div className="flex justify-end items-center gap-3 shrink-0">
                     <RainbowButton asChild className="h-11 rounded-xl font-black">
                         <Link href="/admin/surveys/new/ai">
@@ -400,7 +412,7 @@ export default function SurveysClient() {
                     <TableCell colSpan={5} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center gap-3 opacity-30">
                             <ClipboardList className="h-12 w-12" />
-                            <p className="font-black uppercase tracking-widest text-xs">No active blueprints found</p>
+                            <p className="font-black uppercase tracking-widest text-xs">No active blueprints found in this workspace hub</p>
                         </div>
                     </TableCell>
                     </TableRow>

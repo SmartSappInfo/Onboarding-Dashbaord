@@ -48,7 +48,11 @@ import {
     enrichLogsWithWorkspace,
     rollbackLogsMigration,
     enrichJobsWithWorkspace,
-    rollbackJobsMigration
+    rollbackJobsMigration,
+    enrichSurveysWithWorkspace,
+    rollbackSurveysMigration,
+    enrichPdfsWithWorkspace,
+    rollbackPdfsMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -75,7 +79,8 @@ import {
     Mail,
     Palette,
     Fingerprint,
-    Layers
+    Layers,
+    FileText
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
@@ -85,7 +90,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs' | 'enrich_surveys' | 'rollback_surveys' | 'enrich_pdfs' | 'rollback_pdfs';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -147,6 +152,18 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback_styles') {
           const count = await rollbackStylesMigration(firestore);
           toast({ title: 'Styles Rollback Success', description: `Restored ${count} styles.` });
+      } else if (seeder === 'enrich_surveys') {
+          const count = await enrichSurveysWithWorkspace(firestore);
+          toast({ title: 'Surveys Sync Complete', description: `Enriched ${count} blueprints.` });
+      } else if (seeder === 'rollback_surveys') {
+          const count = await rollbackSurveysMigration(firestore);
+          toast({ title: 'Surveys Rollback Success' });
+      } else if (seeder === 'enrich_pdfs') {
+          const count = await enrichPdfsWithWorkspace(firestore);
+          toast({ title: 'PDF Sync Complete', description: `Enriched ${count} document templates.` });
+      } else if (seeder === 'rollback_pdfs') {
+          const count = await rollbackPdfsMigration(firestore);
+          toast({ title: 'PDF Rollback Success' });
       } else if (seeder === 'enrich_status') {
           const count = await enrichSchoolStatuses(firestore);
           toast({ title: 'Status Enrich Complete', description: `Updated ${count} schools.` });
@@ -218,6 +235,42 @@ export default function SettingsClient() {
                             Sync Directory
                         </Button>
                         <Button variant="outline" onClick={() => handleSeed('rollback')} disabled={seedingStatus.rollback === 'seeding'} className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white">
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Survey Protocol Sync */}
+                <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-100 flex flex-col justify-between gap-6 transition-all hover:bg-blue-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-blue-600 border border-blue-100"><ClipboardList className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Survey Protocol Sync</h4>
+                        <p className="text-[10px] font-medium text-blue-800 leading-relaxed uppercase tracking-tighter">Migrates survey blueprints to the shared workspace array schema.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSeed('enrich_surveys')} disabled={seedingStatus.enrich_surveys === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-blue-600 hover:bg-blue-700 h-11 text-white">
+                            {seedingStatus.enrich_surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Surveys
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSeed('rollback_surveys')} disabled={seedingStatus.rollback_surveys === 'seeding'} className="rounded-xl font-bold border-blue-200 text-blue-700 h-11 bg-white">
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Doc Signing Sync */}
+                <div className="p-6 rounded-3xl bg-orange-50/50 border-2 border-dashed border-orange-100 flex flex-col justify-between gap-6 transition-all hover:bg-orange-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-orange-600 border border-orange-100"><FileText className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Doc Signing Sync</h4>
+                        <p className="text-[10px] font-medium text-orange-800 leading-relaxed uppercase tracking-tighter">Enriches PDF form templates with workspace array context.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSeed('enrich_pdfs')} disabled={seedingStatus.enrich_pdfs === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-orange-600 hover:bg-orange-700 h-11 text-white">
+                            {seedingStatus.enrich_pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Documents
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSeed('rollback_pdfs')} disabled={seedingStatus.rollback_pdfs === 'seeding'} className="rounded-xl font-bold border-orange-200 text-orange-700 h-11 bg-white">
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>

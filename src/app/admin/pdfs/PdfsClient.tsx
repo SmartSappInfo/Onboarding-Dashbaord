@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -47,12 +48,14 @@ import SubmissionCount from './components/SubmissionCount';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function PdfsClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [formToDelete, setFormToDelete] = useState<PDFForm | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -61,9 +64,14 @@ export default function PdfsClient() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const pdfsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'pdfs'), orderBy('createdAt', 'desc'));
-  }, [firestore]);
+    if (!firestore || !activeWorkspaceId) return null;
+    // Apply Workspace Filter via array-contains
+    return query(
+        collection(firestore, 'pdfs'), 
+        where('workspaceIds', 'array-contains', activeWorkspaceId),
+        orderBy('createdAt', 'desc')
+    );
+  }, [firestore, activeWorkspaceId]);
 
   const { data: pdfs, isLoading } = useCollection<PDFForm>(pdfsQuery);
 
@@ -229,9 +237,13 @@ export default function PdfsClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="max-w-7xl mx-auto space-y-8 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+        <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-black uppercase tracking-tight">Doc Signing Studio</h1>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Interactive Institutional Agreements</p>
+                </div>
                 <div className="flex justify-end items-center shrink-0">
                     <UploadPDFButton />
                 </div>
@@ -264,8 +276,8 @@ export default function PdfsClient() {
 
             <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
             <Table>
-                <TableHeader className="bg-muted/30">
-                <TableRow>
+                <TableHeader>
+                <TableRow className="bg-muted/30">
                     <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Document Title</TableHead>
                     <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
                     <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Fields</TableHead>
@@ -316,7 +328,7 @@ export default function PdfsClient() {
                     <TableCell colSpan={6} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center gap-3 opacity-30">
                             <FileText className="h-12 w-12" />
-                            <p className="font-black uppercase tracking-widest text-xs">No active documents found</p>
+                            <p className="font-black uppercase tracking-widest text-xs">No document templates found in this workspace hub</p>
                         </div>
                     </TableCell>
                     </TableRow>

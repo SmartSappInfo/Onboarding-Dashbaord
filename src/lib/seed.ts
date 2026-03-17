@@ -86,6 +86,94 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 }
 
 /**
+ * MIGRATION PROTOCOL: Survey Workspace Enrichment
+ */
+export async function enrichSurveysWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'surveys'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_surveys_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: [data.workspaceId || 'onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackSurveysMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_surveys_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'surveys', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: PDF Workspace Enrichment
+ */
+export async function enrichPdfsWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'pdfs'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_pdfs_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: [data.workspaceId || 'onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackPdfsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_pdfs_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'pdfs', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
  * MIGRATION PROTOCOL: Messaging Workspace Enrichment
  */
 export async function enrichTemplatesWithWorkspace(firestore: Firestore): Promise<number> {
@@ -491,3 +579,4 @@ export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
 export async function seedPipelines(firestore: Firestore) { return 0; }
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
+
