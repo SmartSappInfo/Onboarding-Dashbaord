@@ -9,7 +9,10 @@ service cloud.firestore {
     }
 
     function isSystemAdmin() {
-      return isSignedIn() && request.auth.token.email == 'admin@smartsapp.com';
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('permissions', []).hasAny(['system_admin'])
+      );
     }
 
     function isAuthorized() {
@@ -70,11 +73,11 @@ service cloud.firestore {
     }
 
     match /subscription_packages/{packageId} {
-      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow write: if hasPermission('finance_manage');
     }
     match /billing_periods/{periodId} {
-      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow write: if hasPermission('finance_manage');
     }
     match /invoices/{invoiceId} {
@@ -99,7 +102,7 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /media/{mediaId} {
-        allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+        allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
         allow write: if isAuthorized();
     }
     match /zones/{document=**} {
@@ -111,25 +114,25 @@ service cloud.firestore {
     }
     
     match /sender_profiles/{profileId} {
-      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow list: if isAuthorized();
       allow write: if hasPermission('studios_edit');
     }
     match /message_styles/{styleId} {
-      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow list: if isAuthorized();
       allow write: if hasPermission('studios_edit');
     }
     match /message_templates/{templateId} {
-      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow list: if isAuthorized();
       allow write: if hasPermission('studios_edit');
     }
     match /message_logs/{logId} {
-      allow read, list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow read, list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
     }
     match /message_jobs/{jobId} {
-      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow write: if isAuthorized();
     }
 
@@ -147,7 +150,7 @@ service cloud.firestore {
     }
 
     match /schools/{schoolId} {
-      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.get('workspaceIds', []));
+      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding']));
       allow list: if isAuthorized(); 
       allow create: if isAuthorized();
       allow update: if isAuthorized();
@@ -198,7 +201,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
