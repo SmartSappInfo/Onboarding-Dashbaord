@@ -8,13 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Globe, AlertCircle, ShieldCheck, Zap, Layout } from 'lucide-react';
 import WebhookManager from './webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { cn } from '@/lib/utils';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 export default function Step4Publish() {
     const { control, watch } = useFormContext();
+    const { allowedWorkspaces } = useWorkspace();
+
+    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -31,6 +36,29 @@ export default function Step4Publish() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-10 bg-background text-left">
+                    <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
+                            <Layout className="h-3 w-3" /> Shared Context (Workspaces)
+                        </Label>
+                        <Controller 
+                            name="workspaceIds"
+                            control={control}
+                            render={({ field }) => (
+                                <MultiSelect 
+                                    options={workspaceOptions}
+                                    value={field.value || []}
+                                    onChange={field.onChange}
+                                    placeholder="Share across hubs..."
+                                />
+                            )}
+                        />
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight leading-relaxed">
+                            Determines which workspace directories this survey blueprint is visible in.
+                        </p>
+                    </div>
+
+                    <Separator className="bg-border/50" />
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="status"
@@ -39,7 +67,7 @@ export default function Step4Publish() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Lifecycle State</Label>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
@@ -107,3 +135,5 @@ export default function Step4Publish() {
         </div>
     );
 }
+
+function Separator({ className }: { className?: string }) { return <div className={cn("h-px w-full bg-border", className)} />; }

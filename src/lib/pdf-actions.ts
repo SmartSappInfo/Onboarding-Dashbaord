@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
- * Updated to support partial saves, multi-stage signing, and finalization logic.
+ * Updated to support multi-workspace sharing and finalization logic.
  */
 
 function hexToRgb(hex: string) {
@@ -181,7 +181,6 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
         const pdfRef = adminDb.collection('pdfs').doc(pdfId);
         const contractsCol = adminDb.collection('contracts');
         
-        // 1. Resolve or Create Contract Record
         const contractQuery = await contractsCol
             .where('schoolId', '==', schoolId)
             .limit(1)
@@ -205,7 +204,6 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
             await contractDoc.update({ status: 'partially_signed', updatedAt: timestamp });
         }
 
-        // 2. Resolve or Create Submission Record
         const contractData = (await contractDoc.get()).data();
         let submissionId = contractData?.submissionId;
         
@@ -245,7 +243,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         if (!pdfSnap.exists) throw new Error("PDF Template not found.");
         const pdfData = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
 
-        // 1. Resolve Contract Context
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol.where('schoolId', '==', schoolId).limit(1).get();
         
@@ -270,7 +267,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
             submissionId = contractQuery.docs[0].data().submissionId;
         }
 
-        // 2. Resolve or Create Submission Record
         if (!submissionId) {
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
@@ -299,7 +295,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
             });
         }
 
-        // 3. Dispatch Automations (Notifications)
         if (pdfData.confirmationMessagingEnabled && pdfData.confirmationTemplateId) {
             const recipientField = pdfData.fields.find(f => f.type === 'email' || f.type === 'phone');
             const recipient = recipientField ? formData[recipientField.id] : null;
@@ -356,6 +351,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         await logActivity({
             schoolId,
             userId: null,
+            workspaceIds: pdfData.workspaceIds || ['onboarding'],
             type: 'pdf_status_changed',
             source: 'public',
             description: `successfully executed agreement: "${pdfData.name}"`,
@@ -369,48 +365,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
     }
 }
 
-/**
- * Resets an institutional contract record and deletes associated submissions.
- * Requires high-level administrative authorization.
- */
-export async function purgeContractAction(schoolId: string, submissionIds: string[], userId: string) {
-    try {
-        const batch = adminDb.batch();
-        
-        // 1. Delete associated submissions across all relevant PDF subcollections
-        const pdfsSnap = await adminDb.collection('pdfs').get();
-        for (const pdfDoc of pdfsSnap.docs) {
-            const subCol = pdfDoc.ref.collection('submissions');
-            for (const subId of submissionIds) {
-                batch.delete(subCol.doc(subId));
-            }
-        }
-
-        // 2. Remove or reset the primary contract link
-        const contractsCol = adminDb.collection('contracts');
-        const contractQuery = await contractsCol.where('schoolId', '==', schoolId).limit(1).get();
-        if (!contractQuery.empty) {
-            batch.delete(contractQuery.docs[0].ref);
-        }
-
-        await batch.commit();
-
-        await logActivity({
-            schoolId,
-            userId,
-            type: 'pdf_status_changed',
-            source: 'user_action',
-            description: `purged legal agreement history and ${submissionIds.length} submissions for school`
-        });
-
-        revalidatePath('/admin/finance/contracts');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
-}
-
-export async function createPdfForm(data: any, userId: string, workspaceId: string) {
+export async function createPdfForm(data: any, userId: string, workspaceIds: string[]) {
   const { size, mimeType, ...formData } = data;
   const slug = formData.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const timestamp = new Date().toISOString();
@@ -422,7 +377,7 @@ export async function createPdfForm(data: any, userId: string, workspaceId: stri
     status: 'draft',
     fields: [],
     createdBy: userId,
-    workspaceId,
+    workspaceIds,
     createdAt: timestamp,
     updatedAt: timestamp,
     backgroundPattern: 'none',
@@ -440,7 +395,7 @@ export async function createPdfForm(data: any, userId: string, workspaceId: stri
       mimeType: mimeType,
       size: size,
       uploadedBy: userId,
-      workspaceId,
+      workspaceIds,
       createdAt: timestamp,
     });
   }
@@ -448,7 +403,7 @@ export async function createPdfForm(data: any, userId: string, workspaceId: stri
   await logActivity({
       schoolId: '', 
       userId,
-      workspaceId,
+      workspaceIds,
       type: 'pdf_uploaded',
       source: 'user_action',
       description: `uploaded a new PDF form: "${formData.name}"`,
@@ -496,40 +451,6 @@ export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
     revalidatePath(`/admin/pdfs/${pdfId}/edit`);
     revalidatePath('/admin/pdfs');
     return { success: true };
-}
-
-export async function updatePdfFormSlug(pdfId: string, newSlug: string) {
-  const cleanSlug = newSlug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  if (cleanSlug.length < 3) return { error: 'Slug must be at least 3 characters.' };
-  const querySnap = await adminDb.collection('pdfs').where('slug', '==', cleanSlug).limit(1).get();
-  if (!querySnap.empty && querySnap.docs[0].id !== pdfId) return { error: 'This slug is already in use.' };
-  await adminDb.collection('pdfs').doc(pdfId).update({ slug: cleanSlug, updatedAt: new Date().toISOString() });
-  revalidatePath(`/admin/pdfs/${pdfId}/edit`);
-  revalidatePath('/admin/pdfs');
-  return { success: true, slug: cleanSlug };
-}
-
-export async function updatePdfFormMapping(pdfId: string, data: any) {
-  await adminDb.collection('pdfs').doc(pdfId).update({
-    fields: data.fields,
-    namingFieldId: data.namingFieldId || null,
-    displayFieldIds: data.displayFieldIds || [],
-    password: data.password || null,
-    passwordProtected: data.passwordProtected || false,
-    updatedAt: new Date().toISOString(),
-  });
-  revalidatePath(`/admin/pdfs/${pdfId}/edit`);
-  return { success: true };
-}
-
-export async function updatePdfResultsSharing(pdfId: string, data: { shared: boolean; password?: string }) {
-  await adminDb.collection('pdfs').doc(pdfId).update({
-    resultsShared: data.shared,
-    resultsPassword: data.password || '',
-    updatedAt: new Date().toISOString(),
-  });
-  revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
-  return { success: true };
 }
 
 export async function updatePdfFormStatus(pdfId: string, status: string, userId: string) {

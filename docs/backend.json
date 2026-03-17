@@ -27,7 +27,7 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "trigger": { "type": "string", "enum": ["SCHOOL_CREATED", "SCHOOL_STAGE_CHANGED", "TASK_COMPLETED", "SURVEY_SUBMITTED", "PDF_SIGNED", "WEBHOOK_RECEIVED", "MEETING_CREATED"] },
-        "track": { "type": "string", "enum": ["onboarding", "prospect"] },
+        "workspaceId": { "type": "string" },
         "nodes": { "type": "array" },
         "edges": { "type": "array" },
         "isActive": { "type": "boolean" },
@@ -73,9 +73,10 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "targetTrack": { "type": "string", "enum": ["onboarding", "prospect"] },
+        "workspaceId": { "type": "string" },
         "stageIds": { "type": "array", "items": { "type": "string" } },
         "accessRoles": { "type": "array", "items": { "type": "string" } },
+        "columnWidth": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -199,7 +200,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "slug": { "type": "string" },
-        "track": { "type": "string", "enum": ["onboarding", "prospect"] },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
         "location": { "type": "string" },
         "billingAddress": { "type": "string" },
         "currency": { "type": "string" },
@@ -210,7 +211,7 @@
         "arrearsBalance": { "type": "number" },
         "creditBalance": { "type": "number" },
         "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
-        "lifecycleStatus": { "type": "string", "enum": ["Onboarding", "Active", "Churned"] },
+        "schoolStatus": { "type": "string" },
         "pipelineId": { "type": "string" },
         "zone": { "$ref": "#/entities/Zone" },
         "focalPersons": { "type": "array", "items": { "$ref": "#/entities/FocalPerson" } },
@@ -229,7 +230,7 @@
         "schoolId": { "type": "string" },
         "schoolName": { "type": "string" },
         "pdfId": { "type": "string" },
-        "status": { "type": "string", "enum": ["no_contract", "draft", "sent", "signed"] },
+        "status": { "type": "string", "enum": ["no_contract", "draft", "sent", "signed", "partially_signed"] },
         "submissionId": { "type": "string" },
         "sentAt": { "type": "string", "format": "date-time" },
         "signedAt": { "type": "string", "format": "date-time" },
@@ -245,6 +246,7 @@
         "schoolId": { "type": "string" },
         "schoolName": { "type": "string" },
         "schoolSlug": { "type": "string" },
+        "workspaceId": { "type": "string" },
         "meetingTime": { "type": "string", "format": "date-time" },
         "meetingLink": { "type": "string" },
         "type": { "type": "object" },
@@ -263,6 +265,7 @@
         "description": { "type": "string" },
         "slug": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
         "elements": { "type": "array" },
         "scoringEnabled": { "type": "boolean" },
         "maxScore": { "type": "number" },
@@ -281,6 +284,7 @@
         "publicTitle": { "type": "string" },
         "slug": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
         "fields": { "type": "array" },
         "isContractDocument": { "type": "boolean" }
       }
@@ -294,7 +298,7 @@
         "schoolId": { "type": "string" },
         "schoolName": { "type": "string" },
         "schoolSlug": { "type": "string" },
-        "track": { "type": "string", "enum": ["onboarding", "prospect"] },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
         "userId": { "type": "string" },
         "type": { "type": "string" },
         "source": { "type": "string" },
@@ -312,9 +316,9 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
-        "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "waiting", "review", "done"] },
         "category": { "type": "string", "enum": ["call", "visit", "document", "training", "general"] },
-        "track": { "type": "string", "enum": ["onboarding", "prospect"] },
+        "workspaceId": { "type": "string" },
         "schoolId": { "type": "string" },
         "schoolName": { "type": "string" },
         "assignedTo": { "type": "string" },
@@ -322,16 +326,18 @@
         "source": { "type": "string", "enum": ["manual", "automation", "system"] }
       }
     },
-    "AutomationRule": {
-      "title": "Automation Rule",
-      "description": "System-wide rule for triggering automated actions.",
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Logical hub for organizing institutional data and lifecycles.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "trigger": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "actions": { "type": "array" }
+        "description": { "type": "string" },
+        "color": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "statuses": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -390,6 +396,10 @@
     "/automation_jobs/{jobId}": {
       "schema": "#/entities/AutomationJob",
       "description": "Scheduled background tasks."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": "#/entities/Workspace",
+      "description": "Custom organizational tracks."
     }
   }
 }

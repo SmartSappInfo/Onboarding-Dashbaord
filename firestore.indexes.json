@@ -1,3 +1,4 @@
+
 {
   "indexes": [
     {
@@ -79,7 +80,7 @@
       "collectionGroup": "activities",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
@@ -88,7 +89,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
@@ -129,6 +130,7 @@
       "collectionGroup": "surveys",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
@@ -137,6 +139,7 @@
       "collectionGroup": "pdfs",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]

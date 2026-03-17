@@ -1,10 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { 
@@ -33,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Extracted Modular Components
 import Step1Details from '../components/step-1-details';
@@ -44,75 +45,7 @@ import LivePreviewPane from '../components/live-preview-pane';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
 import AiChatEditor from '../components/ai-chat-editor';
 
-const questionSchema = z.object({
-  id: z.string(),
-  title: z.string().min(1, 'Question title is required.'),
-  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload', 'email', 'phone']),
-  options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
-  allowOther: z.boolean().optional(),
-  isRequired: z.boolean(),
-  hidden: z.boolean().optional(),
-  placeholder: z.string().optional(),
-  defaultValue: z.any().optional(),
-  minLength: z.number().optional(),
-  maxLength: z.number().optional(),
-  enableScoring: z.boolean().optional(),
-  optionScores: z.array(z.number()).optional(),
-  yesScore: z.number().optional(),
-  noScore: z.number().optional(),
-  autoAdvance: z.boolean().optional(),
-}).refine(data => {
-    if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
-        return false;
-    }
-    return true;
-}, {
-    message: 'Must have at least two options.',
-    path: ['options'],
-});
-
-const layoutBlockSchema = z.object({
-  id: z.string(),
-  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
-  title: z.string().optional(),
-  text: z.string().optional(),
-  url: z.string().url().optional(),
-  html: z.string().optional(),
-  hidden: z.boolean().optional(),
-  description: z.string().optional(),
-  renderAsPage: z.boolean().optional(),
-  validateBeforeNext: z.boolean().optional(),
-  stepperTitle: z.string().optional(),
-}).refine(data => {
-    if (data.type === 'heading' && !data.title) return false;
-    if (data.type === 'description' && !data.text) return false;
-    if (data.type === 'section' && !data.title) return false;
-    return true;
-}, {
-    message: 'This block requires content.',
-    path: ['title']
-});
-
-const logicActionSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('jump'), targetElementId: z.string().min(1, 'Target element is required.') }),
-  z.object({ type: z.literal('require'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
-  z.object({ type: z.literal('show'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
-  z.object({ type: z.literal('hide'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
-  z.object({ type: z.literal('disableSubmit') }),
-]);
-
-const logicBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('logic'),
-  rules: z.array(z.object({
-    sourceQuestionId: z.string().min(1, 'Source question is required.'),
-    operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
-    targetValue: z.any().optional(),
-    action: logicActionSchema,
-  })).min(1, 'Logic block must have at least one rule.'),
-});
-
-const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
+const elementSchema = z.any();
 
 const formSchema = z.object({
   internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -148,9 +81,9 @@ const formSchema = z.object({
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
-  automationMessagingEnabled: z.boolean().default(false),
   schoolId: z.string().optional().nullable(),
   schoolName: z.string().optional().nullable(),
+  workspaceIds: z.array(z.string()).min(1, 'At least one workspace required.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -216,7 +149,6 @@ export default function NewSurveyPage() {
     const { user } = useUser();
     const { activeWorkspaceId } = useWorkspace();
     
-    // UI State
     const [step, setStep] = React.useState(1);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
@@ -225,7 +157,7 @@ export default function NewSurveyPage() {
 
     const schoolsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+        return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
     }, [firestore, activeWorkspaceId]);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
@@ -236,6 +168,7 @@ export default function NewSurveyPage() {
             title: '',
             description: '',
             status: 'draft',
+            workspaceIds: [activeWorkspaceId],
             elements: [
                 {
                     id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -374,9 +307,8 @@ export default function NewSurveyPage() {
     return (
         <FormProvider {...form}>
             <div className="h-full flex flex-col bg-muted/30">
-                {/* Header Actions */}
                 <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-left">
                         <div className="p-2 bg-primary/10 rounded-xl">
                             <SmartSappIcon className="h-6 w-6 text-primary" />
                         </div>
@@ -429,7 +361,6 @@ export default function NewSurveyPage() {
                         <AnimatePresence mode="wait">
                             {step === 1 && (
                                 <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-                                    {/* Mobile Mode Switcher */}
                                     <div className="md:hidden flex justify-center mb-6">
                                         <div className="bg-background border shadow-sm p-1 rounded-2xl flex gap-1">
                                             <Button variant={mobileMode === 'edit' ? 'default' : 'ghost'} size="sm" onClick={() => setMobileMode('edit')} className="rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-6">Configure</Button>
@@ -467,11 +398,10 @@ export default function NewSurveyPage() {
                             )}
                         </AnimatePresence>
 
-                        {/* Sticky Navigation Footer */}
                         <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                             <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 text-left">
                                     {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
                                     {step < 4 ? (
                                         <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">

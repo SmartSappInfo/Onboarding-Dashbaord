@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -11,28 +12,25 @@ export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Pri
 export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived';
 
 /**
- * Defines a specific status option within a workspace lifecycle.
- */
-export interface WorkspaceStatus {
-  value: string;
-  label: string;
-  color: string;
-  description?: string;
-}
-
-/**
- * Defines a managed Workspace (formerly Perspective).
+ * Defines a managed Workspace.
  */
 export interface Workspace {
   id: string;
   name: string;
   description?: string;
-  icon?: string; // Lucide icon name
-  color?: string; // HSL or Hex
+  icon?: string; 
+  color?: string;
   status: 'active' | 'archived';
-  statuses: WorkspaceStatus[]; // Independent lifecycles per workspace
+  statuses: WorkspaceStatus[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorkspaceStatus {
+  value: string;
+  label: string;
+  color: string;
+  description?: string;
 }
 
 export type InstitutionalTrack = 'onboarding' | 'prospect' | string;
@@ -50,9 +48,6 @@ export interface FocalPerson {
   email: string;
   type: FocalPersonType;
   isSignatory: boolean;
-  isBillingOfficer?: boolean;
-  notes?: { id: string; content: string; createdAt: string }[];
-  attachments?: { id: string; name: string; url: string; type: string; createdAt: string }[];
 }
 
 export interface Zone {
@@ -64,16 +59,13 @@ export interface Pipeline {
   id: string;
   name: string;
   description?: string;
-  workspaceId: string; // Linked to Workspace
-  targetTrack?: InstitutionalTrack; // Legacy support
+  workspaceId: string; 
   stageIds: string[];
   accessRoles: string[];
-  columnWidth?: number; // Per-pipeline UI width preference
+  columnWidth?: number;
   createdAt: string;
   updatedAt?: string;
 }
-
-export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | 'sales_rep' | 'sales_supervisor' | string;
 
 export const APP_PERMISSIONS = [
   { id: 'schools_view', label: 'View Schools', category: 'Operations' },
@@ -97,7 +89,7 @@ export interface Role {
   name: string;
   description: string;
   permissions: AppPermissionId[];
-  workspaceIds: string[]; // Bound to these workspaces
+  workspaceIds: string[]; 
   color: string;
   createdAt: string;
   updatedAt?: string;
@@ -109,15 +101,10 @@ export interface UserProfile {
   email: string;
   phone: string;
   photoURL?: string;
-  color?: string;
   isAuthorized: boolean;
-  roles: string[]; // Array of Role IDs
-  permissions?: AppPermissionId[]; // Flattened permissions
-  createdAt: string; // ISO string
-}
-
-export interface DashboardLayout {
-  componentIds: string[];
+  roles: string[];
+  permissions?: AppPermissionId[];
+  createdAt: string;
 }
 
 export interface OnboardingStage {
@@ -136,10 +123,9 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
-  track: InstitutionalTrack; // Logical primary track (legacy context)
-  status: SchoolStatusState; // Operational status (Active/Inactive)
-  schoolStatus: string; // Dynamic Lifecycle Status
+  workspaceIds: string[]; 
+  status: SchoolStatusState;
+  schoolStatus: string;
   pipelineId: string;
   zone?: Zone;
   focalPersons: FocalPerson[];
@@ -150,7 +136,6 @@ export interface School {
   subscriptionPackageName?: string;
   subscriptionRate?: number;
   discountPercentage?: number;
-  billingTerm?: string;
   nominalRoll?: number;
   arrearsBalance?: number;
   creditBalance?: number;
@@ -160,7 +145,7 @@ export interface School {
     abbreviation: string;
     color: string;
   }[];
-  implementationDate?: string; // ISO string
+  implementationDate?: string;
   referee?: string;
   includeDroneFootage?: boolean;
   assignedTo?: {
@@ -174,7 +159,7 @@ export interface School {
     order: number;
     color?: string;
   };
-  createdAt: string; // ISO string
+  createdAt: string;
 }
 
 export interface SubscriptionPackage {
@@ -186,26 +171,6 @@ export interface SubscriptionPackage {
   currency: string;
   isActive: boolean;
 }
-
-export interface BillingPeriod {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  invoiceDate: string;
-  paymentDueDate: string;
-  status: 'open' | 'closed';
-}
-
-export interface InvoiceItem {
-  name: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
-}
-
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
 
 export interface Invoice {
   id: string;
@@ -234,18 +199,16 @@ export interface Invoice {
   signatureUrl?: string;
   createdAt: string;
   updatedAt: string;
-  sentAt?: string;
 }
 
-export interface BillingSettings {
-  id: string;
-  levyPercent: number;
-  vatPercent: number;
-  defaultDiscount: number;
-  paymentInstructions: string;
-  signatureName: string;
-  signatureDesignation: string;
-  signatureUrl?: string;
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
+
+export interface InvoiceItem {
+  name: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
 }
 
 export interface Meeting {
@@ -253,18 +216,13 @@ export interface Meeting {
   schoolId: string;
   schoolName: string;
   schoolSlug: string;
-  meetingTime: string; // ISO string
+  workspaceId: string; 
+  meetingTime: string;
   meetingLink: string;
   type: MeetingType;
   heroImageUrl?: string;
   recordingUrl?: string;
   brochureUrl?: string;
-  adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'both';
-  adminAlertNotifyManager?: boolean;
-  adminAlertSpecificUserIds?: string[];
-  adminAlertEmailTemplateId?: string;
-  adminAlertSmsTemplateId?: string;
 }
 
 export interface MediaAsset {
@@ -274,119 +232,17 @@ export interface MediaAsset {
   url: string;
   fullPath?: string;
   type: 'image' | 'video' | 'audio' | 'document' | 'link';
-  workspaceIds: string[]; // Support for multiple shared workspaces
+  workspaceIds: string[]; 
   mimeType?: string;
   size?: number;
   width?: number;
   height?: number;
   format?: 'jpeg' | 'png' | 'webp';
   uploadedBy: string;
-  createdAt: string; // ISO string
+  createdAt: string;
   linkTitle?: string;
   linkDescription?: string;
   previewImageUrl?: string;
-}
-
-export interface SurveyQuestion {
-  id: string;
-  title: string;
-  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone';
-  options?: string[];
-  allowOther?: boolean;
-  isRequired: boolean;
-  hidden?: boolean;
-  placeholder?: string;
-  defaultValue?: any;
-  minLength?: number;
-  maxLength?: number;
-  enableScoring?: boolean;
-  optionScores?: number[];
-  yesScore?: number;
-  noScore?: number;
-  autoAdvance?: boolean;
-  style?: {
-    textAlign?: 'left' | 'center' | 'right' | 'justify';
-  };
-}
-
-export interface SurveyLayoutBlock {
-  id: string;
-  type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
-  title?: string;
-  description?: string;
-  stepperTitle?: string;
-  text?: string;
-  url?: string;
-  html?: string;
-  hidden?: boolean;
-  renderAsPage?: boolean;
-  validateBeforeNext?: boolean;
-  variant?: 'h1' | 'h2' | 'h3';
-  style?: {
-    textAlign?: 'left' | 'center' | 'right' | 'justify';
-  };
-}
-
-export interface SurveyLogicAction {
-  type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
-  targetElementId?: string;
-  targetElementIds?: string[];
-}
-
-export interface SurveyLogicBlock {
-  id: string;
-  type: 'logic';
-  rules: {
-    sourceQuestionId: string;
-    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith';
-    targetValue?: any;
-    action: SurveyLogicAction;
-  }[];
-}
-
-export type SurveyElement = SurveyQuestion | SurveyLayoutBlock | SurveyLogicBlock;
-
-export interface SurveyResultBlock {
-    id: string;
-    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list';
-    title?: string;
-    content?: string;
-    url?: string;
-    link?: string;
-    openInNewTab?: boolean;
-    variant?: 'h1' | 'h2' | 'h3';
-    items?: string[];
-    listStyle?: 'ordered' | 'unordered';
-    style?: {
-        textAlign?: 'left' | 'center' | 'right' | 'justify';
-        variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
-        color?: string;
-        backgroundColor?: string;
-        padding?: string;
-        borderRadius?: string;
-        width?: string;
-        animate?: boolean;
-    };
-}
-
-export interface SurveyResultPage {
-    id: string;
-    name: string;
-    isDefault: boolean;
-    blocks: SurveyResultBlock[];
-}
-
-export interface SurveyResultRule {
-    id: string;
-    label: string;
-    minScore: number;
-    maxScore: number;
-    priority: number;
-    pageId: string;
-    emailTemplateId?: string;
-    smsTemplateId?: string;
-    emailSenderProfileId?: string;
-    smsSenderProfileId?: string;
 }
 
 export interface Survey {
@@ -404,21 +260,12 @@ export interface Survey {
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;
   status: 'draft' | 'published' | 'archived';
+  workspaceIds: string[]; 
   elements: SurveyElement[];
   createdAt: string;
   updatedAt: string;
   thankYouTitle?: string;
   thankYouDescription?: string;
-  scoringEnabled?: boolean;
-  scoreDisplayMode?: 'points' | 'percentage';
-  maxScore?: number;
-  resultRules?: SurveyResultRule[];
-  startButtonText?: string;
-  showCoverPage?: boolean;
-  showSurveyTitles?: boolean;
-  webhookId?: string;
-  webhookEnabled?: boolean;
-  showDebugProcessingModal?: boolean;
   scoringEnabled?: boolean;
   scoreDisplayMode?: 'points' | 'percentage';
   maxScore?: number;
@@ -435,114 +282,12 @@ export interface Survey {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
-  automationMessagingEnabled?: boolean;
   schoolId?: string | null;
   schoolName?: string | null;
 }
 
-export interface SurveyResponse {
-  id:string;
-  surveyId: string;
-  submittedAt: string;
-  score?: number;
-  answers: {
-    questionId: string;
-    value: any;
-  }[];
-}
+export type SurveyElement = SurveyQuestion | SurveyLayoutBlock | SurveyLogicBlock;
 
-export interface SurveySession {
-  id: string;
-  surveyId: string;
-  maxStepReached: number;
-  isSubmitted: boolean;
-  updatedAt: string;
-}
-
-export interface PdfSession {
-  id: string;
-  pdfId: string;
-  maxPageReached: number;
-  isSubmitted: boolean;
-  updatedAt: string;
-}
-
-export interface CampaignSession {
-  id: string;
-  campaignId: string;
-  selectedOption: 'school' | 'parent' | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SurveySummary {
-  id: string;
-  summary: string;
-  createdAt: string;
-  prompt?: string;
-}
-    
-export interface Webhook {
-  id: string;
-  name: string;
-  url: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-}
-
-export interface Module {
-  id: string;
-  name: string;
-  abbreviation: string;
-  color: string;
-  description: string;
-  order: number;
-}
-
-export interface Activity {
-  id: string;
-  schoolId: string;
-  schoolName?: string;
-  schoolSlug?: string;
-  workspaceId: string; // Dynamic workspace context
-  userId?: string | null;
-  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
-  source: 'manual' | 'user_action' | 'system' | 'public';
-  timestamp: string;
-  description: string;
-  metadata?: {
-    from?: string;
-    to?: string;
-    meetingId?: string;
-    content?: string;
-    relatedId?: string;
-    [key: string]: any;
-  };
-}
-
-export interface PDFFormField {
-  id: string;
-  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo' | 'static-text' | 'variable';
-  label?: string;
-  placeholder?: string;
-  staticText?: string;
-  variableKey?: string;
-  pageNumber: number;
-  position: { x: number; y: number };
-  dimensions: { width: number; height: number };
-  fontSize?: number;
-  color?: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  alignment?: 'left' | 'center' | 'right';
-  verticalAlignment?: 'top' | 'center' | 'bottom';
-  required?: boolean;
-  options?: string[];
-  textTransform?: 'none' | 'uppercase' | 'capitalize';
-}
-    
 export interface PDFForm {
     id: string;
     name: string;
@@ -552,6 +297,7 @@ export interface PDFForm {
     storagePath: string;
     downloadUrl: string;
     status: 'draft' | 'published' | 'archived';
+    workspaceIds: string[]; 
     createdBy: string;
     createdAt: string;
     updatedAt: string;
@@ -582,191 +328,18 @@ export interface PDFForm {
     isContractDocument?: boolean;
 }
 
-export interface Submission {
+export interface Activity {
   id: string;
-  pdfId: string;
-  submittedAt: string;
-  formData: { [key: string]: any };
-}
-
-export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'signed' | 'partially_signed';
-
-export interface Contract {
-    id: string;
-    schoolId: string;
-    schoolName: string;
-    pdfId: string; // The template used
-    pdfName: string;
-    status: ContractStatus;
-    submissionId?: string; // The final signed record
-    sentAt?: string;
-    signedAt?: string;
-    updatedAt: string;
-    emailTemplateId?: string;
-    smsTemplateId?: string;
-    recipients: { name: string; email?: string; phone?: string; type: string }[];
-}
-
-export interface SenderProfile {
-  id: string;
-  name: string;
-  channel: 'sms' | 'email';
-  identifier: string;
-  isDefault: boolean;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  mNotifyStatus?: 'approved' | 'pending' | 'not_registered' | 'unknown';
-  mNotifyMessage?: string;
-  resendStatus?: 'verified' | 'pending' | 'not_registered' | 'unknown';
-}
-
-export interface MessageStyle {
-  id: string;
-  name: string;
-  htmlWrapper: string;
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MessageBlockRule {
-  variableKey: string;
-  operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty';
-  value: string;
-}
-
-export interface MessageBlock {
-  id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'columns' | 'header' | 'footer' | 'logo' | 'score-card';
-  title?: string;
-  content?: string;
-  url?: string;
-  link?: string;
-  openInNewTab?: boolean;
-  variant?: 'h1' | 'h2' | 'h3';
-  items?: string[];
-  listStyle?: 'ordered' | 'unordered';
-  columns?: { blocks: MessageBlock[] }[];
-  visibilityLogic?: {
-    rules: MessageBlockRule[];
-    matchType: 'all' | 'any';
-  };
-  style?: {
-    textAlign?: 'left' | 'center' | 'right' | 'justify';
-    variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
-    color?: string;
-    backgroundColor?: string;
-    padding?: string;
-    borderRadius?: string;
-    width?: string;
-  };
-}
-
-export interface MessageTemplate {
-  id: string;
-  name: string;
-  category: 'forms' | 'surveys' | 'meetings' | 'general' | 'contracts' | 'finance';
-  channel: 'sms' | 'email';
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
-  subject?: string;
-  previewText?: string;
-  body: string; 
-  blocks?: MessageBlock[]; 
-  styleId?: string;
-  variables: string[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MessageLog {
-  id: string;
-  title?: string;
-  templateId: string;
-  templateName: string;
-  senderProfileId: string;
-  senderName: string;
-  channel: 'sms' | 'email';
-  recipient: string;
-  subject?: string;
-  previewText?: string;
-  body: string;
-  status: 'sent' | 'failed' | 'scheduled';
-  error?: string;
-  sentAt: string;
-  variables: Record<string, any>;
-  schoolId?: string;
-  providerId?: string; 
-  providerStatus?: string;
-  updatedAt?: string;
-  hasAttachments?: boolean;
-  attachmentCount?: number;
-  openedCount?: number;
-  clickedCount?: number;
-}
-
-export interface MessageJob {
-  id: string;
-  templateId: string;
-  senderProfileId: string;
-  channel: 'sms' | 'email';
-  createdBy: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  totalRecipients: number;
-  processed: number;
-  success: number;
-  failed: number;
-  createdAt: string;
-}
-
-export interface MessageTask {
-  id: string;
-  recipient: string;
-  variables: Record<string, any>;
-  status: 'pending' | 'sent' | 'failed';
-  error?: string;
-  sentAt?: string;
-}
-
-export interface VariableDefinition {
-  id: string;
-  key: string;
-  label: string;
-  category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance';
-  source: 'static' | 'survey' | 'pdf' | 'constant';
-  sourceId?: string; 
-  sourceName?: string; 
-  entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission' | 'Global';
-  path: string; 
-  type: 'string' | 'number' | 'boolean' | 'date';
-  constantValue?: string; 
-  hidden?: boolean;
-}
-
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'review' | 'done';
-export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'general';
-
-export interface TaskReminder {
-  reminderTime: string; // ISO string
-  channels: ('notification' | 'email' | 'sms')[];
-  sent: boolean;
-}
-
-export interface TaskNote {
-  id: string;
-  content: string;
-  createdAt: string;
-  authorName?: string;
-}
-
-export interface TaskAttachment {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  createdAt: string;
+  schoolId: string;
+  schoolName?: string;
+  schoolSlug?: string;
+  workspaceIds: string[]; 
+  userId?: string | null;
+  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
+  source: 'manual' | 'user_action' | 'system' | 'public';
+  timestamp: string;
+  description: string;
+  metadata?: any;
 }
 
 export interface Task {
@@ -776,37 +349,36 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
-  workspaceId: string; // dynamic workspace link
+  workspaceId: string; 
   schoolId?: string | null;
   schoolName?: string | null;
-  assignedTo: string; // userId
+  assignedTo: string;
   assignedToName?: string;
-  startDate?: string; // ISO string
-  dueDate: string; // ISO string
-  completedAt?: string; // ISO string
-  updatedAt?: string; // ISO string
-  createdAt: string; // ISO string
-  reminderSent: boolean; // Legacy
-  reminders: TaskReminder[];
-  notes?: TaskNote[];
-  attachments?: TaskAttachment[];
+  startDate?: string;
+  dueDate: string;
+  completedAt?: string;
+  updatedAt?: string;
+  createdAt: string;
+  reminders: any[];
+  notes?: any[];
+  attachments?: any[];
   source: 'manual' | 'automation' | 'system';
   automationId?: string;
-  
-  // Rich Data Interlinking
   relatedEntityId?: string | null;
   relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | null;
-  relatedParentId?: string | null; // e.g. SurveyId for a Response
+  relatedParentId?: string | null;
 }
 
-export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON' | 'INVOICE_OVERDUE' | 'PAYMENT_RECEIVED' | 'TASK_COMPLETED' | 'WEBHOOK_RECEIVED' | 'MEETING_CREATED';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'review' | 'done';
+export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'general';
 
 export interface Automation {
   id: string;
   name: string;
   description?: string;
   trigger: AutomationTrigger;
-  workspaceId?: string; // Dynamic workspace link
+  workspaceId: string; 
   nodes: any[];
   edges: any[];
   isActive: boolean;
@@ -815,23 +387,29 @@ export interface Automation {
   updatedAt: string;
 }
 
-export interface AutomationRun {
+export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'TASK_COMPLETED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'WEBHOOK_RECEIVED' | 'MEETING_CREATED';
+
+export interface MessageTemplate {
   id: string;
-  automationId: string;
-  automationName: string;
-  status: 'running' | 'completed' | 'failed';
-  triggerData: any;
-  startedAt: string;
-  finishedAt?: string;
-  error?: string;
+  name: string;
+  category: string;
+  channel: 'sms' | 'email';
+  workspaceIds: string[]; 
+  subject?: string;
+  body: string;
+  blocks?: any[];
+  styleId?: string;
+  variables: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface AutomationJob {
+export interface MessageStyle {
   id: string;
-  automationId: string;
-  runId: string;
-  targetNodeId: string;
-  payload: Record<string, any>;
-  executeAt: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  name: string;
+  htmlWrapper: string;
+  workspaceIds: string[]; 
+  createdAt: string;
+  updatedAt: string;
 }

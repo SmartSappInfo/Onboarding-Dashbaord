@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -16,7 +17,9 @@ import {
     Building, 
     Video, 
     Zap,
-    ImageIcon
+    ImageIcon,
+    Settings2,
+    Save
 } from 'lucide-react';
 
 import type { School, MeetingType } from '@/lib/types';
@@ -59,7 +62,6 @@ const formSchema = z.object({
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  // Internal Notifications
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
@@ -82,7 +84,7 @@ export default function NewMeetingPage() {
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
   }, [firestore, activeWorkspaceId]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
@@ -97,7 +99,7 @@ export default function NewMeetingPage() {
       heroImageUrl: '',
       recordingUrl: '',
       brochureUrl: '',
-      type: MEETING_TYPES[0], // Default to Parent Engagement
+      type: MEETING_TYPES[0], 
       adminAlertsEnabled: false,
       adminAlertChannel: 'both',
       adminAlertNotifyManager: true,
@@ -110,7 +112,6 @@ export default function NewMeetingPage() {
   const { watch, setValue, reset } = form;
   const watchedType = watch('type');
 
-  // Pre-select school if passed via URL
   React.useEffect(() => {
     const schoolIdFromUrl = searchParams.get('schoolId');
     if (schoolIdFromUrl && schools && !hasInitialized) {
@@ -146,6 +147,7 @@ export default function NewMeetingPage() {
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
+            workspaceId: activeWorkspaceId, 
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -164,18 +166,16 @@ export default function NewMeetingPage() {
         
         toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
         
-        // Log to Timeline
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
-            workspaceId: activeWorkspaceId,
+            workspaceIds: [activeWorkspaceId],
             type: 'meeting_created',
             source: 'user_action',
             description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // Trigger Internal Notification
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
                 schoolId: data.school.id,
@@ -449,7 +449,7 @@ export default function NewMeetingPage() {
                             disabled={form.formState.isSubmitting}
                             className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95 uppercase tracking-widest"
                         >
-                            {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+                            {form.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
                             Schedule Session
                         </Button>
                     </div>
