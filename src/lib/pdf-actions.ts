@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb, adminStorage } from './firebase-admin';
@@ -477,4 +476,70 @@ export async function deleteSubmissions(pdfId: string, submissionIds: string[], 
     await batch.commit();
     revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
     return { success: true };
+}
+
+/**
+ * Permanently purges specific contract submissions and resets school legal status if necessary.
+ */
+export async function purgeContractAction(schoolId: string, submissionIds: string[], userId: string) {
+    try {
+        const db = adminDb;
+        const batch = db.batch();
+        const timestamp = new Date().toISOString();
+
+        // 1. Locate the contract for this school
+        const contractQuery = await db.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+        let currentSubmissionId = null;
+        let contractRef = null;
+
+        if (!contractQuery.empty) {
+            contractRef = contractQuery.docs[0].ref;
+            currentSubmissionId = contractQuery.docs[0].data().submissionId;
+        }
+
+        // 2. Locate all PDFs to find where these submissions live
+        // Since we don't know which PDF each subId belongs to, we check all contract documents
+        const pdfsSnap = await db.collection('pdfs').where('isContractDocument', '==', true).get();
+        
+        let resetContract = false;
+
+        for (const pdfDoc of pdfsSnap.docs) {
+            const subCol = pdfDoc.ref.collection('submissions');
+            for (const subId of submissionIds) {
+                const subDocRef = subCol.doc(subId);
+                const subDocSnap = await subDocRef.get();
+                if (subDocSnap.exists) {
+                    batch.delete(subDocRef);
+                    if (subId === currentSubmissionId) resetContract = true;
+                }
+            }
+        }
+
+        // 3. Reset Contract if the active submission was deleted
+        if (resetContract && contractRef) {
+            batch.update(contractRef, {
+                status: 'no_contract',
+                submissionId: null,
+                signedAt: null,
+                updatedAt: timestamp
+            });
+        }
+
+        await batch.commit();
+
+        await logActivity({
+            schoolId,
+            userId,
+            type: 'pdf_status_changed',
+            source: 'user_action',
+            description: `withdrew and purged ${submissionIds.length} legal submissions.`,
+            metadata: { submissionIds }
+        });
+
+        revalidatePath('/admin/finance/contracts');
+        return { success: true };
+    } catch (e: any) {
+        console.error(">>> [PDF:PURGE] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
 }
