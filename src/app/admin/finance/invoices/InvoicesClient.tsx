@@ -210,10 +210,10 @@ export default function InvoicesClient() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Expected Revenue" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
-                    <StatCard label="Settled Accounts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" sub="" />
-                    <StatCard label="Draft Protocols" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" sub="" />
-                    <StatCard label="Overdue Notices" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" sub="" />
+                    <StatCard label="Expected Revenue" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
+                    <StatCard label="Settled Accounts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" />
+                    <StatCard label="Draft Protocols" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" />
+                    <StatCard label="Overdue Notices" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" />
                 </div>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">

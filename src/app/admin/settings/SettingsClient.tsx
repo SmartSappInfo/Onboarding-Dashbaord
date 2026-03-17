@@ -232,7 +232,7 @@ export default function SettingsClient() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
       <div className="max-w-7xl mx-auto space-y-12">
         
-        {/* Advanced Migration Tools */}
+        {/* Institutional Migration Hub - Retrieve, Enrich & Restore */}
         <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
             <CardHeader className="bg-primary/5 border-b pb-6">
                 <div className="flex items-center gap-3">
@@ -247,21 +247,28 @@ export default function SettingsClient() {
             </CardHeader>
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
-                {/* Finance Sync */}
+                {/* Finance Sync - Retrieve & Enrich */}
                 <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
                     <div className="space-y-3">
                         <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-emerald-600 border border-emerald-100"><Receipt className="h-5 w-5" /></div>
                         <h4 className="text-sm font-black uppercase tracking-tight">Finance Hub Sync</h4>
-                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Migrates Invoices, Pricing Tiers, and Billing Cycles to workspace context.</p>
+                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Retrieves and enriches Invoices, Pricing Tiers, and Billing Cycles with workspace metadata.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={() => handleSeed('enrich_finance')} disabled={seedingStatus.enrich_finance === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 h-11 text-white">
                             {seedingStatus.enrich_finance === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Finance
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_finance')} disabled={seedingStatus.rollback_finance === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback_finance')} disabled={seedingStatus.rollback_finance === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Previous State</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -277,9 +284,16 @@ export default function SettingsClient() {
                             {seedingStatus.enrich === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Directory
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback')} disabled={seedingStatus.rollback === 'seeding'} className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback')} disabled={seedingStatus.rollback === 'seeding'} className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Directory Backup</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -295,9 +309,16 @@ export default function SettingsClient() {
                             {seedingStatus.enrich_meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Sessions
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_meetings')} disabled={seedingStatus.rollback_meetings === 'seeding'} className="rounded-xl font-bold border-purple-200 text-purple-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback_meetings')} disabled={seedingStatus.rollback_meetings === 'seeding'} className="rounded-xl font-bold border-purple-200 text-purple-700 h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Session Backup</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -313,9 +334,16 @@ export default function SettingsClient() {
                             {seedingStatus.enrich_surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Surveys
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_surveys')} disabled={seedingStatus.rollback_surveys === 'seeding'} className="rounded-xl font-bold border-blue-200 text-blue-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback_surveys')} disabled={seedingStatus.rollback_surveys === 'seeding'} className="rounded-xl font-bold border-blue-200 text-blue-700 h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Survey Blueprints</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -331,9 +359,16 @@ export default function SettingsClient() {
                             {seedingStatus.enrich_pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Documents
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_pdfs')} disabled={seedingStatus.rollback_pdfs === 'seeding'} className="rounded-xl font-bold border-orange-200 text-orange-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback_pdfs')} disabled={seedingStatus.rollback_pdfs === 'seeding'} className="rounded-xl font-bold border-orange-200 text-orange-700 h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Template State</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
 
@@ -349,9 +384,16 @@ export default function SettingsClient() {
                             {seedingStatus.enrich_profiles === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                             Sync Profiles
                         </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_profiles')} disabled={seedingStatus.rollback_profiles === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="outline" onClick={() => handleSeed('rollback_profiles')} disabled={seedingStatus.rollback_profiles === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
+                                        <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Restore Identites Backup</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
             </CardContent>

@@ -44,7 +44,7 @@ import { addDays, format, subDays, subHours, startOfMonth, endOfMonth } from 'da
 // --- MIGRATION PROTOCOLS ---
 
 /**
- * MIGRATION: Finance Module Workspace Enrichment
+ * MIGRATION: Finance Module Workspace Enrichment (Retrieve & Enrich)
  */
 export async function enrichFinanceWithWorkspace(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
@@ -90,6 +90,9 @@ export async function enrichFinanceWithWorkspace(firestore: Firestore): Promise<
     return totalCount;
 }
 
+/**
+ * ROLLBACK: Finance Module Restore Protocol
+ */
 export async function rollbackFinanceMigration(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
     let count = 0;
@@ -772,4 +775,3 @@ export async function seedTasks(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
 export async function seedPipelines(firestore: Firestore) { return 0; }
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
-
