@@ -441,7 +441,7 @@ export interface SenderProfile {
   name: string;
   channel: 'sms' | 'email';
   identifier: string;
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  workspaceIds: string[]; 
   isDefault: boolean;
   isActive: boolean;
   createdAt: string;
@@ -467,7 +467,7 @@ export interface MessageLog {
   error?: string;
   sentAt: string;
   variables: Record<string, any>;
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  workspaceIds: string[]; 
   schoolId?: string | null;
   providerId?: string; 
   providerStatus?: string;
@@ -483,7 +483,7 @@ export interface MessageJob {
   templateId: string;
   senderProfileId: string;
   channel: 'sms' | 'email';
-  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  workspaceIds: string[]; 
   createdBy: string;
   status: 'queued' | 'processing' | 'completed' | 'failed';
   totalRecipients: number;
