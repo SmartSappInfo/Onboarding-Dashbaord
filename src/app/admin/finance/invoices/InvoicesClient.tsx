@@ -84,31 +84,37 @@ export default function InvoicesClient() {
     const [selectedPeriodId, setSelectedPeriodId] = React.useState<string | null>(null);
 
     // Data Subscriptions - Strictly Isolated by Workspace
-    const invoicesQuery = useMemoFirebase(() => 
-        firestore ? query(
+    // Index Required: workspaceId (ASC) + createdAt (DESC)
+    const invoicesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
             collection(firestore, 'invoices'), 
             where('workspaceId', '==', activeWorkspaceId),
             orderBy('createdAt', 'desc'), 
             limit(100)
-        ) : null, 
-    [firestore, activeWorkspaceId]);
+        );
+    }, [firestore, activeWorkspaceId]);
 
-    const schoolsQuery = useMemoFirebase(() => 
-        firestore ? query(
+    // Index Required: workspaceIds (CONTAINS) + name (ASC)
+    const schoolsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
             collection(firestore, 'schools'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('name', 'asc')
-        ) : null, 
-    [firestore, activeWorkspaceId]);
+        );
+    }, [firestore, activeWorkspaceId]);
 
-    const periodsQuery = useMemoFirebase(() => 
-        firestore ? query(
+    // Index Required: workspaceIds (CONTAINS) + status (ASC) + startDate (DESC)
+    const periodsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
             collection(firestore, 'billing_periods'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
             where('status', '==', 'open'), 
             orderBy('startDate', 'desc')
-        ) : null, 
-    [firestore, activeWorkspaceId]);
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
     const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
@@ -340,7 +346,7 @@ export default function InvoicesClient() {
                                 </div>
                             </div>
                         </DialogHeader>
-                        <div className="p-8 space-y-8 text-left">
+                        <div className="p-8 space-y-8 text-left bg-background">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">1. Target Institution</Label>
                                 <Select onValueChange={setSelectedSchoolId} value={selectedSchoolId || ''}>
