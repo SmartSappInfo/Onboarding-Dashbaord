@@ -161,7 +161,7 @@ export default function InvoicesClient() {
         setIsSeeding(true);
         try {
             const count = await seedBillingData(firestore);
-            toast({ title: 'Sync Complete', description: `Initialized ${count} invoices.` });
+            toast({ title: 'Sync Complete', description: `Initialized ${count} billing records.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Seeding Failed', description: e.message });
         } finally {
