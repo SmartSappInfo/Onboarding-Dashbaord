@@ -99,15 +99,6 @@
       ]
     },
     {
-      "collectionGroup": "tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "assignedTo", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "dueDate", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "activities",
       "queryScope": "COLLECTION",
       "fields": [
@@ -145,22 +136,6 @@
       "fields": [
         { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "meetings",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "meetingTime", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "campaign_sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "campaignId", "order": "ASCENDING" },
-        { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     }
   ],
