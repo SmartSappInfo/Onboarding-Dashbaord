@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -73,6 +74,10 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+/**
+ * @fileOverview Session Architecture Editor.
+ * Re-aligned to support multi-workspace sharing based on school context.
+ */
 export default function EditMeetingPage() {
   const params = useParams();
   const meetingId = params.id as string;
@@ -92,12 +97,11 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
-  // Dynamic Label Resolution
   useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
   }, [firestore, activeWorkspaceId]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
@@ -125,7 +129,6 @@ export default function EditMeetingPage() {
   const watchedType = form.watch('type');
   const watchedSlug = form.watch('schoolSlug');
 
-  // Synchronization of DB data to form state
   React.useEffect(() => {
     if (meeting && schools && !hasInitialized) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
@@ -176,6 +179,8 @@ export default function EditMeetingPage() {
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
+            // Synchronize visibility with the school
+            workspaceIds: data.school.workspaceIds || [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -195,18 +200,16 @@ export default function EditMeetingPage() {
         await updateDoc(docRef, meetingData);
         toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
         
-        // Log Activity
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
-            workspaceId: activeWorkspaceId,
+            workspaceIds: meetingData.workspaceIds,
             type: 'school_updated',
             source: 'user_action',
             description: `updated the ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        // Trigger Internal Notification
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
                 schoolId: data.school.id,

@@ -183,6 +183,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "meetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "meetingTime", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

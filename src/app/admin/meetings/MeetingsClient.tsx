@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -63,6 +64,10 @@ const getInitials = (name?: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
+/**
+ * @fileOverview High-fidelity Meetings Hub Client.
+ * Upgraded with Multi-Workspace Sharing logic and server-side array filtering.
+ */
 export default function MeetingsHubClient() {
   const firestore = useFirestore();
   const router = useRouter();
@@ -78,14 +83,19 @@ export default function MeetingsHubClient() {
     return collection(firestore, 'meetings');
   }, [firestore]);
   
+  // HIGH PERFORMANCE: Filter by workspaceId array on the server
   const meetingsQuery = useMemoFirebase(() => {
-    if (!meetingsCol) return null;
-    return query(meetingsCol, orderBy('meetingTime', 'desc'));
-  }, [meetingsCol]);
+    if (!meetingsCol || !activeWorkspaceId) return null;
+    return query(
+        meetingsCol, 
+        where('workspaceIds', 'array-contains', activeWorkspaceId),
+        orderBy('meetingTime', 'desc')
+    );
+  }, [meetingsCol, activeWorkspaceId]);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceId', '==', activeWorkspaceId));
+    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
@@ -106,9 +116,7 @@ export default function MeetingsHubClient() {
   const filteredMeetings = useMemo(() => {
     if (!meetings || !schools) return [];
     
-    // Only show meetings for schools in the current workspace
-    const schoolIdsInWorkspace = new Set(schools.map(s => s.id));
-    let workspaceFilteredMeetings = meetings.filter(m => schoolIdsInWorkspace.has(m.schoolId));
+    let temp = meetings;
 
     // Filter by assigned user
     if (assignedUserId) {
@@ -120,12 +128,15 @@ export default function MeetingsHubClient() {
                 return school.assignedTo?.userId === assignedUserId;
             }).map(s => s.id)
         );
-        workspaceFilteredMeetings = workspaceFilteredMeetings.filter(m => filteredSchoolIds.has(m.schoolId));
+        temp = temp.filter(m => filteredSchoolIds.has(m.schoolId));
     }
 
     // Then filter by type
-    if (typeFilter === 'all') return workspaceFilteredMeetings;
-    return workspaceFilteredMeetings.filter(m => m.type?.id === typeFilter);
+    if (typeFilter !== 'all') {
+        temp = temp.filter(m => m.type?.id === typeFilter);
+    }
+    
+    return temp;
   }, [meetings, schools, typeFilter, assignedUserId]);
 
   const handleDeleteMeeting = () => {

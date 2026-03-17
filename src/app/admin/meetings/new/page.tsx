@@ -72,6 +72,10 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+/**
+ * @fileOverview Meeting Initialization Logic.
+ * Automatically synchronizes workspace visibility with the parent school record.
+ */
 export default function NewMeetingPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -147,7 +151,8 @@ export default function NewMeetingPage() {
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
-            workspaceId: activeWorkspaceId, 
+            // Inherit multi-workspace visibility from the school
+            workspaceIds: data.school.workspaceIds || [activeWorkspaceId], 
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -169,7 +174,7 @@ export default function NewMeetingPage() {
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
-            workspaceIds: [activeWorkspaceId],
+            workspaceIds: meetingData.workspaceIds,
             type: 'meeting_created',
             source: 'user_action',
             description: `scheduled a ${data.type.name} session for "${data.school.name}".`,

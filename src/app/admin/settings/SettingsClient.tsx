@@ -52,7 +52,9 @@ import {
     enrichSurveysWithWorkspace,
     rollbackSurveysMigration,
     enrichPdfsWithWorkspace,
-    rollbackPdfsMigration
+    rollbackPdfsMigration,
+    enrichMeetingsWithWorkspace,
+    rollbackMeetingsMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -80,7 +82,8 @@ import {
     Palette,
     Fingerprint,
     Layers,
-    FileText
+    FileText,
+    Calendar
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
@@ -90,7 +93,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs' | 'enrich_surveys' | 'rollback_surveys' | 'enrich_pdfs' | 'rollback_pdfs';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs' | 'enrich_surveys' | 'rollback_surveys' | 'enrich_pdfs' | 'rollback_pdfs' | 'enrich_meetings' | 'rollback_meetings';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -102,7 +105,7 @@ export default function SettingsClient() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const [seedingStatus, setSeedingStatus] = useState<Record<string, SeedingState>>({} as any);
+  const [seedingStatus, setSeedingStatus] = setSeedingStatus(prev => ({ ...prev, [seeder]: 'seeding' }));
 
   const handleSeed = async (seeder: Seeder) => {
     if (!firestore) return;
@@ -182,6 +185,12 @@ export default function SettingsClient() {
       } else if (seeder === 'enrich_activities') {
           const count = await enrichActivitiesWithWorkspace(firestore);
           toast({ title: 'Timeline Protocols Synced', description: `Enriched ${count} activities.` });
+      } else if (seeder === 'enrich_meetings') {
+          const count = await enrichMeetingsWithWorkspace(firestore);
+          toast({ title: 'Session Registry Synced', description: `Enriched ${count} meetings.` });
+      } else if (seeder === 'rollback_meetings') {
+          const count = await rollbackMeetingsMigration(firestore);
+          toast({ title: 'Session Rollback Success' });
       } else {
         let count = 0;
         let name = '';
@@ -235,6 +244,24 @@ export default function SettingsClient() {
                             Sync Directory
                         </Button>
                         <Button variant="outline" onClick={() => handleSeed('rollback')} disabled={seedingStatus.rollback === 'seeding'} className="rounded-xl font-bold border-border text-muted-foreground h-11 bg-white">
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Session Registry Sync */}
+                <div className="p-6 rounded-3xl bg-purple-50/50 border-2 border-dashed border-purple-100 flex flex-col justify-between gap-6 transition-all hover:bg-purple-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-purple-600 border border-purple-100"><Calendar className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Session Registry Sync</h4>
+                        <p className="text-[10px] font-medium text-purple-800 leading-relaxed uppercase tracking-tighter">Binds meeting records to multi-workspace array context for institutional sharing.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSeed('enrich_meetings')} disabled={seedingStatus.enrich_meetings === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-purple-600 hover:bg-purple-700 h-11 text-white">
+                            {seedingStatus.enrich_meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Sessions
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSeed('rollback_meetings')} disabled={seedingStatus.rollback_meetings === 'seeding'} className="rounded-xl font-bold border-purple-200 text-purple-700 h-11 bg-white">
                             <RotateCcw className="h-4 w-4" />
                         </Button>
                     </div>
@@ -408,6 +435,26 @@ export default function SettingsClient() {
                     <Button variant="outline" size="sm" onClick={() => handleSeed('pipelines')} disabled={seedingStatus.pipelines === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.pipelines === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4 text-primary" />}
                         Seed Workflows
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('roles')} disabled={seedingStatus.roles === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.roles === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Roles & Permissions
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('stages')} disabled={seedingStatus.stages === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.stages === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Onboarding Stages
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('modules')} disabled={seedingStatus.modules === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Modules
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.zones === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Zones
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Layout className="mr-2 h-4 w-4 text-primary" />}
+                        Reset Dashboard Layout
                     </Button>
                 </div>
             </div>

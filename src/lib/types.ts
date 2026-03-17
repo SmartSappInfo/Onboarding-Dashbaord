@@ -238,7 +238,7 @@ export interface Meeting {
   schoolId: string;
   schoolName: string;
   schoolSlug: string;
-  workspaceId: string; 
+  workspaceIds: string[]; 
   meetingTime: string;
   meetingLink: string;
   type: MeetingType;
@@ -434,21 +434,6 @@ export interface MessageStyle {
   workspaceIds: string[]; 
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SenderProfile {
-  id: string;
-  name: string;
-  channel: 'sms' | 'email';
-  identifier: string;
-  workspaceIds: string[]; 
-  isDefault: boolean;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  mNotifyStatus?: 'approved' | 'pending' | 'not_registered' | 'unknown';
-  mNotifyMessage?: string;
-  resendStatus?: 'verified' | 'pending' | 'not_registered' | 'unknown';
 }
 
 export interface MessageLog {

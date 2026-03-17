@@ -86,6 +86,56 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
 }
 
 /**
+ * MIGRATION PROTOCOL: Meeting Workspace Enrichment
+ */
+export async function enrichMeetingsWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'meetings'));
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    const schoolWorkspaceMap = new Map<string, string[]>();
+    schoolsSnap.forEach(s => schoolWorkspaceMap.set(s.id, s.data().workspaceIds || ['onboarding']));
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_meetings_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            const inheritedIds = data.schoolId ? schoolWorkspaceMap.get(data.schoolId) : (data.workspaceId ? [data.workspaceId] : ['onboarding']);
+            batch.update(docSnap.ref, {
+                workspaceIds: inheritedIds || ['onboarding'],
+                workspaceId: deleteField(),
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackMeetingsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_meetings_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'meetings', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
  * MIGRATION PROTOCOL: Survey Workspace Enrichment
  */
 export async function enrichSurveysWithWorkspace(firestore: Firestore): Promise<number> {
@@ -300,8 +350,7 @@ export async function enrichLogsWithWorkspace(firestore: Firestore): Promise<num
 
 export async function rollbackLogsMigration(firestore: Firestore): Promise<number> {
     const backupSnap = await getDocs(collection(firestore, 'backup_logs_migration'));
-    const batch = writeBatch(firestore);
-    let count = 0;
+    const batch = writeBatch(firestore);    let count = 0;
     backupSnap.forEach(docSnap => {
         const ref = doc(firestore, 'message_logs', docSnap.id);
         batch.set(ref, docSnap.data());
@@ -579,4 +628,3 @@ export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
 export async function seedPipelines(firestore: Firestore) { return 0; }
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
-
