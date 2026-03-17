@@ -71,7 +71,7 @@ import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { AppPermissionId, Role } from '@/lib/types';
 
-const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
+const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -200,23 +200,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       </SidebarMenu>
                     </SidebarGroup>
 
-                    {hasPerm('finance_view') && (
-                      <SidebarGroup className="mt-4 px-0">
-                          <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-[0.2em] mb-2 px-6 group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
-                          <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
-                          {financeNavItems.filter(i => i.visible).map((item) => (
-                              <SidebarMenuItem key={item.href}>
-                              <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all group-data-[collapsible=icon]:justify-center">
-                                  <Link href={item.href}>
-                                    <item.icon className="h-5 w-5 shrink-0" />
-                                    <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                                  </Link>
-                              </SidebarMenuButton>
-                              </SidebarMenuItem>
-                          ))}
-                          </SidebarMenu>
-                      </SidebarGroup>
-                    )}
+                    <SidebarGroup className="mt-4 px-0">
+                        <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-[0.2em] mb-2 px-6 group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
+                        <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+                        {financeNavItems.filter(i => i.visible).map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all group-data-[collapsible=icon]:justify-center">
+                                <Link href={item.href}>
+                                  <item.icon className="h-5 w-5 shrink-0" />
+                                  <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                        </SidebarMenu>
+                    </SidebarGroup>
 
                     <SidebarGroup className="mt-4 px-0">
                       <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-[0.2em] mb-2 px-6 group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
