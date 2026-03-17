@@ -63,7 +63,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Invoices Registry Client.
- * Filtered by Workspace to ensure track-specific financial data isolation.
+ * Upgraded with strict workspace-bound queries and matching composite indexes.
  */
 export default function InvoicesClient() {
     const firestore = useFirestore();
@@ -83,8 +83,9 @@ export default function InvoicesClient() {
     const [selectedSchoolId, setSelectedSchoolId] = React.useState<string | null>(null);
     const [selectedPeriodId, setSelectedPeriodId] = React.useState<string | null>(null);
 
-    // Data Subscriptions - Strictly Isolated by Workspace
-    // Index Required: workspaceId (ASC) + createdAt (DESC)
+    // DATA ARCHITECTURE: Every query is surgically memoized to match firestore.indexes.json
+    
+    // Index: invoices [workspaceId (ASC) + createdAt (DESC)]
     const invoicesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
@@ -95,7 +96,7 @@ export default function InvoicesClient() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    // Index Required: workspaceIds (CONTAINS) + name (ASC)
+    // Index: schools [workspaceIds (CONTAINS) + name (ASC)]
     const schoolsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
@@ -105,13 +106,13 @@ export default function InvoicesClient() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    // Index Required: workspaceIds (CONTAINS) + status (ASC) + startDate (DESC)
+    // Index: billing_periods [status (ASC) + workspaceIds (CONTAINS) + startDate (DESC)]
     const periodsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'billing_periods'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
             where('status', '==', 'open'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('startDate', 'desc')
         );
     }, [firestore, activeWorkspaceId]);
@@ -125,7 +126,6 @@ export default function InvoicesClient() {
         let temp = invoices;
 
         if (assignedUserId) {
-            // Further refine by assigned manager if global filter active
             temp = temp.filter(invoice => {
                 const school = schools?.find(s => s.id === invoice.schoolId);
                 if (assignedUserId === 'unassigned') return !school?.assignedTo?.userId;
@@ -146,7 +146,7 @@ export default function InvoicesClient() {
         setIsGenerating(true);
         const result = await generateInvoiceAction(selectedSchoolId, selectedPeriodId, user.uid, activeWorkspaceId);
         if (result.success && result.id) {
-            toast({ title: 'Invoice Initialized', description: 'Draft has been created in the registry.' });
+            toast({ title: 'Invoice Initialized', description: 'Draft record created.' });
             setIsAdding(false);
             router.push(`/admin/finance/invoices/${result.id}`);
         } else {
@@ -160,7 +160,7 @@ export default function InvoicesClient() {
         setIsSeeding(true);
         try {
             const count = await seedBillingData(firestore);
-            toast({ title: 'Financial Seeding Complete', description: `Initialized settings and ${count} invoices.` });
+            toast({ title: 'Sync Complete', description: `Initialized ${count} invoices.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Seeding Failed', description: e.message });
         } finally {
@@ -195,12 +195,12 @@ export default function InvoicesClient() {
                             <Receipt className="h-8 w-8 text-primary" />
                             Invoice Registry
                         </h1>
-                        <p className="text-muted-foreground font-medium mt-1">Audit and manage billing records for the {activeWorkspaceId} hub.</p>
+                        <p className="text-muted-foreground font-medium mt-1">Institutional billing records for the {activeWorkspaceId} track.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={handleSeedData} disabled={isSeeding} className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-white shadow-sm transition-all active:scale-95">
-                            {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}
-                            Seed Hub Data
+                            {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            Sync Logic
                         </Button>
                         <Button onClick={() => setIsAdding(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
                             <Plus className="mr-2 h-5 w-5" /> Create Bill
@@ -209,10 +209,10 @@ export default function InvoicesClient() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Hub Expected" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
-                    <StatCard label="Resolved (Paid)" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" sub="" />
-                    <StatCard label="Outstanding Drafts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" sub="" />
-                    <StatCard label="Recovery Action" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" sub="" />
+                    <StatCard label="Expected Revenue" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
+                    <StatCard label="Settled Accounts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" sub="" />
+                    <StatCard label="Draft Protocols" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" sub="" />
+                    <StatCard label="Overdue Notices" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" sub="" />
                 </div>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
@@ -231,8 +231,8 @@ export default function InvoicesClient() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
-                                <SelectItem value="all">Track View</SelectItem>
-                                <SelectItem value="draft">Drafts Only</SelectItem>
+                                <SelectItem value="all">Global View</SelectItem>
+                                <SelectItem value="draft">Drafts</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
                                 <SelectItem value="paid">Paid</SelectItem>
                                 <SelectItem value="overdue">Overdue</SelectItem>
@@ -319,9 +319,7 @@ export default function InvoicesClient() {
                                             <div className="p-6 bg-muted/50 rounded-[2.5rem] shadow-inner">
                                                 <Receipt className="h-12 w-12" />
                                             </div>
-                                            <div className="space-y-4">
-                                                <p className="text-xs font-black uppercase tracking-widest">Hub Registry Clear</p>
-                                            </div>
+                                            <p className="text-xs font-black uppercase tracking-widest">No matching records found.</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -340,9 +338,9 @@ export default function InvoicesClient() {
                                 <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                                     <Plus className="h-6 w-6" />
                                 </div>
-                                <div>
-                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight text-left">Generate Bill</DialogTitle>
-                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-left">Initialize a new draft for the {activeWorkspaceId} track.</DialogDescription>
+                                <div className="text-left">
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">Initialize Bill</DialogTitle>
+                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Draft a new institutional record.</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
@@ -370,7 +368,7 @@ export default function InvoicesClient() {
                                 </Select>
                             </div>
                         </div>
-                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center">
+                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 items-center">
                             <Button type="button" variant="ghost" onClick={() => setIsAdding(false)} className="font-bold rounded-xl h-12 px-8">Discard</Button>
                             <Button 
                                 onClick={handleGenerate} 
@@ -378,7 +376,7 @@ export default function InvoicesClient() {
                                 className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-sm"
                             >
                                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                                Execute Logic
+                                Generate Draft
                             </Button>
                         </DialogFooter>
                     </form>

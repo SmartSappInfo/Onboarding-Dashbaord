@@ -28,8 +28,8 @@
       "collectionGroup": "billing_periods",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "startDate", "order": "DESCENDING" }
       ]
     },
