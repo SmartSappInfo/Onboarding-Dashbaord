@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -13,13 +14,13 @@ interface SendMessageInput {
   recipient: string;
   variables: Record<string, any>;
   attachments?: EmailAttachment[];
-  schoolId?: string;
+  schoolId?: string | null;
   scheduledAt?: string; // ISO string
 }
 
 /**
  * Main entry point for sending a single message via the messaging engine.
- * Upgraded to handle an intelligent resolution hierarchy for Sender Profiles.
+ * Upgraded to handle multi-workspace log binding and intelligent sender resolution.
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
@@ -30,9 +31,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
-    // 2. Resolve Sender Profile (Resolution Hierarchy)
+    // 2. Resolve Sender Profile
     let senderProfileSnap;
-    
     if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
         senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
     }
@@ -61,20 +61,20 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
 
-    if (!sender.isActive) throw new Error(`Sender Profile "${sender.name}" is inactive.`);
-    if (!template.isActive) throw new Error(`Template "${template.name}" is inactive.`);
-    if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
-
-    // 3. Initialize Final Variables with passed values
+    // 3. Resolve Operational Workspace context
+    let workspaceIds: string[] = template.workspaceIds || ['onboarding'];
     const finalVariables = { ...variables };
 
-    // 4. Resolve School Context if schoolId is provided (High Priority)
+    // 4. Resolve School Context (Record Priority)
     if (schoolId) {
         const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
         if (schoolSnap.exists) {
             const schoolData = schoolSnap.data() as School;
             const signatory = (schoolData.focalPersons || []).find(p => p.isSignatory);
             
+            // Logs inherit workspace visibility from the school
+            if (schoolData.workspaceIds?.length) workspaceIds = schoolData.workspaceIds;
+
             const schoolVars: any = {
                 school_name: schoolData.name,
                 school_initials: schoolData.initials,
@@ -118,9 +118,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
-    // 7. Render Body
+    // 7. Render Content
     let resolvedBody = '';
-    if (template.channel === 'email' && template.blocks && template.blocks.length > 0) {
+    if (template.channel === 'email' && template.blocks?.length) {
         resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
             wrapper: styleWrapper || undefined
         });
@@ -131,12 +131,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
-    // 8. Resolve Metadata
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
     let resolvedLogTitle = resolveVariables(template.name, finalVariables);
 
-    // 9. Perform Delivery
+    // 8. Gateway Delivery
     let providerId = null;
     let providerStatus = null;
 
@@ -151,10 +150,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerStatus = providerResponse?.status;
     } else {
         const providerResponse = await sendEmail({
-            // Construct branded "From" address using customized profile name
             from: `${sender.name} <${sender.identifier}>`, 
             to: recipient,
-            subject: resolvedSubject || 'Notification',
+            subject: resolvedSubject || 'SmartSapp Notification',
             html: resolvedBody,
             attachments: attachments,
             scheduledAt: scheduledAt
@@ -162,7 +160,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 10. Create Audit Log
+    // 9. Audit Log Generation
     const logData: Omit<MessageLog, 'id'> = {
       title: resolvedLogTitle,
       templateId: template.id,
@@ -177,45 +175,36 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
-      schoolId: schoolId || finalVariables.schoolId || finalVariables.school_id || null,
+      workspaceIds: workspaceIds, // Bind to institutional track(s)
+      schoolId: schoolId || null,
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
       attachmentCount: attachments?.length || 0,
     };
 
-    const sanitizedLogData = Object.fromEntries(
-        Object.entries(logData).filter(([_, v]) => v !== undefined)
-    );
-
-    const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
+    const logRef = await adminDb.collection('message_logs').add(logData);
 
     await logActivity({
-        schoolId: (logData.schoolId as string) || '',
+        schoolId: schoolId || '',
         userId: null, 
+        workspaceIds: workspaceIds,
         type: 'notification_sent',
         source: 'system',
         description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
-        metadata: { 
-            logId: logRef.id, 
-            channel: template.channel, 
-            templateName: template.name,
-            providerId: providerId,
-            scheduledAt: scheduledAt
-        }
+        metadata: { logId: logRef.id, channel: template.channel, providerId }
     });
 
     return { success: true, logId: logRef.id };
 
   } catch (error: any) {
-    console.error(">>> [MESSAGING] DISPATCH ERROR:", error.message);
+    console.error(">>> [MESSAGING] Logic Error:", error.message);
     return { success: false, error: error.message };
   }
 }
 
 /**
- * Sends a raw, non-templated message.
- * Now upgraded to support variable resolution before dispatch.
+ * Sends a raw message without a predefined template.
  */
 export async function sendRawMessage(input: {
     channel: 'email' | 'sms',
@@ -223,9 +212,10 @@ export async function sendRawMessage(input: {
     body: string,
     subject?: string,
     senderProfileId?: string,
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    workspaceIds?: string[]
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {} } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'] } = input;
 
     try {
         let senderProfileSnap;
@@ -246,29 +236,18 @@ export async function sendRawMessage(input: {
         }
 
         const sender = senderProfileSnap.data() as SenderProfile;
-
-        // Resolve variables in the raw content
         const resolvedBody = resolveVariables(body, variables);
-        const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Test Message — SmartSapp';
+        const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
 
         if (channel === 'sms') {
-            await sendSms({
-                recipient,
-                message: resolvedBody,
-                sender: sender.identifier
-            });
+            await sendSms({ recipient, message: resolvedBody, sender: sender.identifier });
         } else {
-            await sendEmail({
-                from: `${sender.name} <${sender.identifier}>`,
-                to: recipient,
-                subject: resolvedSubject,
-                html: resolvedBody
-            });
+            await sendEmail({ from: `${sender.name} <${sender.identifier}>`, to: recipient, subject: resolvedSubject, html: resolvedBody });
         }
 
         return { success: true };
     } catch (error: any) {
-        console.error(">>> [MESSAGING] RAW DISPATCH ERROR:", error.message);
+        console.error(">>> [MESSAGING] Raw Dispatch Error:", error.message);
         return { success: false, error: error.message };
     }
 }

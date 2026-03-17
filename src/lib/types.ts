@@ -172,6 +172,26 @@ export interface SubscriptionPackage {
   isActive: boolean;
 }
 
+export interface BillingPeriod {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  invoiceDate: string;
+  paymentDueDate: string;
+  status: 'open' | 'closed';
+}
+
+export interface InvoiceItem {
+  name: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -199,16 +219,18 @@ export interface Invoice {
   signatureUrl?: string;
   createdAt: string;
   updatedAt: string;
+  sentAt?: string;
 }
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
-
-export interface InvoiceItem {
-  name: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
+export interface BillingSettings {
+  id: string;
+  levyPercent: number;
+  vatPercent: number;
+  defaultDiscount: number;
+  paymentInstructions: string;
+  signatureName: string;
+  signatureDesignation: string;
+  signatureUrl?: string;
 }
 
 export interface Meeting {
@@ -412,4 +434,85 @@ export interface MessageStyle {
   workspaceIds: string[]; 
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SenderProfile {
+  id: string;
+  name: string;
+  channel: 'sms' | 'email';
+  identifier: string;
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  mNotifyStatus?: 'approved' | 'pending' | 'not_registered' | 'unknown';
+  mNotifyMessage?: string;
+  resendStatus?: 'verified' | 'pending' | 'not_registered' | 'unknown';
+}
+
+export interface MessageLog {
+  id: string;
+  title?: string;
+  templateId: string;
+  templateName: string;
+  senderProfileId: string;
+  senderName: string;
+  channel: 'sms' | 'email';
+  recipient: string;
+  subject?: string;
+  previewText?: string;
+  body: string;
+  status: 'sent' | 'failed' | 'scheduled';
+  error?: string;
+  sentAt: string;
+  variables: Record<string, any>;
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  schoolId?: string | null;
+  providerId?: string; 
+  providerStatus?: string;
+  updatedAt?: string;
+  hasAttachments?: boolean;
+  attachmentCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
+}
+
+export interface MessageJob {
+  id: string;
+  templateId: string;
+  senderProfileId: string;
+  channel: 'sms' | 'email';
+  workspaceIds: string[]; // MULTI-WORKSPACE SUPPORT
+  createdBy: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  totalRecipients: number;
+  processed: number;
+  success: number;
+  failed: number;
+  createdAt: string;
+}
+
+export interface MessageTask {
+  id: string;
+  recipient: string;
+  variables: Record<string, any>;
+  status: 'pending' | 'sent' | 'failed';
+  error?: string;
+  sentAt?: string;
+}
+
+export interface VariableDefinition {
+  id: string;
+  key: string;
+  label: string;
+  category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance';
+  source: 'static' | 'survey' | 'pdf' | 'constant';
+  sourceId?: string; 
+  sourceName?: string; 
+  entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission' | 'Global';
+  path: string; 
+  type: 'string' | 'number' | 'boolean' | 'date';
+  constantValue?: string; 
+  hidden?: boolean;
 }

@@ -45,15 +45,16 @@ service cloud.firestore {
     }
 
     // --- Workspace Access Logic ---
-    function canAccessWorkspace(workspaceId) {
+    function canAccessWorkspace(workspaceIds) {
       if (isSystemAdmin()) return true;
       if (!isAuthorized()) return false;
       
       let perms = getUserData().permissions;
       if (perms.hasAny(['system_admin'])) return true;
-      if (workspaceId == 'onboarding') return perms.hasAny(['schools_view']);
-      if (workspaceId == 'prospect') return perms.hasAny(['prospects_view']);
-      return false;
+      
+      // If any of the doc's workspaces are allowed by user perms
+      return (workspaceIds.hasAny(['onboarding']) && perms.hasAny(['schools_view'])) || 
+             (workspaceIds.hasAny(['prospect']) && perms.hasAny(['prospects_view']));
     }
 
     match /{document=**} {
@@ -95,7 +96,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /media/{mediaId} {
-        allow read, write: if isAuthorized();
+        allow read: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
+        allow write: if isAuthorized();
     }
     match /zones/{document=**} {
       allow read: if isAuthorized();
@@ -106,19 +108,23 @@ service cloud.firestore {
     }
     
     match /sender_profiles/{profileId} {
-      allow read, write: if hasPermission('studios_edit');
+      allow read: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
+      allow write: if hasPermission('studios_edit');
     }
     match /message_styles/{styleId} {
-      allow read, write: if hasPermission('studios_edit');
+      allow read: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
+      allow write: if hasPermission('studios_edit');
     }
     match /message_templates/{templateId} {
-      allow read, write: if hasPermission('studios_edit');
+      allow read: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
+      allow write: if hasPermission('studios_edit');
     }
     match /message_logs/{logId} {
-      allow read, list: if isAuthorized();
+      allow read, list: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
     }
     match /message_jobs/{jobId} {
-      allow read, write: if isAuthorized();
+      allow read: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
+      allow write: if isAuthorized();
     }
 
     match /tasks/{taskId} {
@@ -126,17 +132,17 @@ service cloud.firestore {
         isSystemAdmin() ||
         isAdmin() || 
         request.auth.uid == resource.data.assignedTo || 
-        canAccessWorkspace(resource.data.workspaceId)
+        (exists(resource.data.workspaceId) && canAccessWorkspace([resource.data.workspaceId]))
       );
     }
 
     match /automations/{ruleId} {
-      allow read, write: if isAdmin() || isSystemAdmin() || (exists(resource) && canAccessWorkspace(resource.data.workspaceId));
+      allow read, write: if isAdmin() || isSystemAdmin() || (exists(resource) && canAccessWorkspace([resource.data.workspaceId]));
     }
 
     match /schools/{schoolId} {
-      allow get: if !isAuthorized() || resource.data.workspaceIds.hasAny(['onboarding', 'prospect']); // Simplified for get
-      allow list: if isAuthorized(); // Filtering handled by query indexing + app logic
+      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceIds);
+      allow list: if isAuthorized(); 
       allow create: if isAuthorized();
       allow update: if isAuthorized();
       allow delete: if isAdmin();
@@ -186,7 +192,7 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow create: if isAuthorized() || isSignedIn();
-      allow read, list: if isAuthorized() && (isSystemAdmin() || (exists(resource) && canAccessWorkspace(resource.data.workspaceId)));
+      allow read, list: if isAuthorized() && canAccessWorkspace(resource.data.workspaceIds);
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
