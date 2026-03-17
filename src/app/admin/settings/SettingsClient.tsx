@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,6 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { 
+    Tooltip, 
+    TooltipContent, 
+    TooltipProvider, 
+    TooltipTrigger 
+} from '@/components/ui/tooltip';
 import { 
     seedMedia, 
     seedSchools, 
@@ -28,17 +33,11 @@ import {
     rollbackSchoolsMigration, 
     seedWorkspaces,
     enrichSchoolStatuses,
-    rollbackSchoolStatuses,
     enrichTasksWithWorkspace,
-    rollbackTasksMigration,
     enrichAutomationsWithWorkspace,
-    rollbackAutomationsMigration,
     enrichMediaWithWorkspace,
-    rollbackMediaMigration,
     enrichRolesWithWorkspaces,
-    rollbackRolesMigration,
     enrichActivitiesWithWorkspace,
-    rollbackActivitiesMigration,
     enrichTemplatesWithWorkspace,
     rollbackTemplatesMigration,
     enrichStylesWithWorkspace,
