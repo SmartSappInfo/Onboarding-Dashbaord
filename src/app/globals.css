@@ -82,3 +82,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.font-signature {
+  font-family: 'Mrs Saint Delafield', cursive !important;
+}
