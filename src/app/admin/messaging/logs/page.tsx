@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { collection, query, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, doc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageLog } from '@/lib/types';
 import { format } from 'date-fns';
@@ -36,28 +36,39 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { fetchSmsStatusAction } from '@/lib/mnotify-actions';
 import { fetchEmailStatusAction } from '@/lib/resend-actions';
 import { syncAllLogStatuses } from '@/lib/messaging-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * @fileOverview Messaging Log Audit Ledger.
+ * Filtered by Workspace to ensure track-specific data isolation.
+ */
 export default function MessageLogsPage() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
+    const { activeWorkspaceId } = useWorkspace();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedLog, setSelectedLog] = React.useState<MessageLog | null>(null);
     const [isSyncing, setIsSyncing] = React.useState(false);
     const [isGlobalSyncing, setIsGlobalSyncing] = React.useState(false);
 
-    // Pull all logs and filter in frontend for reliability
+    // Filtered by active workspace array-contains
     const logsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_logs'), orderBy('sentAt', 'desc'), limit(200));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_logs'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('sentAt', 'desc'), 
+            limit(200)
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const { data: logs, isLoading } = useCollection<MessageLog>(logsQuery);
 
@@ -150,7 +161,7 @@ export default function MessageLogsPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
             <div className="grid gap-6">
                 <div className="flex justify-end gap-3">
                     <Button 
@@ -280,7 +291,7 @@ export default function MessageLogsPage() {
             </div>
 
             <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-                <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem]">
+                <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
                     <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
                         <div className="flex items-center justify-between pr-8">
                             <div className="flex items-center gap-3">
@@ -288,8 +299,8 @@ export default function MessageLogsPage() {
                                     {selectedLog?.channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Dispatch Overview</DialogTitle>
-                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed record of communication context</DialogDescription>
+                                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-left">Dispatch Overview</DialogTitle>
+                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">Detailed record of communication context</DialogDescription>
                                 </div>
                             </div>
                             {selectedLog && getStatusBadge(selectedLog)}
@@ -301,7 +312,7 @@ export default function MessageLogsPage() {
                             {/* Error Diagnostics */}
                             {selectedLog?.status === 'failed' && (
                                 <Card className="bg-red-50 border-red-100 rounded-2xl animate-pulse">
-                                    <CardContent className="p-4 flex items-center gap-4 text-red-800">
+                                    <CardContent className="p-4 flex items-center gap-4 text-red-800 text-left">
                                         <AlertCircle className="h-6 w-6 text-red-600" />
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-black uppercase tracking-widest">Deep Diagnostic Failure</p>
@@ -311,48 +322,10 @@ export default function MessageLogsPage() {
                                 </Card>
                             )}
 
-                            {/* Correct & Resend Workflow */}
-                            {selectedLog?.status === 'failed' && (
-                                <Button 
-                                    className="w-full h-14 rounded-2xl font-black text-lg gap-3 bg-emerald-600 hover:bg-emerald-700 shadow-2xl transition-all active:scale-95"
-                                    onClick={() => {
-                                        router.push(`/admin/messaging/composer?correctId=${selectedLog.id}`);
-                                        setSelectedLog(null);
-                                    }}
-                                >
-                                    <Wand2 className="h-6 w-6" />
-                                    Correct & Resend
-                                </Button>
-                            )}
-
-                            {/* Read Receipt Stats */}
-                            {selectedLog?.channel === 'email' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Card className="bg-emerald-50 border-emerald-100 rounded-2xl">
-                                        <CardContent className="p-4 flex items-center gap-4">
-                                            <div className="p-2.5 bg-emerald-500 text-white rounded-xl"><Eye className="h-4 w-4" /></div>
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase text-emerald-700">Opens</p>
-                                                <p className="text-2xl font-black text-emerald-900">{selectedLog.openedCount || 0}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    <Card className="bg-blue-50 border-blue-100 rounded-2xl">
-                                        <CardContent className="p-4 flex items-center gap-4">
-                                            <div className="p-2.5 bg-blue-500 text-white rounded-xl"><MousePointer2 className="h-4 w-4" /></div>
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase text-blue-700">Clicks</p>
-                                                <p className="text-2xl font-black text-blue-900">{selectedLog.clickedCount || 0}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            )}
-
                             {/* Metadata Grid */}
                             <Card className="bg-muted/20 border border-border/50 rounded-3xl overflow-hidden shadow-inner">
                                 <CardContent className="p-6">
-                                    <div className="grid grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-2 gap-8 text-left">
                                         <div className="space-y-1">
                                             <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Message Title / Protocol</Label>
                                             <p className="font-black text-foreground uppercase">{selectedLog?.title || selectedLog?.templateName}</p>
@@ -389,7 +362,7 @@ export default function MessageLogsPage() {
                             <Separator className="opacity-50" />
 
                             {/* Message Content */}
-                            <div className="space-y-4">
+                            <div className="space-y-4 text-left">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ml-1">
                                     <ShieldCheck className="h-3.5 w-3.5" /> Verified Resolved Content
                                 </Label>
@@ -397,9 +370,9 @@ export default function MessageLogsPage() {
                                 {selectedLog?.channel === 'email' ? (
                                     <div className="space-y-4">
                                         <div className="p-4 rounded-xl bg-muted/30 border border-dashed text-xs font-black uppercase tracking-tight shadow-inner">
-                                            <span className="opacity-40 mr-2">Subject:</span> {selectedLog.subject}
+                                            <span className="opacity-40 mr-2 text-left">Subject:</span> {selectedLog.subject}
                                         </div>
-                                        <div className="border rounded-3xl bg-white shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50">
+                                        <div className="border rounded-3xl bg-white shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left">
                                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20" />
                                             <div 
                                                 className="p-8 prose prose-sm max-w-none text-slate-700 leading-relaxed font-medium"
@@ -408,8 +381,8 @@ export default function MessageLogsPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-slate-50 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02]">
-                                        <div className="absolute -left-2 top-10 w-4 h-4 bg-slate-50 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
+                                    <div className="bg-slate-50 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02] text-left">
+                                        <div className="absolute -left-2.5 top-10 w-4 h-4 bg-slate-50 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
                                         <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
                                         <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-300">
                                             <span>Chars: {selectedLog?.body.length}</span>

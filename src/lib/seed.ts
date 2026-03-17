@@ -175,6 +175,7 @@ export async function rollbackProfilesMigration(firestore: Firestore): Promise<n
 
 /**
  * MIGRATION PROTOCOL: Message Logs Enrichment
+ * Deep-scans the communication ledger and inherits workspace context from associated schools.
  */
 export async function enrichLogsWithWorkspace(firestore: Firestore): Promise<number> {
     const snap = await getDocs(collection(firestore, 'message_logs'));
