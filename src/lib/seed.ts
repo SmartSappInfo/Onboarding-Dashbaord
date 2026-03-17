@@ -1,3 +1,4 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, setDoc, deleteField } from 'firebase/firestore';
@@ -33,7 +34,8 @@ import type {
     Invoice,
     InvoiceItem,
     Automation,
-    AutomationRun
+    AutomationRun,
+    MessageJob
 } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
@@ -120,6 +122,143 @@ export async function rollbackTemplatesMigration(firestore: Firestore): Promise<
     let count = 0;
     backupSnap.forEach(docSnap => {
         const ref = doc(firestore, 'message_templates', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: Sender Profile Enrichment
+ */
+export async function enrichProfilesWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'sender_profiles'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_profiles_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: ['onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackProfilesMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_profiles_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'sender_profiles', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: Message Logs Enrichment
+ */
+export async function enrichLogsWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'message_logs'));
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    const schoolWorkspaceMap = new Map<string, string[]>();
+    schoolsSnap.forEach(s => schoolWorkspaceMap.set(s.id, s.data().workspaceIds || ['onboarding']));
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_logs_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            const inheritedIds = data.schoolId ? schoolWorkspaceMap.get(data.schoolId) : ['onboarding'];
+            batch.update(docSnap.ref, {
+                workspaceIds: inheritedIds || ['onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackLogsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_logs_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'message_logs', docSnap.id);
+        batch.set(ref, docSnap.data());
+        count++;
+    });
+    await batch.commit();
+    return count;
+}
+
+/**
+ * MIGRATION PROTOCOL: Message Jobs Enrichment
+ */
+export async function enrichJobsWithWorkspace(firestore: Firestore): Promise<number> {
+    const snap = await getDocs(collection(firestore, 'message_jobs'));
+    const batch = writeBatch(firestore);
+    const backupBatch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    snap.forEach(docSnap => {
+        const backupRef = doc(firestore, 'backup_jobs_migration', docSnap.id);
+        backupBatch.set(backupRef, docSnap.data());
+    });
+    await backupBatch.commit();
+
+    let count = 0;
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, {
+                workspaceIds: ['onboarding'],
+                updatedAt: timestamp
+            });
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
+}
+
+export async function rollbackJobsMigration(firestore: Firestore): Promise<number> {
+    const backupSnap = await getDocs(collection(firestore, 'backup_jobs_migration'));
+    const batch = writeBatch(firestore);
+    let count = 0;
+    backupSnap.forEach(docSnap => {
+        const ref = doc(firestore, 'message_jobs', docSnap.id);
         batch.set(ref, docSnap.data());
         count++;
     });
