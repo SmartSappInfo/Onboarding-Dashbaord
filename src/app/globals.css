@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  /* This is set in tailwind.config.ts and loaded in layout.tsx */
-}
-
 @layer base {
   :root {
     --background: 220 27% 96%;
@@ -24,8 +20,6 @@ body {
     --accent-foreground: 220.9 39.3% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: oklch(1 0 0);
-    --disabled: 0 100% 97.3%;
-    --disabled-foreground: 0 84.2% 60.2%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 228 100% 62%;
@@ -35,18 +29,13 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --color-1: hsl(var(--chart-1));
-    --color-2: hsl(var(--chart-2));
-    --color-3: hsl(var(--chart-3));
-    --color-4: hsl(var(--chart-4));
-    --color-5: hsl(var(--chart-5));
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-background: 224 71.4% 4.1%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 228 100% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 228 100% 62%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -67,22 +56,10 @@ body {
     --accent-foreground: 228 15% 85%;
     --destructive: 0 72% 51%;
     --destructive-foreground: oklch(1 0 0);
-    --disabled: 0 30% 18%;
-    --disabled-foreground: 0 72% 51%;
     --border: 228 10% 20%;
     --input: 228 10% 20%;
     --ring: 228 100% 62%;
     --radius: 0.8rem;
-    --chart-1: 228 100% 62%;
-    --chart-2: 174 100% 29%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --color-1: hsl(var(--chart-1));
-    --color-2: hsl(var(--chart-2));
-    --color-3: hsl(var(--chart-3));
-    --color-4: hsl(var(--chart-4));
-    --color-5: hsl(var(--chart-5));
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -100,124 +77,8 @@ body {
   }
   html {
     scroll-behavior: smooth;
-    scroll-snap-type: y proximity;
   }
   body {
     @apply bg-background text-foreground;
-  }
-  section {
-    scroll-snap-align: start;
-    scroll-margin-top: 4rem; /* Adjust to account for fixed header */
-  }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-headline;
-  }
-  .container {
-    @apply mx-auto w-full px-6 md:w-[70%] md:px-0;
-  }
-  .pdf-page-container .textLayer {
-      position: absolute;
-      left: 0;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      overflow: hidden;
-      opacity: 1;
-      line-height: 1.0;
-      user-select: text;
-  }
-  .pdf-page-container .textLayer > span {
-      position: absolute;
-      white-space: pre;
-      cursor: text;
-      transform-origin: 0% 0%;
-      color: transparent; /* Make default text invisible */
-      background-color: transparent; /* Ensure no background interference */
-  }
-  .pdf-page-container .annotationLayer a {
-      position: absolute;
-      display: block;
-      cursor: pointer;
-  }
-  .pdf-page-container .annotationLayer a:hover {
-      opacity: 0.7;
-      background-color: #ff0;
-      box-shadow: 0px 2px 10px #ff0;
-  }
-}
-
-@media print {
-  @page {
-    size: A4;
-    margin: 0;
-  }
-  
-  html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: white !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  /* Hide all UI elements except the document content */
-  .print-area {
-    visibility: visible !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    display: block !important;
-    background: white !important;
-  }
-
-  body > *:not(.print-area) {
-    display: none !important;
-  }
-
-  /* Ensure detail views hide their headers/sidebars */
-  header, footer, nav, aside, button, .print\:hidden {
-    display: none !important;
-  }
-
-  .page-capture-wrapper {
-    width: 210mm !important;
-    height: 297mm !important;
-    page-break-after: always !important;
-    break-after: page !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    overflow: hidden !important;
-    background: white !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Scale document elements to fit A4 exactly */
-  .page-capture-wrapper > div {
-    width: 210mm !important;
-    height: 297mm !important;
-    box-shadow: none !important;
-    border: none !important;
-    transform: none !important;
-    left: 0 !important;
-    top: 0 !important;
-    background: white !important;
-  }
-
-  canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    object-fit: contain !important;
   }
 }

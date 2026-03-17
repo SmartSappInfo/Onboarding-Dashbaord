@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -9,9 +8,10 @@ service cloud.firestore {
     }
 
     function isSystemAdmin() {
+      // Direct token check is faster and less prone to 'get' failures in complex list queries
       return isSignedIn() && (
         request.auth.token.email == 'admin@smartsapp.com' || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('permissions', []).hasAny(['system_admin'])
+        request.auth.token.get('permissions', []).hasAny(['system_admin'])
       );
     }
 
@@ -81,6 +81,7 @@ service cloud.firestore {
       allow write: if hasPermission('finance_manage');
     }
     match /invoices/{invoiceId} {
+      // Separating system admin allows the query optimizer to skip resource.data checks during 'list'
       allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace([resource.data.get('workspaceId', 'onboarding')]));
       allow write: if hasPermission('finance_manage');
     }
