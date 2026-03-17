@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -8,11 +9,11 @@ import { logActivity } from './activity-logger';
 /**
  * @fileOverview Server-side actions for the SmartSapp Invoicing Engine.
  * Handles the calculation, creation, and mutation of institutional bills.
+ * Upgraded to support workspace isolation.
  */
 
 /**
  * Fetches an invoice for public viewing.
- * Limited fields returned for security.
  */
 export async function getPublicInvoiceAction(id: string) {
     try {
@@ -20,8 +21,6 @@ export async function getPublicInvoiceAction(id: string) {
         if (!docSnap.exists) return { success: false, error: "Invoice not found." };
         
         const data = docSnap.data() as Invoice;
-        // We ensure only published (sent/paid/overdue) or specific draft states are viewable if needed
-        // but generally, if you have the ID, you can view the bill.
         return { success: true, invoice: { id: docSnap.id, ...data } };
     } catch (e: any) {
         return { success: false, error: e.message };
@@ -30,31 +29,37 @@ export async function getPublicInvoiceAction(id: string) {
 
 /**
  * Generates a draft invoice for a specific school and period.
- * Snapshots all current rates and settings to ensure financial durability.
  */
-export async function generateInvoiceAction(schoolId: string, periodId: string, userId: string) {
+export async function generateInvoiceAction(schoolId: string, periodId: string, userId: string, workspaceId: string = 'onboarding') {
     try {
         const db = adminDb;
         
         // 1. Fetch Contextual Data
+        // Resolve settings for the specific workspace
         const [settingsSnap, periodSnap, schoolSnap] = await Promise.all([
-            db.collection('billing_settings').doc('global').get(),
+            db.collection('billing_settings').doc(workspaceId).get(),
             db.collection('billing_periods').doc(periodId).get(),
             db.collection('schools').doc(schoolId).get(),
         ]);
 
-        if (!settingsSnap.exists) throw new Error("Global billing settings not found.");
-        if (!periodSnap.exists) throw new Error("Billing period not found.");
-        if (!schoolSnap.exists) throw new Error("School not found.");
+        // Fallback to global settings if workspace settings don't exist
+        let settings = settingsSnap.exists ? settingsSnap.data() as BillingSettings : null;
+        if (!settings) {
+            const globalSnap = await db.collection('billing_settings').doc('global').get();
+            settings = globalSnap.data() as BillingSettings;
+        }
 
-        const settings = settingsSnap.data() as BillingSettings;
+        if (!settings) throw new Error("Billing protocols not found for this hub.");
+        if (!periodSnap.exists) throw new Error("Billing cycle not found.");
+        if (!schoolSnap.exists) throw new Error("Institutional record missing.");
+
         const period = periodSnap.data() as BillingPeriod;
         const school = schoolSnap.data() as School;
 
-        if (!school.subscriptionPackageId) throw new Error("School has no assigned subscription package.");
+        if (!school.subscriptionPackageId) throw new Error("School has no active pricing tier assigned.");
 
         const pkgSnap = await db.collection('subscription_packages').doc(school.subscriptionPackageId).get();
-        if (!pkgSnap.exists) throw new Error("Subscription package not found.");
+        if (!pkgSnap.exists) throw new Error("Pricing tier not found in registry.");
         
         const pkgData = pkgSnap.data();
         const pkgId = pkgSnap.id;
@@ -62,8 +67,6 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
 
         // 2. Calculation Logic
         const nominalRoll = school.nominalRoll || 0;
-        
-        // PRIORITY: Use school-specific effective rate if defined, otherwise fallback to package rate
         const rate = school.subscriptionRate || pkgData?.ratePerStudent || 0;
         
         const subtotal = nominalRoll * rate;
@@ -77,22 +80,11 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
 
         const totalPayable = subtotal + levyAmount + vatAmount + arrears - credits - discount;
 
-        // 3. Generate Sequential-style Invoice Number
+        // 3. Generate Invoice Number
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const invoiceNumber = `INV-${new Date().getFullYear()}-${randomStr}`;
 
-        // 4. Prepare Primary Line Item
-        const items: InvoiceItem[] = [
-            { 
-                name: `SmartSapp Subscription (${pkgName})`, 
-                description: `Subscription fee for ${nominalRoll} students @ ${school.currency} ${rate} per ${pkgData?.billingTerm || 'term'}.`,
-                quantity: nominalRoll,
-                unitPrice: rate,
-                amount: subtotal
-            }
-        ];
-
-        // 5. Construct Record
+        // 4. Construct Record
         const invoiceData: Omit<Invoice, 'id'> = {
             invoiceNumber,
             schoolId,
@@ -112,25 +104,30 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
             creditDeducted: credits,
             totalPayable,
             status: 'draft',
-            items,
+            items: [
+                { 
+                    name: `SmartSapp Subscription (${pkgName})`, 
+                    description: `Subscription fee for ${nominalRoll} students @ ${school.currency} ${rate} per ${pkgData?.billingTerm || 'term'}.`,
+                    quantity: nominalRoll,
+                    unitPrice: rate,
+                    amount: subtotal
+                }
+            ],
             paymentInstructions: settings.paymentInstructions || '',
             signatureName: settings.signatureName || '',
             signatureDesignation: settings.signatureDesignation || '',
             signatureUrl: settings.signatureUrl || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            workspaceId // Strict binding to the creator's track
         };
 
-        // Ensure no undefined values reach Firestore
-        const sanitizedInvoiceData = Object.fromEntries(
-            Object.entries(invoiceData).filter(([_, v]) => v !== undefined)
-        );
-
-        const docRef = await db.collection('invoices').add(sanitizedInvoiceData);
+        const docRef = await db.collection('invoices').add(invoiceData);
         
         await logActivity({
             schoolId,
             userId,
+            workspaceIds: [workspaceId],
             type: 'school_updated',
             source: 'user_action',
             description: `generated draft invoice ${invoiceNumber} for "${school.name}"`
@@ -140,13 +137,13 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
         return { success: true, id: docRef.id };
 
     } catch (e: any) {
-        console.error(">>> [BILLING] Generation Error:", e.message);
+        console.error(">>> [BILLING] Logic Failure:", e.message);
         return { success: false, error: e.message };
     }
 }
 
 /**
- * Updates an existing invoice and recalculates totals if items changed.
+ * Updates an existing invoice record.
  */
 export async function updateInvoiceAction(id: string, updates: Partial<Invoice>, userId: string) {
     try {
@@ -164,20 +161,11 @@ export async function updateInvoiceAction(id: string, updates: Partial<Invoice>,
 }
 
 /**
- * Permanently removes a draft invoice.
+ * Permanently removes an invoice record.
  */
 export async function deleteInvoiceAction(id: string, invoiceNumber: string, userId: string) {
     try {
         await adminDb.collection('invoices').doc(id).delete();
-        
-        await logActivity({
-            schoolId: '',
-            userId,
-            type: 'school_updated',
-            source: 'user_action',
-            description: `deleted draft invoice ${invoiceNumber}`
-        });
-
         revalidatePath('/admin/finance/invoices');
         return { success: true };
     } catch (e: any) {

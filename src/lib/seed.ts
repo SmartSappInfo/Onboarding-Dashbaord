@@ -41,48 +41,70 @@ import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, subDays, subHours, startOfMonth, endOfMonth } from 'date-fns';
 
-// --- SEEDING FUNCTIONS ---
+// --- MIGRATION PROTOCOLS ---
 
-export async function seedWorkspaces(firestore: Firestore): Promise<number> {
+/**
+ * MIGRATION: Finance Module Workspace Enrichment
+ */
+export async function enrichFinanceWithWorkspace(firestore: Firestore): Promise<number> {
     const batch = writeBatch(firestore);
-    const col = collection(firestore, 'workspaces');
+    const backupBatch = writeBatch(firestore);
     const timestamp = new Date().toISOString();
+    let totalCount = 0;
 
-    const data: Workspace[] = [
-        {
-            id: 'onboarding',
-            name: 'Institutional Onboarding',
-            description: 'Primary technical implementation track for new campuses.',
-            color: '#3B5FFF',
-            status: 'active',
-            statuses: [
-                { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF', description: 'Institutional initialization phase.' },
-                { value: 'Active', label: 'Active', color: '#10b981', description: 'Institutional go-live.' },
-                { value: 'Churned', label: 'Churned', color: '#ef4444', description: 'No longer operational.' },
-            ],
-            createdAt: timestamp,
-            updatedAt: timestamp
-        },
-        {
-            id: 'prospect',
-            name: 'Lead Acquisition',
-            description: 'Sales and marketing track for prospective institutions.',
-            color: '#10b981',
-            status: 'active',
-            statuses: [
-                { value: 'Lead', label: 'New Lead', color: '#f59e0b', description: 'Initial contact established.' },
-                { value: 'Negotiation', label: 'Negotiation', color: '#8b5cf6', description: 'Contract discussions in progress.' },
-                { value: 'Won', label: 'Won (Converted)', color: '#10b981', description: 'Successfully acquired campus.' },
-                { value: 'Lost', label: 'Lost', color: '#64748b', description: 'Lead declined.' },
-            ],
-            createdAt: timestamp,
-            updatedAt: timestamp
+    // 1. Enrich Packages
+    const packagesSnap = await getDocs(collection(firestore, 'subscription_packages'));
+    packagesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        backupBatch.set(doc(firestore, 'backup_packages_migration', docSnap.id), data);
+        if (!data.workspaceIds) {
+            batch.update(docSnap.ref, { workspaceIds: ['onboarding'] });
+            totalCount++;
         }
-    ];
+    });
 
-    data.forEach(w => batch.set(doc(col, w.id), w));
+    // 2. Enrich Periods
+    const periodsSnap = await getDocs(collection(firestore, 'billing_periods'));
+    periodsSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        backupBatch.set(doc(firestore, 'backup_periods_migration', docSnap.id), data);
+        if (!data.workspaceIds) {
+            batch.update(docSnap.ref, { workspaceIds: ['onboarding'] });
+            totalCount++;
+        }
+    });
+
+    // 3. Enrich Invoices
+    const invoicesSnap = await getDocs(collection(firestore, 'invoices'));
+    invoicesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        backupBatch.set(doc(firestore, 'backup_invoices_migration', docSnap.id), data);
+        if (!data.workspaceId) {
+            batch.update(docSnap.ref, { workspaceId: 'onboarding' });
+            totalCount++;
+        }
+    });
+
+    await backupBatch.commit();
     await batch.commit();
-    return data.length;
+    return totalCount;
+}
+
+export async function rollbackFinanceMigration(firestore: Firestore): Promise<number> {
+    const batch = writeBatch(firestore);
+    let count = 0;
+
+    const pBackup = await getDocs(collection(firestore, 'backup_packages_migration'));
+    pBackup.forEach(d => { batch.set(doc(firestore, 'subscription_packages', d.id), d.data()); count++; });
+
+    const bBackup = await getDocs(collection(firestore, 'backup_periods_migration'));
+    bBackup.forEach(d => { batch.set(doc(firestore, 'billing_periods', d.id), d.data()); count++; });
+
+    const iBackup = await getDocs(collection(firestore, 'backup_invoices_migration'));
+    iBackup.forEach(d => { batch.set(doc(firestore, 'invoices', d.id), d.data()); count++; });
+
+    await batch.commit();
+    return count;
 }
 
 /**
@@ -313,7 +335,6 @@ export async function rollbackProfilesMigration(firestore: Firestore): Promise<n
 
 /**
  * MIGRATION PROTOCOL: Message Logs Enrichment
- * Deep-scans the communication ledger and inherits workspace context from associated schools.
  */
 export async function enrichLogsWithWorkspace(firestore: Firestore): Promise<number> {
     const snap = await getDocs(collection(firestore, 'message_logs'));
@@ -628,3 +649,4 @@ export async function seedBillingData(firestore: Firestore) { return 0; }
 export async function seedRolesAndPermissions(firestore: Firestore) { return 0; }
 export async function seedPipelines(firestore: Firestore) { return 0; }
 export async function seedOnboardingPipelineFromCurrentData(firestore: Firestore) { return 0; }
+export async function seedWorkspaces(firestore: Firestore): Promise<number> { return 0; }

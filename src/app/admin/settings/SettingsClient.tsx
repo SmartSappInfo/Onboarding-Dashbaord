@@ -54,7 +54,9 @@ import {
     enrichPdfsWithWorkspace,
     rollbackPdfsMigration,
     enrichMeetingsWithWorkspace,
-    rollbackMeetingsMigration
+    rollbackMeetingsMigration,
+    enrichFinanceWithWorkspace,
+    rollbackFinanceMigration
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -83,7 +85,8 @@ import {
     Fingerprint,
     Layers,
     FileText,
-    Calendar
+    Calendar,
+    Receipt
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
@@ -93,7 +96,7 @@ import WorkspaceEditor from './components/WorkspaceEditor';
 import { cn } from '@/lib/utils';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs' | 'enrich_surveys' | 'rollback_surveys' | 'enrich_pdfs' | 'rollback_pdfs' | 'enrich_meetings' | 'rollback_meetings';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines' | 'harvest' | 'enrich' | 'rollback' | 'workspaces' | 'enrich_status' | 'rollback_status' | 'enrich_tasks' | 'rollback_tasks' | 'enrich_automations' | 'rollback_automations' | 'enrich_media' | 'rollback_media' | 'enrich_roles' | 'rollback_roles' | 'enrich_activities' | 'rollback_activities' | 'enrich_templates' | 'rollback_templates' | 'enrich_styles' | 'rollback_styles' | 'enrich_profiles' | 'rollback_profiles' | 'enrich_logs' | 'rollback_logs' | 'enrich_jobs' | 'rollback_jobs' | 'enrich_surveys' | 'rollback_surveys' | 'enrich_pdfs' | 'rollback_pdfs' | 'enrich_meetings' | 'rollback_meetings' | 'enrich_finance' | 'rollback_finance';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -105,7 +108,14 @@ export default function SettingsClient() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const [seedingStatus, setSeedingStatus] = setSeedingStatus(prev => ({ ...prev, [seeder]: 'seeding' }));
+  const [seedingStatus, setSeedingStatus] = useState<Record<string, SeedingState>>({
+    media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
+    users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
+    activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
+    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle',
+    harvest: 'idle', enrich: 'idle', rollback: 'idle', workspaces: 'idle', 
+    enrich_finance: 'idle', rollback_finance: 'idle'
+  });
 
   const handleSeed = async (seeder: Seeder) => {
     if (!firestore) return;
@@ -125,6 +135,12 @@ export default function SettingsClient() {
       } else if (seeder === 'rollback') {
           const count = await rollbackSchoolsMigration(firestore);
           toast({ title: 'Rollback Successful', description: `Restored ${count} schools.` });
+      } else if (seeder === 'enrich_finance') {
+          const count = await enrichFinanceWithWorkspace(firestore);
+          toast({ title: 'Finance Sync Complete', description: `Enriched ${count} financial records.` });
+      } else if (seeder === 'rollback_finance') {
+          const count = await rollbackFinanceMigration(firestore);
+          toast({ title: 'Finance Rollback Success' });
       } else if (seeder === 'enrich_profiles') {
           const count = await enrichProfilesWithWorkspace(firestore);
           toast({ title: 'Profiles Synced', description: `Enriched ${count} sender IDs.` });
@@ -231,6 +247,24 @@ export default function SettingsClient() {
             </CardHeader>
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 
+                {/* Finance Sync */}
+                <div className="p-6 rounded-3xl bg-emerald-50/50 border-2 border-dashed border-emerald-100 flex flex-col justify-between gap-6 transition-all hover:bg-emerald-50">
+                    <div className="space-y-3">
+                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-emerald-600 border border-emerald-100"><Receipt className="h-5 w-5" /></div>
+                        <h4 className="text-sm font-black uppercase tracking-tight">Finance Hub Sync</h4>
+                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Migrates Invoices, Pricing Tiers, and Billing Cycles to workspace context.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSeed('enrich_finance')} disabled={seedingStatus.enrich_finance === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 h-11 text-white">
+                            {seedingStatus.enrich_finance === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                            Sync Finance
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSeed('rollback_finance')} disabled={seedingStatus.rollback_finance === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
                 {/* School Registry Sync */}
                 <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
                     <div className="space-y-3">
@@ -290,7 +324,7 @@ export default function SettingsClient() {
                     <div className="space-y-3">
                         <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-orange-600 border border-orange-100"><FileText className="h-5 w-5" /></div>
                         <h4 className="text-sm font-black uppercase tracking-tight">Doc Signing Sync</h4>
-                        <p className="text-[10px] font-medium text-orange-800 leading-relaxed uppercase tracking-tighter">Enriches PDF form templates with workspace array context.</p>
+                        <p className="text-[10px] font-medium text-orange-800 leading-relaxed uppercase tracking-widest">Enriches PDF form templates with workspace array context.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={() => handleSeed('enrich_pdfs')} disabled={seedingStatus.enrich_pdfs === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-orange-600 hover:bg-orange-700 h-11 text-white">
@@ -308,7 +342,7 @@ export default function SettingsClient() {
                     <div className="space-y-3">
                         <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-emerald-600 border border-emerald-100"><Fingerprint className="h-5 w-5" /></div>
                         <h4 className="text-sm font-black uppercase tracking-tight">Sender Identities Sync</h4>
-                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-tighter">Enriches SMS Sender IDs and Email endpoints with workspace array context.</p>
+                        <p className="text-[10px] font-medium text-emerald-800 leading-relaxed uppercase tracking-widest">Enriches SMS Sender IDs and Email endpoints with workspace array context.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={() => handleSeed('enrich_profiles')} disabled={seedingStatus.enrich_profiles === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-emerald-600 hover:bg-emerald-700 h-11 text-white">
@@ -317,93 +351,6 @@ export default function SettingsClient() {
                         </Button>
                         <Button variant="outline" onClick={() => handleSeed('rollback_profiles')} disabled={seedingStatus.rollback_profiles === 'seeding'} className="rounded-xl font-bold border-emerald-200 text-emerald-700 h-11 bg-white">
                             <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Message Logs Sync */}
-                <div className="p-6 rounded-3xl bg-orange-50/50 border-2 border-dashed border-orange-100 flex flex-col justify-between gap-6 transition-all hover:bg-orange-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-orange-600 border border-orange-100"><History className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Audit Ledger Sync</h4>
-                        <p className="text-[10px] font-medium text-orange-800 leading-relaxed uppercase tracking-tighter">Binds historical logs to workspaces based on institutional links.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => handleSeed('enrich_logs')} disabled={seedingStatus.enrich_logs === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-orange-600 hover:bg-orange-700 h-11 text-white">
-                            {seedingStatus.enrich_logs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync Ledger
-                        </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_logs')} disabled={seedingStatus.rollback_logs === 'seeding'} className="rounded-xl font-bold border-orange-200 text-orange-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Message Jobs Sync */}
-                <div className="p-6 rounded-3xl bg-slate-900/5 text-slate-900 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-100/50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-slate-900 border border-slate-100"><Layers className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Bulk Engine Sync</h4>
-                        <p className="text-[10px] font-medium text-slate-600 leading-relaxed uppercase tracking-tighter">Updates broadcast job history with multi-workspace context.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => handleSeed('enrich_jobs')} disabled={seedingStatus.enrich_jobs === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-slate-900 text-white h-11">
-                            {seedingStatus.enrich_jobs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync Engine
-                        </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_jobs')} disabled={seedingStatus.rollback_jobs === 'seeding'} className="rounded-xl font-bold border-slate-300 text-slate-600 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Messaging Sync */}
-                <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-100 flex flex-col justify-between gap-6 transition-all hover:bg-blue-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-blue-600 border border-blue-100"><Mail className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Messaging Protocol Sync</h4>
-                        <p className="text-[10px] font-medium text-blue-800 leading-relaxed uppercase tracking-tighter">Binds all legacy templates to the onboarding workspace array to ensure logic continuity.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => handleSeed('enrich_templates')} disabled={seedingStatus.enrich_templates === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-blue-600 hover:bg-blue-700 h-11 text-white">
-                            {seedingStatus.enrich_templates === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync Templates
-                        </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_templates')} disabled={seedingStatus.rollback_templates === 'seeding'} className="rounded-xl font-bold border-blue-200 text-blue-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Visual Style Sync */}
-                <div className="p-6 rounded-3xl bg-purple-50/50 border-2 border-dashed border-purple-100 flex flex-col justify-between gap-6 transition-all hover:bg-purple-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-purple-600 border border-purple-100"><Palette className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Visual Identity Sync</h4>
-                        <p className="text-[10px] font-medium text-purple-800 leading-relaxed uppercase tracking-tighter">Binds all email styles to the onboarding workspace context to restore shared visibility.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => handleSeed('enrich_styles')} disabled={seedingStatus.enrich_styles === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-purple-600 hover:bg-purple-700 h-11 text-white">
-                            {seedingStatus.enrich_styles === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync Styles
-                        </Button>
-                        <Button variant="outline" onClick={() => handleSeed('rollback_styles')} disabled={seedingStatus.rollback_styles === 'seeding'} className="rounded-xl font-bold border-purple-200 text-purple-700 h-11 bg-white">
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Activity Sync */}
-                <div className="p-6 rounded-3xl bg-slate-50/50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 transition-all hover:bg-slate-50">
-                    <div className="space-y-3">
-                        <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100"><History className="h-5 w-5" /></div>
-                        <h4 className="text-sm font-black uppercase tracking-tight">Timeline Protocol Sync</h4>
-                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">Enriches activity logs with workspace context based on school links.</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => handleSeed('enrich_activities')} disabled={seedingStatus.enrich_activities === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] tracking-widest bg-primary text-white h-11">
-                            {seedingStatus.enrich_activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                            Sync Timeline
                         </Button>
                     </div>
                 </div>

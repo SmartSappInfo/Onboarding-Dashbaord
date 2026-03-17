@@ -74,15 +74,15 @@ service cloud.firestore {
     }
 
     match /subscription_packages/{packageId} {
-      allow read: if isAuthorized();
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', [])));
       allow write: if hasPermission('finance_manage');
     }
     match /billing_periods/{periodId} {
-      allow read: if isAuthorized();
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', [])));
       allow write: if hasPermission('finance_manage');
     }
     match /invoices/{invoiceId} {
-      allow read: if isAuthorized();
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace([resource.data.get('workspaceId', 'onboarding')]));
       allow write: if hasPermission('finance_manage');
     }
     match /billing_settings/{settingId} {

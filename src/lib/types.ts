@@ -170,6 +170,7 @@ export interface SubscriptionPackage {
   billingTerm: 'term' | 'semester' | 'year';
   currency: string;
   isActive: boolean;
+  workspaceIds: string[]; // Shared visibility
 }
 
 export interface BillingPeriod {
@@ -180,6 +181,7 @@ export interface BillingPeriod {
   invoiceDate: string;
   paymentDueDate: string;
   status: 'open' | 'closed';
+  workspaceIds: string[]; // Shared visibility
 }
 
 export interface InvoiceItem {
@@ -220,10 +222,11 @@ export interface Invoice {
   createdAt: string;
   updatedAt: string;
   sentAt?: string;
+  workspaceId: string; // Isolated to specific track
 }
 
 export interface BillingSettings {
-  id: string;
+  id: string; // Bound to workspace ID
   levyPercent: number;
   vatPercent: number;
   defaultDiscount: number;

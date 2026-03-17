@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -60,6 +61,10 @@ import Link from 'next/link';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * @fileOverview Invoices Registry Client.
+ * Filtered by Workspace to ensure track-specific financial data isolation.
+ */
 export default function InvoicesClient() {
     const firestore = useFirestore();
     const router = useRouter();
@@ -74,54 +79,51 @@ export default function InvoicesClient() {
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [isSeeding, setIsSeeding] = React.useState(false);
 
-    // Form State for new invoice
+    // Form State
     const [selectedSchoolId, setSelectedSchoolId] = React.useState<string | null>(null);
     const [selectedPeriodId, setSelectedPeriodId] = React.useState<string | null>(null);
 
-    // Data Subscriptions
+    // Data Subscriptions - Strictly Isolated by Workspace
     const invoicesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'invoices'), orderBy('createdAt', 'desc'), limit(100)) : null, 
-    [firestore]);
+        firestore ? query(
+            collection(firestore, 'invoices'), 
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('createdAt', 'desc'), 
+            limit(100)
+        ) : null, 
+    [firestore, activeWorkspaceId]);
 
     const schoolsQuery = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'schools'), 
-            where('workspaceId', '==', activeWorkspaceId),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('name', 'asc')
         ) : null, 
     [firestore, activeWorkspaceId]);
 
     const periodsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'billing_periods'), where('status', '==', 'open'), orderBy('startDate', 'desc')) : null, 
-    [firestore]);
-
-    const usersQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'users'), orderBy('name', 'asc')) : null, 
-    [firestore]);
+        firestore ? query(
+            collection(firestore, 'billing_periods'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            where('status', '==', 'open'), 
+            orderBy('startDate', 'desc')
+        ) : null, 
+    [firestore, activeWorkspaceId]);
 
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
     const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
     const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
-    const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
-
-    const schoolAssignmentMap = React.useMemo(() => {
-        if (!schools) return new Map<string, string | null>();
-        return new Map(schools.map(s => [s.id, s.assignedTo?.userId || null]));
-    }, [schools]);
 
     const filteredInvoices = React.useMemo(() => {
-        if (!invoices || !schools) return [];
-        
-        // 1. FILTER BY WORKSPACE
-        const validSchoolIds = new Set(schools.map(s => s.id));
-        let temp = invoices.filter(i => validSchoolIds.has(i.schoolId));
+        if (!invoices) return [];
+        let temp = invoices;
 
-        // 2. GLOBAL USER FILTER
         if (assignedUserId) {
+            // Further refine by assigned manager if global filter active
             temp = temp.filter(invoice => {
-                const assignedTo = schoolAssignmentMap.get(invoice.schoolId);
-                if (assignedUserId === 'unassigned') return !assignedTo;
-                return assignedTo === assignedUserId;
+                const school = schools?.find(s => s.id === invoice.schoolId);
+                if (assignedUserId === 'unassigned') return !school?.assignedTo?.userId;
+                return school?.assignedTo?.userId === assignedUserId;
             });
         }
 
@@ -131,12 +133,12 @@ export default function InvoicesClient() {
             temp = temp.filter(i => i.schoolName.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
         }
         return temp;
-    }, [invoices, schools, statusFilter, searchTerm, assignedUserId, schoolAssignmentMap]);
+    }, [invoices, schools, statusFilter, searchTerm, assignedUserId]);
 
     const handleGenerate = async () => {
         if (!selectedSchoolId || !selectedPeriodId || !user) return;
         setIsGenerating(true);
-        const result = await generateInvoiceAction(selectedSchoolId, selectedPeriodId, user.uid);
+        const result = await generateInvoiceAction(selectedSchoolId, selectedPeriodId, user.uid, activeWorkspaceId);
         if (result.success && result.id) {
             toast({ title: 'Invoice Initialized', description: 'Draft has been created in the registry.' });
             setIsAdding(false);
@@ -176,7 +178,7 @@ export default function InvoicesClient() {
         }
     };
 
-    const isLoading = isLoadingInvoices || isLoadingFilter || isLoadingUsers || isLoadingSchools;
+    const isLoading = isLoadingInvoices || isLoadingFilter || isLoadingSchools;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
@@ -187,12 +189,12 @@ export default function InvoicesClient() {
                             <Receipt className="h-8 w-8 text-primary" />
                             Invoice Registry
                         </h1>
-                        <p className="text-muted-foreground font-medium mt-1">Audit, manage, and finalize institutional billing records.</p>
+                        <p className="text-muted-foreground font-medium mt-1">Audit and manage billing records for the {activeWorkspaceId} hub.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={handleSeedData} disabled={isSeeding} className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-white shadow-sm transition-all active:scale-95">
                             {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Database className="h-4 w-4 mr-2" />}
-                            Seed Sample Data
+                            Seed Hub Data
                         </Button>
                         <Button onClick={() => setIsAdding(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
                             <Plus className="mr-2 h-5 w-5" /> Create Bill
@@ -201,7 +203,7 @@ export default function InvoicesClient() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Total Expected" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
+                    <StatCard label="Hub Expected" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
                     <StatCard label="Resolved (Paid)" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" sub="" />
                     <StatCard label="Outstanding Drafts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" sub="" />
                     <StatCard label="Recovery Action" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" sub="" />
@@ -223,20 +225,13 @@ export default function InvoicesClient() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
-                                <SelectItem value="all">Global View</SelectItem>
+                                <SelectItem value="all">Track View</SelectItem>
                                 <SelectItem value="draft">Drafts Only</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
                                 <SelectItem value="paid">Paid</SelectItem>
                                 <SelectItem value="overdue">Overdue</SelectItem>
                             </SelectContent>
                         </Select>
-                        
-                        <div className="flex items-center gap-2 px-4 h-11 rounded-xl bg-primary/5 border border-primary/10">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-primary/60">Filtered For:</Label>
-                            <Badge variant="outline" className="h-6 font-black uppercase text-[9px] border-primary/20 bg-white text-primary">
-                                {assignedUserId === 'unassigned' ? 'Unassigned' : users?.find(u => u.id === assignedUserId)?.name || 'Everyone'}
-                            </Badge>
-                        </div>
                     </CardContent>
                 </Card>
 
@@ -246,7 +241,7 @@ export default function InvoicesClient() {
                             <TableRow>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest pl-8 py-5">Invoice Reference</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Campus</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Billing Period</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Billing Cycle</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-right">Total Payable</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Status</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest text-right pr-8">Actions</TableHead>
@@ -301,9 +296,6 @@ export default function InvoicesClient() {
                                                         <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
                                                             <Link href={`/admin/finance/invoices/${invoice.id}`}><FileText className="h-4 w-4 text-primary" /> Open in Studio</Link>
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="gap-3 rounded-lg p-2.5">
-                                                            <Download className="h-4 w-4 text-primary" /> Download PDF
-                                                        </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem className="text-destructive gap-3 rounded-lg p-2.5 focus:bg-destructive/10" onClick={() => handleDelete(invoice)}>
                                                             <Trash2 className="h-4 w-4" /> Delete Draft
@@ -322,11 +314,7 @@ export default function InvoicesClient() {
                                                 <Receipt className="h-12 w-12" />
                                             </div>
                                             <div className="space-y-4">
-                                                <p className="text-xs font-black uppercase tracking-widest">Registry Clear</p>
-                                                <Button onClick={handleSeedData} disabled={isSeeding} className="rounded-xl font-bold h-10 px-6 gap-2">
-                                                    {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                                                    Seed Initial Invoices
-                                                </Button>
+                                                <p className="text-xs font-black uppercase tracking-widest">Hub Registry Clear</p>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -348,7 +336,7 @@ export default function InvoicesClient() {
                                 </div>
                                 <div>
                                     <DialogTitle className="text-2xl font-black uppercase tracking-tight text-left">Generate Bill</DialogTitle>
-                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-left">Initialize a new draft for review.</DialogDescription>
+                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-left">Initialize a new draft for the {activeWorkspaceId} track.</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
@@ -365,7 +353,7 @@ export default function InvoicesClient() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">2. Billing Period</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">2. Billing Cycle</Label>
                                 <Select onValueChange={setSelectedPeriodId} value={selectedPeriodId || ''}>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                         <SelectValue placeholder="Select cycle..." />
