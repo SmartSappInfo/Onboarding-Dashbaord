@@ -2,7 +2,7 @@
 rules_version = '2';
 
 // Triggering synchronization for multi-workspace sharing logic.
-// Update: Applied array-contains logic for Schools/Contacts shared visibility.
+// Update: Hardened helper functions and simplified admin bypass.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -12,7 +12,24 @@ service cloud.firestore {
     }
 
     function isSystemAdmin() {
-      return isSignedIn() && request.auth.token.get('email', '') == 'admin@smartsapp.com';
+      // Use direct property access which is more reliable in many rules environments
+      return isSignedIn() && request.auth.token.email == 'admin@smartsapp.com';
+    }
+
+    function isAuthorized() {
+      if (!isSignedIn()) return false;
+      if (isSystemAdmin()) return true;
+      
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) && get(userPath).data.get('isAuthorized', false) == true;
+    }
+
+    function isAdmin() {
+      if (!isSignedIn()) return false;
+      if (isSystemAdmin()) return true;
+      
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(userPath) && get(userPath).data.get('permissions', []).hasAny(['system_admin']);
     }
 
     function getUserData() {
@@ -20,24 +37,7 @@ service cloud.firestore {
       return exists(userPath) ? get(userPath).data : null;
     }
 
-    function isAuthorized() {
-      if (!isSignedIn()) return false;
-      if (isSystemAdmin()) return true;
-      
-      let data = getUserData();
-      return data != null && data.get('isAuthorized', false) == true;
-    }
-
-    function isAdmin() {
-      if (!isSignedIn()) return false;
-      if (isSystemAdmin()) return true;
-      
-      let data = getUserData();
-      return data != null && data.get('permissions', []).hasAny(['system_admin']);
-    }
-
     function hasPermission(perm) {
-      if (!isSignedIn()) return false;
       if (isSystemAdmin()) return true;
       if (!isAuthorized()) return false;
       
