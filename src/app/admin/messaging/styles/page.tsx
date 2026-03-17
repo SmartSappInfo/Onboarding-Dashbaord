@@ -36,6 +36,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MessageStylesPage() {
     const firestore = useFirestore();
@@ -273,7 +274,7 @@ export default function MessageStylesPage() {
                                         <CardTitle className="text-sm font-black uppercase truncate pr-2 text-foreground group-hover:text-primary transition-colors">{style.name}</CardTitle>
                                         <CardDescription className="text-[8px] uppercase font-bold tracking-[0.2em] mt-1">{style.workspaceIds?.length || 1} Workspace(s)</CardDescription>
                                     </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setPreviewStyle(style)}><Eye className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleEditClick(style)}><Pencil className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(style.id)}><Trash2 className="h-4 w-4" /></Button>
