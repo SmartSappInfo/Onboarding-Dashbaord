@@ -50,6 +50,14 @@
       ]
     },
     {
+      "collectionGroup": "meetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "meetingTime", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "media",
       "queryScope": "COLLECTION",
       "fields": [

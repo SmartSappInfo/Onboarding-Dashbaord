@@ -136,7 +136,7 @@ export default function PackagesClient() {
                         <p className="text-muted-foreground font-medium mt-1">Manage institutional subscription levels for the {activeWorkspaceId} hub.</p>
                     </div>
                     <Button onClick={() => { setIsAdding(true); setWorkspaceIds([activeWorkspaceId]); }} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8">
-                        <Plus className="mr-2 h-5 w-5" /> New Package
+                        <Plus className="mr-2 h-4 w-4" /> New Package
                     </Button>
                 </div>
 
