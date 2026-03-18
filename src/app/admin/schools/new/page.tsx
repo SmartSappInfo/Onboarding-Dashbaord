@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -73,7 +72,7 @@ const formSchema = z.object({
   // Billing Fields
   billingAddress: z.string().optional(),
   currency: z.string().default('GHS'),
-  subscriptionPackageId: z.string().optional(),
+  subscriptionPackageId: z.string().optional().nullable(),
   subscriptionRate: z.coerce.number().default(0),
   discountPercentage: z.coerce.number().min(0).max(100).default(0),
   arrearsBalance: z.coerce.number().default(0),
@@ -122,7 +121,7 @@ export default function NewSchoolPage() {
       discountPercentage: 0,
       arrearsBalance: 0,
       creditBalance: 0,
-      subscriptionPackageId: 'none'
+      subscriptionPackageId: null
     },
   });
 
@@ -185,7 +184,9 @@ export default function NewSchoolPage() {
       assignedTo,
       pipelineId: initialPipelineId,
       track: primaryWId, // Legacy context
-      subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
+      logoUrl: data.logoUrl || null,
+      heroImageUrl: data.heroImageUrl || null,
+      subscriptionPackageId: data.subscriptionPackageId || null,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
       stage: defaultStage,
@@ -201,7 +202,7 @@ export default function NewSchoolPage() {
           schoolName: data.name, 
           schoolSlug: slug, 
           userId: user.uid,
-          workspaceId: activeWorkspaceId,
+          workspaceIds: data.workspaceIds,
           type: 'school_created', 
           source: 'user_action',
           description: `registered new record: "${data.name}" in ${data.workspaceIds.length} hubs`,
@@ -335,7 +336,7 @@ export default function NewSchoolPage() {
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
                                     <FormControl>
                                         <PackageSelect 
-                                            value={field.value} 
+                                            value={field.value || 'none'} 
                                             onValueChange={(val, pkg) => {
                                                 field.onChange(val);
                                                 if (pkg) {

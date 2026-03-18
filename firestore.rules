@@ -153,9 +153,9 @@ service cloud.firestore {
     match /schools/{schoolId} {
       allow get: if !isAuthorized() || canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding']));
       allow list: if isAuthorized(); 
-      allow create: if isAuthorized();
-      allow update: if isAuthorized();
-      allow delete: if isAdmin();
+      allow create: if isAuthorized() || isSystemAdmin();
+      allow update: if isAuthorized() || isSystemAdmin();
+      allow delete: if isAdmin() || isSystemAdmin();
     }
     
     match /meetings/{meetingId} {

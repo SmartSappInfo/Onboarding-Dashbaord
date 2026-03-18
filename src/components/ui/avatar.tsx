@@ -30,9 +30,9 @@ function AvatarImage({ className, src, ...props }: React.ComponentProps<typeof A
     <div className={cn('relative overflow-hidden rounded-full', className)}>
       <AvatarPrimitive.Image 
         data-slot="avatar-image" 
-        src={src || undefined} 
         className={cn('aspect-square h-full w-full')} 
         {...props} 
+        src={src || undefined}
       />
     </div>
   );
