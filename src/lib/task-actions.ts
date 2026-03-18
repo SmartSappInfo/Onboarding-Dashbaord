@@ -59,6 +59,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
         logActivity({
             schoolId: task.schoolId || '',
             userId: null, 
+            workspaceIds: [task.workspaceId],
             type: 'task_created',
             source: 'system',
             description: `initialized a new task protocol: "${task.title}"`,
@@ -89,19 +90,18 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
 
     const isMarkingDone = updates.status === 'done';
 
-    // Logic: Capture completedAt if status moves to 'done'
     if (isMarkingDone && !updates.completedAt) {
         data.completedAt = timestamp;
     } else if (updates.status && updates.status !== 'done') {
-        data.completedAt = null; // Reopened
+        data.completedAt = null; 
     }
 
     updateDoc(taskRef, data).then(() => {
         if (isMarkingDone) {
-            // Log resolution
             logActivity({
                 schoolId: updates.schoolId || '',
                 userId: null,
+                workspaceIds: updates.workspaceId ? [updates.workspaceId] : ['onboarding'],
                 type: 'task_completed',
                 source: 'system',
                 description: `successfully resolved task: "${updates.title || 'Task Record'}"`,
