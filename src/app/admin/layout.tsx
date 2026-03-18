@@ -272,8 +272,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5">
                             <Avatar className="h-10 w-10 border-2 border-primary/10 transition-transform active:scale-95 shadow-sm">
-                                <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
-                                <AvatarFallback className="bg-primary/5 text-primary font-black text-xs">{getInitials(user?.displayName)}</AvatarFallback>
+                                <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName || 'User'} />
+                                <AvatarFallback className="bg-primary/5 text-primary font-black text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
                             </Avatar>
                             </Button>
                         </DropdownMenuTrigger>

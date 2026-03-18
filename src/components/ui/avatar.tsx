@@ -25,10 +25,15 @@ function Avatar({ className, ...props }: React.ComponentProps<typeof AvatarPrimi
   );
 }
 
-function AvatarImage({ className, ...props }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+function AvatarImage({ className, src, ...props }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
     <div className={cn('relative overflow-hidden rounded-full', className)}>
-      <AvatarPrimitive.Image data-slot="avatar-image" className={cn('aspect-square h-full w-full')} {...props} />
+      <AvatarPrimitive.Image 
+        data-slot="avatar-image" 
+        src={src || undefined} 
+        className={cn('aspect-square h-full w-full')} 
+        {...props} 
+      />
     </div>
   );
 }
@@ -65,4 +70,3 @@ function AvatarStatus({
 }
 
 export { Avatar, AvatarFallback, AvatarImage, AvatarIndicator, AvatarStatus, avatarStatusVariants };
-
