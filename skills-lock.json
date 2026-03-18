@@ -21,6 +21,11 @@
       "sourceType": "github",
       "computedHash": "9faeba2296cd2696b5c2407392fced5524812da07d0a2ec259b524d97bec8aae"
     },
+    "postgres-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "ce3084b8f555d1c560d849332483428301f30ec78f315e1d60ca1ddd8bc69a51"
+    },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
       "sourceType": "github",

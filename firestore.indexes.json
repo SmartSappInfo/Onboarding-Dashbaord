@@ -41,6 +41,14 @@
       ]
     },
     {
+      "collectionGroup": "invoices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "schoolId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "pipelines",
       "queryScope": "COLLECTION",
       "fields": [
@@ -98,35 +106,11 @@
       ]
     },
     {
-      "collectionGroup": "activities",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "message_logs",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "sentAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "sender_profiles",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "message_templates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
