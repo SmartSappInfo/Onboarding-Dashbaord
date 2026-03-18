@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,6 +155,16 @@ export default function EditPdfPage() {
 
   const pdfDocRef = useMemoFirebase(() => firestore && pdfId ? doc(firestore, 'pdfs', pdfId) : null, [firestore, pdfId]);
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
+
+  const livePdf = React.useMemo(() => {
+    if (!pdf) return {} as PDFForm;
+    return {
+      ...pdf,
+      ...watchedForm,
+      fields,
+      namingFieldId
+    } as PDFForm;
+  }, [pdf, watchedForm, fields, namingFieldId]);
   
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
@@ -298,7 +308,16 @@ export default function EditPdfPage() {
                                                     <div className="p-6 bg-background">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <Controller name="status" control={form.control} render={({ field }) => (
-                                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label><Select onValueChange={field.onChange} value={field.value}><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></div>
+                                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label><Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="draft">Draft</SelectItem>
+                                                                        <SelectItem value="published">Published</SelectItem>
+                                                                        <SelectItem value="archived">Archived</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select></div>
                                                             )} />
                                                             <Controller name="slug" control={form.control} render={({ field }) => (
                                                                 <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
