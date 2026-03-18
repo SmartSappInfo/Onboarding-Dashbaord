@@ -27,7 +27,7 @@ export default {
   				'monospace'
   			],
   			signature: [
-  				'Mrs Saint Delafield',
+  				'"Mrs Saint Delafield"',
   				'cursive'
   			]
   		},

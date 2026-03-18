@@ -186,7 +186,7 @@ export default function PackagesClient() {
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {pkg.isActive ? (
-                                                <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-black">Active</Badge>
+                                                <Badge className="bg-emerald-50 text-white border-none text-[8px] h-5 uppercase px-2 font-black">Active</Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-black opacity-40">Inactive</Badge>
                                             )}
@@ -210,9 +210,8 @@ export default function PackagesClient() {
                                             <Package className="h-12 w-12" />
                                             <p className="text-xs font-black uppercase tracking-widest">No tiers in this hub</p>
                                         </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
+                                    </TableRow>
+                                )}
                         </TableBody>
                     </Table>
                 </div>

@@ -79,7 +79,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     () => (firestore ? query(
         collection(firestore, 'schools'), 
         where('pipelineId', '==', pipelineId),
-        where('workspaceId', '==', activeWorkspaceId)
+        where('workspaceIds', 'array-contains', activeWorkspaceId)
     ) : null),
     [firestore, pipelineId, activeWorkspaceId]
   );
@@ -228,7 +228,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
           
           if (user && school) {
             logActivity({
-                schoolId, userId: user.uid, type: 'pipeline_stage_changed', source: 'user_action', workspaceId: activeWorkspaceId,
+                schoolId, userId: user.uid, type: 'pipeline_stage_changed', source: 'user_action', workspaceIds: [activeWorkspaceId],
                 description: `progressed "${school.name}" from "${oldStageName}" to "${newStage.name}"`,
                 metadata: { from: oldStageName, to: newStage.name, pipelineId }
             });
