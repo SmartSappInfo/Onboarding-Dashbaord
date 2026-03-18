@@ -79,6 +79,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * @fileOverview Agreements Hub Client.
+ * Upgraded with multi-workspace sharing logic and workspace-bound filtering.
+ */
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -113,11 +117,11 @@ export default function AgreementsClient() {
 
     const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
 
-    // Data Subscriptions
+    // Data Subscriptions - SYNCED TO WORKSPACE
     const schoolsCol = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'schools'), 
-            where('workspaceId', '==', activeWorkspaceId),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('name', 'asc')
         ) : null, 
     [firestore, activeWorkspaceId]);
@@ -135,7 +139,6 @@ export default function AgreementsClient() {
     const schoolsWithContracts = React.useMemo(() => {
         if (!schools) return [];
         
-        // 1. GLOBAL USER FILTER
         let baseSchools = schools;
         if (assignedUserId) {
             if (assignedUserId === 'unassigned') {
@@ -282,7 +285,7 @@ export default function AgreementsClient() {
                                 <FileCheck className="h-8 w-8 text-primary" />
                                 Agreements & Contracts
                             </h1>
-                            <p className="text-muted-foreground font-medium mt-1">Manage all agreements and legal contracts executions.</p>
+                            <p className="text-muted-foreground font-medium mt-1">Manage institutional legal contracts for the {activeWorkspaceId} track.</p>
                         </div>
                     </div>
 
@@ -442,7 +445,6 @@ export default function AgreementsClient() {
                                                 </TableCell>
                                                 <TableCell className="text-right pr-8">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {/* Always Visible Quick Actions */}
                                                         {contract?.pdfId && (
                                                             <div className="flex items-center gap-1 mr-1 border-r border-border/50 pr-1 animate-in fade-in duration-500">
                                                                 <Tooltip>
@@ -567,7 +569,7 @@ export default function AgreementsClient() {
                                         <TableCell colSpan={6} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center gap-3 opacity-20">
                                                 <FileCheck className="h-12 w-12" />
-                                                <p className="text-xs font-black uppercase tracking-widest">No matching schools</p>
+                                                <p className="text-xs font-black uppercase tracking-widest">No matching schools in this workspace</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
