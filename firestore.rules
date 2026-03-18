@@ -82,7 +82,7 @@ service cloud.firestore {
     }
     match /invoices/{invoiceId} {
       // Bypassing complex data checks for system admins to allow the query optimizer to succeed on 'list'
-      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace([resource.data.get('workspaceId', 'onboarding')]));
+      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.get('workspaceIds', ['onboarding'])));
       allow write: if hasPermission('finance_manage');
     }
     match /billing_settings/{settingId} {

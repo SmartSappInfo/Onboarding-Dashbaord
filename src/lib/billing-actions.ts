@@ -119,7 +119,7 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
             signatureUrl: settings.signatureUrl || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            workspaceId // Strict binding to the creator's track
+            workspaceIds: [workspaceId] // Strict binding to the creator's track
         };
 
         const docRef = await db.collection('invoices').add(invoiceData);

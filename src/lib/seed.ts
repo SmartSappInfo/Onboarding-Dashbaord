@@ -79,8 +79,8 @@ export async function enrichFinanceWithWorkspace(firestore: Firestore): Promise<
     invoicesSnap.forEach(docSnap => {
         const data = docSnap.data();
         backupBatch.set(doc(firestore, 'backup_invoices_migration', docSnap.id), data);
-        if (!data.workspaceId) {
-            batch.update(docSnap.ref, { workspaceId: 'onboarding' });
+        if (!data.workspaceIds || !Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0) {
+            batch.update(docSnap.ref, { workspaceIds: [data.workspaceId || 'onboarding'], workspaceId: deleteField() });
             totalCount++;
         }
     });
@@ -741,7 +741,7 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
                 periodName: 'Term 1 2026',
                 totalPayable: 15000,
                 status: 'sent',
-                workspaceId,
+                workspaceIds: [workspaceId],
                 currency: 'GHS',
                 items: [{ name: 'Subscription', description: 'Platinum Tier', quantity: 1200, unitPrice: 12.5, amount: 15000 }],
                 createdAt: new Date().toISOString(),

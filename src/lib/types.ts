@@ -223,7 +223,7 @@ export interface Invoice {
   createdAt: string;
   updatedAt: string;
   sentAt?: string;
-  workspaceId: string; // Isolated to specific track
+  workspaceIds: string[]; // Visible within these workspaces
 }
 
 export interface BillingSettings {

@@ -85,12 +85,12 @@ export default function InvoicesClient() {
 
     // DATA ARCHITECTURE: Every query is surgically memoized to match firestore.indexes.json
     
-    // Index: invoices [workspaceId (ASC) + createdAt (DESC)]
+    // Index: invoices [workspaceIds (CONTAINS) + createdAt (DESC)]
     const invoicesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'invoices'), 
-            where('workspaceId', '==', activeWorkspaceId),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('createdAt', 'desc'), 
             limit(100)
         );
@@ -386,7 +386,7 @@ export default function InvoicesClient() {
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+function StatCard({ label, value, sub = '', icon: Icon, color, bg }: { label: string, value: string | number, sub?: string, icon: any, color: string, bg: string }) {
     return (
         <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
             <CardContent className="p-6 flex items-center gap-5">
