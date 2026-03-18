@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -210,8 +209,9 @@ export default function PackagesClient() {
                                             <Package className="h-12 w-12" />
                                             <p className="text-xs font-black uppercase tracking-widest">No tiers in this hub</p>
                                         </div>
-                                    </TableRow>
-                                )}
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
