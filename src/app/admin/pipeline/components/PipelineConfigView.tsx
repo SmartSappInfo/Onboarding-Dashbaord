@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -35,6 +34,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import StageEditor from './StageEditor';
 import { setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
+import { cn, toTitleCase } from '@/lib/utils';
 
 interface PipelineConfigViewProps {
     pipelineId: string;
