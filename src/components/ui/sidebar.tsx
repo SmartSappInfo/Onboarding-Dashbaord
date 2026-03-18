@@ -544,6 +544,7 @@ const SidebarMenuButton = React.forwardRef<
     ...props
   }, ref) => {
     const { isMobile, state } = useSidebar()
+    const Comp = asChild ? Slot : "button"
 
     const button = (
       <Comp
@@ -555,8 +556,6 @@ const SidebarMenuButton = React.forwardRef<
         {...props}
       />
     )
-
-    const Comp = asChild ? Slot : "button"
 
     if (!tooltip) {
       return button
