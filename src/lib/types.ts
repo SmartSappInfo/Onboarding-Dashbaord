@@ -63,6 +63,7 @@ export interface Pipeline {
   stageIds: string[];
   accessRoles: string[];
   columnWidth?: number;
+  isDefault?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -353,6 +354,28 @@ export interface PDFForm {
     isContractDocument?: boolean;
 }
 
+export interface PDFFormField {
+    id: string;
+    label: string;
+    type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo' | 'static-text' | 'variable';
+    position: { x: number; y: number };
+    dimensions: { width: number; height: number };
+    required?: boolean;
+    placeholder?: string;
+    options?: string[];
+    variableKey?: string;
+    staticText?: string;
+    pageNumber: number;
+    fontSize?: number;
+    color?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    alignment?: 'left' | 'center' | 'right';
+    verticalAlignment?: 'top' | 'center' | 'bottom';
+    textTransform?: 'none' | 'uppercase' | 'capitalize';
+}
+
 export interface Activity {
   id: string;
   schoolId: string;
@@ -504,3 +527,100 @@ export interface VariableDefinition {
   constantValue?: string; 
   hidden?: boolean;
 }
+
+export interface SurveyResultRule {
+    id: string;
+    label: string;
+    minScore: number;
+    maxScore: number;
+    priority: number;
+    pageId: string;
+    // Automation context
+    emailTemplateId?: string;
+    emailSenderProfileId?: string;
+    smsTemplateId?: string;
+    smsSenderProfileId?: string;
+}
+
+export interface SurveyResultPage {
+    id: string;
+    name: string;
+    isDefault: boolean;
+    blocks: SurveyResultBlock[];
+}
+
+export interface SurveyResultBlock {
+    id: string;
+    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list';
+    title?: string;
+    content?: string;
+    url?: string;
+    link?: string;
+    openInNewTab?: boolean;
+    variant?: 'h1' | 'h2' | 'h3';
+    listStyle?: 'ordered' | 'unordered';
+    items?: string[];
+    style?: {
+        textAlign?: 'left' | 'center' | 'right' | 'justify';
+        backgroundColor?: string;
+        color?: string;
+        animate?: boolean;
+        variant?: string;
+        width?: string;
+        padding?: string;
+    };
+}
+
+export interface SurveySession {
+    id: string;
+    surveyId: string;
+    maxStepReached: number;
+    isSubmitted: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CampaignSession {
+    id: string;
+    campaignId: string;
+    selectedOption: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Webhook {
+    id: string;
+    name: string;
+    url: string;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: string;
+}
+
+export interface PdfSession {
+    id: string;
+    pdfId: string;
+    maxPageReached: number;
+    isSubmitted: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Contract {
+    id: string;
+    schoolId: string;
+    schoolName: string;
+    pdfId: string;
+    pdfName: string;
+    status: ContractStatus;
+    submissionId?: string;
+    sentAt?: string;
+    signedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    recipients: { name: string; email?: string; phone?: string; type: string }[];
+    emailTemplateId?: string | null;
+    smsTemplateId?: string | null;
+}
+
+export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'signed' | 'partially_signed';

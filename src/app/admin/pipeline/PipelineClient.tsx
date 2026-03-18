@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -44,6 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 /**
  * @fileOverview Unified Pipeline Hub.
  * Optimized with Workspace Filtering and Multi-Pipeline support.
+ * Features automated loading of the designated Workspace Default Pipeline.
  */
 
 export default function PipelineClient() {
@@ -80,11 +82,23 @@ export default function PipelineClient() {
   const [statusFilter, setStatusFilter] = React.useState<LifecycleStatus | 'all'>('all');
   const [columnWidth, setColumnWidth] = React.useState(320);
 
-  // Initialization: Reset selection when perspective changes or when pipelines are loaded
+  // Initialization: Resolve target pipeline based on workspace defaults
   React.useEffect(() => {
     if (pipelines && pipelines.length > 0) {
-        if (!currentPipelineId || !pipelines.find(p => p.id === currentPipelineId)) {
+        // Priority 1: If current selected exists in list, keep it
+        if (currentPipelineId && pipelines.find(p => p.id === currentPipelineId)) {
+            return;
+        }
+
+        // Priority 2: Find designated default for this workspace
+        const defaultPipeline = pipelines.find(p => p.isDefault);
+        if (defaultPipeline) {
+            setCurrentPipelineId(defaultPipeline.id);
+            if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
+        } else {
+            // Priority 3: Fallback to first in list
             setCurrentPipelineId(pipelines[0].id);
+            if (pipelines[0].columnWidth) setColumnWidth(pipelines[0].columnWidth);
         }
     } else {
         setCurrentPipelineId(null);
@@ -104,6 +118,7 @@ export default function PipelineClient() {
             accessRoles: [],
             stageIds: [],
             columnWidth: 320,
+            isDefault: false,
             createdAt: timestamp,
             updatedAt: timestamp
         });
@@ -148,7 +163,10 @@ export default function PipelineClient() {
                             <SelectContent className="rounded-xl border-none shadow-2xl p-2 min-w-[240px]">
                                 {pipelines?.map(p => (
                                     <SelectItem key={p.id} value={p.id} className="rounded-lg p-2.5 my-0.5">
-                                        <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
+                                        <div className="flex items-center justify-between gap-4 w-full pr-2">
+                                            <span className="font-black uppercase text-[10px] tracking-tight">{p.name}</span>
+                                            {p.isDefault && <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px] font-black uppercase px-1 shadow-sm">Default</Badge>}
+                                        </div>
                                     </SelectItem>
                                 ))}
                                 {(!pipelines || pipelines.length === 0) && !isLoadingPipelines && (
