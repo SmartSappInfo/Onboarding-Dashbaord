@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -12,7 +11,7 @@ service cloud.firestore {
       // Prioritize simple token checks for query proofing during list operations
       return isSignedIn() && (
         request.auth.token.email == 'admin@smartsapp.com' || 
-        request.auth.token.get('roles', []).hasAny(['administrator'])
+        ('roles' in request.auth.token && request.auth.token.roles.hasAny(['administrator']))
       );
     }
 

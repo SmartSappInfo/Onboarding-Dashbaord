@@ -534,19 +534,15 @@ const SidebarMenuButton = React.forwardRef<
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
-  (
-    {
-      asChild = false,
-      isActive = false,
-      variant = "default",
-      size = "default",
-      tooltip,
-      className,
-      ...props
-    },
-    ref
-  ) => {
-    const Comp = asChild ? Slot : "button"
+  ({
+    asChild = false,
+    isActive = false,
+    variant = "default",
+    size = "default",
+    tooltip,
+    className,
+    ...props
+  }, ref) => {
     const { isMobile, state } = useSidebar()
 
     const button = (
@@ -559,6 +555,8 @@ const SidebarMenuButton = React.forwardRef<
         {...props}
       />
     )
+
+    const Comp = asChild ? Slot : "button"
 
     if (!tooltip) {
       return button
