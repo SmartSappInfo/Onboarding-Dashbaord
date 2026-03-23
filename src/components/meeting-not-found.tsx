@@ -1,0 +1,34 @@
+
+'use client';
+
+import Link from 'next/link';
+import { useRive } from '@rive-app/react-canvas';
+import { Button } from './ui/button';
+import { ArrowLeft, Ghost } from 'lucide-react';
+
+export default function MeetingNotFound() {
+  const { RiveComponent } = useRive({
+    src: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/404-rive.riv?alt=media&token=03a088d9-5d26-4e5e-8c40-73ec81505a35',
+    autoplay: true,
+  });
+
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-20 px-4">
+      <div className="w-64 h-64 flex items-center justify-center">
+        {RiveComponent ? <RiveComponent /> : <Ghost className="h-20 w-20 text-muted-foreground/20 animate-pulse" />}
+      </div>
+      <h1 className="mt-8 text-3xl font-black tracking-tighter sm:text-4xl">
+        Sorry! We can't find your meeting!
+      </h1>
+      <p className="mt-4 text-lg text-muted-foreground font-medium max-w-md mx-auto leading-relaxed">
+        The meeting link might have expired or is incorrect. Please check the URL and try again.
+      </p>
+      <Button asChild size="lg" className="mt-10 rounded-xl font-bold shadow-lg">
+        <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Go to Homepage
+        </Link>
+      </Button>
+    </div>
+  );
+}

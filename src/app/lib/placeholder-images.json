@@ -1,0 +1,59 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "home-hero",
+      "description": "A person holding a phone showing an app screen.",
+      "imageUrl": "https://images.unsplash.com/photo-1551650975-87deedd944c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxhcHAlMjBzY3JlZW58ZW58MHx8fHwxNzY5MTAxNTUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "app screen"
+    },
+    {
+      "id": "school-logo",
+      "description": "Logo for Ghana International School.",
+      "imageUrl": "https://images.unsplash.com/photo-1765987776526-65999a5b213a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzY2hvb2wlMjBjcmVzdHxlbnwwfHx8fDE3Njg5MzU3MTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "school crest"
+    },
+    {
+      "id": "school-hero",
+      "description": "Hero image for the Ghana International School meeting page.",
+      "imageUrl": "https://images.unsplash.com/photo-1706078352329-977b4cb3f889?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzY2hvb2wlMjBjYW1wdXN8ZW58MHx8fHwxNzY4OTc2MjU0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "school campus"
+    },
+    {
+      "id": "meeting-hero",
+      "description": "Parents and teachers looking at a tablet in a school hallway.",
+      "imageUrl": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwYXJlbnRzJTIwc2Nob29sJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3NjkyMTE4Mjl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "parents technology"
+    },
+    {
+      "id": "testimonial-1",
+      "description": "Thumbnail for a video testimonial.",
+      "imageUrl": "https://images.unsplash.com/photo-1525186402429-b4ff38bedec6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxoYXBweSUyMHBlcnNvbnxlbnwwfHx8fDE3Njg5MjU3MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "happy person"
+    },
+    {
+      "id": "testimonial-2",
+      "description": "Thumbnail for a second video testimonial.",
+      "imageUrl": "https://images.unsplash.com/photo-1631128869897-68e78bf4fb7e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzbWlsaW5nJTIwc3R1ZGVudHxlbnwwfHx8fDE3NjkwMDA2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smiling student"
+    },
+    {
+      "id": "testimonial-3",
+      "description": "Thumbnail for a third video testimonial.",
+      "imageUrl": "https://images.unsplash.com/photo-1580894732930-0babd100d356?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwYXJlbnQlMjB0ZWFjaGVyfGVufDB8fHx8MTc2ODkzMjA1M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "parent teacher"
+    },
+    {
+      "id": "campaign-parent",
+      "description": "Parent and student persona image for the selection gateway.",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772640713723-quiz-parents-option.webp?alt=media&token=f12c5050-a23a-47ff-9a01-e9d41d1e0363",
+      "imageHint": "parent student"
+    },
+    {
+      "id": "campaign-school",
+      "description": "School owner and staff persona image for the selection gateway.",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772640713710-quiz-parents-option.webp?alt=media&token=77d85e23-5c11-4dbf-ad0b-babed59c4366",
+      "imageHint": "school staff"
+    }
+  ]
+}

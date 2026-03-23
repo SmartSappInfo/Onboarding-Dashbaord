@@ -1,0 +1,234 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+
+    function isAuthorized() {
+      // Prioritize the master admin email for bootstrapping and emergency access
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
+        return true;
+      }
+      let data = getUserData();
+      return data != null && data.get('isAuthorized', false) == true;
+    }
+
+    function isSystemAdmin() {
+      // Prioritize email check to bypass get() call overhead and bootstrapping issues
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
+        return true;
+      }
+      
+      let data = getUserData();
+      return data != null && data.get('isAuthorized', false) == true && 
+             data.get('permissions', []).hasAny(['system_admin']);
+    }
+
+    function isOrgMatch(orgId) {
+      // Master admin bypass
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
+        return true;
+      }
+      let data = getUserData();
+      return data != null && data.get('organizationId', '') == orgId;
+    }
+
+    function hasPermission(perm) {
+      if (isSystemAdmin()) return true;
+      let data = getUserData();
+      return data != null && data.get('isAuthorized', false) == true && (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin']));
+    }
+
+    function canAccessWorkspace(targetWorkspaceIds) {
+      if (isSystemAdmin()) return true;
+      let data = getUserData();
+      if (data == null || data.isAuthorized != true) return false;
+      
+      let userWorkspaces = data.get('workspaceIds', []);
+      return userWorkspaces.hasAny(targetWorkspaceIds);
+    }
+
+    // --- Base Deny-All ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Governance Layer (Org Bound) ---
+    match /organizations/{orgId} {
+      allow get: if isSignedIn() && (isSystemAdmin() || isOrgMatch(orgId));
+      allow write: if isSystemAdmin();
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin());
+      allow list: if isSignedIn() && (isSystemAdmin() || (isAuthorized() && request.query.filters.organizationId == getUserData().organizationId));
+      allow update: if isSignedIn() && isSystemAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId; 
+    }
+
+    match /roles/{roleId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /billing_profiles/{profileId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && isOrgMatch(request.resource.data.organizationId)));
+    }
+
+    match /workspaces/{workspaceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- Operational Layer (Workspace Shared Array) ---
+    match /schools/{schoolId} {
+      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceIds);
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow create: if isAuthorized();
+      allow update: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow delete: if isAuthorized() && hasPermission('system_admin') && canAccessWorkspace(resource.data.workspaceIds);
+    }
+
+    match /pipelines/{pId} {
+      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('system_admin') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /meetings/{meetingId} {
+      allow read: if true; 
+      allow create: if isAuthorized();
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      
+      match /attendees/{aId} {
+        allow create: if true;
+        allow read, list: if isAuthorized();
+      }
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /billing_periods/{periodId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /subscription_packages/{pkgId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.isActive == true;
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || request.query.filters.isActive == true;
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /surveys/{surveyId} {
+      allow get: if isAuthorized() || resource.data.status == 'published';
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+
+      match /responses/{rId} {
+        allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
+        allow read, list: if isAuthorized();
+      }
+      match /summaries/{sId} {
+        allow read, list, write: if isAuthorized();
+      }
+      match /resultPages/{pId} {
+        allow read: if true;
+        allow write: if isAuthorized();
+      }
+    }
+
+    match /pdfs/{pdfId} {
+      allow get: if isAuthorized() || resource.data.status == 'published';
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+
+      match /submissions/{sId} {
+        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
+        allow read, list: if isAuthorized();
+      }
+    }
+
+    match /media/{mediaId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
+    match /message_templates/{tId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /sender_profiles/{pId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /message_styles/{sId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /automations/{aId} {
+      allow get, list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
+    // --- Operational Layer (Strict Workspace Confinement) ---
+    match /tasks/{taskId} {
+      allow read, write: if isAuthorized() && (
+        isSystemAdmin() || 
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+    }
+
+    match /activities/{activityId} {
+      allow read, list: if isAuthorized() && (
+        isSystemAdmin() || 
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if isAuthorized() || isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
+    }
+
+    match /message_logs/{logId} {
+      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+    }
+
+    // --- System / Analytics ---
+    match /automation_runs/{runId} {
+      allow read, list: if isAuthorized();
+    }
+    match /automation_jobs/{jobId} {
+      allow read, list: if isAuthorized();
+    }
+    match /survey_sessions/{sId} {
+      allow create, update: if true;
+      allow read, list: if isAuthorized();
+    }
+    match /campaign_sessions/{sId} {
+      allow read, list, create, update: if true;
+    }
+    match /webhooks/{wId} {
+      allow read, write: if isAuthorized();
+    }
+    match /messaging_variables/{vId} {
+      allow read, write: if isAuthorized();
+    }
+  }
+}

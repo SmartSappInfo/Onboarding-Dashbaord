@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "skills": {
+    "code-refactoring": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "18da189464fd9a53133a1372599369ac4b7f3a9da653a907762e20e89cdb2102"
+    },
+    "eslint-prettier-config": {
+      "source": "patricio0312rev/skills",
+      "sourceType": "github",
+      "computedHash": "dd1365afc6c06f6c8555d0624669e70c6873057da70a92b045e948329dc1b906"
+    },
+    "firebase-firestore-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e7e21f72b693e8eba6797e0799e1f9d96ec9f73669cb741a7ca2e541fa460b55"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+    },
+    "marketing-automation": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "9faeba2296cd2696b5c2407392fced5524812da07d0a2ec259b524d97bec8aae"
+    },
+    "next-best-practices": {
+      "source": "vercel-labs/next-skills",
+      "sourceType": "github",
+      "computedHash": "515ba75178bd44875812d9a560bdf14651f86709f89cf1d4f209638e879807f3"
+    },
+    "postgres-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "ce3084b8f555d1c560d849332483428301f30ec78f315e1d60ca1ddd8bc69a51"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "computedHash": "9851afb52e1b892c43b2af973bda1776ce01fedfdfe704e0cfd70069a3a9c300"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "table-filters": {
+      "source": "shipshitdev/library",
+      "sourceType": "github",
+      "computedHash": "cc9bc337cd2db6bec0eb3c0d1d0312db48ec997ca217ff1a9c58a4a8a0e2e0a1"
+    },
+    "task-planning": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "1459a31d3c87df7fd601a99479363a7f66da1cd2089f08405a7d4854d0da3a93"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "e688fcd4c5693e14ebd00d48e982dbd2be060fbea89f5f60531e79c704a1bc28"
+    },
+    "vitest": {
+      "source": "bobmatnyc/claude-mpm-skills",
+      "sourceType": "github",
+      "computedHash": "9d2eef62dbba4528c258222534cf2f1bfa37bdc1a00547add05e3367ac4946f3"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    }
+  }
+}

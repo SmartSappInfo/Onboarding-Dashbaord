@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 27% 96%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 228 100% 62%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: oklch(1 0 0);
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 228 100% 62%;
+    --radius: 0.8rem;
+    --chart-1: 228 100% 62%;
+    --chart-2: 174 100% 29%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --sidebar-background: 224 71.4% 4.1%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 228 100% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 228 100% 62%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Spectrum Variables for AI Buttons */
+    --color-1: 0 100% 63%;
+    --color-2: 270 100% 63%;
+    --color-3: 210 100% 63%;
+    --color-4: 195 100% 63%;
+    --color-5: 90 100% 63%;
+  }
+
+  .dark {
+    --background: 228 14% 10%;
+    --foreground: 228 15% 85%;
+    --card: 228 14% 12%;
+    --card-foreground: 228 15% 85%;
+    --popover: 228 14% 12%;
+    --popover-foreground: 228 15% 85%;
+    --primary: 228 100% 62%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 228 10% 20%;
+    --secondary-foreground: 228 15% 85%;
+    --muted: 228 10% 20%;
+    --muted-foreground: 228 10% 55%;
+    --accent: 228 10% 20%;
+    --accent-foreground: 228 15% 85%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: oklch(1 0 0);
+    --border: 228 10% 20%;
+    --input: 228 10% 20%;
+    --ring: 228 100% 62%;
+    --radius: 0.8rem;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Spectrum Variables for AI Buttons - Dark */
+    --color-1: 0 100% 63%;
+    --color-2: 270 100% 63%;
+    --color-3: 210 100% 63%;
+    --color-4: 195 100% 63%;
+    --color-5: 90 100% 63%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.font-signature {
+  font-family: 'Mrs Saint Delafield', cursive !important;
+}

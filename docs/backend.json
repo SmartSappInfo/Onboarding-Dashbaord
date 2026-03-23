@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Organization": {
+      "title": "Organization",
+      "description": "Root tenant container for branding, billing, and user governance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Identity anchored to an Organization with one-to-many workspace assignments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "isAuthorized": { "type": "boolean" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "permissions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Workspace": {
+      "title": "Operational Workspace",
+      "description": "Partitioned hub for schools and tasks. Features independent lifecycles.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "statuses": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "School": {
+      "title": "Educational Institution",
+      "description": "School record shared across workspaces via array-based partitioning.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "workspaceIds": { "type": "array", "items": { "type": "string" } },
+        "name": { "type": "string" },
+        "status": { "type": "string" },
+        "schoolStatus": { "type": "string" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["email", "google.com"]
+  },
+  "firestore": {
+    "/organizations/{orgId}": {
+      "schema": "#/entities/Organization",
+      "description": "Root tenant records."
+    },
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "User identities with multi-workspace grants."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": "#/entities/Workspace",
+      "description": "Independent operational hubs."
+    },
+    "/schools/{schoolId}": {
+      "schema": "#/entities/School",
+      "description": "Shared institutional records."
+    }
+  }
+}
