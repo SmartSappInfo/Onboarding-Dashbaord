@@ -29,7 +29,7 @@ export async function GET(
 
     const pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
 
-    return new Response(pdfBytes, {
+    return new Response(Buffer.from(pdfBytes), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${pdfForm.name}-signed.pdf"`,

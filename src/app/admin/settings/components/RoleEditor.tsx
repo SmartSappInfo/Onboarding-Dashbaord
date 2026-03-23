@@ -284,7 +284,7 @@ export default function RoleEditor() {
                                                                 style={{ backgroundColor: roleColor, borderColor: roleColor + '40' }} 
                                                             />
                                                         </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-3 rounded-2xl border-none shadow-2xl" modal={false}>
+                                                        <PopoverContent className="w-auto p-3 rounded-2xl border-none shadow-2xl">
                                                             <div className="grid grid-cols-6 gap-2">
                                                                 {ONBOARDING_STAGE_COLORS.map(c => (
                                                                     <button key={c} type="button" onClick={() => setRoleColor(c)} className="w-6 h-6 rounded-md shadow-sm border border-black/5" style={{ backgroundColor: c }} />

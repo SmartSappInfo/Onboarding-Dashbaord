@@ -37,6 +37,8 @@ export default function SurveyPreviewButton({ variant, size, className, children
             description: values.description || '',
             elements: values.elements || [],
             status: values.status || 'draft',
+            workspaceIds: values.workspaceIds || [],
+            internalName: values.internalName || values.title || '',
             bannerImageUrl: values.bannerImageUrl,
             thankYouTitle: values.thankYouTitle,
             thankYouDescription: values.thankYouDescription,

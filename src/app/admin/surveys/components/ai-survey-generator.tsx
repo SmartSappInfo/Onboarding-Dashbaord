@@ -104,6 +104,8 @@ export default function AiSurveyGenerator() {
             slug,
             status: 'published',
             backgroundPattern: 'none', // Set strictly to 'none' by default
+            workspaceIds: [],
+            internalName: generatedData.title,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };

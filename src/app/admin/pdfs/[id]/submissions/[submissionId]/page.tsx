@@ -152,7 +152,7 @@ export default function SubmissionDetailPage() {
         }
 
         const pdfBytes = await pdfBundle.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
         const fileName = `${pdfForm?.name || 'signed'}-frontend-capture.pdf`;
 
@@ -197,11 +197,11 @@ export default function SubmissionDetailPage() {
             </h1>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 pr-2">
-          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex rounded-xl font-bold">
+          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={Boolean(isLoadingPdf || isFrontEndDownloading)} className="h-9 hidden md:flex rounded-xl font-bold">
             {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
             Snapshot
           </Button>
-          <Button size="sm" onClick={handleDownload} disabled={isLoading || isDownloading} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest">
+          <Button size="sm" onClick={handleDownload} disabled={Boolean(isLoadingPdf || isDownloading)} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest">
             {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Download Signed Copy
           </Button>

@@ -41,7 +41,7 @@ interface LogActivityModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MANUAL_ACTIVITY_TYPES: Activity['type'][] = ['note', 'call', 'visit', 'email'];
+const MANUAL_ACTIVITY_TYPES = ['note', 'call', 'visit', 'email'] as const;
 
 const formSchema = z.object({
   type: z.enum(MANUAL_ACTIVITY_TYPES, {

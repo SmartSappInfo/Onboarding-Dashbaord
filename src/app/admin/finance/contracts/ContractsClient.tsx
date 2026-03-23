@@ -469,7 +469,7 @@ export default function AgreementsClient() {
                                                                             className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
                                                                             asChild
                                                                         >
-                                                                            <a href={`/forms/${item.contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
                                                                                 <Globe className="h-4 w-4" />
                                                                             </a>
                                                                         </Button>

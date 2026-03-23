@@ -50,6 +50,7 @@ import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
 import SchoolBillingTab from '../components/SchoolBillingTab';
 import { MediaSelect } from '../components/media-select';
+import { getPrimaryWorkspaceId, isProspect as checkIsProspect } from '@/lib/workspace-helpers';
 import {
   Dialog,
   DialogContent,
@@ -159,7 +160,7 @@ export default function SchoolDetailPage() {
         </div>
     );
 
-    const isProspect = school.workspaceId === 'prospect';
+    const isProspect = checkIsProspect(school);
 
     return (
         <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.schoolStatus === 'Churned' && "grayscale opacity-80")}>
@@ -323,7 +324,7 @@ export default function SchoolDetailPage() {
                                     </div>
                                     <div className="space-y-6">
                                         <DetailItem icon={UserCheck} label="Primary Handler" value={school.assignedTo?.name || 'Unassigned'} />
-                                        <DetailItem icon={Target} label="Source Workspace" value={toTitleCase(school.workspaceId)} />
+                                        <DetailItem icon={Target} label="Source Workspace" value={toTitleCase(getPrimaryWorkspaceId(school))} />
                                         <Separator />
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Functional Interests</p>
@@ -343,7 +344,7 @@ export default function SchoolDetailPage() {
                         <div className="flex justify-between items-center mb-2 px-2">
                             <h3 className="text-xl font-black uppercase tracking-tight">Active Tasks</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
-                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${school.workspaceId}`}>
+                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${getPrimaryWorkspaceId(school)}`}>
                                     <Plus className="h-4 w-4" /> Create Task
                                 </Link>
                             </Button>

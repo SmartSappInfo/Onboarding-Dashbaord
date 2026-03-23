@@ -1,5 +1,6 @@
 
 'use client';
+import * as React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -7,6 +8,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { File as FileIcon, X, CheckCircle, Upload, Loader2, Info, Layout } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';

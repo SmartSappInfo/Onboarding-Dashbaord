@@ -195,7 +195,7 @@ export default function PeriodsClient() {
                                             <div className="flex flex-wrap gap-1">
                                                 {period.workspaceIds?.map(wId => (
                                                     <Badge key={wId} variant="outline" className="text-[8px] font-black uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
-                                                )) || <Badge variant="ghost" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
+                                                )) || <Badge variant="secondary" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">

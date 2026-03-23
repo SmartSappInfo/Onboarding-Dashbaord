@@ -7,6 +7,8 @@ import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
+import { getSchoolEmail, getSchoolPhone, getSignatory } from './school-helpers';
+import { getPrimaryWorkspaceId } from './workspace-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -74,7 +76,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
         if (schoolSnap.exists) {
             const schoolData = schoolSnap.data() as School;
-            const signatory = (schoolData.focalPersons || []).find(p => p.isSignatory);
+            const signatory = getSignatory(schoolData);
             
             // Logs inherit workspace visibility from the school
             if (schoolData.workspaceIds?.length) workspaceIds = schoolData.workspaceIds;
@@ -83,8 +85,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 school_name: schoolData.name,
                 school_initials: schoolData.initials,
                 school_location: schoolData.location,
-                school_phone: schoolData.phone,
-                school_email: schoolData.email,
+                school_phone: getSchoolPhone(schoolData),
+                school_email: getSchoolEmail(schoolData),
                 contact_name: signatory?.name || '',
                 contact_email: signatory?.email || '',
                 contact_phone: signatory?.phone || '',

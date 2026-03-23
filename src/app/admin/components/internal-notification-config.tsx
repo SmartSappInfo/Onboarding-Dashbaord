@@ -175,16 +175,18 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                                 name={`${prefix}EmailTemplateId`}
                                                 control={control}
                                                 render={({ field }) => (
-                                                    field.value && field.value !== 'none' ? (
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="ghost" 
-                                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
-                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
-                                                        >
-                                                            <Pencil className="h-3 w-3" /> Edit
-                                                        </Button>
-                                                    ) : null
+                                                    <>
+                                                        {field.value && field.value !== 'none' ? (
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="ghost" 
+                                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                                onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
+                                                            >
+                                                                <Pencil className="h-3 w-3" /> Edit
+                                                            </Button>
+                                                        ) : null}
+                                                    </>
                                                 )}
                                             />
                                             <Button 
@@ -226,16 +228,18 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                                 name={`${prefix}SmsTemplateId`}
                                                 control={control}
                                                 render={({ field }) => (
-                                                    field.value && field.value !== 'none' ? (
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="ghost" 
-                                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
-                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
-                                                        >
-                                                            <Pencil className="h-3 w-3" /> Edit
-                                                        </Button>
-                                                    ) : null
+                                                    <>
+                                                        {field.value && field.value !== 'none' ? (
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="ghost" 
+                                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                                onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
+                                                            >
+                                                                <Pencil className="h-3 w-3" /> Edit
+                                                            </Button>
+                                                        ) : null}
+                                                    </>
                                                 )}
                                             />
                                             <Button 

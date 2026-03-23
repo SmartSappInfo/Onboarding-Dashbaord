@@ -34,7 +34,7 @@ type AnalyzedResult = {
     | { type: 'unknown'; data: any[] }
 );
 
-const generateInsight = (result: Omit<AnalyzedResult, 'insight'>): string => {
+const generateInsight = (result: AnalyzedResult): string => {
     if (result.type === 'chart' && result.data.length > 0) {
         const sorted = [...result.data].sort((a, b) => b.value - a.value);
         const mostPopular = sorted[0];
@@ -50,6 +50,9 @@ const generateInsight = (result: Omit<AnalyzedResult, 'insight'>): string => {
         const sorted = [...result.data].sort((a, b) => b.value - a.value);
         const mostPopular = sorted[0];
         if (mostPopular.percentage > 50) return `"${mostPopular.name}" was the most frequently selected option.`;
+    }
+    if (result.type === 'text' && result.total > 0) {
+        return `Received ${result.total} text ${result.total === 1 ? 'response' : 'responses'}.`;
     }
     return '';
 }
@@ -72,6 +75,8 @@ const CustomizedBarLabel = (props: any) => {
 };
 
 function QuestionResult({ result, index }: { result: AnalyzedResult, index: number }) {
+    const total = result.type !== 'unknown' ? result.total : 0;
+    
     return (
         <Card className="flex flex-col transition-shadow hover:shadow-md">
             <CardHeader className="p-4 md:p-6 pb-2">
@@ -80,7 +85,7 @@ function QuestionResult({ result, index }: { result: AnalyzedResult, index: numb
                         {index + 1}. {result.question.title}
                     </CardTitle>
                 </div>
-                <CardDescription className="text-xs">{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
+                <CardDescription className="text-xs">{total} {total === 1 ? 'response' : 'responses'}</CardDescription>
                 {result.insight && (
                     <p className="text-sm text-muted-foreground pt-2 italic">
                         &ldquo;{result.insight}&rdquo;
@@ -277,7 +282,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
             const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null && v !== '');
             let scoreData: { totalScore?: number, averageScore?: number } = {};
             
-            let tempResult: Omit<AnalyzedResult, 'insight'>;
+            let result: AnalyzedResult;
 
             if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
                 const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
@@ -285,7 +290,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                 questionResponses.forEach(value => { if (typeof value === 'string' && value in counts) counts[value]++; });
                 const total = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                tempResult = { question, type: 'chart', data, total, ...scoreData };
+                result = { question, type: 'chart' as const, data, total, insight: '', ...scoreData };
             } else if (question.type === 'checkboxes') {
                 const counts = Object.fromEntries((question.options || []).map(opt => [opt, 0]));
                 if (question.allowOther) counts['Other'] = 0;
@@ -300,30 +305,31 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                 });
                 const totalRespondents = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0 }));
-                tempResult = { question, type: 'checkbox', data, otherText, total: totalRespondents, ...scoreData };
+                result = { question, type: 'checkbox' as const, data, otherText, total: totalRespondents, insight: '', ...scoreData };
             } else if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
                 const textResponses = questionResponses.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
-                tempResult = { question, type: 'text', data: textResponses, total: textResponses.length, ...scoreData };
+                result = { question, type: 'text' as const, data: textResponses, total: textResponses.length, insight: '', ...scoreData };
             } else if (question.type === 'rating') {
                 const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
-                const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+                const counts: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
                 let totalScore = 0;
                 ratingResponses.forEach(rating => {
                     if (rating >= 1 && rating <= 5) {
-                        counts[rating as keyof typeof counts]++;
+                        const key = String(rating);
+                        counts[key]++;
                         totalScore += rating;
                     }
                 });
                 const total = ratingResponses.length;
                 const average = total > 0 ? totalScore / total : 0;
                 const data = Object.entries(counts).map(([name, value]) => ({ name: `${name} ★`, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                tempResult = { question, type: 'rating', data, total, average, ...scoreData };
+                result = { question, type: 'rating' as const, data, total, average, insight: '', ...scoreData };
             } else {
-                 tempResult = { question, type: 'unknown', data: [], ...scoreData };
+                 result = { question, type: 'unknown' as const, data: [], insight: '', ...scoreData };
             }
 
-            const insight = generateInsight(tempResult);
-            return { ...tempResult, insight };
+            const insight = generateInsight(result);
+            return { ...result, insight };
         });
     }, [survey, responses]);
 

@@ -125,7 +125,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
     setDownloadingId(null);
     setIsProcessingBatch(false);
     setTotalBatchSize(0);
-    toast({ title: 'Download Cancelled', variant: 'secondary' });
+    toast({ title: 'Download Cancelled' });
   };
 
   const toggleSelectAll = () => {
@@ -281,7 +281,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         document.body.removeChild(exportContainer);
 
         const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -386,7 +386,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                                 
-                                {submissions?.length > 0 && (
+                                {(submissions?.length ?? 0) > 0 && (
                                     <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
                                         {isProcessingBatch ? (
                                             <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
@@ -580,7 +580,8 @@ function HighFidelityDownloader({
                 const page = pdfBundle.addPage([595.28, 841.89]);
                 page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
             }
-            const blob = new Blob([await pdfBundle.save()], { type: 'application/pdf' });
+            const pdfBundleBytes = await pdfBundle.save();
+            const blob = new Blob([new Uint8Array(pdfBundleBytes)], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             onDownloadFinished(true);

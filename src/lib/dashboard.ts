@@ -55,15 +55,15 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   
   const now = startOfToday();
   const totalSchools = schools.length;
-  const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
+  const totalStudents = schools.reduce((sum: number, school: School) => sum + (school.nominalRoll || 0), 0);
   
   // 3. Meeting Intelligence
   const upcomingMeetings = meetingsSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
-    .filter(m => m.meetingTime && isAfter(new Date(m.meetingTime), now))
-    .sort((a, b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
+    .filter((m: Meeting) => m.meetingTime && isAfter(new Date(m.meetingTime), now))
+    .sort((a: Meeting, b: Meeting) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
     .slice(0, 5)
-    .map(meeting => ({
+    .map((meeting: Meeting) => ({
       ...meeting,
       date: format(new Date(meeting.meetingTime), 'MMM dd, yyyy'),
       status: 'Upcoming',
@@ -80,7 +80,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
 
   const latestSurveys = surveysSnapshot.docs
     .map((doc: any) => ({ id: doc.id, ...doc.data() } as Survey))
-    .sort((a, b) => {
+    .sort((a: Survey, b: Survey) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
@@ -93,10 +93,10 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   // Create logical buckets by name to handle duplicate stage names across multiple pipelines
   const aggregatedStages: Record<string, { count: number; students: number; color: string; order: number }> = {};
   
-  stages.forEach(stage => {
-      const schoolsInStage = schools.filter(school => school.stage?.id === stage.id);
+  stages.forEach((stage: OnboardingStage) => {
+      const schoolsInStage = schools.filter((school: School) => school.stage?.id === stage.id);
       const schoolCount = schoolsInStage.length;
-      const studentCount = schoolsInStage.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
+      const studentCount = schoolsInStage.reduce((sum: number, school: School) => sum + (school.nominalRoll || 0), 0);
       
       const key = stage.name;
       if (!aggregatedStages[key]) {
@@ -117,21 +117,21 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   });
 
   const pipelineCounts = Object.entries(aggregatedStages)
-    .map(([name, data]) => ({
+    .map(([name, data]: [string, { count: number; students: number; color: string; order: number }]) => ({
         name,
         count: data.count,
         students: data.students,
         color: data.color,
         order: data.order
     }))
-    .sort((a, b) => a.order - b.order);
+    .sort((a: { order: number }, b: { order: number }) => a.order - b.order);
 
   // 5. User Assignments
   const users = usersSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as UserProfile));
-  const userAssignments = users.map(user => {
-      const assignedSchools = schools.filter(s => s.assignedTo?.userId === user.id);
+  const userAssignments = users.map((user: UserProfile) => {
+      const assignedSchools = schools.filter((s: School) => s.assignedTo?.userId === user.id);
       const totalAssigned = assignedSchools.length;
-      const totalStudents = assignedSchools.reduce((acc, school) => acc + (school.nominalRoll || 0), 0);
+      const totalStudents = assignedSchools.reduce((acc: number, school: School) => acc + (school.nominalRoll || 0), 0);
 
       return {
           user,
@@ -139,22 +139,22 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
           totalStudents,
           assignmentPercentage: totalSchools > 0 ? (totalAssigned / totalSchools) * 100 : 0,
       };
-  }).filter(ua => ua.totalAssigned > 0);
+  }).filter((ua: { totalAssigned: number }) => ua.totalAssigned > 0);
   
   // 6. Regional Distribution
-  const zoneDistribution = zones.map(zone => {
-    const schoolsInZone = schools.filter(s => s.zone?.id === zone.id);
+  const zoneDistribution = zones.map((zone: Zone) => {
+    const schoolsInZone = schools.filter((s: School) => s.zone?.id === zone.id);
     return {
       name: zone.name,
       schoolCount: schoolsInZone.length,
-      studentCount: schoolsInZone.reduce((sum, s) => sum + (s.nominalRoll || 0), 0)
+      studentCount: schoolsInZone.reduce((sum: number, s: School) => sum + (s.nominalRoll || 0), 0)
     };
-  }).filter(zd => zd.schoolCount > 0);
+  }).filter((zd: { schoolCount: number }) => zd.schoolCount > 0);
 
   // 7. Module Implementations
   const moduleCounts: Record<string, { abbreviation: string; name: string; count: number }> = {};
-  schools.forEach(school => {
-      school.modules?.forEach(m => {
+  schools.forEach((school: School) => {
+      school.modules?.forEach((m: { id: string; name: string; abbreviation: string }) => {
           if (!moduleCounts[m.id]) {
               moduleCounts[m.id] = { name: m.name, abbreviation: m.abbreviation, count: 0 };
           }
@@ -164,10 +164,10 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   const moduleImplementations = Object.values(moduleCounts);
 
   // 8. Messaging Metrics
-  const emailLogs = logs.filter(l => l.channel === 'email');
-  const smsLogs = logs.filter(l => l.channel === 'sms');
-  const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;
-  const smsSuccess = smsLogs.length > 0 ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 : 100;
+  const emailLogs = logs.filter((l: MessageLog) => l.channel === 'email');
+  const smsLogs = logs.filter((l: MessageLog) => l.channel === 'sms');
+  const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter((l: MessageLog) => l.status === 'sent').length / emailLogs.length) * 100 : 100;
+  const smsSuccess = smsLogs.length > 0 ? (smsLogs.filter((l: MessageLog) => l.status === 'sent').length / smsLogs.length) * 100 : 100;
 
   const messagingMetrics = {
     emailSuccess: Math.round(emailSuccess),

@@ -101,7 +101,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
     useEffect(() => {
         if (!isLayoutLoading) {
             if (layoutData?.componentIds) {
-                const validIds = layoutData.componentIds.filter(id => DEFAULT_LAYOUT.includes(id));
+                const validIds = layoutData.componentIds.filter((id: string) => DEFAULT_LAYOUT.includes(id));
                 const newIds = DEFAULT_LAYOUT.filter(id => !validIds.includes(id));
                 setOrderedComponents([...validIds, ...newIds]);
             } else {
@@ -145,7 +145,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
                     const Component = componentMap[id];
                     if (!Component) return null;
 
-                    const props = componentPropsMap(initialData)[id];
+                    const props = (componentPropsMap(initialData) as Record<string, any>)[id];
 
                     return (
                         <div key={id}>
@@ -165,7 +165,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
                         const Component = componentMap[id];
                         if (!Component) return null;
 
-                        const props = componentPropsMap(initialData)[id];
+                        const props = (componentPropsMap(initialData) as Record<string, any>)[id];
                         const gridClass = componentGridConfig[id] || 'lg:col-span-2';
 
                         return (

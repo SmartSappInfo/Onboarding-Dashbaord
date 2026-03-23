@@ -102,7 +102,7 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
             downloadUrl: downloadURL,
             size: stagedFile.size,
             mimeType: stagedFile.type,
-          }, user.uid);
+          }, user.uid, []);
 
           if (result.success && result.id) {
             toast({ title: 'Upload Successful', description: `${stagedFile.name} has been uploaded.` });

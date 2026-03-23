@@ -10,16 +10,14 @@ import {
     Clock, 
     AlertCircle, 
     Building, 
-    Receipt,
     ShieldCheck,
     Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { SmartSappLogo } from '@/components/icons';
+import { SmartSappLogo, SmartSappIcon } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 
 interface InvoicePortalClientProps {
@@ -68,7 +66,7 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
             });
 
             const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             
             const link = document.createElement("a");
@@ -124,7 +122,8 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                 </div>
 
                 {/* Main Invoice Card */}
-                <Card ref={invoiceRef} className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white ring-1 ring-black/5 relative">
+                <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white ring-1 ring-black/5 relative">
+                    <div ref={invoiceRef}>
                     <CardContent className="p-0">
                         {/* Branded Header */}
                         <div className="p-12 sm:p-16 border-b flex flex-col sm:flex-row justify-between gap-12 bg-slate-50/50">
@@ -266,6 +265,7 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                             </div>
                         </div>
                     </CardContent>
+                    </div>
                 </Card>
 
                 {/* Branding Footer */}

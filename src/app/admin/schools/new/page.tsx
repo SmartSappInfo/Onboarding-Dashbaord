@@ -215,7 +215,7 @@ export default function NewSchoolPage() {
           schoolName: data.name, 
           schoolSlug: slug, 
           userId: user.uid,
-          workspaceIds: data.workspaceIds,
+          workspaceId: data.workspaceIds[0] || 'onboarding',
           type: 'school_created', 
           source: 'user_action',
           description: `registered new record: "${data.name}" in ${data.workspaceIds.length} hubs`,

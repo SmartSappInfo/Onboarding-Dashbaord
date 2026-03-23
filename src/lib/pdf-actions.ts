@@ -35,7 +35,7 @@ function resolvePdfVariables(text: string, school?: School): string {
             case 'school_location': return school.location || '';
             case 'school_phone': return school.focalPersons[0]?.phone || '';
             case 'school_email': return school.focalPersons[0]?.email || '';
-            case 'contact_name': return school.focalPersons[0] || '';
+            case 'contact_name': return school.focalPersons[0]?.name || '';
             default: return match;
         }
     });
@@ -364,7 +364,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
     }
 }
 
-export async function createPdfForm(data: any, userId: string, workspaceIds: string[]) {
+export async function createPdfForm(data: any, userId: string, workspaceIds: string[]): Promise<{ success: boolean; id?: string; error?: string }> {
   const { size, mimeType, ...formData } = data;
   const slug = formData.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const timestamp = new Date().toISOString();

@@ -7,6 +7,7 @@ import { collection, orderBy, query, where, doc, deleteDoc } from 'firebase/fire
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, School } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
+import { getSchoolEmail } from '@/lib/school-helpers';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -110,7 +111,7 @@ export default function MeetingsHubClient() {
 
   const schoolEmailMap = useMemo(() => {
     if (!schools) return new Map<string, string | undefined>();
-    return new Map(schools.map(s => [s.id, s.email]));
+    return new Map(schools.map(s => [s.id, getSchoolEmail(s)]));
   }, [schools]);
 
   const filteredMeetings = useMemo(() => {

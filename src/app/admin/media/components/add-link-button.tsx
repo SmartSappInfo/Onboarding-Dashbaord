@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addDoc, collection } from 'firebase/firestore';
 
-import { getLinkMetadata } from '@/ai/flows/get-link-metadata-flow';
+import { getLinkMetadataAction } from '@/app/actions/link-metadata-actions';
 import { Link as LinkIcon, Loader2, Layout, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -74,7 +74,19 @@ export default function AddLinkButton() {
     setIsProcessing(true);
 
     try {
-        const metadata = await getLinkMetadata({ url: data.url });
+        const result = await getLinkMetadataAction(data.url);
+        
+        if (!result.success) {
+          toast({
+            variant: 'destructive',
+            title: 'Error Fetching Metadata',
+            description: result.error || 'Could not get metadata from the URL.',
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        const metadata = result.metadata;
 
         const linkData = {
           name: metadata?.title || data.name,

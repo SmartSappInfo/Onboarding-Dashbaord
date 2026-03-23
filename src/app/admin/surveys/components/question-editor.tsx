@@ -241,6 +241,12 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
   const [open, setOpen] = React.useState(false);
   const selectedValues = new Set(value);
 
+  const handleRemove = (val: string, e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    const newSelection = Array.from(selectedValues).filter((v) => v !== val);
+    onChange(newSelection);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -1046,9 +1052,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-muted/20 border-none shadow-none h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20", errors[question.id] && "ring-1 ring-destructive")} />;
+                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-muted/20 border-none shadow-none h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20", errors[question.id] && "ring-1 ring-destructive")} />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1101,7 +1107,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
+                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
                                                 case 'file-upload':
                                                     return (
                                                         <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-muted/20">
@@ -1110,7 +1116,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         </div>
                                                     );
                                                 default:
-                                                    return null;
+                                                    return <></>;
                                             }
                                         }}
                                     />

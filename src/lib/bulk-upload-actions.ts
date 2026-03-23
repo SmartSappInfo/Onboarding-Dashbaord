@@ -119,6 +119,9 @@ export async function ingestSchoolRowAction(
             location,
             nominalRoll,
             status: 'Active',
+            workspaceIds: ['onboarding'],
+            schoolStatus: 'Lead',
+            pipelineId: '',
             zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : { id: 'unassigned', name: 'Unassigned' },
             assignedTo: selectedUser 
                 ? { userId: selectedUser.id, name: selectedUser.name, email: selectedUser.email }

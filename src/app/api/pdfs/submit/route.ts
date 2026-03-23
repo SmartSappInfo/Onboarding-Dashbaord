@@ -87,7 +87,7 @@ export async function POST(req: Request) {
             try {
                 const pdfBuffer = await generatePdfBuffer(pdfData, formData);
                 attachments.push({
-                    content: pdfBuffer.toString('base64'),
+                    content: Buffer.from(pdfBuffer).toString('base64'),
                     filename: `${pdfData.name}-Signed.pdf`,
                     type: 'application/pdf'
                 });

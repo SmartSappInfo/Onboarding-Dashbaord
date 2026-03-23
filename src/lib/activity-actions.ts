@@ -1,8 +1,7 @@
 
 'use server';
 
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { getDb } from './server-only-firestore';
+import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -15,12 +14,9 @@ export async function updateNote(activityId: string, newContent: string) {
     return { error: 'Invalid input provided.' };
   }
 
-  const db = getDb();
-  const noteRef = doc(db, 'activities', activityId);
-
   try {
     // The security rules ensure only the owner can update their own note.
-    await updateDoc(noteRef, {
+    await adminDb.collection('activities').doc(activityId).update({
       'metadata.content': newContent,
       timestamp: new Date().toISOString(), // Also update the timestamp to reflect the edit time
     });
@@ -41,13 +37,10 @@ export async function deleteNote(activityId: string) {
   if (!activityId) {
     return { error: 'Activity ID is required.' };
   }
-  
-  const db = getDb();
-  const noteRef = doc(db, 'activities', activityId);
 
   try {
     // The security rules ensure only the owner can delete their own note.
-    await deleteDoc(noteRef);
+    await adminDb.collection('activities').doc(activityId).delete();
     revalidatePath('/admin/schools'); // Revalidate to remove the note from the UI
     return { success: true };
   } catch (error) {

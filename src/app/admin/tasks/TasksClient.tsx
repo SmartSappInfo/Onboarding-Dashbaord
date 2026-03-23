@@ -5,6 +5,7 @@ import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
 import { format, isToday, isPast, differenceInDays } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 import { 
     CheckCircle2, 
     Circle, 

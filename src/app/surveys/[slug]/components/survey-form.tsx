@@ -1001,7 +1001,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
         const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
-        const [isSubmitting, setIsSubmitting] = React.useState(false);
         setIsSubmitting(true);
 
         try {
@@ -1216,7 +1215,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             setCurrentPageIndex(first.pageIndex);
             setTimeout(() => {
                 const el = document.getElementById(first.id);
-                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('input, select, textarea, button')?.focus(); }
+                if (el) { 
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                    const focusable = el.querySelector('input, select, textarea, button') as HTMLElement | null;
+                    focusable?.focus();
+                }
             }, 1000);
         }
     };

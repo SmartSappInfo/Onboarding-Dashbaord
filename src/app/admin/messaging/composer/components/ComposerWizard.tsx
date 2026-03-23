@@ -13,7 +13,9 @@ import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging'
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
+import { getSchoolEmail, getSchoolPhone, getContactPerson } from '@/lib/school-helpers';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -316,9 +318,9 @@ export default function ComposerWizard() {
         if (selectedSchool) {
             setValue('variables.school_name', selectedSchool.name);
             setValue('variables.school_location', selectedSchool.location || '');
-            setValue('variables.school_phone', selectedSchool.phone || '');
-            setValue('variables.school_email', selectedSchool.email || '');
-            setValue('variables.contact_name', selectedSchool.contactPerson || '');
+            setValue('variables.school_phone', getSchoolPhone(selectedSchool) || '');
+            setValue('variables.school_email', getSchoolEmail(selectedSchool) || '');
+            setValue('variables.contact_name', getContactPerson(selectedSchool) || '');
             setRecipientSuggestions(discoverRecipients(selectedSchool, 'School'));
         }
     }, [selectedSchool, setValue, discoverRecipients]);

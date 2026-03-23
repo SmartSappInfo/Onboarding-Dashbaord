@@ -79,12 +79,14 @@ export default function PdfsClient() {
     if (!formToDelete || !user) return;
     
     setIsDeleting(true);
-    const result = await deletePdfForm(formToDelete.id, formToDelete.storagePath, user.uid);
-    
-    if (result.success) {
-      toast({ title: 'Document Deleted' });
-    } else {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
+    try {
+      const result = await deletePdfForm(formToDelete.id, formToDelete.storagePath, user.uid);
+      
+      if (result.success) {
+        toast({ title: 'Document Deleted' });
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete document' });
     }
     
     setFormToDelete(null);

@@ -244,7 +244,7 @@ export default function ReportsClient() {
                                     <Tooltip 
                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontBlack: true, textTransform: 'uppercase', paddingTop: '20px' }} />
+                                    <Legend iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', paddingTop: '20px' }} />
                                     <Bar dataKey="created" fill="hsl(var(--muted-foreground)/0.2)" radius={[4, 4, 0, 0]} name="Protocol Opened" />
                                     <Bar dataKey="resolved" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Protocol Resolved" />
                                 </BarChart>

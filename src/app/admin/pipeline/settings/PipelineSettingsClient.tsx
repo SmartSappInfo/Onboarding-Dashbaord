@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';

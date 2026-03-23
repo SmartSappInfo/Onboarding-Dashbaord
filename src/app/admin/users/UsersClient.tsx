@@ -204,12 +204,12 @@ export default function UsersClient() {
                                                         <TooltipTrigger asChild>
                                                             <div className="flex flex-wrap gap-1 px-1">
                                                                 {user.permissions?.slice(0, 3).map(p => (
-                                                                    <Badge key={p} variant="ghost" className="h-4 text-[7px] font-black uppercase tracking-tighter bg-primary/5 text-primary">
+                                                                    <Badge key={p} variant="secondary" className="h-4 text-[7px] font-black uppercase tracking-tighter bg-primary/5 text-primary">
                                                                         {p.replace('_', ' ')}
                                                                     </Badge>
                                                                 ))}
                                                                 {(user.permissions?.length || 0) > 3 && (
-                                                                    <Badge variant="ghost" className="h-4 text-[7px] font-black uppercase bg-muted text-muted-foreground">
+                                                                    <Badge variant="secondary" className="h-4 text-[7px] font-black uppercase bg-muted text-muted-foreground">
                                                                         +{(user.permissions?.length || 0) - 3} more
                                                                     </Badge>
                                                                 )}

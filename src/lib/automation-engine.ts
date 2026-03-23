@@ -5,6 +5,7 @@ import type { AutomationRule, AutomationAction, AutomationTrigger, School, Focal
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
+import { getContactPerson } from './school-helpers';
 
 /**
  * @fileOverview Global Automation Engine.
@@ -71,7 +72,7 @@ async function executeAction(db: Firestore, action: AutomationAction, context: T
                 variables: { 
                     school_name: school.name, 
                     school_id: school.id,
-                    contact_name: school.contactPerson || ''
+                    contact_name: getContactPerson(school) || ''
                 },
                 schoolId: school.id
             });

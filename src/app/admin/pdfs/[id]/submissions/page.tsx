@@ -12,11 +12,11 @@ import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { 
     ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Clock, Users, Trash2, 
-    CheckSquare, MoreVertical, MoreHorizontal, FileText, BarChart3, TrendingUp, TrendingDown, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2, Save
+    CheckSquare, MoreVertical, MoreHorizontal, FileText, BarChart3, TrendingUp, TrendingDown, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2, Save, Copy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip as ShadcnTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
@@ -258,7 +258,7 @@ export default function SubmissionsPage() {
     setDownloadingId(null);
     setIsProcessingBatch(false);
     setTotalBatchSize(0);
-    toast({ title: 'Download Cancelled', variant: 'secondary' });
+    toast({ title: 'Download Cancelled' });
   };
 
   const handleExportCSV = () => {
@@ -536,7 +536,7 @@ export default function SubmissionsPage() {
                                     <BarChart data={funnelData} layout="vertical" margin={{ left: 40, right: 100 }}>
                                         <XAxis type="number" hide />
                                         <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} fontSize={10} width={100} tick={{ fontWeight: 'black' }} />
-                                        <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.2)' }} content={({ active, payload }) => {
+                                        <Tooltip cursor={{ fill: 'hsl(var(--muted)/0.2)' }} content={({ active, payload }: { active?: boolean; payload?: any[] }) => {
                                             if (active && payload && payload.length) {
                                                 const d = payload[0].payload;
                                                 return <div className="rounded-xl border bg-background p-3 shadow-2xl text-xs space-y-1"><p className="font-black uppercase tracking-widest">{d.label}</p><p className="text-primary font-bold">{d.count} Users Reached</p><p className="text-muted-foreground">{d.percentage.toFixed(1)}% of total traffic</p></div>;
@@ -688,7 +688,8 @@ function HighFidelityDownloader({
                 const page = pdfBundle.addPage([595.28, 841.89]);
                 page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
             }
-            const blob = new Blob([await pdfBundle.save()], { type: 'application/pdf' });
+            const pdfBytes = await pdfBundle.save();
+            const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             onDownloadFinished(true);

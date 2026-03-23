@@ -40,7 +40,7 @@ export default function MessageJobsView() {
             case 'processing': return <Badge variant="secondary" className="gap-1 h-5 text-[8px] uppercase tracking-widest bg-blue-50 text-blue-600 border-blue-200"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Processing</Badge>;
             case 'failed': return <Badge variant="destructive" className="gap-1 h-5 text-[8px] uppercase tracking-widest"><XCircle className="h-2.5 w-2.5" /> Failed</Badge>;
             case 'queued': return <Badge variant="outline" className="gap-1 h-5 text-[8px] uppercase tracking-widest border-dashed"><Clock className="h-2.5 w-2.5" /> Queued</Badge>;
-            default: return <Badge variant="ghost" className="h-5 text-[8px] uppercase tracking-widest">{status}</Badge>;
+            default: return <Badge variant="secondary" className="h-5 text-[8px] uppercase tracking-widest">{status}</Badge>;
         }
     };
 

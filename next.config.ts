@@ -8,6 +8,44 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Optimize build performance and memory usage
+  experimental: {
+    // Reduce memory usage during build
+    webpackMemoryOptimizations: true,
+  },
+  webpack: (config, { isServer }) => {
+    // Optimize memory usage
+    config.optimization = {
+      ...config.optimization,
+      moduleIds: 'deterministic',
+    };
+    
+    // Ignore Genkit AI server dependencies in client bundles
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        path: false,
+        os: false,
+      };
+      
+      // Ignore express and other server-only modules
+      config.externals = config.externals || [];
+      config.externals.push({
+        express: 'commonjs express',
+        'express/lib/view': 'commonjs express/lib/view',
+      });
+    }
+    
+    return config;
+  },
   images: {
     remotePatterns: [
       {
@@ -97,6 +135,11 @@ export default withSentryConfig(nextConfig, {
   project: 'javascript-nextjs',
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  automaticVercelMonitors: true,
-  disableLogger: true,
+  // Updated config - removed deprecated options
+  webpack: {
+    automaticVercelMonitors: true,
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 });

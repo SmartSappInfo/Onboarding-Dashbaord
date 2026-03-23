@@ -20,7 +20,7 @@ export async function getPublicInvoiceAction(id: string) {
         if (!docSnap.exists) return { success: false, error: "Invoice not found." };
         
         const data = docSnap.data() as Invoice;
-        return { success: true, invoice: { id: docSnap.id, ...data } };
+        return { success: true, invoice: { ...data, id: docSnap.id } };
     } catch (e: any) {
         return { success: false, error: e.message };
     }

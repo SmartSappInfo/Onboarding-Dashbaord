@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { Button } from '@/components/ui/button';
 import { 
     Check, 
     Loader2, 

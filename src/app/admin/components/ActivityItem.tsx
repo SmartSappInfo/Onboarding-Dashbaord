@@ -1,6 +1,6 @@
 'use client';
 
-import type { Activity, UserProfile } from '@/lib/types';
+import type { Activity, UserProfile, School } from '@/lib/types';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +12,7 @@ interface ActivityItemProps {
   activity: Activity;
   user?: UserProfile;
   showSchoolName?: boolean;
+  school?: School;
 }
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';

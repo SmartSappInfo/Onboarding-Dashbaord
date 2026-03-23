@@ -80,9 +80,8 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
   return (
     <TooltipProvider>
+        <div ref={setNodeRef} style={style}>
         <Card
-        ref={setNodeRef}
-        style={style}
         className={cn(
             "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
             isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
@@ -238,6 +237,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
             </div>
         </CardContent>
         </Card>
+        </div>
 
         <ChangeStatusModal 
             school={school} 

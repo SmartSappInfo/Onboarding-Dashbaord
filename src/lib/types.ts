@@ -11,6 +11,8 @@ export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Pri
 
 export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived';
 
+export type SchoolStatus = SchoolStatusState; // Alias for backward compatibility
+
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned' | 'Lead' | 'Lost' | string;
 
 export type AutomationTrigger = 
@@ -91,7 +93,24 @@ export interface FocalPerson {
   email: string;
   type: FocalPersonType;
   isSignatory: boolean;
+  notes?: FocalPersonNote[];
+  attachments?: FocalPersonAttachment[];
 }
+
+export interface FocalPersonNote {
+  id: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface FocalPersonAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
 
 export interface Zone {
   id: string;
@@ -114,6 +133,7 @@ export interface Pipeline {
 export const APP_PERMISSIONS = [
   { id: 'schools_view', label: 'View Schools', category: 'Operations' },
   { id: 'schools_edit', label: 'Edit Profiles', category: 'Operations' },
+  { id: 'prospects_view', label: 'View Prospects', category: 'Operations' },
   { id: 'finance_view', label: 'View Finance Hub', category: 'Finance' },
   { id: 'finance_manage', label: 'Manage Billing & Contracts', category: 'Finance' },
   { id: 'contracts_delete', label: 'Purge Legal Records', category: 'Finance' },
@@ -206,6 +226,8 @@ export interface School {
     order: number;
     color?: string;
   };
+  track?: string;
+  lifecycleStatus?: LifecycleStatus;
   createdAt: string;
 }
 
@@ -285,6 +307,12 @@ export interface Meeting {
   heroImageUrl?: string;
   recordingUrl?: string;
   brochureUrl?: string;
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
 }
 
 export interface MediaAsset {
@@ -510,6 +538,7 @@ export interface PDFForm {
     adminAlertSmsTemplateId?: string;
     resultsShared?: boolean;
     resultsPassword?: string;
+    createdBy?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -591,6 +620,7 @@ export interface Task {
   schoolId?: string | null;
   schoolName?: string | null;
   dueDate: string;
+  startDate?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -642,6 +672,54 @@ export interface Automation {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+}
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  description?: string;
+  trigger: AutomationTrigger;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
+  isActive: boolean;
+  workspaceIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationCondition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: any;
+}
+
+export interface AutomationAction {
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK';
+  templateId?: string;
+  senderProfileId?: string;
+  recipientType?: 'fixed' | 'manager' | 'focal_person';
+  fixedRecipient?: string;
+  focalPersonType?: string;
+  taskTitle?: string;
+  taskDescription?: string;
+  taskPriority?: TaskPriority;
+  taskCategory?: TaskCategory;
+  taskDueOffsetDays?: number;
+}
+
+export interface CampaignSession {
+  id: string;
+  campaignId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt: string;
+  completedAt?: string;
+  totalRecipients: number;
+  processed: number;
+  success: number;
+  failed: number;
+  selectedOption?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AutomationRun {
@@ -830,4 +908,18 @@ export interface Perspective {
     slug: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface DashboardLayout {
+    componentIds: string[];
+}
+
+export interface BillingSettings {
+    levyPercent: number;
+    vatPercent: number;
+    defaultDiscount: number;
+    paymentInstructions: string;
+    signatureName: string;
+    signatureDesignation: string;
+    signatureUrl?: string;
 }

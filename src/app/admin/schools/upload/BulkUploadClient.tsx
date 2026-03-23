@@ -250,7 +250,7 @@ export default function BulkUploadClient() {
     };
 
     const progress = rawData.length > 0 ? Math.round((executionResults.length / rawData.length) * 100) : 0;
-    const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring', damping: 25, stiffness: 200 } };
+    const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">

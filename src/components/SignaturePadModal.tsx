@@ -347,7 +347,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                 <SignatureCanvas 
                                                     ref={sigPadRef} 
                                                     penColor="black" 
-                                                    canvasProps={{ className: 'w-full h-full cursor-crosshair', willReadFrequently: true }} 
+                                                    canvasProps={{ className: 'w-full h-full cursor-crosshair' }} 
                                                     onBegin={() => setHasDrawn(true)} 
                                                 />
                                             </div>

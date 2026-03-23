@@ -68,7 +68,7 @@ const stepTransition = {
     initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -20 },
-    transition: { type: 'spring', damping: 25, stiffness: 200 }
+    transition: { type: 'spring' as const, damping: 25, stiffness: 200 }
 };
 
 export default function ContractWizard({ schools, open, onOpenChange }: ContractWizardProps) {
@@ -151,7 +151,8 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                     pdfId: data.pdfId,
                     pdfName: selectedPdf.name,
                     status: 'sent', // Mark as sent even if handled manually
-                    userId: user.uid
+                    userId: user.uid,
+                    workspaceId: school.workspaceIds[0] || ''
                 });
 
                 if (upsertRes.success && upsertRes.id && !data.skipMessaging && !noMessagingSelected) {

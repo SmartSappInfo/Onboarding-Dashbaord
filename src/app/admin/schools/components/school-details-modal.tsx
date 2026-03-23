@@ -21,6 +21,7 @@ import * as React from 'react';
 import LogActivityModal from './LogActivityModal';
 import NotesSection from '../../components/NotesSection';
 import Link from 'next/link';
+import { getSchoolEmail, getSchoolPhone, getContactPerson, getPrimaryContact } from '@/lib/school-helpers';
 
 interface SchoolDetailsModalProps {
   school: School | null;
@@ -118,18 +119,18 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
 
                         {/* Right Column */}
                         <div className="space-y-6">
-                        <DetailItem icon={Users} label="Primary Contact" value={school.contactPerson} />
+                        <DetailItem icon={Users} label="Primary Contact" value={getContactPerson(school)} />
                         <DetailItem icon={Mail} label="Primary Email">
-                            {school.email ? (
-                            <a href={`mailto:${school.email}`} className="text-base text-foreground hover:underline">
-                                {school.email}
+                            {getSchoolEmail(school) ? (
+                            <a href={`mailto:${getSchoolEmail(school)}`} className="text-base text-foreground hover:underline">
+                                {getSchoolEmail(school)}
                             </a>
                             ) : <p className="text-base text-foreground">N/A</p>}
                         </DetailItem>
                         <DetailItem icon={Phone} label="Primary Phone">
-                            {school.phone ? (
-                            <a href={`tel:${school.phone.replace(/[\s-()]/g, '')}`} className="text-base text-foreground hover:underline">
-                                {school.phone}
+                            {getSchoolPhone(school) ? (
+                            <a href={`tel:${getSchoolPhone(school)?.replace(/[\s-()]/g, '')}`} className="text-base text-foreground hover:underline">
+                                {getSchoolPhone(school)}
                             </a>
                             ) : <p className="text-base text-foreground">N/A</p>}
                         </DetailItem>
@@ -164,7 +165,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                     Log
                 </Button>
                 <Button variant="outline" asChild>
-                    <Link href={`/admin/messaging/composer?recipient=${school.focalPersons[0].email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                    <Link href={`/admin/messaging/composer?recipient=${getPrimaryContact(school)?.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(getContactPerson(school) || '')}`}>
                         <Send className="mr-2 h-4 w-4" />
                         Message
                     </Link>

@@ -104,7 +104,6 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         case 'audio': return block.url ? <audio controls src={block.url} className="w-full my-6" /> : null;
         case 'document': return block.url ? <div className={alignmentClass}><Button asChild variant="outline" className="my-6"><a href={block.url} target="_blank" rel="noopener noreferrer">Download Document</a></Button></div> : null;
         case 'embed': return block.html ? <div className="my-6" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
-        case 'logic': return null;
         default: return null;
     }
 }

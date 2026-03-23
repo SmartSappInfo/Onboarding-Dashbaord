@@ -49,10 +49,10 @@ export default function UploadPDFButton() {
     
     const result = await createPdfForm({
         name: asset.name.replace(/\.pdf$/i, ''),
-        originalFileName: asset.originalName || asset.name,
+        originalFileName: asset.name,
         storagePath: asset.fullPath || '',
         downloadUrl: asset.url,
-    }, user.uid, activeWorkspaceId);
+    }, user.uid, [activeWorkspaceId]);
 
     if (result.success && result.id) {
         toast({ title: 'Success', description: `"${asset.name}" added from library.` });

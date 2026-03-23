@@ -12,7 +12,7 @@ import {
     Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
-import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
+import { savePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,7 +79,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring', damping: 25, stiffness: 200 } };
+const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
 const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
     const steps = [{ name: 'Details', icon: Settings2 }, { name: 'Builder', icon: Layout }, { name: 'Publish', icon: Share2 }];

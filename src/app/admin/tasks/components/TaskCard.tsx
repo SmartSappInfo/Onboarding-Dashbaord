@@ -65,9 +65,8 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
     const interlinkUrl = getTaskInterlinkUrl(task);
 
     return (
+        <div ref={setNodeRef} style={style}>
         <Card 
-            ref={setNodeRef}
-            style={style}
             onClick={onClick}
             className={cn(
                 "group mb-3 rounded-2xl border-border/50 bg-card transition-all duration-300 select-none",
@@ -134,5 +133,6 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
                 </div>
             </CardContent>
         </Card>
+        </div>
     );
 }

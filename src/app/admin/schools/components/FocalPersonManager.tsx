@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { MediaSelect } from './media-select';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 
 const STANDARD_ROLES = ['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner'] as const;
 
@@ -230,7 +231,7 @@ function FocalPersonItem({
                                     </Button>
                                 </div>
                                 <div className="space-y-2">
-                                    {notes.map((note, nIdx) => (
+                                    {notes.map((note: any, nIdx: number) => (
                                         <div key={note.id} className="p-3 rounded-xl bg-muted/10 border relative group/note">
                                             <p className="text-[10px] font-medium leading-relaxed pr-6">{note.content}</p>
                                             <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1 opacity-40">{format(new Date(note.createdAt), 'MMM d, HH:mm')}</p>
@@ -255,7 +256,7 @@ function FocalPersonItem({
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
-                                    {attachments.map((att, aIdx) => (
+                                    {attachments.map((att: any, aIdx: number) => (
                                         <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-white border shadow-sm group/att">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <FileText className="h-3 w-3 text-primary" />

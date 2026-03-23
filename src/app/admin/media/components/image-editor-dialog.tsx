@@ -15,11 +15,41 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Ratio, Crop, Image as ImageIcon, Percent, TextCursorInput, Loader2 } from 'lucide-react';
-import { StagedFile } from './media-uploader';
 import { useDebounce } from '@/hooks/use-debounce';
 import { processImage } from '@/lib/image-processing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface StagedFile {
+  id: string;
+  file: File;
+  preview: string;
+  status: 'pending' | 'uploading' | 'processing' | 'complete' | 'error';
+  progress: number;
+  error?: string;
+  uploadedUrl?: string;
+  metadata?: {
+    width?: number;
+    height?: number;
+    size: number;
+    type: string;
+  };
+  editingState?: any;
+  edits?: {
+    crop?: Area;
+    zoom?: number;
+    rotation?: number;
+    aspectRatio?: number | null;
+    aspect?: number;
+    targetWidth?: number;
+    name?: string;
+    quality?: number;
+    croppedAreaPixels?: Area;
+  };
+  originalWidth?: number;
+  originalHeight?: number;
+  originalDataUrl?: string;
+}
 
 interface ImageEditorDialogProps {
   file: StagedFile | null;
@@ -68,22 +98,22 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
     if (file) {
         if (file.edits) {
             const { edits } = file;
-            setCrop(edits.crop);
-            setZoom(edits.zoom);
+            if (edits.crop) setCrop({ x: edits.crop.x, y: edits.crop.y });
+            if (edits.zoom !== undefined) setZoom(edits.zoom);
             
             const originalAspect = file.originalWidth! / file.originalHeight!;
-            const isOriginal = Math.abs(edits.aspect - originalAspect) < 0.01 && edits.targetWidth === file.originalWidth;
+            const isOriginal = edits.aspect && Math.abs(edits.aspect - originalAspect) < 0.01 && edits.targetWidth === file.originalWidth;
 
             if (isOriginal) {
                 setAspectString('original');
             } else {
-                const foundRatio = staticAspectRatios.find(r => r.value !== 'none' && Math.abs(parseFloat(r.value) - edits.aspect) < 0.01);
+                const foundRatio = staticAspectRatios.find(r => r.value !== 'none' && edits.aspect && Math.abs(parseFloat(r.value) - edits.aspect) < 0.01);
                 setAspectString(foundRatio ? foundRatio.value : 'none');
             }
             
-            setName(edits.name);
-            setTargetWidth(edits.targetWidth);
-            setQuality(edits.quality);
+            if (edits.name) setName(edits.name);
+            if (edits.targetWidth) setTargetWidth(edits.targetWidth);
+            if (edits.quality !== undefined) setQuality(edits.quality);
         } else {
             // Set defaults from original file
             setAspectString('16/9');
@@ -137,7 +167,7 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
       const finalAspect = aspectNumber ?? (croppedAreaPixels.width / croppedAreaPixels.height);
       onSave(file.id, {
         name,
-        crop,
+        crop: croppedAreaPixels,
         croppedAreaPixels,
         zoom,
         aspect: finalAspect,

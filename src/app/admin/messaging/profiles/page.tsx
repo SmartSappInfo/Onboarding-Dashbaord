@@ -275,7 +275,7 @@ export default function SenderProfilesPage() {
             case 'not_registered':
                 return <Badge variant="outline" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-dashed"><Globe className="h-2.5 w-2.5" /> Unverified</Badge>;
             default:
-                return <Badge variant="ghost" className="text-[8px] h-5 uppercase tracking-tighter opacity-40">Unsynced</Badge>;
+                return <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter opacity-40">Unsynced</Badge>;
         }
     }
 
@@ -384,7 +384,7 @@ export default function SenderProfilesPage() {
                                             <div className="flex flex-wrap gap-1">
                                                 {profile.workspaceIds?.map(wId => (
                                                     <Badge key={wId} variant="outline" className="text-[8px] font-black uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
-                                                )) || <Badge variant="ghost" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
+                                                )) || <Badge variant="secondary" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
