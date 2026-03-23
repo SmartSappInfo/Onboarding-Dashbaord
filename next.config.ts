@@ -5,14 +5,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
-  // Optimize build performance and memory usage
-  experimental: {
-    // Reduce memory usage during build
-    webpackMemoryOptimizations: true,
-  },
   webpack: (config, { isServer }) => {
     // Optimize memory usage
     config.optimization = {
