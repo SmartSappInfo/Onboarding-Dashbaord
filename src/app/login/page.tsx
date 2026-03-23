@@ -47,6 +47,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = React.useState(false);
+  const [loginSuccess, setLoginSuccess] = React.useState(false);
+  const [redirecting, setRedirecting] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,6 +61,18 @@ export default function LoginPage() {
   React.useEffect(() => {
     document.title = 'Login - Onboarding Workspace';
   }, []);
+
+  // Handle redirect after successful login and auth state update
+  React.useEffect(() => {
+    if (loginSuccess && !redirecting) {
+      // Wait a brief moment for auth state to propagate
+      setRedirecting(true);
+      const timer = setTimeout(() => {
+        router.push('/admin');
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loginSuccess, redirecting, router]);
 
   const onSubmit = async (data: FormData) => {
     if (!auth || !firestore) {
@@ -82,7 +96,7 @@ export default function LoginPage() {
 
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
         toast({ title: 'Login Successful', description: 'Welcome back!' });
-        router.push('/admin');
+        setLoginSuccess(true);
       } else {
         await auth.signOut();
         toast({
@@ -138,7 +152,7 @@ export default function LoginPage() {
       if (docSnap.exists()) {
         if (docSnap.data().isAuthorized) {
           toast({ title: 'Login Successful', description: 'Welcome back!' });
-          router.push('/admin');
+          setLoginSuccess(true);
         } else {
           await auth.signOut();
           toast({
@@ -182,6 +196,14 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      {redirecting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm font-medium text-muted-foreground">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      )}
       <main className="flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-sm">
           <div className="mb-10 text-left">

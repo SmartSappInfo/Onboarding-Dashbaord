@@ -88,7 +88,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         // Resolve Active Workspace
         const storedWs = localStorage.getItem('activeWorkspaceId');
-        const urlTrack = searchParams.get('track');
+        const urlTrack = searchParams.get('track') || null;
         
         let initialWsId = '';
         // Note: Accessible workspaces will be filtered in the next step, 

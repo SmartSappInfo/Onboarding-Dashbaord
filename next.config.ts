@@ -2,6 +2,9 @@ import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Allow HMR from network IP in development
+  allowedDevOrigins: ['10.155.120.120'],
+  
   typescript: {
     ignoreBuildErrors: false,
   },

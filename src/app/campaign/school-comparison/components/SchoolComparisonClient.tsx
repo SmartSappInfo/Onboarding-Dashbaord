@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Users, Building2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import LightRays from '@/components/LightRays';
@@ -65,16 +64,14 @@ export default function SchoolComparisonClient() {
 
   return (
     <div className="relative min-h-screen bg-background flex flex-col items-center justify-center overflow-hidden selection:bg-primary/20">
-      <AnimatePresence>
-        {isTransitioning && <SurveyLoader label={`Initializing ${selectedLabel === 'FOR FAMILIES' ? 'Family' : 'Institutional'} Experience...`} className="z-[100]" />}
-      </AnimatePresence>
+      {isTransitioning && <SurveyLoader label={`Initializing ${selectedLabel === 'FOR FAMILIES' ? 'Family' : 'Institutional'} Experience...`} className="z-[100]" />}
 
       <div className="absolute inset-0 z-0 opacity-40">
         <LightRays raysOrigin="top-center" raysColor="#3B5FFF" raysSpeed={0.5} lightSpread={0.8} rayLength={3} pulsating fadeDistance={1} saturation={1} className="!absolute inset-0" />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12 py-6 md:py-12 px-4 sm:px-8">
-        <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
+      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-8 py-6 md:py-12 px-4 sm:px-8">
+        <div className="text-center space-y-6">
           <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-foreground leading-tight px-4 uppercase">
             Who are you?
           </h1>
@@ -107,7 +104,7 @@ export default function SchoolComparisonClient() {
         </div>
       </div>
 
-      <footer className="relative z-10 mt-8 md:mt-12 py-8 md:py-12 text-center text-xs sm:text-sm text-muted-foreground w-full border-t border-border/20">
+      <footer className="relative z-10 mt-auto py-8 md:py-12 text-center text-xs sm:text-sm text-muted-foreground w-full border-t border-border/20">
         <p>&copy; {new Date().getFullYear()} SmartSapp · Institutional Intelligence</p>
       </footer>
     </div>
@@ -126,13 +123,9 @@ function SelectionCard({ title, href, option, image, icon: Icon, delay, color, l
   onSelect: (href: string, label: string, option: 'school' | 'parent') => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -8 }}
-      whileTap={{ scale: 0.98 }}
-      className="group relative h-full cursor-pointer"
+    <div
+      className="group relative h-full cursor-pointer animate-in fade-in slide-in-from-bottom-4 duration-700"
+      style={{ animationDelay: `${delay * 1000}ms`, animationFillMode: 'backwards' }}
       onClick={() => onSelect(href, label, option)}
     >
       <Card className="overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card/80 backdrop-blur-xl h-full flex flex-col ring-1 ring-white/10 group-hover:ring-primary/30 transition-all duration-500">
@@ -161,6 +154,6 @@ function SelectionCard({ title, href, option, image, icon: Icon, delay, color, l
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }

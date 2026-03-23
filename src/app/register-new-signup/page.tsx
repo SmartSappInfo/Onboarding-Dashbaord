@@ -3,6 +3,9 @@ import NewSchoolSignupForm from '@/app/register-new-signup-form';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
+
 export default function RegisterNewSignupPage() {
   return (
     <>
