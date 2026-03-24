@@ -11,10 +11,20 @@
       "sourceType": "github",
       "computedHash": "dd1365afc6c06f6c8555d0624669e70c6873057da70a92b045e948329dc1b906"
     },
+    "firebase-ai-logic": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3b3d8994f2ac2e747a1f203488844a7e17b8a25c38e636b221903ae90e3b7c32"
+    },
     "firebase-firestore-basics": {
       "source": "firebase/agent-skills",
       "sourceType": "github",
       "computedHash": "e7e21f72b693e8eba6797e0799e1f9d96ec9f73669cb741a7ca2e541fa460b55"
+    },
+    "firebase-hosting-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "fb86fd4035e8e6379931faeb443557ac6f2e43fde04b397433f287e69b6532a9"
     },
     "frontend-design": {
       "source": "anthropics/skills",
