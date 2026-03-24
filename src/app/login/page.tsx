@@ -10,8 +10,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
-  setPersistence,
-  browserLocalPersistence,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -47,8 +47,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = React.useState(false);
-  const [loginSuccess, setLoginSuccess] = React.useState(false);
-  const [redirecting, setRedirecting] = React.useState(false);
+  const [isHandlingRedirectResult, setIsHandlingRedirectResult] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -62,17 +61,79 @@ export default function LoginPage() {
     document.title = 'Login - Onboarding Workspace';
   }, []);
 
-  // Handle redirect after successful login and auth state update
+  const handleAuthorizedGoogleUser = React.useCallback(
+    async (uid: string, profile: { name: string | null; email: string | null; phone: string | null }) => {
+      if (!auth || !firestore) return;
+
+      const userDocRef = doc(firestore, 'users', uid);
+      const docSnap = await getDoc(userDocRef);
+
+      if (docSnap.exists()) {
+        if (docSnap.data().isAuthorized === true) {
+          toast({ title: 'Login Successful', description: 'Welcome back!' });
+          router.push('/admin');
+        } else {
+          await auth.signOut();
+          toast({
+            variant: 'destructive',
+            title: 'Authorization Required',
+            description: 'Your account is not authorized. Please contact an administrator.',
+            duration: 5000,
+          });
+        }
+        return;
+      }
+
+      await setDoc(userDocRef, {
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone || '',
+        isAuthorized: false,
+        createdAt: new Date().toISOString(),
+      });
+      await auth.signOut();
+      toast({
+        title: 'Account Created',
+        description: 'Your account has been created and is now awaiting authorization.',
+        duration: 5000,
+      });
+    },
+    [auth, firestore, router, toast]
+  );
+
   React.useEffect(() => {
-    if (loginSuccess && !redirecting) {
-      // Wait a brief moment for auth state to propagate
-      setRedirecting(true);
-      const timer = setTimeout(() => {
-        router.push('/admin');
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [loginSuccess, redirecting, router]);
+    let cancelled = false;
+
+    const processRedirectResult = async () => {
+      if (!auth || !firestore) return;
+
+      try {
+        const redirectResult = await getRedirectResult(auth);
+        if (cancelled || !redirectResult?.user) return;
+
+        setIsHandlingRedirectResult(true);
+        await handleAuthorizedGoogleUser(redirectResult.user.uid, {
+          name: redirectResult.user.displayName,
+          email: redirectResult.user.email,
+          phone: redirectResult.user.phoneNumber,
+        });
+      } catch (error) {
+        console.error('Redirect Sign-In Error:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-In Failed',
+          description: 'Unable to complete Google sign-in after redirect. Please try again.',
+        });
+      } finally {
+        if (!cancelled) setIsHandlingRedirectResult(false);
+      }
+    };
+
+    processRedirectResult();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth, firestore, handleAuthorizedGoogleUser, toast]);
 
   const onSubmit = async (data: FormData) => {
     if (!auth || !firestore) {
@@ -87,7 +148,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
 
       const user = userCredential.user;
@@ -96,7 +156,7 @@ export default function LoginPage() {
 
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
         toast({ title: 'Login Successful', description: 'Welcome back!' });
-        setLoginSuccess(true);
+        router.push('/admin');
       } else {
         await auth.signOut();
         toast({
@@ -106,8 +166,8 @@ export default function LoginPage() {
           duration: 5000,
         });
       }
-    } catch (error: any) {
-      const errorCode = error?.code;
+    } catch (error: unknown) {
+      const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
       let errorMessage = 'An unexpected error occurred. Please try again.';
 
       if (
@@ -141,69 +201,46 @@ export default function LoginPage() {
     setIsGoogleSigningIn(true);
 
     try {
-      await setPersistence(auth, browserLocalPersistence);
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
-
-      const user = result.user;
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const docSnap = await getDoc(userDocRef);
-
-      if (docSnap.exists()) {
-        if (docSnap.data().isAuthorized) {
-          toast({ title: 'Login Successful', description: 'Welcome back!' });
-          setLoginSuccess(true);
-        } else {
-          await auth.signOut();
-          toast({
-            variant: 'destructive',
-            title: 'Authorization Required',
-            description: 'Your account is not authorized. Please contact an administrator.',
-            duration: 5000,
-          });
+      await handleAuthorizedGoogleUser(result.user.uid, {
+        name: result.user.displayName,
+        email: result.user.email,
+        phone: result.user.phoneNumber,
+      });
+    } catch (error: unknown) {
+      const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
+      if (
+        errorCode === 'auth/popup-blocked' ||
+        errorCode === 'auth/popup-closed-by-user' ||
+        errorCode === 'auth/cancelled-popup-request'
+      ) {
+        try {
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectError) {
+          console.error('Google Redirect Sign-In Error:', redirectError);
         }
-      } else {
-        const userProfile = {
-          name: user.displayName,
-          email: user.email,
-          phone: user.phoneNumber || '',
-          isAuthorized: false,
-          createdAt: new Date().toISOString(),
-        };
-
-        await setDoc(userDocRef, userProfile);
-        await auth.signOut();
-
-        toast({
-          title: 'Account Created',
-          description: 'Your account has been created and is now awaiting authorization.',
-          duration: 5000,
-        });
       }
-    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
       console.error('Google Sign-In Error:', error);
       toast({
         variant: 'destructive',
         title: 'Google Sign-In Failed',
-        description: error?.message || 'An unexpected error occurred. Please try again.',
+        description: errorMessage,
       });
     } finally {
       setIsGoogleSigningIn(false);
     }
   };
 
-  const isBusy = isSubmitting || isGoogleSigningIn;
+  const isBusy = isSubmitting || isGoogleSigningIn || isHandlingRedirectResult;
 
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      {redirecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="text-sm font-medium text-muted-foreground">Redirecting to dashboard...</p>
-          </div>
-        </div>
-      )}
       <main className="flex flex-col items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-sm">
           <div className="mb-10 text-left">

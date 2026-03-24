@@ -1,7 +1,7 @@
 'use client';
 
 import { collection, query, where, getDocs, orderBy, limit, type Firestore } from 'firebase/firestore';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog, Task } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Activity, Zone, MessageLog, Task } from '@/lib/types';
 import { format, isAfter, startOfToday } from 'date-fns';
 
 /**
@@ -28,7 +28,6 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     surveysSnapshot,
     stagesSnapshot,
     usersSnapshot,
-    modulesSnapshot,
     activitiesSnapshot,
     zonesSnapshot,
     logsSnapshot,
@@ -39,10 +38,9 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     safeGetDocs(query(collection(db, 'surveys'), where('workspaceIds', 'array-contains', workspaceId))),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))), 
     safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
-    safeGetDocs(collection(db, 'modules')),
     safeGetDocs(query(collection(db, 'activities'), where('workspaceId', '==', workspaceId), orderBy('timestamp', 'desc'), limit(50))),
     safeGetDocs(collection(db, 'zones')),
-    safeGetDocs(query(collection(db, 'message_logs'), where('workspaceIds', 'array-contains', workspaceId), orderBy('sentAt', 'desc'), limit(500))),
+    safeGetDocs(query(collection(db, 'message_logs'), where('workspaceIds', 'array-contains', workspaceId), orderBy('sentAt', 'desc'), limit(120))),
     safeGetDocs(query(collection(db, 'tasks'), where('workspaceId', '==', workspaceId))),
   ]); 
 
@@ -175,6 +173,20 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     recentLogs: logs.slice(0, 5)
   };
 
+  /** Only users/schools referenced by the recent activity feed (limits payload size vs. full collections). */
+  const activityUserIds = new Set(
+    activities
+      .map((a: Activity) => a.userId)
+      .filter((id: string | null | undefined): id is string => Boolean(id))
+  );
+  const activitySchoolIds = new Set(
+    activities
+      .map((a: Activity) => a.schoolId)
+      .filter((id: string | null | undefined): id is string => Boolean(id))
+  );
+  const recentActivityUsers = users.filter((u: UserProfile) => activityUserIds.has(u.id));
+  const recentActivitySchools = schools.filter((s: School) => activitySchoolIds.has(s.id));
+
   return {
     metrics,
     latestSurveys,
@@ -182,8 +194,8 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     pipelineCounts,
     userAssignments,
     activities,
-    allUsers: users,
-    allSchools: schools,
+    recentActivityUsers,
+    recentActivitySchools,
     zoneDistribution,
     messagingMetrics,
     moduleImplementations,

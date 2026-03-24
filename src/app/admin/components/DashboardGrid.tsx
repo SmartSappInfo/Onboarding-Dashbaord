@@ -53,7 +53,11 @@ const componentPropsMap = (data: any) => ({
   userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools, totalStudents: data.metrics.totalStudents },
   monthlySchoolsChart: { data: data.monthlySchools },
   moduleRadarChart: { data: data.moduleImplementations },
-  recentActivity: { activities: data.activities, users: data.allUsers, schools: data.allSchools },
+  recentActivity: {
+    activities: data.activities,
+    users: data.recentActivityUsers,
+    schools: data.recentActivitySchools,
+  },
   zoneDistribution: { data: data.zoneDistribution },
   messagingWidget: { ...data.messagingMetrics },
 });
