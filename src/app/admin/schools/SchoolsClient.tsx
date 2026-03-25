@@ -1,15 +1,21 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { collection, doc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import type { School, OnboardingStage, Zone, SchoolStatus, Tag, TagCategory } from '@/lib/types';
+import { TagSelector } from '@/components/tags/TagSelector';
+import { TagBadges } from '@/components/tags/TagBadges';
+import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
+import { TagFilter } from '@/components/tags/TagFilter';
+import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
+import { getContactsByTagsAction } from '@/lib/tag-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2 } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +73,8 @@ const getStatusBadgeVariant = (status: any) => {
 export default function SchoolsClient() {
   const firestore = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
 
@@ -83,6 +91,77 @@ export default function SchoolsClient() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
+  // Tag-related state
+  const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
+  const [isBulkTagOpen, setIsBulkTagOpen] = useState(false);
+
+  // Tag filter state — initialised from URL params
+  const [tagFilterState, setTagFilterState] = useState<TagFilterState>(() => {
+    const tagsParam = searchParams.get('tags');
+    const logicParam = searchParams.get('logic') as TagFilterState['logic'] | null;
+    const categoryParam = searchParams.get('category') as TagCategory | null;
+    return {
+      tagIds: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
+      logic: logicParam && ['AND', 'OR', 'NOT'].includes(logicParam) ? logicParam : 'OR',
+      categoryFilter: categoryParam ?? undefined,
+    };
+  });
+
+  // IDs returned by server-side tag filter query
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const [isTagFiltering, setIsTagFiltering] = useState(false);
+
+  // Real-time tags subscription
+  const tagsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+  const { data: allTags } = useCollection<Tag>(tagsQuery);
+
+  // Sync tag filter state → URL params
+  const updateUrlParams = useCallback((filter: TagFilterState) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (filter.tagIds.length > 0) {
+      params.set('tags', filter.tagIds.join(','));
+      params.set('logic', filter.logic);
+      if (filter.categoryFilter) {
+        params.set('category', filter.categoryFilter);
+      } else {
+        params.delete('category');
+      }
+    } else {
+      params.delete('tags');
+      params.delete('logic');
+      params.delete('category');
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  // Run server-side tag filter query when tagFilterState changes
+  useEffect(() => {
+    if (!activeWorkspaceId || tagFilterState.tagIds.length === 0) {
+      setTagFilteredIds(null);
+      return;
+    }
+    let cancelled = false;
+    setIsTagFiltering(true);
+    getContactsByTagsAction(activeWorkspaceId, tagFilterState).then(result => {
+      if (cancelled) return;
+      if (result.success && result.data) {
+        setTagFilteredIds(new Set(result.data));
+      } else {
+        setTagFilteredIds(new Set());
+      }
+      setIsTagFiltering(false);
+    });
+    return () => { cancelled = true; };
+  }, [activeWorkspaceId, tagFilterState]);
+
+  const handleTagFilterChange = useCallback((filter: TagFilterState) => {
+    setTagFilterState(filter);
+    updateUrlParams(filter);
+  }, [updateUrlParams]);
+
   // MULTI-WORKSPACE QUERY: Use array-contains to find schools shared with the current hub
   const schoolsCol = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId)) : null, 
@@ -95,7 +174,7 @@ export default function SchoolsClient() {
   const { data: stages } = useCollection<OnboardingStage>(stagesCol);
   const { data: zones } = useCollection<Zone>(zonesCol);
 
-  const isLoading = isLoadingSchools || isLoadingFilter;
+  const isLoading = isLoadingSchools || isLoadingFilter || isTagFiltering;
 
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
@@ -110,8 +189,11 @@ export default function SchoolsClient() {
     if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
     
+    // 3. Tag Filter — restrict to IDs returned by getContactsByTagsAction
+    if (tagFilteredIds !== null) temp = temp.filter(s => tagFilteredIds.has(s.id));
+    
     return temp;
-  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter]);
+  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter, tagFilteredIds]);
   
   const sortedSchools = useMemo(() => {
     let sortable = [...filteredSchools];
@@ -135,6 +217,12 @@ export default function SchoolsClient() {
       setSortConfig({ key, direction });
   };
 
+  const toggleSchoolSelection = (schoolId: string) => {
+    setSelectedSchoolIds(prev =>
+      prev.includes(schoolId) ? prev.filter(id => id !== schoolId) : [...prev, schoolId]
+    );
+  };
+
   const handleDeleteSchool = () => {
     if (!firestore || !schoolToDelete) return;
     const docRef = doc(firestore, 'schools', schoolToDelete.id);
@@ -153,6 +241,16 @@ export default function SchoolsClient() {
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center gap-3 shrink-0">
+                    {selectedSchoolIds.length > 0 && (
+                        <Button
+                            variant="outline"
+                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                            onClick={() => setIsBulkTagOpen(true)}
+                        >
+                            <TagIcon className="h-4 w-4" />
+                            Tag {selectedSchoolIds.length} Selected
+                        </Button>
+                    )}
                     <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
                         <Link href="/admin/schools/upload">
                             <FileUp className="mr-2 h-4 w-4" />
@@ -174,39 +272,43 @@ export default function SchoolsClient() {
             </div>
             
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
-                <CardContent className="p-4 flex flex-wrap items-center gap-4">
-                    <div className="flex-1 min-w-[200px]">
-                        <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+                <CardContent className="p-4 space-y-3">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex-1 min-w-[200px]">
+                            <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                <SelectItem value="Archived">Archived</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={zoneFilter} onValueChange={setZoneFilter}>
+                            <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                <SelectValue placeholder="All Zones" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Zones</SelectItem>
+                                {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={stageFilter} onValueChange={setStageFilter}>
+                            <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                <SelectValue placeholder="All Stages" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Stages</SelectItem>
+                                {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                            <SelectItem value="Archived">Archived</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                            <SelectValue placeholder="All Zones" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem value="all">All Zones</SelectItem>
-                            {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    <Select value={stageFilter} onValueChange={setStageFilter}>
-                        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                            <SelectValue placeholder="All Stages" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                            <SelectItem value="all">All Stages</SelectItem>
-                            {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                    {/* Tag filter row — shows active filter badges inline */}
+                    <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
                 </CardContent>
             </Card>
             
@@ -235,17 +337,33 @@ export default function SchoolsClient() {
                         return (
                         <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
                             <TableCell className="pl-6">
-                            <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedSchoolIds.includes(school.id)}
+                                onChange={() => toggleSchoolSelection(school.id)}
+                                className="h-4 w-4 rounded border-border cursor-pointer"
+                                aria-label={`Select ${school.name}`}
+                              />
+                              <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
                                 <AvatarImage src={school.logoUrl} alt={school.name} />
                                 <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
-                            </Avatar>
+                              </Avatar>
+                            </div>
                             </TableCell>
                             <TableCell className="py-4">
-                                <div className="flex flex-col text-left">
+                                <div className="flex flex-col text-left gap-1">
                                     <Link href={`/admin/schools/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
                                     <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
                                         <User className="h-2 w-2" /> {signatory?.name || 'No Primary Contact'}
                                     </span>
+                                    {school.tags && school.tags.length > 0 && allTags && (
+                                        <TagBadges
+                                            tagIds={school.tags}
+                                            allTags={allTags}
+                                            maxVisible={3}
+                                        />
+                                    )}
                                 </div>
                             </TableCell>
                             <TableCell className="text-center">
@@ -348,6 +466,13 @@ export default function SchoolsClient() {
       <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
       <ChangeStatusModal school={changingStatusSchool} open={!!changingStatusSchool} onOpenChange={(open) => !open && setChangingStatusSchool(null)} />
       <TransferPipelineModal school={transferringSchool} open={!!transferringSchool} onOpenChange={(open) => !open && setTransferringSchool(null)} />
+      <BulkTagOperations
+        open={isBulkTagOpen}
+        onOpenChange={setIsBulkTagOpen}
+        selectedContactIds={selectedSchoolIds}
+        contactType="school"
+        onComplete={() => setSelectedSchoolIds([])}
+      />
     </TooltipProvider>
   );
 }

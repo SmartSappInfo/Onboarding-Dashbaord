@@ -15,6 +15,98 @@ export type SchoolStatus = SchoolStatusState; // Alias for backward compatibilit
 
 export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned' | 'Lead' | 'Lost' | string;
 
+/**
+ * Tag Category Types
+ */
+export type TagCategory = 
+  | 'behavioral'    // Actions taken (Downloaded, Attended, Clicked)
+  | 'demographic'   // Location, size, type
+  | 'interest'      // Product/service interests
+  | 'status'        // Current state (Hot Lead, Active, Churned)
+  | 'lifecycle'     // Journey stage (Prospect, Onboarding, Renewal)
+  | 'engagement'    // Activity level (Highly Engaged, Inactive)
+  | 'custom';       // User-defined
+
+/**
+ * Tag Definition
+ * Stored in 'tags' collection
+ */
+export interface Tag {
+  id: string;
+  workspaceId: string;           // Workspace-scoped
+  organizationId: string;        // For org-level analytics
+  name: string;                  // Display name (max 50 chars)
+  slug: string;                  // URL-safe identifier
+  description?: string;          // Optional description (max 200 chars)
+  category: TagCategory;         // Tag category
+  color: string;                 // Hex color code
+  isSystem: boolean;             // System-generated (read-only)
+  usageCount: number;            // Denormalized count for performance
+  createdBy: string;             // User ID
+  createdAt: string;             // ISO timestamp
+  updatedAt: string;             // ISO timestamp
+}
+
+/**
+ * Contact Tag Association
+ * Embedded in contact documents (schools, prospects)
+ */
+export interface ContactTagging {
+  tags: string[];                           // Array of tag IDs
+  taggedAt: { [tagId: string]: string };    // When each tag was applied
+  taggedBy: { [tagId: string]: string };    // Who applied each tag
+}
+
+/**
+ * Tag Usage Statistics
+ */
+export interface TagUsageStats {
+  tagId: string;
+  tagName: string;
+  contactCount: number;
+  lastUsed: string;
+  trendDirection: 'up' | 'down' | 'stable';
+  campaignUsage: number;
+  automationUsage: number;
+}
+
+/**
+ * Tag Audit Log Entry
+ */
+export interface TagAuditLog {
+  id: string;
+  workspaceId: string;
+  action: 'created' | 'updated' | 'deleted' | 'merged' | 'applied' | 'removed';
+  tagId: string;
+  tagName: string;
+  contactId?: string;
+  contactName?: string;
+  userId: string;
+  userName: string;
+  timestamp: string;
+  metadata?: {
+    oldValue?: any;
+    newValue?: any;
+    mergedIntoTagId?: string;
+    bulkOperation?: boolean;
+    affectedCount?: number;
+  };
+}
+
+/**
+ * Tag Filter Query
+ */
+export interface TagFilterQuery {
+  tagIds: string[];
+  logic: 'AND' | 'OR' | 'NOT';
+  categoryFilter?: TagCategory;
+  dateRange?: {
+    field: 'taggedAt' | 'createdAt';
+    start: string;
+    end: string;
+  };
+}
+
 export type AutomationTrigger = 
   | 'SCHOOL_CREATED' 
   | 'SCHOOL_STAGE_CHANGED' 
@@ -22,7 +114,47 @@ export type AutomationTrigger =
   | 'SURVEY_SUBMITTED' 
   | 'PDF_SIGNED' 
   | 'WEBHOOK_RECEIVED' 
-  | 'MEETING_CREATED';
+  | 'MEETING_CREATED'
+  | 'TAG_ADDED'
+  | 'TAG_REMOVED';
+
+/**
+ * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
+ * Specifies which tags to watch and optionally filters by contact type or
+ * how the tag was applied.
+ */
+export interface TagTriggerConfig {
+  /** Tag IDs that should fire this trigger. Empty array means any tag. */
+  tagIds: string[];
+  /** Restrict trigger to a specific contact type. */
+  contactType?: 'school' | 'prospect';
+  /** Filter by how the tag was applied: 'manual' (by a user) or 'automatic' (by automation). */
+  appliedBy?: 'manual' | 'automatic';
+}
+
+/**
+ * Automation node that evaluates tag conditions during flow execution.
+ */
+export interface TagConditionNode {
+  id: string;
+  type: 'tag_condition';
+  data: {
+    logic: 'has_tag' | 'has_all_tags' | 'has_any_tag' | 'not_has_tag';
+    tagIds: string[];
+  };
+}
+
+/**
+ * Automation node that applies or removes tags as an automation action.
+ */
+export interface TagActionNode {
+  id: string;
+  type: 'tag_action';
+  data: {
+    action: 'add_tags' | 'remove_tags';
+    tagIds: string[];
+  };
+}
 
 /**
  * Defines the root Tenant for branding, billing, and user governance.
@@ -144,6 +276,9 @@ export const APP_PERMISSIONS = [
   { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
   { id: 'tasks_manage', label: 'Manage CRM Tasks', category: 'Operations' },
   { id: 'activities_view', label: 'View Audit Timeline', category: 'Management' },
+  { id: 'tags_view', label: 'View Tags', category: 'Operations' },
+  { id: 'tags_manage', label: 'Manage Tags', category: 'Operations' },
+  { id: 'tags_apply', label: 'Apply Tags to Contacts', category: 'Operations' },
 ] as const;
 
 export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];
@@ -229,6 +364,10 @@ export interface School {
   track?: string;
   lifecycleStatus?: LifecycleStatus;
   createdAt: string;
+  // Tagging fields
+  tags?: string[];
+  taggedAt?: { [tagId: string]: string };
+  taggedBy?: { [tagId: string]: string };
 }
 
 export interface SubscriptionPackage {
@@ -679,6 +818,7 @@ export interface AutomationRule {
   name: string;
   description?: string;
   trigger: AutomationTrigger;
+  triggerConfig?: TagTriggerConfig;
   conditions: AutomationCondition[];
   actions: AutomationAction[];
   isActive: boolean;

@@ -9,6 +9,7 @@ import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
 import { getSchoolEmail, getSchoolPhone, getSignatory } from './school-helpers';
 import { getPrimaryWorkspaceId } from './workspace-helpers';
+import { resolveTagVariables } from './messaging-actions';
 
 interface SendMessageInput {
   templateId: string;
@@ -101,6 +102,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             }
 
             Object.entries(schoolVars).forEach(([k, v]) => {
+                if (finalVariables[k] === undefined) finalVariables[k] = v;
+            });
+
+            // Resolve tag variables for this school (FR5.2.1, FR5.2.2)
+            const tagVars = await resolveTagVariables(schoolId, 'school');
+            Object.entries(tagVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
         }

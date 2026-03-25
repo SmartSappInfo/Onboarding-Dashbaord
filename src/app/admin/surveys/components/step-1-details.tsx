@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type, MessageSquareText } from 'lucide-react';
+import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import type { School } from '@/lib/types';
 
@@ -90,6 +90,31 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Introductory Prose</Label>
                                 <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-muted/20 border-none p-4 font-medium leading-relaxed shadow-inner" />
+                            </div>
+                        )}
+                    />
+                    <Controller
+                        name="startButtonText"
+                        control={control}
+                        render={({ field }) => (
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Start Button Label</Label>
+                                <Input
+                                    {...field}
+                                    value={field.value || ''}
+                                    placeholder="e.g. Start the 2-Minute Survey"
+                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                />
+                                <div className="flex items-center gap-2 pt-1">
+                                    <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-tighter ml-1">Preview:</span>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-2 h-9 px-5 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-md transition-all whitespace-nowrap"
+                                        style={{ width: 'fit-content' }}
+                                    >
+                                        {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                                    </button>
+                                </div>
                             </div>
                         )}
                     />

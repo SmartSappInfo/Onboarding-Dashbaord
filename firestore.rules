@@ -95,7 +95,14 @@ service cloud.firestore {
       allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceIds);
       allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
       allow create: if isAuthorized();
-      allow update: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        canAccessWorkspace(resource.data.workspaceIds) ||
+        // Allow tag-only updates with schools_edit permission
+        (hasPermission('schools_edit') &&
+         canAccessWorkspace(resource.data.workspaceIds) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tags', 'taggedAt', 'taggedBy']))
+      );
       allow delete: if isAuthorized() && hasPermission('system_admin') && canAccessWorkspace(resource.data.workspaceIds);
     }
 
@@ -229,6 +236,39 @@ service cloud.firestore {
     }
     match /messaging_variables/{vId} {
       allow read, write: if isAuthorized();
+    }
+
+    // --- Contact Tagging System ---
+    match /tags/{tagId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('tags_manage') && request.resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('tags_manage') &&
+         resource.data.workspaceId in getUserData().workspaceIds &&
+         resource.data.get('isSystem', false) == false)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('tags_manage') &&
+         resource.data.workspaceId in getUserData().workspaceIds &&
+         resource.data.get('isSystem', false) == false)
+      );
+    }
+
+    match /tag_audit_logs/{logId} {
+      allow read, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('activities_view') && resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
   }
 }

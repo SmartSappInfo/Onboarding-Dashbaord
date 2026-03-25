@@ -71,6 +71,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickTemplateDialog from '../../components/quick-template-dialog';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
+import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -112,6 +113,13 @@ export default function ComposerWizard() {
     const [csvData, setCsvData] = React.useState<any[]>([]);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
     const [columnMapping, setColumnMapping] = React.useState<Record<string, string>>({});
+    
+    // Tag Audience Segment State (FR5.1.1, FR5.1.2, FR5.1.3)
+    const [tagSegment, setTagSegment] = React.useState<TagSegment>({
+        includeTagIds: [],
+        excludeTagIds: [],
+        includeLogic: 'OR',
+    });
     
     const [jobId, setJobId] = React.useState<string | null>(null);
     const [jobProgress, setJobProgress] = React.useState(0);
@@ -967,6 +975,11 @@ export default function ComposerWizard() {
                                     </motion.div>
                                 ) : (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
+                                        {/* Tag-Based Audience Segmentation (FR5.1.1, FR5.1.2, FR5.1.3) */}
+                                        <div className="p-8 rounded-[2.5rem] bg-muted/10 border border-border/50 shadow-inner">
+                                            <TagAudienceSelector onChange={setTagSegment} />
+                                        </div>
+
                                         {!csvData.length ? (
                                             <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
                                                 <Upload className="h-12 w-12 text-primary" />

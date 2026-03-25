@@ -18,6 +18,8 @@ import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
 import { ConditionNode } from '../[id]/edit/components/nodes/ConditionNode';
 import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
+import { TagConditionNode } from '../[id]/edit/components/nodes/TagConditionNode';
+import { TagActionNode } from '../[id]/edit/components/nodes/TagActionNode';
 import { 
     Zap, 
     Play, 
@@ -31,7 +33,9 @@ import {
     ArrowRightLeft,
     Clock,
     X,
-    MousePointer2
+    MousePointer2,
+    Tag,
+    TagIcon
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +48,8 @@ const nodeTypes = {
     actionNode: ActionNode,
     conditionNode: ConditionNode,
     delayNode: DelayNode,
+    tagConditionNode: TagConditionNode,
+    tagActionNode: TagActionNode,
 };
 
 interface AutomationBuilderProps {
@@ -115,6 +121,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
             case 'actionNode': label = 'Task Execution Step'; break;
             case 'conditionNode': label = 'Logical Decision'; break;
             case 'delayNode': label = 'Temporal Wait'; break;
+            case 'tagConditionNode': label = 'Tag Condition'; break;
+            case 'tagActionNode': label = 'Tag Action'; break;
         }
 
         const newNode = {
@@ -161,6 +169,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                             <ToolBtn icon={Zap} label="Add Trigger" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('triggerNode')} />
                             <ToolBtn icon={Play} label="Add Action" color="text-blue-600 bg-blue-50" onClick={() => addNode('actionNode')} />
                             <ToolBtn icon={ArrowRightLeft} label="Add Condition" color="text-amber-600 bg-amber-50" onClick={() => addNode('conditionNode')} />
+                            <ToolBtn icon={Tag} label="Add Tag Condition" color="text-violet-600 bg-violet-50" onClick={() => addNode('tagConditionNode')} />
+                            <ToolBtn icon={TagIcon} label="Add Tag Action" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('tagActionNode')} />
                             <ToolBtn icon={Clock} label="Add Delay" color="text-purple-600 bg-purple-50" onClick={() => addNode('delayNode')} />
                             <div className="h-px bg-border/50 mx-2 my-1" />
                             <ToolBtn icon={Grid3X3} label="Auto Layout" onClick={() => {}} />

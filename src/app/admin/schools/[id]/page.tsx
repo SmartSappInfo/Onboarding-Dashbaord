@@ -5,7 +5,9 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
-import type { School, FocalPerson, Task } from '@/lib/types';
+import type { School, FocalPerson, Task, Tag, TagAuditLog } from '@/lib/types';
+import { TagSelector } from '@/components/tags/TagSelector';
+import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -117,6 +119,28 @@ export default function SchoolDetailPage() {
         );
     }, [firestore, schoolId]);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
+    // Tags subscription
+    const tagsQuery = useMemoFirebase(() => {
+        if (!firestore || !school?.workspaceIds?.[0]) return null;
+        return query(
+            collection(firestore, 'tags'),
+            where('workspaceId', '==', school.workspaceIds[0]),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, school?.workspaceIds]);
+    const { data: allTags } = useCollection<Tag>(tagsQuery);
+
+    // Tag audit log for this school
+    const tagAuditQuery = useMemoFirebase(() => {
+        if (!firestore || !schoolId) return null;
+        return query(
+            collection(firestore, 'tag_audit_logs'),
+            where('contactId', '==', schoolId),
+            orderBy('timestamp', 'desc')
+        );
+    }, [firestore, schoolId]);
+    const { data: tagAuditLogs } = useCollection<TagAuditLog>(tagAuditQuery);
 
     // Navigation Entity Resolution
     useSetBreadcrumb(school?.name);
@@ -258,6 +282,14 @@ export default function SchoolDetailPage() {
                                 <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm uppercase tracking-widest"><MapPin className="h-3.5 w-3.5" /> {school.zone?.name}</span>
                             </div>
                             <h2 className="text-3xl font-black tracking-tight uppercase">{school.name}</h2>
+                            {/* Tag Selector */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <TagSelector
+                                    contactId={school.id}
+                                    contactType="school"
+                                    currentTagIds={school.tags || []}
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

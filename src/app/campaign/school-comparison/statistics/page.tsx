@@ -29,9 +29,10 @@ import {
     Zap,
     MousePointer2,
     Activity,
-    Globe
+    Globe,
+    List
 } from 'lucide-react';
-import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
+import { formatDistanceToNow, differenceInSeconds, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import LightRays from '@/components/LightRays';
@@ -216,6 +217,66 @@ export default function CampaignStatisticsPage() {
                             </CardFooter>
                         </Card>
                     </div>
+
+                    {/* Individual Visits List */}
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
+                        <CardHeader className="p-8 border-b bg-muted/10">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+                                <List className="h-5 w-5 text-primary" /> Individual Visits
+                            </CardTitle>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">
+                                {sessions?.length ?? 0} sessions recorded — most recent first.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {!sessions || sessions.length === 0 ? (
+                                <p className="p-8 text-sm text-muted-foreground text-center">No visits recorded yet.</p>
+                            ) : (
+                                <div className="divide-y divide-border">
+                                    {sessions.map((session, i) => {
+                                        const duration = session.createdAt && session.updatedAt
+                                            ? differenceInSeconds(new Date(session.updatedAt), new Date(session.createdAt))
+                                            : 0;
+                                        const visitedAt = session.createdAt ? new Date(session.createdAt) : null;
+                                        return (
+                                            <div key={session.id ?? i} className="flex items-center gap-4 px-8 py-4 hover:bg-muted/30 transition-colors">
+                                                <span className="text-[10px] font-black text-muted-foreground/40 w-6 shrink-0 tabular-nums">{i + 1}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-mono text-muted-foreground truncate">{session.id}</p>
+                                                    <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mt-0.5">
+                                                        {visitedAt ? format(visitedAt, 'MMM d, yyyy · h:mm a') : '—'}
+                                                        {visitedAt && <span className="ml-2 text-muted-foreground/30">({formatDistanceToNow(visitedAt, { addSuffix: true })})</span>}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 border-border/60">
+                                                        <Clock className="h-3 w-3" />
+                                                        {duration > 0 ? `${duration}s` : '<1s'}
+                                                    </Badge>
+                                                    {session.selectedOption === 'school' && (
+                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                            <Building2 className="h-3 w-3" /> Institutional
+                                                        </Badge>
+                                                    )}
+                                                    {session.selectedOption === 'parent' && (
+                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">
+                                                            <Users className="h-3 w-3" /> Families
+                                                        </Badge>
+                                                    )}
+                                                    {!session.selectedOption && (
+                                                        <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 text-muted-foreground">
+                                                            <MousePointer2 className="h-3 w-3" /> No Selection
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                 </div>
             </main>
 

@@ -43,6 +43,7 @@ function sanitizeContent(html: string): string {
 
 /**
  * Resolves variables in a text string using {{variable_name}} syntax.
+ * Supports tag_list (JSON array) by rendering as a comma-separated string.
  */
 export function resolveVariables(text: string, variables: Record<string, any>): string {
   if (!text) return '';
@@ -50,7 +51,15 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
   return sanitized.replace(/\{\{(.*?)\}\}/g, (match, key) => {
     const cleanKey = key.trim();
     const value = variables[cleanKey];
-    return value !== undefined ? String(value) : match;
+    if (value === undefined) return match;
+    // tag_list is stored as JSON array string — render as comma-separated for display
+    if (cleanKey === 'tag_list') {
+      try {
+        const arr = JSON.parse(String(value));
+        if (Array.isArray(arr)) return arr.join(', ');
+      } catch { /* fall through */ }
+    }
+    return String(value);
   });
 }
 
@@ -68,6 +77,47 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
     const value = variables[rule.variableKey];
     const strValue = String(value ?? '').trim();
     const target = (rule.value || '').trim();
+
+    // Tag-specific operators (FR5.2.2)
+    // has_tag variable is a JSON object: { "tag name": true, ... }
+    if (rule.variableKey === 'has_tag' || rule.variableKey === 'contact_tags') {
+      let hasTagMap: Record<string, boolean> = {};
+      if (rule.variableKey === 'has_tag') {
+        try { hasTagMap = JSON.parse(strValue || '{}'); } catch { hasTagMap = {}; }
+      } else {
+        // contact_tags is comma-separated; build map on the fly
+        strValue.split(',').forEach(t => {
+          const trimmed = t.trim().toLowerCase();
+          if (trimmed) hasTagMap[trimmed] = true;
+        });
+      }
+      const targetLower = target.toLowerCase();
+      switch (rule.operator) {
+        case 'isEqualTo':
+        case 'contains':
+          return !!hasTagMap[targetLower];
+        case 'isNotEqualTo':
+        case 'doesNotContain':
+          return !hasTagMap[targetLower];
+        default:
+          break; // fall through to generic handling
+      }
+    }
+
+    // tag_count comparisons (FR5.2.2)
+    if (rule.variableKey === 'tag_count') {
+      const numValue = Number(strValue);
+      const numTarget = Number(target);
+      switch (rule.operator) {
+        case 'isEqualTo': return numValue === numTarget;
+        case 'isNotEqualTo': return numValue !== numTarget;
+        case 'isGreaterThan': return numValue > numTarget;
+        case 'isLessThan': return numValue < numTarget;
+        case 'isEmpty': return numValue === 0;
+        case 'isNotEmpty': return numValue > 0;
+        default: break;
+      }
+    }
 
     switch (rule.operator) {
       case 'isEqualTo': return strValue === target;

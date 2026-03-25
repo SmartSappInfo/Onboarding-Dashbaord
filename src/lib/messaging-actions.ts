@@ -55,6 +55,12 @@ export async function syncVariableRegistry() {
       { key: 'credit_balance', label: 'Available Credit', category: 'finance', source: 'static', entity: 'School', path: 'creditBalance', type: 'number' },
       { key: 'currency', label: 'Billing Currency', category: 'finance', source: 'static', entity: 'School', path: 'currency', type: 'string' },
 
+      // Contact Tags (FR5.2.1, FR5.2.2)
+      { key: 'contact_tags', label: 'Contact Tags (Comma-Separated)', category: 'general', source: 'static', entity: 'School', path: 'tags', type: 'string' },
+      { key: 'tag_count', label: 'Tag Count', category: 'general', source: 'static', entity: 'School', path: 'tags.length', type: 'number' },
+      { key: 'tag_list', label: 'Tag List (Array)', category: 'general', source: 'static', entity: 'School', path: 'tags[]', type: 'array' },
+      { key: 'has_tag', label: 'Has Tag (Conditional)', category: 'general', source: 'static', entity: 'School', path: 'tags.includes', type: 'boolean' },
+
       // Meetings
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
@@ -317,4 +323,178 @@ export async function clearVariablesForSource(sourceId: string) {
     
     revalidatePath('/admin/messaging/variables');
     return { success: true };
+}
+
+/**
+ * Resolves tag-related template variables for a contact.
+ * Fetches the contact's tag IDs, resolves them to tag names, and returns
+ * formatted variables for use in message templates.
+ *
+ * Returns:
+ *   contact_tags  — comma-separated tag names (e.g. "Hot Lead, VIP, Engaged")
+ *   tag_count     — number of tags applied
+ *   tag_list      — JSON array of tag name strings (for iteration)
+ *   has_tag       — JSON object mapping tag name (lowercase) → true (for conditionals)
+ *
+ * Requirements: FR5.2.1, FR5.2.2
+ */
+export async function resolveTagVariables(
+  contactId: string,
+  contactType: 'school' | 'prospect'
+): Promise<{
+  contact_tags: string;
+  tag_count: number;
+  tag_list: string;
+  has_tag: string;
+}> {
+  const empty = { contact_tags: '', tag_count: 0, tag_list: '[]', has_tag: '{}' };
+
+  try {
+    const collectionName = contactType === 'school' ? 'schools' : 'prospects';
+    const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
+
+    if (!contactSnap.exists) return empty;
+
+    const tagIds: string[] = contactSnap.data()?.tags || [];
+    if (tagIds.length === 0) return empty;
+
+    // Resolve tag IDs to tag names in parallel (batch by 10 for Firestore 'in' limit)
+    const tagNames: string[] = [];
+    const chunkSize = 10;
+
+    for (let i = 0; i < tagIds.length; i += chunkSize) {
+      const chunk = tagIds.slice(i, i + chunkSize);
+      const tagsSnap = await adminDb
+        .collection('tags')
+        .where('__name__', 'in', chunk)
+        .get();
+
+      // Preserve original order
+      const nameMap = new Map<string, string>();
+      tagsSnap.docs.forEach(doc => nameMap.set(doc.id, doc.data().name as string));
+      chunk.forEach(id => {
+        const name = nameMap.get(id);
+        if (name) tagNames.push(name);
+      });
+    }
+
+    // Build has_tag map: { "hot lead": true, "vip": true }
+    const hasTagMap: Record<string, boolean> = {};
+    tagNames.forEach(name => {
+      hasTagMap[name.toLowerCase()] = true;
+    });
+
+    return {
+      contact_tags: tagNames.join(', '),
+      tag_count: tagNames.length,
+      tag_list: JSON.stringify(tagNames),
+      has_tag: JSON.stringify(hasTagMap),
+    };
+  } catch (error: any) {
+    console.error('resolveTagVariables error:', error.message);
+    return empty;
+  }
+}
+
+/**
+ * Previews the audience for a campaign with tag-based filtering.
+ * Returns contact count, a preview list, and tag distribution.
+ *
+ * Requirements: FR5.1.2, FR5.1.3
+ */
+export async function previewCampaignAudience(params: {
+  workspaceId: string;
+  includeTagIds?: string[];
+  excludeTagIds?: string[];
+  includeLogic?: 'AND' | 'OR';
+  limit?: number;
+}): Promise<{
+  success: boolean;
+  count?: number;
+  preview?: { id: string; name: string; tags: string[] }[];
+  tagDistribution?: { tagId: string; tagName: string; count: number }[];
+  error?: string;
+}> {
+  try {
+    const { workspaceId, includeTagIds = [], excludeTagIds = [], includeLogic = 'OR', limit: previewLimit = 10 } = params;
+
+    // Step 1: Get all contacts in workspace
+    const [schoolsSnap, prospectsSnap] = await Promise.all([
+      adminDb.collection('schools').where('workspaceIds', 'array-contains', workspaceId).get(),
+      adminDb.collection('prospects').where('workspaceId', '==', workspaceId).get(),
+    ]);
+
+    interface ContactEntry {
+      id: string;
+      name: string;
+      tags: string[];
+    }
+
+    const allContacts: ContactEntry[] = [
+      ...schoolsSnap.docs.map(d => ({ id: d.id, name: d.data().name || '', tags: d.data().tags || [] })),
+      ...prospectsSnap.docs.map(d => ({ id: d.id, name: d.data().name || '', tags: d.data().tags || [] })),
+    ];
+
+    // Step 2: Apply include filter
+    let filtered = allContacts;
+
+    if (includeTagIds.length > 0) {
+      filtered = filtered.filter(contact => {
+        if (includeLogic === 'AND') {
+          return includeTagIds.every(tagId => contact.tags.includes(tagId));
+        }
+        return includeTagIds.some(tagId => contact.tags.includes(tagId));
+      });
+    }
+
+    // Step 3: Apply exclude filter
+    if (excludeTagIds.length > 0) {
+      filtered = filtered.filter(contact =>
+        !excludeTagIds.some(tagId => contact.tags.includes(tagId))
+      );
+    }
+
+    // Step 4: Resolve tag names for distribution
+    const allTagIds = new Set<string>();
+    filtered.forEach(c => c.tags.forEach(t => allTagIds.add(t)));
+
+    const tagNameMap = new Map<string, string>();
+    const tagIdArray = Array.from(allTagIds);
+    for (let i = 0; i < tagIdArray.length; i += 10) {
+      const chunk = tagIdArray.slice(i, i + 10);
+      if (chunk.length === 0) continue;
+      const snap = await adminDb.collection('tags').where('__name__', 'in', chunk).get();
+      snap.docs.forEach(d => tagNameMap.set(d.id, d.data().name as string));
+    }
+
+    // Step 5: Build tag distribution
+    const tagCounts = new Map<string, number>();
+    filtered.forEach(contact => {
+      contact.tags.forEach(tagId => {
+        tagCounts.set(tagId, (tagCounts.get(tagId) || 0) + 1);
+      });
+    });
+
+    const tagDistribution = Array.from(tagCounts.entries())
+      .map(([tagId, count]) => ({ tagId, tagName: tagNameMap.get(tagId) || tagId, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+
+    // Step 6: Build preview list with resolved tag names
+    const preview = filtered.slice(0, previewLimit).map(contact => ({
+      id: contact.id,
+      name: contact.name,
+      tags: contact.tags.map(id => tagNameMap.get(id) || id),
+    }));
+
+    return {
+      success: true,
+      count: filtered.length,
+      preview,
+      tagDistribution,
+    };
+  } catch (error: any) {
+    console.error('previewCampaignAudience error:', error.message);
+    return { success: false, error: error.message };
+  }
 }

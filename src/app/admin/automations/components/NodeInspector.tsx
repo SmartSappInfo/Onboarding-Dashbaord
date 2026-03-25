@@ -21,7 +21,9 @@ import {
     Search, 
     BadgeAlert, 
     FlaskConical,
-    PlusCircle
+    PlusCircle,
+    Tag,
+    X
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -30,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { MessageTemplate, UserProfile, OnboardingStage, VariableDefinition } from '@/lib/types';
+import type { MessageTemplate, UserProfile, OnboardingStage, VariableDefinition, Tag as TagType } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -96,10 +98,15 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
         firestore ? query(collection(firestore, 'messaging_variables')) : null, 
     [firestore]);
 
+    const tagsQuery = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, 'tags'), orderBy('name', 'asc')) : null,
+    [firestore]);
+
     const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: allTags } = useCollection<TagType>(tagsQuery);
 
     const filteredVars = React.useMemo(() => {
         if (!variables) return [];
@@ -270,6 +277,249 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                                 <p className="text-[9px] font-bold text-amber-800 leading-relaxed uppercase tracking-tighter">
                                     If the rule matches, execution follows the **True** (Emerald) path. Otherwise, it follows the **False** (Rose) path.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'tagConditionNode' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="space-y-6">
+                                {/* Logic selector */}
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                        <Tag className="h-3 w-3" /> Condition Logic
+                                    </Label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {[
+                                            { value: 'has_tag', label: 'Has Tag', desc: 'Contact has at least one of the selected tags.' },
+                                            { value: 'has_all_tags', label: 'Has All Tags', desc: 'Contact has every selected tag.' },
+                                            { value: 'has_any_tag', label: 'Has Any Tag', desc: 'Contact has at least one of the selected tags.' },
+                                            { value: 'not_has_tag', label: 'Not Has Tag', desc: 'Contact has none of the selected tags.' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => onUpdate({ logic: opt.value })}
+                                                className={cn(
+                                                    'flex items-start gap-3 p-3 rounded-2xl border-2 transition-all text-left',
+                                                    data.logic === opt.value
+                                                        ? 'border-violet-500 bg-violet-50 shadow-md'
+                                                        : 'border-transparent bg-muted/20 hover:bg-muted/40'
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    'p-2 rounded-xl transition-all shadow-sm shrink-0',
+                                                    data.logic === opt.value ? 'bg-violet-500 text-white' : 'bg-white text-muted-foreground'
+                                                )}>
+                                                    <Tag className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-black text-xs uppercase tracking-tight leading-none mb-1">{opt.label}</p>
+                                                    <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{opt.desc}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Tag multi-select */}
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                        <Tag className="h-3 w-3" /> Tags to Evaluate
+                                    </Label>
+
+                                    {/* Selected tags */}
+                                    {(data.tagIds || []).length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-muted/20 min-h-[40px]">
+                                            {(data.tagIds as string[]).map((tagId: string) => {
+                                                const tag = allTags?.find(t => t.id === tagId);
+                                                return (
+                                                    <span
+                                                        key={tagId}
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-white"
+                                                        style={{ backgroundColor: tag?.color ?? '#8B5CF6' }}
+                                                    >
+                                                        {tag?.name ?? tagId}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const next = (data.tagIds as string[]).filter((id: string) => id !== tagId);
+                                                                onUpdate({ tagIds: next });
+                                                            }}
+                                                            className="hover:bg-black/20 rounded-full p-0.5 transition-colors"
+                                                        >
+                                                            <X className="h-2.5 w-2.5" />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Tag picker */}
+                                    <Select
+                                        value=""
+                                        onValueChange={(tagId) => {
+                                            const current: string[] = data.tagIds || [];
+                                            if (!current.includes(tagId)) {
+                                                onUpdate({ tagIds: [...current, tagId] });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold shadow-inner px-4">
+                                            <SelectValue placeholder="Add a tag..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[280px] overflow-y-auto">
+                                            {(allTags || [])
+                                                .filter(t => !(data.tagIds || []).includes(t.id))
+                                                .map(tag => (
+                                                    <SelectItem key={tag.id} value={tag.id} className="rounded-lg p-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-xs uppercase">{tag.name}</span>
+                                                                <span className="text-[9px] text-muted-foreground capitalize">{tag.category}</span>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            {(allTags || []).filter(t => !(data.tagIds || []).includes(t.id)).length === 0 && (
+                                                <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">All tags selected</p>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="p-5 rounded-[2rem] bg-violet-50 border border-violet-100 flex items-start gap-4 shadow-inner">
+                                <Info className="h-5 w-5 text-violet-600 shrink-0 mt-0.5" />
+                                <p className="text-[9px] font-bold text-violet-800 leading-relaxed uppercase tracking-tighter">
+                                    If the tag condition matches, execution follows the <span className="text-emerald-600">True</span> path. Otherwise it follows the <span className="text-rose-600">False</span> path.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {node.type === 'tagActionNode' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="space-y-6">
+                                {/* Action type selector */}
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                        <Tag className="h-3 w-3" /> Action Type
+                                    </Label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {[
+                                            { value: 'add_tags', label: 'Add Tags', desc: 'Apply the selected tags to the contact.', activeClass: 'border-emerald-500 bg-emerald-50 shadow-md', iconClass: 'bg-emerald-500 text-white' },
+                                            { value: 'remove_tags', label: 'Remove Tags', desc: 'Remove the selected tags from the contact.', activeClass: 'border-rose-500 bg-rose-50 shadow-md', iconClass: 'bg-rose-500 text-white' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => onUpdate({ action: opt.value })}
+                                                className={cn(
+                                                    'flex items-start gap-3 p-3 rounded-2xl border-2 transition-all text-left',
+                                                    data.action === opt.value
+                                                        ? opt.activeClass
+                                                        : 'border-transparent bg-muted/20 hover:bg-muted/40'
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    'p-2 rounded-xl transition-all shadow-sm shrink-0',
+                                                    data.action === opt.value ? opt.iconClass : 'bg-white text-muted-foreground'
+                                                )}>
+                                                    <Tag className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-black text-xs uppercase tracking-tight leading-none mb-1">{opt.label}</p>
+                                                    <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">{opt.desc}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Tag multi-select */}
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                        <Tag className="h-3 w-3" /> Tags to {data.action === 'remove_tags' ? 'Remove' : 'Apply'}
+                                    </Label>
+
+                                    {/* Selected tags */}
+                                    {(data.tagIds || []).length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-muted/20 min-h-[40px]">
+                                            {(data.tagIds as string[]).map((tagId: string) => {
+                                                const tag = allTags?.find(t => t.id === tagId);
+                                                return (
+                                                    <span
+                                                        key={tagId}
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase text-white"
+                                                        style={{ backgroundColor: tag?.color ?? '#10B981' }}
+                                                    >
+                                                        {tag?.name ?? tagId}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const next = (data.tagIds as string[]).filter((id: string) => id !== tagId);
+                                                                onUpdate({ tagIds: next });
+                                                            }}
+                                                            className="hover:bg-black/20 rounded-full p-0.5 transition-colors"
+                                                        >
+                                                            <X className="h-2.5 w-2.5" />
+                                                        </button>
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Tag picker */}
+                                    <Select
+                                        value=""
+                                        onValueChange={(tagId) => {
+                                            const current: string[] = data.tagIds || [];
+                                            if (!current.includes(tagId)) {
+                                                onUpdate({ tagIds: [...current, tagId] });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold shadow-inner px-4">
+                                            <SelectValue placeholder="Add a tag..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[280px] overflow-y-auto">
+                                            {(allTags || [])
+                                                .filter(t => !(data.tagIds || []).includes(t.id))
+                                                .map(tag => (
+                                                    <SelectItem key={tag.id} value={tag.id} className="rounded-lg p-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-xs uppercase">{tag.name}</span>
+                                                                <span className="text-[9px] text-muted-foreground capitalize">{tag.category}</span>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            {(allTags || []).filter(t => !(data.tagIds || []).includes(t.id)).length === 0 && (
+                                                <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">All tags selected</p>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className={cn(
+                                'p-5 rounded-[2rem] flex items-start gap-4 shadow-inner border',
+                                data.action === 'remove_tags'
+                                    ? 'bg-rose-50 border-rose-100'
+                                    : 'bg-emerald-50 border-emerald-100'
+                            )}>
+                                <Info className={cn('h-5 w-5 shrink-0 mt-0.5', data.action === 'remove_tags' ? 'text-rose-600' : 'text-emerald-600')} />
+                                <p className={cn('text-[9px] font-bold leading-relaxed uppercase tracking-tighter', data.action === 'remove_tags' ? 'text-rose-800' : 'text-emerald-800')}>
+                                    {data.action === 'remove_tags'
+                                        ? 'The selected tags will be removed from the contact when this step executes.'
+                                        : 'The selected tags will be applied to the contact when this step executes.'}
                                 </p>
                             </div>
                         </div>
