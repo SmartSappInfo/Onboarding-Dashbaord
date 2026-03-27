@@ -803,12 +803,15 @@ export default function ComposerWizard() {
                             <div className="space-y-8">
                                 {watchedMode === 'single' ? (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                                        {/* Multi-Entity Mode Toggle */}
-                                        <div className="p-6 rounded-[2rem] bg-muted/10 border border-border/50 shadow-inner">
+                                        {/* Multi-Entity Mode Toggle - ALWAYS VISIBLE IN TARGETED MODE */}
+                                        <div className="p-6 rounded-[2rem] bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 shadow-lg">
                                             <div className="flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <Label className="text-sm font-black uppercase tracking-tight text-primary">Send to Multiple Schools</Label>
-                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Enable multi-entity selection mode</p>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-base font-black uppercase tracking-tight text-primary flex items-center gap-2">
+                                                        <Users className="h-5 w-5" />
+                                                        Send to Multiple Schools
+                                                    </Label>
+                                                    <p className="text-xs text-muted-foreground font-semibold">Enable multi-entity selection mode to send to multiple institutions</p>
                                                 </div>
                                                 <Controller
                                                     name="useMultiEntity"
@@ -826,6 +829,7 @@ export default function ComposerWizard() {
                                                                     setValue('selectedEntityIds', []);
                                                                 }
                                                             }} 
+                                                            className="data-[state=checked]:bg-primary"
                                                         />
                                                     )}
                                                 />

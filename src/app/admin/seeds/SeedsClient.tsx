@@ -24,6 +24,9 @@ import {
     rollbackEntitiesMigration,
     verifyEntitiesMigration
 } from '@/lib/entity-migrations';
+import { MigrationCard } from '@/components/seeds/MigrationCard';
+import { createMigrationEngine } from '@/lib/migration-engine';
+import type { MigrationStatusType } from '@/lib/migration-types';
 import { 
     Loader2, 
     Database, 
@@ -78,8 +81,35 @@ export default function SeedsClient() {
     rollback_schools: 'idle',
     migrate_entities: 'idle',
     rollback_entities: 'idle',
-    verify_entities: 'idle'
+    verify_entities: 'idle',
+    migrate_all_features: 'idle'
   });
+
+  // Feature migration state
+  const [featureMigrationStatus, setFeatureMigrationStatus] = useState<Record<string, {
+    status: MigrationStatusType;
+    totalRecords: number;
+    migratedRecords: number;
+    unmigratedRecords: number;
+    failedRecords: number;
+  }>>({
+    tasks: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    activities: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    forms: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    invoices: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    meetings: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    surveys: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    message_logs: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    pdfs: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    automation_logs: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    form_submissions: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    survey_responses: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    signups: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    profiles: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 },
+    settings: { status: 'not_started', totalRecords: 0, migratedRecords: 0, unmigratedRecords: 0, failedRecords: 0 }
+  });
+
+  const [migrationLog, setMigrationLog] = useState<string[]>([]);
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +136,184 @@ export default function SeedsClient() {
       setTimeout(() => setSeedingStatus(prev => ({ ...prev, [key]: 'idle' })), 2000);
     }
   };
+
+  // Feature migration handlers
+  const createFeatureMigrationHandlers = (collectionName: string) => {
+    if (!firestore) {
+      throw new Error('Firestore not initialized');
+    }
+    
+    const engine = createMigrationEngine(firestore);
+    
+    return {
+      onFetch: async () => {
+        const result = await engine.fetch(collectionName);
+        setFeatureMigrationStatus(prev => ({
+          ...prev,
+          [collectionName]: {
+            ...prev[collectionName],
+            totalRecords: result.totalRecords,
+            unmigratedRecords: result.recordsToMigrate
+          }
+        }));
+        return result;
+      },
+      onEnrichAndRestore: async () => {
+        setFeatureMigrationStatus(prev => ({
+          ...prev,
+          [collectionName]: { ...prev[collectionName], status: 'in_progress' }
+        }));
+        
+        const fetchResult = await engine.fetch(collectionName);
+        if (fetchResult.recordsToMigrate === 0) {
+          setFeatureMigrationStatus(prev => ({
+            ...prev,
+            [collectionName]: { ...prev[collectionName], status: 'completed' }
+          }));
+          return { total: 0, succeeded: 0, failed: 0, skipped: fetchResult.totalRecords, errors: [] };
+        }
+
+        // Get all unmigrated records
+        const allRecords = await getAllUnmigratedRecords(firestore, collectionName);
+        const batches = chunkArray(allRecords, 450);
+
+        const aggregatedResult = {
+          total: allRecords.length,
+          succeeded: 0,
+          failed: 0,
+          skipped: 0,
+          errors: [] as Array<{ id: string; error: string }>
+        };
+
+        for (let i = 0; i < batches.length; i++) {
+          const batch = {
+            collection: collectionName,
+            records: batches[i],
+            batchSize: 450,
+            totalBatches: batches.length,
+            currentBatch: i + 1
+          };
+
+          try {
+            const enrichedBatch = await engine.enrich(batch);
+            const batchResult = await engine.restore(enrichedBatch);
+
+            aggregatedResult.succeeded += batchResult.succeeded;
+            aggregatedResult.failed += batchResult.failed;
+            aggregatedResult.skipped += batchResult.skipped;
+            aggregatedResult.errors.push(...batchResult.errors);
+          } catch (error) {
+            aggregatedResult.failed += batch.records.length;
+            for (const record of batch.records) {
+              aggregatedResult.errors.push({
+                id: record.id,
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+        }
+
+        setFeatureMigrationStatus(prev => ({
+          ...prev,
+          [collectionName]: {
+            status: aggregatedResult.failed > 0 ? 'failed' : 'completed',
+            totalRecords: fetchResult.totalRecords,
+            migratedRecords: aggregatedResult.succeeded,
+            unmigratedRecords: aggregatedResult.failed,
+            failedRecords: aggregatedResult.failed
+          }
+        }));
+
+        return aggregatedResult;
+      },
+      onVerify: async () => {
+        const result = await engine.verify(collectionName);
+        setFeatureMigrationStatus(prev => ({
+          ...prev,
+          [collectionName]: {
+            ...prev[collectionName],
+            totalRecords: result.totalRecords,
+            migratedRecords: result.migratedRecords,
+            unmigratedRecords: result.unmigratedRecords,
+            failedRecords: result.orphanedRecords
+          }
+        }));
+        return result;
+      },
+      onRollback: async () => {
+        const result = await engine.rollback(collectionName);
+        setFeatureMigrationStatus(prev => ({
+          ...prev,
+          [collectionName]: {
+            status: 'not_started',
+            totalRecords: prev[collectionName].totalRecords,
+            migratedRecords: 0,
+            unmigratedRecords: prev[collectionName].totalRecords,
+            failedRecords: 0
+          }
+        }));
+        return result;
+      }
+    };
+  };
+
+  // Migrate all features sequentially
+  const handleMigrateAllFeatures = async () => {
+    if (!firestore) return;
+    
+    setSeedingStatus(prev => ({ ...prev, migrate_all_features: 'seeding' }));
+    setMigrationLog(['Starting sequential migration of all features...']);
+    
+    const collections = Object.keys(featureMigrationStatus);
+    
+    for (const collection of collections) {
+      try {
+        setMigrationLog(prev => [...prev, `\nMigrating ${collection}...`]);
+        const handlers = createFeatureMigrationHandlers(collection);
+        const result = await handlers.onEnrichAndRestore();
+        setMigrationLog(prev => [
+          ...prev,
+          `✓ ${collection}: ${result.succeeded} succeeded, ${result.failed} failed, ${result.skipped} skipped`
+        ]);
+      } catch (error) {
+        setMigrationLog(prev => [
+          ...prev,
+          `✗ ${collection}: ${error instanceof Error ? error.message : String(error)}`
+        ]);
+      }
+    }
+    
+    setMigrationLog(prev => [...prev, '\nMigration complete!']);
+    setSeedingStatus(prev => ({ ...prev, migrate_all_features: 'success' }));
+    toast({ title: 'All Features Migrated' });
+    
+    setTimeout(() => setSeedingStatus(prev => ({ ...prev, migrate_all_features: 'idle' })), 2000);
+  };
+
+  // Helper functions
+  async function getAllUnmigratedRecords(firestore: any, collectionName: string) {
+    const { collection, getDocs } = await import('firebase/firestore');
+    const collectionRef = collection(firestore, collectionName);
+    const snapshot = await getDocs(collectionRef);
+
+    const unmigratedRecords: any[] = [];
+    snapshot.forEach((docSnapshot) => {
+      const data = docSnapshot.data();
+      if (data.schoolId && !data.entityId) {
+        unmigratedRecords.push({ id: docSnapshot.id, ...data });
+      }
+    });
+
+    return unmigratedRecords;
+  }
+
+  function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  }
 
   if (!isUnlocked) {
     return (
@@ -275,6 +483,174 @@ export default function SeedsClient() {
                                     </ul>
                                 </div>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* Feature Data Migration Section - NEW */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-blue-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-blue-200 text-blue-600">Feature Data Migration</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-blue-200 to-transparent" />
+                </div>
+                
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-blue-100 overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
+                            <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+                            SchoolId → EntityId Migration
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-muted-foreground">
+                            Migrate feature collections from schoolId to entityId references. Supports dual-write pattern with full rollback capability.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0 space-y-6">
+                        {/* Migrate All Button */}
+                        <div className="flex gap-4">
+                            <Button 
+                                onClick={handleMigrateAllFeatures} 
+                                disabled={seedingStatus.migrate_all_features === 'seeding'}
+                                className="h-14 rounded-xl font-black shadow-lg uppercase text-[10px] bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-between px-6 flex-1"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {seedingStatus.migrate_all_features === 'seeding' ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <Zap className="h-5 w-5" />
+                                    )}
+                                    <span>Migrate All Features</span>
+                                </div>
+                                <ArrowRight className="h-4 w-4 opacity-50" />
+                            </Button>
+                        </div>
+
+                        {/* Migration Log Panel */}
+                        {migrationLog.length > 0 && (
+                            <div className="bg-slate-900 rounded-2xl p-6 space-y-2 max-h-64 overflow-y-auto">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <FileText className="h-4 w-4 text-slate-400" />
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Migration Log
+                                    </h4>
+                                </div>
+                                <div className="text-[9px] font-mono text-slate-300 space-y-1">
+                                    {migrationLog.map((log, index) => (
+                                        <p key={index}>{log}</p>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Feature Migration Cards Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <MigrationCard
+                                featureName="Tasks"
+                                collectionName="tasks"
+                                description="Migrate task records to use entityId for contact references"
+                                status={featureMigrationStatus.tasks.status}
+                                totalRecords={featureMigrationStatus.tasks.totalRecords}
+                                migratedRecords={featureMigrationStatus.tasks.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.tasks.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.tasks.failedRecords}
+                                {...createFeatureMigrationHandlers('tasks')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Activities"
+                                collectionName="activities"
+                                description="Migrate activity logs to use entityId for contact references"
+                                status={featureMigrationStatus.activities.status}
+                                totalRecords={featureMigrationStatus.activities.totalRecords}
+                                migratedRecords={featureMigrationStatus.activities.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.activities.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.activities.failedRecords}
+                                {...createFeatureMigrationHandlers('activities')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Forms"
+                                collectionName="forms"
+                                description="Migrate form records to use entityId for contact references"
+                                status={featureMigrationStatus.forms.status}
+                                totalRecords={featureMigrationStatus.forms.totalRecords}
+                                migratedRecords={featureMigrationStatus.forms.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.forms.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.forms.failedRecords}
+                                {...createFeatureMigrationHandlers('forms')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Invoices"
+                                collectionName="invoices"
+                                description="Migrate invoice records to use entityId for contact references"
+                                status={featureMigrationStatus.invoices.status}
+                                totalRecords={featureMigrationStatus.invoices.totalRecords}
+                                migratedRecords={featureMigrationStatus.invoices.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.invoices.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.invoices.failedRecords}
+                                {...createFeatureMigrationHandlers('invoices')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Meetings"
+                                collectionName="meetings"
+                                description="Migrate meeting records to use entityId for contact references"
+                                status={featureMigrationStatus.meetings.status}
+                                totalRecords={featureMigrationStatus.meetings.totalRecords}
+                                migratedRecords={featureMigrationStatus.meetings.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.meetings.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.meetings.failedRecords}
+                                {...createFeatureMigrationHandlers('meetings')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Surveys"
+                                collectionName="surveys"
+                                description="Migrate survey records to use entityId for contact references"
+                                status={featureMigrationStatus.surveys.status}
+                                totalRecords={featureMigrationStatus.surveys.totalRecords}
+                                migratedRecords={featureMigrationStatus.surveys.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.surveys.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.surveys.failedRecords}
+                                {...createFeatureMigrationHandlers('surveys')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Message Logs"
+                                collectionName="message_logs"
+                                description="Migrate message log records to use entityId for contact references"
+                                status={featureMigrationStatus.message_logs.status}
+                                totalRecords={featureMigrationStatus.message_logs.totalRecords}
+                                migratedRecords={featureMigrationStatus.message_logs.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.message_logs.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.message_logs.failedRecords}
+                                {...createFeatureMigrationHandlers('message_logs')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="PDFs"
+                                collectionName="pdfs"
+                                description="Migrate PDF records to use entityId for contact references"
+                                status={featureMigrationStatus.pdfs.status}
+                                totalRecords={featureMigrationStatus.pdfs.totalRecords}
+                                migratedRecords={featureMigrationStatus.pdfs.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.pdfs.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.pdfs.failedRecords}
+                                {...createFeatureMigrationHandlers('pdfs')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Automation Logs"
+                                collectionName="automation_logs"
+                                description="Migrate automation log records to use entityId for contact references"
+                                status={featureMigrationStatus.automation_logs.status}
+                                totalRecords={featureMigrationStatus.automation_logs.totalRecords}
+                                migratedRecords={featureMigrationStatus.automation_logs.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.automation_logs.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.automation_logs.failedRecords}
+                                {...createFeatureMigrationHandlers('automation_logs')}
+                            />
                         </div>
                     </CardContent>
                 </Card>

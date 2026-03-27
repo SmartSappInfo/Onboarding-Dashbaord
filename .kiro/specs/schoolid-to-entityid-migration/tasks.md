@@ -127,8 +127,8 @@ The core entity system (entities and workspace_entities collections) has already
 
 ### Phase 2: Migration Tooling
 
-- [ ] 5. Create Seeds page migration UI
-  - [ ] 5.1 Create migration card component
+- [x] 5. Create Seeds page migration UI
+  - [x] 5.1 Create migration card component
     - Create `src/components/seeds/MigrationCard.tsx` component
     - Display feature name, collection name, and description
     - Display migration status (not_started, in_progress, completed, failed)
@@ -138,7 +138,7 @@ The core entity system (entities and workspace_entities collections) has already
     - Display real-time error log
     - _Requirements: 17.2, 17.3, 17.4, 17.5_
   
-  - [ ] 5.2 Create migration dashboard page
+  - [x] 5.2 Create migration dashboard page
     - Create or update `/seeds` page with "Feature Data Migration" section
     - Display migration cards for all 14 feature modules
     - Add "Migrate All Features" button for sequential migration
