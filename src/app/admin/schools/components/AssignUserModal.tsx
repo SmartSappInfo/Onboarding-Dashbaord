@@ -71,6 +71,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
         description: `${school.name} has been assigned to ${assignmentData.name || 'Unassigned'}.`,
       });
       logActivity({
+        organizationId: activeOrganizationId,
         schoolId: school.id,
         userId: currentUser.uid,
         type: 'school_assigned',

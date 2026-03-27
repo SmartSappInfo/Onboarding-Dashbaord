@@ -164,6 +164,7 @@ export async function createEntityAction(input: CreateEntityInput) {
 
     // 6. Log activity
     await logActivity({
+      organizationId: input.organizationId,
       workspaceId: input.workspaceId,
       entityId: entityRef.id,
       entityType: input.entityType,
@@ -297,6 +298,7 @@ export async function updateEntityAction(input: UpdateEntityInput) {
 
     // 5. Log activity
     await logActivity({
+      organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
       entityType: entity.entityType,
@@ -366,6 +368,7 @@ export async function deleteEntityAction(input: DeleteEntityInput) {
 
     // 3. Log activity
     await logActivity({
+      organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
       entityType: entity.entityType,

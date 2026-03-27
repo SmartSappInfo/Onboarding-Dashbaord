@@ -9,6 +9,7 @@ import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { 
     Loader2, 
     Save, 
@@ -87,6 +88,7 @@ export default function EditMeetingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
@@ -201,6 +203,7 @@ export default function EditMeetingPage() {
         toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
         
         logActivity({
+            organizationId: activeOrganizationId,
             schoolId: data.school.id,
             userId: user.uid,
             workspaceId: activeWorkspaceId,

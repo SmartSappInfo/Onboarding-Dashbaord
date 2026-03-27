@@ -18,6 +18,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { adminDb } from '../src/lib/firebase-admin';
+import { getOrganizationId } from '../src/lib/organization-utils';
+import type { School } from '../src/lib/types';
 import type { TagCategory } from '../src/lib/types';
 
 const DRY_RUN = process.env.DRY_RUN === 'true';
@@ -167,9 +169,9 @@ export async function main() {
   const seedMap = new Map<string, TagSeed & { workspaceId: string; organizationId: string }>();
 
   for (const doc of schoolsSnap.docs) {
-    const school = doc.data() as Record<string, any>;
+    const school = doc.data() as School;
     const workspaceIds: string[] = school.workspaceIds || [];
-    const organizationId: string = school.organizationId || 'unknown';
+    const organizationId: string = getOrganizationId(school);
 
     const seeds = extractTagSeeds(school);
 

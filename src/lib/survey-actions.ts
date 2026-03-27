@@ -51,6 +51,7 @@ export async function cloneSurvey(surveyId: string, userId: string) {
     // Log activity
     await logActivity({
       schoolId: '', 
+      organizationId: 'default',
       userId,
       workspaceId: '',
       type: 'school_updated', // Using existing type for logging
@@ -83,6 +84,7 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
         await batch.commit();
         await logActivity({
             schoolId: '',
+            organizationId: 'default',
             userId,
             workspaceId: '',
             type: 'school_updated',

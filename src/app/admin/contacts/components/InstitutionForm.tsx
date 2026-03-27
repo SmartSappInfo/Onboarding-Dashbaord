@@ -274,23 +274,7 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            <Controller
-              name="focalPersons"
-              control={methods.control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <FocalPersonManager
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                  {fieldState.error && (
-                    <p className="text-sm font-medium text-destructive mt-2">
-                      {fieldState.error.message}
-                    </p>
-                  )}
-                </div>
-              )}
-            />
+            <FocalPersonManager />
           </CardContent>
         </Card>
 

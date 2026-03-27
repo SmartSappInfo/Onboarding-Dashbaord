@@ -36,6 +36,7 @@ export async function cloneTemplate(templateId: string, userId: string) {
 
     await logActivity({
       schoolId: '', 
+      organizationId: 'default',
       userId,
       workspaceId: 'onboarding',
       type: 'notification_sent', // Reusing messaging type for log

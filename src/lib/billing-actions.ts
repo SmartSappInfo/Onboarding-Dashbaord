@@ -119,6 +119,7 @@ export async function generateInvoiceAction(
         
         await logActivity({
             schoolId,
+            organizationId: school.organizationId || 'default',
             userId,
             workspaceId: activeWorkspaceId,
             type: 'school_updated',

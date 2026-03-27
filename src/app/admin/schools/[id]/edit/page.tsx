@@ -215,6 +215,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     updateDoc(docRef, updateData).then(() => {
         toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });
         logActivity({ 
+            organizationId: activeOrganizationId,
             schoolId, 
             userId: user.uid,
             workspaceId: activeWorkspaceId,

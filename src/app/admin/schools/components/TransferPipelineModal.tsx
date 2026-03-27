@@ -28,6 +28,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 
 interface TransferPipelineModalProps {
   school: School | null;
@@ -40,6 +41,7 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
   
   const [targetPipelineId, setTargetPipelineId] = React.useState<string | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -97,6 +99,7 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
         logActivity({
             schoolId: school.id,
             userId: user.uid,
+            organizationId: activeOrganizationId,
             type: 'pipeline_stage_changed',
             workspaceId: activeWorkspaceId,
             source: 'user_action',

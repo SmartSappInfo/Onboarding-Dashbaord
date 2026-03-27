@@ -149,6 +149,7 @@ export async function ingestSchoolRowAction(
             schoolId: docRef.id,
             schoolName: schoolData.name,
             schoolSlug: schoolData.slug,
+            organizationId: 'default',
             userId,
             workspaceId: 'onboarding',
             type: 'school_created',

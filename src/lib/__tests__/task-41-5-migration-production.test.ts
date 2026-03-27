@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminDb } from '../firebase-admin';
 import type { School, Entity, WorkspaceEntity } from '../types';
+import { getOrganizationId } from '../organization-utils';
 
 const TEST_ORG_ID = 'test-org-prod-migration';
 const TEST_WORKSPACE_1 = 'test-workspace-prod-1';
@@ -290,7 +291,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
     }
     
     const timestamp = new Date().toISOString();
-    const organizationId = school.organizationId || school.workspaceIds?.[0] || 'unknown';
+    const organizationId = getOrganizationId(school);
     
     // Check if entity already exists
     const existingEntitySnap = await adminDb

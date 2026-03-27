@@ -102,7 +102,6 @@ export function ContactDetailPage({
           </CardHeader>
           <CardContent>
             <ActivityTimeline 
-              workspaceId={workspaceEntity.workspaceId} 
               entityId={entity.id} 
             />
           </CardContent>

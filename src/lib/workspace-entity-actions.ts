@@ -104,6 +104,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       
       // Log scope violation
       await logActivity({
+        organizationId: entity.organizationId,
         workspaceId: input.workspaceId,
         entityId: input.entityId,
         entityType: entity.entityType,
@@ -193,6 +194,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 
       // Log workspace_scope_locked activity
       await logActivity({
+        organizationId: entity.organizationId,
         workspaceId: input.workspaceId,
         userId: input.userId,
         type: 'workspace_scope_locked',
@@ -208,6 +210,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 
     // 10. Log entity linked activity
     await logActivity({
+      organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
       entityType: entity.entityType,
@@ -283,6 +286,7 @@ export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWor
 
     // 4. Log activity
     await logActivity({
+      organizationId: workspaceEntity.organizationId,
       workspaceId: workspaceEntity.workspaceId,
       entityId: workspaceEntity.entityId,
       entityType: workspaceEntity.entityType,
@@ -397,6 +401,7 @@ export async function updateWorkspaceEntityAction(input: UpdateWorkspaceEntityIn
 
     // 5. Log activity
     await logActivity({
+      organizationId: workspaceEntity.organizationId,
       workspaceId: workspaceEntity.workspaceId,
       entityId: workspaceEntity.entityId,
       entityType: workspaceEntity.entityType,

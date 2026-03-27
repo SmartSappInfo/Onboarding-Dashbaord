@@ -168,6 +168,7 @@ export async function importContactsAction(input: ImportContactsInput): Promise<
 
     // 5. Log import activity
     await logActivity({
+      organizationId: input.organizationId,
       workspaceId: input.workspaceId,
       userId: input.userId,
       type: 'contacts_imported',
@@ -274,17 +275,17 @@ async function createEntityFromRow(
   // Add scope-specific data
   switch (entityType) {
     case 'institution':
-      entityData.institutionData = buildInstitutionData(row as InstitutionImportRow);
-      entityData.contacts = buildInstitutionContacts(row as InstitutionImportRow);
+      entityData.institutionData = buildInstitutionData(row as unknown as InstitutionImportRow);
+      entityData.contacts = buildInstitutionContacts(row as unknown as InstitutionImportRow);
       break;
 
     case 'family':
-      entityData.familyData = buildFamilyData(row as FamilyImportRow);
+      entityData.familyData = buildFamilyData(row as unknown as FamilyImportRow);
       break;
 
     case 'person':
-      entityData.personData = buildPersonData(row as PersonImportRow);
-      entityData.contacts = buildPersonContacts(row as PersonImportRow);
+      entityData.personData = buildPersonData(row as unknown as PersonImportRow);
+      entityData.contacts = buildPersonContacts(row as unknown as PersonImportRow);
       break;
   }
 

@@ -128,6 +128,7 @@ export async function sendContractAction(input: {
         // 3. Log to Timeline
         await logActivity({
             schoolId,
+            organizationId: 'default',
             userId,
             workspaceId: "onboarding",
             type: 'notification_sent',
@@ -165,6 +166,7 @@ export async function deleteContractAction(contractId: string, pdfId: string, su
         // 3. Log activity for audit trail
         await logActivity({
             schoolId,
+            organizationId: 'default',
             userId,
             workspaceId: "onboarding",
             type: 'pdf_status_changed',

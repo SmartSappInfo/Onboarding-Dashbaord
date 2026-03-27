@@ -214,6 +214,7 @@ export default function NewSchoolPage() {
           schoolId: docRef.id, 
           schoolName: data.name, 
           schoolSlug: slug, 
+          organizationId: activeOrganizationId,
           userId: user.uid,
           workspaceId: data.workspaceIds[0] || 'onboarding',
           type: 'school_created', 

@@ -96,6 +96,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
     return addDoc(tasksCol, taskData).then(docRef => {
         // Log to timeline with workspace awareness (Requirement 13)
         logActivity({
+            organizationId: task.organizationId || 'default',
             schoolId: task.schoolId || undefined,
             entityId: task.entityId || undefined,
             entityType: task.entityType || undefined,
@@ -140,6 +141,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
     updateDoc(taskRef, data).then(() => {
         if (isMarkingDone) {
             logActivity({
+                organizationId: updates.organizationId || 'default',
                 schoolId: updates.schoolId || '',
                 userId: null,
                 workspaceId: updates.workspaceId ? updates.workspaceId : 'onboarding',

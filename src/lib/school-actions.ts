@@ -55,6 +55,7 @@ export async function convertToOnboardingAction(
             schoolId,
             schoolName: school.name,
             schoolSlug: school.slug,
+            organizationId: school.organizationId || 'default',
             userId,
             workspaceId: school.workspaceIds[0],
             type: 'pipeline_stage_changed',

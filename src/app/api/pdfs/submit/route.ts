@@ -67,8 +67,9 @@ export async function POST(req: Request) {
             
             await logActivity({
                 schoolId: targetSchoolId,
+                organizationId: pdfData.organizationId || 'default',
                 userId: null,
-                workspaceId: 'onboarding',
+                workspaceId: pdfData.workspaceIds[0] || 'onboarding',
                 type: 'pdf_status_changed',
                 source: 'public',
                 description: `legally executed agreement: "${pdfData.name}"`,
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
     if (!pdfData.isContractDocument || !targetSchoolId) {
         await logActivity({
             schoolId: targetSchoolId || '',
+            organizationId: pdfData.organizationId || 'default',
             userId: null,
             workspaceId: 'onboarding',
             type: 'pdf_form_submitted',

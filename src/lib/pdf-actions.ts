@@ -366,6 +366,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
 
         await logActivity({
             schoolId,
+            organizationId: pdfData.organizationId || 'default',
             userId: null,
             workspaceId: pdfData.workspaceIds[0] || 'onboarding',
             type: 'pdf_status_changed',
@@ -418,6 +419,7 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
   
   await logActivity({
       schoolId: '', 
+      organizationId: 'default',
       userId,
       workspaceId: workspaceIds[0],
       type: 'pdf_uploaded',
@@ -546,6 +548,7 @@ export async function purgeContractAction(schoolId: string, submissionIds: strin
 
         await logActivity({
             schoolId,
+            organizationId: 'default',
             userId,
             workspaceId: 'onboarding',
             type: 'pdf_status_changed',

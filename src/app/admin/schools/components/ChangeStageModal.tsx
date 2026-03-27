@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { logActivity } from '@/lib/activity-logger';
+import { useTenant } from '@/context/TenantContext';
 
 interface ChangeStageModalProps {
   school: School | null;
@@ -23,6 +24,7 @@ interface ChangeStageModalProps {
 export default function ChangeStageModal({ school, open, onOpenChange }: ChangeStageModalProps) {
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeOrganizationId } = useTenant();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
@@ -49,6 +51,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
         description: `${school.name} has been moved to the "${stage.name}" stage.`,
       });
       logActivity({
+          organizationId: activeOrganizationId,
           schoolId: school.id,
           userId: user.uid,
           workspaceId: school.workspaceIds[0] || 'onboarding',

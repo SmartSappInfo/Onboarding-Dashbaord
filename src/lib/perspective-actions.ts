@@ -46,6 +46,7 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
 
             await logActivity({
                 schoolId: '',
+                organizationId: 'default',
                 userId,
                 workspaceId: 'system',
                 type: 'school_created', // Reuse generic type

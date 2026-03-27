@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 
 interface ChangeStatusModalProps {
   school: School | null;
@@ -39,6 +40,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   // Statuses are now dynamic and independent per workspace
@@ -78,6 +80,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
       logActivity({
           schoolId: school.id,
           userId: user.uid,
+          organizationId: activeOrganizationId,
           workspaceId: school.workspaceIds[0] || 'onboarding',
           type: 'school_updated',
           source: 'user_action',

@@ -15,6 +15,7 @@ dotenv.config();
 
 import { adminDb } from '../src/lib/firebase-admin';
 import type { School } from '../src/lib/types';
+import { getOrganizationId } from '../src/lib/organization-utils';
 
 const TEST_ORG_ID = 'test-org-migration';
 const TEST_WORKSPACE_ID = 'test-workspace-migration';
@@ -188,7 +189,7 @@ async function migrateSchool(schoolId: string): Promise<{ success: boolean; erro
     }
     
     const timestamp = new Date().toISOString();
-    const organizationId = school.organizationId || school.workspaceIds?.[0] || 'unknown';
+    const organizationId = getOrganizationId(school);
     
     // Check if entity already exists
     const existingEntitySnap = await adminDb

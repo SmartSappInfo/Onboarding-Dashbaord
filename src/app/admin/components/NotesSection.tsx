@@ -62,6 +62,7 @@ export default function NotesSection({ schoolId }: NotesSectionProps) {
         setIsSubmitting(true);
         try {
             await logActivity({
+                organizationId: activeOrganizationId,
                 schoolId: schoolId,
                 userId: user.uid,
                 type: 'note',

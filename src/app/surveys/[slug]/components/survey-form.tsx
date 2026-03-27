@@ -1118,6 +1118,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
             logActivity({
                 schoolId: survey.schoolId || '',
+                organizationId: 'default',
                 userId: null, 
                 workspaceId: 'onboarding',
                 type: 'form_submission',

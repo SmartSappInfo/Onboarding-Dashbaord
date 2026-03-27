@@ -390,6 +390,16 @@ export interface OnboardingStage {
 
 export interface School {
   id: string;
+  /**
+   * Organization identifier for multi-tenant isolation
+   * 
+   * This field anchors the school to an organization for proper data isolation.
+   * In legacy data, this may not be present, so code should use the utility
+   * function `getOrganizationId()` which provides a safe fallback to workspaceIds[0].
+   * 
+   * @see getOrganizationId utility function for safe access
+   */
+  organizationId?: string;
   name: string;
   initials?: string;
   slug: string;
@@ -872,6 +882,7 @@ export interface PdfSession {
 
 export interface PDFForm {
     id: string;
+    organizationId?: string; // Organization context for multi-tenant support
     workspaceIds: string[]; // Shared
     name: string;
     publicTitle: string;
@@ -982,6 +993,7 @@ export interface Activity {
 
 export interface Task {
   id: string;
+  organizationId?: string; // Organization context for multi-tenant support
   workspaceId: string; // Strictly confined
   title: string;
   description: string;

@@ -11,7 +11,8 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Entity, WorkspaceEntity } from './types';
+import type { Entity, WorkspaceEntity, School } from './types';
+import { getOrganizationId } from './organization-utils';
 
 /**
  * Classification rules for determining if a tag should be global or workspace-scoped.
@@ -116,7 +117,7 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
         // We'll look for an entity with matching name and organization
         const entitySnap = await adminDb
           .collection('entities')
-          .where('organizationId', '==', school.organizationId || 'default-org')
+          .where('organizationId', '==', getOrganizationId(school as School, 'default-org'))
           .where('name', '==', school.name)
           .where('entityType', '==', 'institution')
           .limit(1)

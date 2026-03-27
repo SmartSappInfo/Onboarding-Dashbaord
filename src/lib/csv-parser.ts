@@ -190,7 +190,7 @@ export function validateImport(
 
     // Add to preview (first 10 rows)
     if (validatedRows.length < previewLimit) {
-      validatedRows.push(row as ImportRow);
+      validatedRows.push(row as unknown as ImportRow);
     }
   }
 

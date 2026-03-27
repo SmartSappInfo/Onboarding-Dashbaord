@@ -9,6 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { School, Entity, WorkspaceEntity, FocalPerson } from '../types';
+import { getOrganizationId } from '../organization-utils';
 
 describe('Task 41.5: Migration Script Logic Validation', () => {
   /**
@@ -16,7 +17,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
    */
   function transformSchoolToEntity(school: School): Omit<Entity, 'id'> {
     const timestamp = new Date().toISOString();
-    const organizationId = school.organizationId || school.workspaceIds?.[0] || 'unknown';
+    const organizationId = getOrganizationId(school);
     
     return {
       organizationId,
@@ -50,7 +51,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
     entityId: string
   ): Omit<WorkspaceEntity, 'id'>[] {
     const timestamp = new Date().toISOString();
-    const organizationId = school.organizationId || school.workspaceIds?.[0] || 'unknown';
+    const organizationId = getOrganizationId(school);
     const workspaceIds = school.workspaceIds || [];
     const primaryContact = school.focalPersons?.[0];
     

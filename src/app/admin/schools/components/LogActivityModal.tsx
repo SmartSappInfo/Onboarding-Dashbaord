@@ -8,6 +8,7 @@ import { useUser } from '@/firebase';
 import { logActivity } from '@/lib/activity-logger';
 import type { School, Activity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/context/TenantContext';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function LogActivityModal({ school, open, onOpenChange }: LogActivityModalProps) {
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeOrganizationId } = useTenant();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<FormData>({
@@ -91,6 +93,7 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
             schoolId: school.id,
             schoolName: school.name,
             schoolSlug: school.slug,
+            organizationId: activeOrganizationId,
             workspaceId: school.workspaceIds[0] || 'onboarding',
             userId: user.uid,
             type: data.type,

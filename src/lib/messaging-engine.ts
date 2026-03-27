@@ -223,6 +223,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     await logActivity({
         schoolId: schoolId || '',
+        organizationId: 'default',
         userId: null, 
         workspaceId: resolvedWorkspaceId,
         type: 'notification_sent',

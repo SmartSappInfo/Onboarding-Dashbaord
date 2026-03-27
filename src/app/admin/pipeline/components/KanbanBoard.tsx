@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Workflow, Info } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { logActivity } from '@/lib/activity-logger';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import StageColumn from './StageColumn';
@@ -59,6 +60,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   const isMobile = useIsMobile();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
   const { user } = useUser();
 
   // 1. Fetch Stages for specific Pipeline
@@ -354,6 +356,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
           
           if (user && school) {
             logActivity({
+                organizationId: activeOrganizationId,
                 schoolId: entityId,
                 entityId: entityId,
                 userId: user.uid,

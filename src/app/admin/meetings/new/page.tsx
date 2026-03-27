@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 
 import { 
     Calendar, 
@@ -83,6 +84,7 @@ export default function NewMeetingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
+  const { activeOrganizationId } = useTenant();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
@@ -172,6 +174,7 @@ export default function NewMeetingPage() {
         toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
         
         logActivity({
+            organizationId: activeOrganizationId,
             schoolId: data.school.id,
             userId: user.uid,
             workspaceId: activeWorkspaceId,

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { addDoc, collection, query, getDocs, orderBy, limit, where } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -50,6 +51,7 @@ export default function AiSchoolGenerator() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
+  const { activeOrganizationId } = useTenant();
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const form = useForm<FormData>({
@@ -132,6 +134,7 @@ export default function AiSchoolGenerator() {
         const docRef = await addDoc(collection(firestore, 'schools'), schoolData);
 
         await logActivity({
+            organizationId: activeOrganizationId,
             schoolId: docRef.id,
             schoolName: result.name,
             schoolSlug: slug,

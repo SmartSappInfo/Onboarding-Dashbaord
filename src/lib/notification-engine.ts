@@ -35,8 +35,8 @@ export async function triggerInternalNotification(options: InternalNotificationO
     if (notifyManager && schoolId) {
       // Use adapter to resolve contact from either schools or entities + workspace_entities
       const contact = await resolveContact(schoolId, variables.workspaceId || 'onboarding');
-      if (contact && contact.assignedTo) {
-        recipients.add(contact.assignedTo);
+      if (contact && contact.assignedTo && contact.assignedTo.userId) {
+        recipients.add(contact.assignedTo.userId);
       }
     }
 
