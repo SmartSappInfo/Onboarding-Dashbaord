@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
@@ -8,6 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    testTimeout: 30000, // 30 seconds for integration tests
+    hookTimeout: 30000, // 30 seconds for setup/teardown hooks
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -18,7 +20,7 @@ export default defineConfig({
       '**/src/e2e/**', // Exclude e2e tests in src folder
     ],
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 });

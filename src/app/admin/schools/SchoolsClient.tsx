@@ -83,6 +83,7 @@ export default function SchoolsClient() {
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
   const [changingStatusSchool, setChangingStatusSchool] = useState<School | null>(null);
   const [transferringSchool, setTransferringSchool] = useState<School | null>(null);
+  const [taggingSchool, setTaggingSchool] = useState<School | null>(null);
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -431,6 +432,11 @@ export default function SchoolsClient() {
                                         <span className="font-bold text-sm">Transfer Pipeline</span>
                                     </DropdownMenuItem>
 
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingSchool(school)}>
+                                        <div className="p-1.5 bg-violet-50 rounded-lg text-violet-600"><TagIcon className="h-3.5 w-3.5" /></div>
+                                        <span className="font-bold text-sm">Manage Tags</span>
+                                    </DropdownMenuItem>
+
                                     <DropdownMenuSeparator className="my-2" />
                                     
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/schools/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Edit Profile</span></Link></DropdownMenuItem>
@@ -466,6 +472,27 @@ export default function SchoolsClient() {
       <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
       <ChangeStatusModal school={changingStatusSchool} open={!!changingStatusSchool} onOpenChange={(open) => !open && setChangingStatusSchool(null)} />
       <TransferPipelineModal school={transferringSchool} open={!!transferringSchool} onOpenChange={(open) => !open && setTransferringSchool(null)} />
+      
+      {taggingSchool && (
+        <AlertDialog open={!!taggingSchool} onOpenChange={(open) => !open && setTaggingSchool(null)}>
+          <AlertDialogContent className="rounded-2xl max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-black">Manage Tags</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground">
+                {taggingSchool.name}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <TagSelector
+              contactId={taggingSchool.id}
+              contactType="school"
+              currentTagIds={taggingSchool.tags ?? []}
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingSchool(null)}>Done</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       <BulkTagOperations
         open={isBulkTagOpen}
         onOpenChange={setIsBulkTagOpen}

@@ -199,6 +199,21 @@ export default function AutomationsClient() {
                                             <CardTitle className="text-lg font-black uppercase tracking-tight truncate">{auth.name}</CardTitle>
                                             <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1 opacity-60">Trigger: {auth.trigger.replace('_', ' ')}</CardDescription>
                                         </div>
+                                        {/* Workspace scope display (Requirement 10.5) */}
+                                        <div className="mt-3 pt-3 border-t border-border/30">
+                                            {auth.workspaceIds && auth.workspaceIds.length > 0 ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-[8px] font-bold border-primary/20 text-primary">
+                                                        {auth.workspaceIds.length === 1 ? '1 Workspace' : `${auth.workspaceIds.length} Workspaces`}
+                                                    </Badge>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                                                    <span className="text-[8px] font-bold text-amber-600 uppercase">No workspace constraint</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="p-6">
                                         <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 h-8">{auth.description || 'No description provided.'}</p>

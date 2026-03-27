@@ -270,5 +270,93 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
+
+    // --- Unified Entity System (Requirement 9) ---
+    
+    /**
+     * Helper function to check if user has access to any workspace that contains this entity
+     * Used for entities collection read access
+     */
+    function hasEntityAccess(entityId) {
+      // System admin has access to all entities
+      if (isSystemAdmin()) return true;
+      
+      // Check if user has access to any workspace that contains this entity
+      // This requires querying workspace_entities, which is done at the application level
+      // For security rules, we allow read if user is authorized and belongs to the same org
+      let data = getUserData();
+      return data != null && 
+             data.get('isAuthorized', false) == true &&
+             data.get('organizationId', '') == resource.data.organizationId;
+    }
+
+    match /entities/{entityId} {
+      // Allow read if user has workspace access to any workspace the entity belongs to
+      // Note: Full workspace membership validation happens at application level
+      // Security rules enforce organization-level access
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        isOrgMatch(resource.data.organizationId)
+      );
+      
+      // Allow create if user has schools_edit permission
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schools_edit') && isOrgMatch(request.resource.data.organizationId))
+      );
+      
+      // Allow update if user has schools_edit permission
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schools_edit') && isOrgMatch(resource.data.organizationId))
+      );
+      
+      // Allow delete if user has system_admin permission
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /workspace_entities/{workspaceEntityId} {
+      // Requirement 9.5: Immediately deny reads/writes when workspace access is revoked
+      // 
+      // CRITICAL: The user.workspaceIds array MUST be kept in sync with role-based access.
+      // When a user is removed from a role OR a workspace is removed from a role's workspaceIds,
+      // the user.workspaceIds array MUST be updated immediately to ensure security rules
+      // deny access without delay.
+      //
+      // This denormalization is necessary because Firestore security rules cannot perform
+      // complex queries to check role membership dynamically.
+      
+      // Allow read if user has access to the specific workspaceId
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      
+      // Allow create if user has schools_edit permission and workspace access
+      // Enforce ScopeGuard: entity.entityType must match workspace.contactScope
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schools_edit') &&
+         request.resource.data.workspaceId in getUserData().workspaceIds &&
+         // ScopeGuard validation: entityType must match workspace contactScope
+         request.resource.data.entityType == get(/databases/$(database)/documents/workspaces/$(request.resource.data.workspaceId)).data.contactScope)
+      );
+      
+      // Allow update if user has schools_edit permission and workspace access
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schools_edit') &&
+         resource.data.workspaceId in getUserData().workspaceIds &&
+         // Ensure workspace access is not changed to a workspace user doesn't have access to
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      
+      // Allow delete if user has schools_edit permission and workspace access
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schools_edit') &&
+         resource.data.workspaceId in getUserData().workspaceIds)
+      );
+    }
   }
 }

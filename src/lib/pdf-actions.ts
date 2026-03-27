@@ -3,6 +3,7 @@
 import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
+import { resolveContact } from './contact-adapter';
 import type { PDFForm, PDFFormField, School, Contract, Submission } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { toTitleCase } from './utils';
@@ -43,13 +44,25 @@ function resolvePdfVariables(text: string, school?: School): string {
 
 /**
  * Generates a PDF buffer by overlaying form data onto a template using Firebase Admin.
+ * 
+ * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     let school: School | undefined = undefined;
     if (pdfForm.schoolId) {
-        const schoolSnap = await adminDb.collection('schools').doc(pdfForm.schoolId).get();
-        if (schoolSnap.exists) {
-            school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+        // Use adapter to resolve contact from either schools or entities + workspace_entities
+        // Use first workspaceId from the array, fallback to 'onboarding'
+        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
+        const contact = await resolveContact(pdfForm.schoolId, workspaceId);
+        if (contact && contact.schoolData) {
+            school = contact.schoolData;
+        }
+    } else if (pdfForm.entityId) {
+        // Support new entityId field (Requirement 26)
+        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
+        const contact = await resolveContact(pdfForm.entityId, workspaceId);
+        if (contact && contact.schoolData) {
+            school = contact.schoolData;
         }
     }
 
@@ -312,6 +325,9 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
                 const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
 
+                // Resolve workspaceId from pdfData or school (Requirement 11)
+                let workspaceId = pdfData.workspaceIds?.[0] || 'onboarding';
+                
                 await sendMessage({
                     templateId: pdfData.confirmationTemplateId,
                     senderProfileId: pdfData.confirmationSenderProfileId || 'default',
@@ -324,7 +340,8 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                         download_url: result_url
                     },
                     attachments: attachments.length > 0 ? attachments : undefined,
-                    schoolId
+                    schoolId,
+                    workspaceId // Pass workspace context (Requirement 11)
                 });
             }
         }

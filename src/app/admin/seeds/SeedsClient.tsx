@@ -19,6 +19,11 @@ import {
     rollbackTasksMigration,
     rollbackActivitiesMigration
 } from '@/lib/seed';
+import {
+    migrateSchoolsToEntities,
+    rollbackEntitiesMigration,
+    verifyEntitiesMigration
+} from '@/lib/entity-migrations';
 import { 
     Loader2, 
     Database, 
@@ -70,7 +75,10 @@ export default function SeedsClient() {
     users: 'idle',
     workspaces: 'idle',
     billing: 'idle',
-    rollback_schools: 'idle'
+    rollback_schools: 'idle',
+    migrate_entities: 'idle',
+    rollback_entities: 'idle',
+    verify_entities: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -179,6 +187,95 @@ export default function SeedsClient() {
                             status={seedingStatus.activities}
                             icon={History}
                         />
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* Entity Architecture Migration Section - NEW */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-emerald-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-emerald-200 text-emerald-600">Entity Architecture Migration</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-emerald-200 to-transparent" />
+                </div>
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-emerald-100 overflow-hidden bg-gradient-to-br from-emerald-50/50 to-white">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
+                            <Database className="h-5 w-5 text-emerald-600" />
+                            Schools → Entities + Workspace_Entities
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-muted-foreground">
+                            Core migration to multi-scope entity architecture. Creates entities collection and workspace_entities link collection.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Button 
+                                onClick={() => handleAction('migrate_entities', migrateSchoolsToEntities)} 
+                                disabled={seedingStatus.migrate_entities === 'seeding'}
+                                className="h-14 rounded-xl font-black shadow-lg uppercase text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-between px-6"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {seedingStatus.migrate_entities === 'seeding' ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <ArrowRightLeft className="h-5 w-5" />
+                                    )}
+                                    <span>Migrate All Schools</span>
+                                </div>
+                                <ArrowRight className="h-4 w-4 opacity-50" />
+                            </Button>
+                            
+                            <Button 
+                                onClick={() => handleAction('verify_entities', verifyEntitiesMigration)} 
+                                disabled={seedingStatus.verify_entities === 'seeding'}
+                                variant="outline"
+                                className="h-14 rounded-xl font-black border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 uppercase text-[10px] flex items-center justify-between px-6"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {seedingStatus.verify_entities === 'seeding' ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <ShieldCheck className="h-5 w-5" />
+                                    )}
+                                    <span>Verify Migration</span>
+                                </div>
+                            </Button>
+                            
+                            <Button 
+                                onClick={() => handleAction('rollback_entities', rollbackEntitiesMigration)} 
+                                disabled={seedingStatus.rollback_entities === 'seeding'}
+                                variant="outline"
+                                className="h-14 rounded-xl font-black border-2 border-rose-200 text-rose-600 hover:bg-rose-50 uppercase text-[10px] flex items-center justify-between px-6"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {seedingStatus.rollback_entities === 'seeding' ? (
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    ) : (
+                                        <RotateCcw className="h-5 w-5" />
+                                    )}
+                                    <span>Rollback Migration</span>
+                                </div>
+                            </Button>
+                        </div>
+                        
+                        <div className="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 space-y-3">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-emerald-100 rounded-lg">
+                                    <Database className="h-4 w-4 text-emerald-600" />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-900">Migration Details</h4>
+                                    <ul className="text-[9px] font-medium text-emerald-700 space-y-1 uppercase tracking-tighter">
+                                        <li>• Creates entity documents with entityType: institution</li>
+                                        <li>• Creates workspace_entities for each workspace link</li>
+                                        <li>• Migrates tags to globalTags and workspaceTags</li>
+                                        <li>• Sets migrationStatus: "migrated" on schools</li>
+                                        <li>• Fully idempotent - safe to run multiple times</li>
+                                        <li>• Creates backup_entities_migration for rollback</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </section>

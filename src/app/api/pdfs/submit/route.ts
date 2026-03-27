@@ -98,6 +98,9 @@ export async function POST(req: Request) {
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
             const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
 
+            // Resolve workspaceId from pdfData (Requirement 11)
+            const workspaceId = pdfData.workspaceIds?.[0] || 'onboarding';
+
             await sendMessage({
                 templateId: pdfData.confirmationTemplateId,
                 senderProfileId: pdfData.confirmationSenderProfileId,
@@ -111,7 +114,8 @@ export async function POST(req: Request) {
                     result_url,
                     download_url: result_url
                 },
-                schoolId: targetSchoolId || undefined
+                schoolId: targetSchoolId || undefined,
+                workspaceId // Pass workspace context (Requirement 11)
             });
         }
     }

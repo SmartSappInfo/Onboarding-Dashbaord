@@ -21,11 +21,28 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import type { ContactScope } from '@/lib/types';
 
 /**
  * @fileOverview Refined Workspace Switcher.
  * Filters authorized workspaces within the active Organization context.
  */
+
+/**
+ * Maps contactScope values to user-friendly labels
+ */
+function getScopeLabel(scope: ContactScope | undefined): string | null {
+    if (!scope) return null;
+    
+    const scopeMap: Record<ContactScope, string> = {
+        institution: 'Schools',
+        family: 'Families',
+        person: 'People'
+    };
+    
+    return scopeMap[scope];
+}
+
 export default function WorkspaceSwitcher() {
     const { 
         activeWorkspaceId, 
@@ -81,34 +98,50 @@ export default function WorkspaceSwitcher() {
                     <DropdownMenuSeparator className="mb-2" />
 
                     <div className="max-h-[300px] overflow-y-auto no-scrollbar">
-                        {accessibleWorkspaces.map(w => (
-                            <DropdownMenuItem 
-                                key={w.id}
-                                onClick={() => setActiveWorkspace(w.id)}
-                                className={cn(
-                                    "rounded-xl p-3 gap-4 group transition-all mb-1",
-                                    activeWorkspaceId === w.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-muted/50"
-                                )}
-                                style={activeWorkspaceId === w.id ? { backgroundColor: w.color } : {}}
-                            >
-                                <div className={cn(
-                                    "p-2 rounded-lg", 
-                                    activeWorkspaceId === w.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                                )}>
-                                    {w.id === 'prospect' ? <Target size={16} /> : <Zap size={16} />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-black text-xs uppercase truncate">{w.name}</p>
-                                    <p className={cn(
-                                        "text-[9px] font-bold uppercase tracking-tighter opacity-60", 
-                                        activeWorkspaceId === w.id ? "text-white" : "text-muted-foreground"
+                        {accessibleWorkspaces.map(w => {
+                            const scopeLabel = getScopeLabel(w.contactScope);
+                            
+                            return (
+                                <DropdownMenuItem 
+                                    key={w.id}
+                                    onClick={() => setActiveWorkspace(w.id)}
+                                    className={cn(
+                                        "rounded-xl p-3 gap-4 group transition-all mb-1",
+                                        activeWorkspaceId === w.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-muted/50"
+                                    )}
+                                    style={activeWorkspaceId === w.id ? { backgroundColor: w.color } : {}}
+                                >
+                                    <div className={cn(
+                                        "p-2 rounded-lg", 
+                                        activeWorkspaceId === w.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
                                     )}>
-                                        {w.description || 'Institutional track'}
-                                    </p>
-                                </div>
-                                {activeWorkspaceId === w.id && <Check size={14} />}
-                            </DropdownMenuItem>
-                        ))}
+                                        {w.id === 'prospect' ? <Target size={16} /> : <Zap size={16} />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-black text-xs uppercase truncate">{w.name}</p>
+                                            {scopeLabel && (
+                                                <span className={cn(
+                                                    "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                                                    activeWorkspaceId === w.id 
+                                                        ? "bg-white/20 text-white" 
+                                                        : "bg-muted text-muted-foreground"
+                                                )}>
+                                                    {scopeLabel}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className={cn(
+                                            "text-[9px] font-bold uppercase tracking-tighter opacity-60", 
+                                            activeWorkspaceId === w.id ? "text-white" : "text-muted-foreground"
+                                        )}>
+                                            {w.description || 'Institutional track'}
+                                        </p>
+                                    </div>
+                                    {activeWorkspaceId === w.id && <Check size={14} />}
+                                </DropdownMenuItem>
+                            );
+                        })}
                     </div>
 
                     <DropdownMenuSeparator className="my-2" />

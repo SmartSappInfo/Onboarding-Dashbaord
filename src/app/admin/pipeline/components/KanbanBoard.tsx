@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -26,10 +25,12 @@ import {
   writeBatch,
   updateDoc,
   where,
+  getDoc,
+  getDocs,
 } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { School, OnboardingStage, LifecycleStatus } from '@/lib/types';
+import type { School, OnboardingStage, LifecycleStatus, WorkspaceEntity, Entity } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -74,7 +75,21 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
   );
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
 
-  // 2. Fetch Schools for specific Pipeline and track (Workspace filtering is mandatory for rules)
+  // 2. Fetch WorkspaceEntities for specific Pipeline and Workspace (Requirement 5, 8)
+  // Query workspace_entities filtered by workspaceId and pipelineId
+  const workspaceEntitiesQuery = useMemoFirebase(
+    () => (firestore ? query(
+        collection(firestore, 'workspace_entities'), 
+        where('pipelineId', '==', pipelineId),
+        where('workspaceId', '==', activeWorkspaceId),
+        where('status', '==', 'active')
+    ) : null),
+    [firestore, pipelineId, activeWorkspaceId]
+  );
+  const { data: workspaceEntities, isLoading: isLoadingWorkspaceEntities } = useCollection<WorkspaceEntity>(workspaceEntitiesQuery);
+
+  // 3. Fetch Schools for backward compatibility (legacy data)
+  // This will be removed once migration is complete
   const schoolsQuery = useMemoFirebase(
     () => (firestore ? query(
         collection(firestore, 'schools'), 
@@ -83,13 +98,104 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     ) : null),
     [firestore, pipelineId, activeWorkspaceId]
   );
-  const { data: allSchools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
+  const { data: legacySchools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
 
   const [activeElement, setActiveElement] = React.useState<School | OnboardingStage | null>(null);
   const [schoolsByStage, setSchoolsByStage] = React.useState<Record<string, School[]>>({});
   const initialSchoolsByStage = React.useRef<Record<string, School[]>>({});
 
-  // 3. Apply Multi-Layer Filtering
+  // 4. Hydrate entity data for workspace_entities (Requirement 8)
+  // Optimized: Batch fetch all entities in a single query instead of N+1 queries
+  const [hydratedSchools, setHydratedSchools] = React.useState<School[]>([]);
+  
+  React.useEffect(() => {
+    if (!firestore || !workspaceEntities || workspaceEntities.length === 0) {
+      setHydratedSchools([]);
+      return;
+    }
+
+    const hydrateEntities = async () => {
+      try {
+        // Extract unique entity IDs
+        const entityIds = [...new Set(workspaceEntities.map(we => we.entityId))];
+        
+        // Batch fetch all entities (max 10 per batch due to Firestore 'in' query limit)
+        const entityMap = new Map<string, Entity>();
+        
+        // Process in batches of 10 (Firestore 'in' query limit)
+        for (let i = 0; i < entityIds.length; i += 10) {
+          const batch = entityIds.slice(i, i + 10);
+          const entitiesQuery = query(
+            collection(firestore, 'entities'),
+            where('__name__', 'in', batch)
+          );
+          const entitiesSnap = await getDocs(entitiesQuery);
+          
+          entitiesSnap.forEach(doc => {
+            entityMap.set(doc.id, { id: doc.id, ...doc.data() } as Entity);
+          });
+        }
+        
+        // Map workspace_entities + entities to School format
+        const hydrated: School[] = workspaceEntities
+          .map(we => {
+            const entity = entityMap.get(we.entityId);
+            if (!entity) {
+              console.warn(`Entity ${we.entityId} not found for workspace_entity ${we.id}`);
+              return null;
+            }
+            
+            // Map entity + workspace_entity to School format for backward compatibility
+            const school: School = {
+              id: we.entityId,
+              name: entity.name,
+              slug: entity.slug || '',
+              workspaceIds: [we.workspaceId],
+              status: we.status === 'active' ? 'Active' : 'Archived',
+              schoolStatus: we.status === 'active' ? 'Active' : 'Archived',
+              pipelineId: we.pipelineId,
+              focalPersons: entity.contacts || [],
+              assignedTo: we.assignedTo,
+              stage: {
+                id: we.stageId,
+                name: we.currentStageName || '',
+                order: 0,
+              },
+              tags: we.workspaceTags,
+              createdAt: entity.createdAt,
+              // Map institution-specific data if available
+              ...(entity.institutionData && {
+                nominalRoll: entity.institutionData.nominalRoll,
+                subscriptionPackageId: entity.institutionData.subscriptionPackageId,
+                subscriptionRate: entity.institutionData.subscriptionRate,
+                billingAddress: entity.institutionData.billingAddress,
+                currency: entity.institutionData.currency,
+                modules: entity.institutionData.modules,
+                implementationDate: entity.institutionData.implementationDate,
+                referee: entity.institutionData.referee,
+              }),
+            };
+            
+            return school;
+          })
+          .filter((school): school is School => school !== null);
+        
+        setHydratedSchools(hydrated);
+      } catch (error) {
+        console.error('Failed to hydrate entities:', error);
+        setHydratedSchools([]);
+      }
+    };
+
+    hydrateEntities();
+  }, [firestore, workspaceEntities]);
+
+  // 5. Combine hydrated entities with legacy schools
+  const allSchools = React.useMemo(() => {
+    return [...hydratedSchools, ...(legacySchools || [])];
+  }, [hydratedSchools, legacySchools]);
+
+  // 6. Apply Multi-Layer Filtering
   const filteredSchools = React.useMemo(() => {
     if (!allSchools) return [];
     let temp = allSchools;
@@ -127,7 +233,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     return temp;
   }, [allSchools, assignedUserId, filters]);
 
-  // 4. Grouping Logic
+  // 7. Grouping Logic
   React.useEffect(() => {
     if (stages && filteredSchools) {
       const grouped: Record<string, School[]> = {};
@@ -213,34 +319,62 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
         return;
     } else if (active.data.current?.type === 'SCHOOL' && activeContainer !== overContainer && overContainer) {
-      const schoolId = active.id as string;
+      const entityId = active.id as string;
       const newStage = stages?.find((s) => s.id === overContainer);
       const school = (active.data.current?.school) as School;
       const oldStageName = school?.stage?.name || 'Initialization';
 
       if (newStage) {
-        const schoolRef = doc(firestore!, 'schools', schoolId);
         try {
-          await updateDoc(schoolRef, {
-            stage: { id: newStage.id, name: newStage.name, order: newStage.order, color: newStage.color },
-          });
+          // Check if this is a workspace_entity or legacy school
+          const workspaceEntityQuery = query(
+            collection(firestore!, 'workspace_entities'),
+            where('entityId', '==', entityId),
+            where('workspaceId', '==', activeWorkspaceId)
+          );
+          const weSnap = await getDocs(workspaceEntityQuery);
+
+          if (!weSnap.empty) {
+            // Update workspace_entities record (Requirement 5)
+            const workspaceEntityRef = doc(firestore!, 'workspace_entities', weSnap.docs[0].id);
+            await updateDoc(workspaceEntityRef, {
+              stageId: newStage.id,
+              currentStageName: newStage.name,
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            // Fallback to legacy schools collection
+            const schoolRef = doc(firestore!, 'schools', entityId);
+            await updateDoc(schoolRef, {
+              stage: { id: newStage.id, name: newStage.name, order: newStage.order, color: newStage.color },
+            });
+          }
+
           toast({ title: 'Protocol Advanced', description: `Institutional state set to "${newStage.name}".` });
           
           if (user && school) {
             logActivity({
-                schoolId, userId: user.uid, type: 'pipeline_stage_changed', source: 'user_action', workspaceId: activeWorkspaceId,
+                schoolId: entityId,
+                entityId: entityId,
+                userId: user.uid,
+                type: 'pipeline_stage_changed',
+                source: 'user_action',
+                workspaceId: activeWorkspaceId,
                 description: `progressed "${school.name}" from "${oldStageName}" to "${newStage.name}"`,
                 metadata: { from: oldStageName, to: newStage.name, pipelineId }
             });
 
             if (newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('training')) {
                 triggerInternalNotification({
-                    schoolId, notifyManager: true, channel: 'both',
+                    schoolId: entityId,
+                    notifyManager: true,
+                    channel: 'both',
                     variables: { school_name: school.name, new_stage: newStage.name, event_type: 'Workflow Progression' }
                 }).catch(console.error);
             }
           }
         } catch (error) {
+          console.error('Failed to update stage:', error);
           toast({ variant: 'destructive', title: 'Logic Error', description: 'Failed to update workflow state.' });
           setSchoolsByStage(initialSchoolsByStage.current);
         }
@@ -248,7 +382,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
     }
   };
 
-  const isLoading = isLoadingSchools || isLoadingStages || isLoadingFilter;
+  const isLoading = isLoadingSchools || isLoadingStages || isLoadingFilter || isLoadingWorkspaceEntities;
 
   if (isLoading) {
     return (

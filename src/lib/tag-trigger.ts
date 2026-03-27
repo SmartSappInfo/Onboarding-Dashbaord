@@ -22,7 +22,10 @@ export interface TagTriggerPayload {
  * by TagTriggerConfig (tagIds list and optional contactType / appliedBy).
  * Matching rules are executed via the server-side automation runner.
  *
- * Requirements: FR4.1.1, FR4.1.2, FR4.1.3
+ * Updated for workspace awareness (Requirement 10.3)
+ * Uses workspaceId from workspace_entities record where tag was applied
+ *
+ * Requirements: FR4.1.1, FR4.1.2, FR4.1.3, Requirement 10.3
  */
 export async function fireTagTrigger(
   trigger: 'TAG_ADDED' | 'TAG_REMOVED',
@@ -41,7 +44,7 @@ export async function fireTagTrigger(
     for (const ruleDoc of rulesSnap.docs) {
       const rule = { id: ruleDoc.id, ...ruleDoc.data() } as AutomationRule;
 
-      // Workspace check: rule must cover the contact's workspace
+      // Workspace check: rule must cover the contact's workspace (Requirement 10.2)
       if (rule.workspaceIds && rule.workspaceIds.length > 0) {
         if (!rule.workspaceIds.includes(payload.workspaceId)) continue;
       }
@@ -78,6 +81,7 @@ export async function fireTagTrigger(
 
 /**
  * Executes the actions of a matched automation rule for a tag trigger event.
+ * Updated for workspace awareness (Requirement 10.4)
  */
 async function executeTagAutomationRule(
   rule: AutomationRule,
@@ -96,7 +100,7 @@ async function executeTagAutomationRule(
           const taskRef = adminDb.collection('tasks').doc();
           await taskRef.set({
             id: taskRef.id,
-            workspaceId: payload.workspaceId,
+            workspaceId: payload.workspaceId, // Requirement 10.4
             title: action.taskTitle,
             description: action.taskDescription || `Triggered by ${rule.trigger} on tag ${payload.tagName}`,
             priority: action.taskPriority || 'medium',

@@ -18,13 +18,46 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
         const timestamp = new Date().toISOString();
         const slug = data.name?.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         
+        // Validate contactScope if provided
+        if (data.contactScope && !['institution', 'family', 'person'].includes(data.contactScope)) {
+            throw new Error("Invalid contactScope. Must be one of: institution, family, person");
+        }
+
+        // Set default capabilities if not provided
+        const capabilities = data.capabilities || {
+            billing: true,
+            admissions: true,
+            children: true,
+            contracts: true,
+            messaging: true,
+            automations: true,
+            tasks: true
+        };
+        
         const payload = {
             ...data,
             slug,
+            capabilities,
             updatedAt: timestamp,
         };
 
         if (id) {
+            // Check if attempting to change contactScope on a locked workspace
+            if (data.contactScope !== undefined) {
+                const workspaceSnap = await adminDb.collection('workspaces').doc(id).get();
+                if (workspaceSnap.exists) {
+                    const workspace = workspaceSnap.data() as Workspace;
+                    
+                    // If scopeLocked is true and contactScope is being changed, reject
+                    if (workspace.scopeLocked && workspace.contactScope !== data.contactScope) {
+                        return {
+                            success: false,
+                            error: "Scope cannot be changed after activation. Create a new workspace and migrate records intentionally."
+                        };
+                    }
+                }
+            }
+            
             await adminDb.collection('workspaces').doc(id).update(payload);
             revalidatePath('/admin/settings');
             return { success: true, id };
@@ -40,6 +73,7 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
                 ...payload,
                 id: newId,
                 status: 'active',
+                scopeLocked: false,
                 createdAt: timestamp
             });
 
@@ -105,6 +139,77 @@ export async function archiveWorkspaceAction(id: string, archive: boolean) {
             status: archive ? 'archived' : 'active',
             updatedAt: new Date().toISOString()
         });
+        revalidatePath('/admin/settings');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Updates workspace contactScope.
+ * Only allowed if workspace has zero active workspace_entities and scopeLocked is false.
+ */
+export async function updateWorkspaceScopeAction(
+    workspaceId: string, 
+    newContactScope: 'institution' | 'family' | 'person',
+    userId: string
+) {
+    try {
+        // Validate contactScope
+        if (!['institution', 'family', 'person'].includes(newContactScope)) {
+            throw new Error("Invalid contactScope. Must be one of: institution, family, person");
+        }
+
+        // Get workspace to check scopeLocked status
+        const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (!workspaceSnap.exists) {
+            return {
+                success: false,
+                error: "Workspace not found"
+            };
+        }
+
+        const workspace = workspaceSnap.data() as Workspace;
+
+        // Check if scope is locked
+        if (workspace.scopeLocked) {
+            return {
+                success: false,
+                error: "Scope cannot be changed after activation. Create a new workspace and migrate records intentionally."
+            };
+        }
+
+        // Check if workspace has any active workspace_entities
+        const activeEntitiesSnapshot = await adminDb
+            .collection('workspace_entities')
+            .where('workspaceId', '==', workspaceId)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get();
+
+        if (!activeEntitiesSnapshot.empty) {
+            return {
+                success: false,
+                error: "Scope cannot be changed after activation. Create a new workspace and migrate records intentionally."
+            };
+        }
+
+        // Update the workspace contactScope
+        await adminDb.collection('workspaces').doc(workspaceId).update({
+            contactScope: newContactScope,
+            updatedAt: new Date().toISOString()
+        });
+
+        await logActivity({
+            schoolId: '',
+            userId,
+            workspaceId,
+            type: 'workspace_scope_updated',
+            source: 'user_action',
+            description: `Updated workspace scope to: ${newContactScope}`
+        });
+
         revalidatePath('/admin/settings');
         return { success: true };
     } catch (e: any) {

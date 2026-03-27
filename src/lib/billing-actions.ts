@@ -2,6 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { resolveContact } from './contact-adapter';
 import type { Invoice, InvoiceItem, BillingProfile, BillingPeriod, School } from './types';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
@@ -39,20 +40,23 @@ export async function generateInvoiceAction(
     try {
         const db = adminDb;
         
-        // 1. Fetch Contextual Data
-        const [profileSnap, periodSnap, schoolSnap] = await Promise.all([
+        // 1. Fetch Contextual Data (Updated to use adapter layer - Requirement 18)
+        const [profileSnap, periodSnap] = await Promise.all([
             db.collection('billing_profiles').doc(profileId).get(),
             db.collection('billing_periods').doc(periodId).get(),
-            db.collection('schools').doc(schoolId).get(),
         ]);
 
         if (!profileSnap.exists) throw new Error("Billing profile not found.");
         if (!periodSnap.exists) throw new Error("Billing cycle not found.");
-        if (!schoolSnap.exists) throw new Error("Institutional record missing.");
 
         const profile = profileSnap.data() as BillingProfile;
         const period = periodSnap.data() as BillingPeriod;
-        const school = schoolSnap.data() as School;
+
+        // Use adapter to resolve contact from either schools or entities + workspace_entities
+        const contact = await resolveContact(schoolId, 'onboarding');
+        if (!contact || !contact.schoolData) throw new Error("Institutional record missing.");
+        
+        const school = contact.schoolData;
 
         const pkgSnap = await db.collection('subscription_packages').doc(school.subscriptionPackageId || 'none').get();
         const pkgData = pkgSnap.exists ? pkgSnap.data() : null;

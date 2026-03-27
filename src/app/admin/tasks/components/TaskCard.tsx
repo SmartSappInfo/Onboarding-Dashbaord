@@ -102,9 +102,15 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
                 </div>
 
                 <div className="flex flex-col gap-2 pt-1">
-                    {task.schoolName && (
+                    {(task.schoolName || task.entityId) && (
                         <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-tighter truncate opacity-60">
-                            <Building className="h-2.5 w-2.5" /> {task.schoolName}
+                            <Building className="h-2.5 w-2.5" /> 
+                            {task.schoolName || 'Entity'}
+                            {task.entityType && (
+                                <Badge variant="outline" className="text-[7px] font-black uppercase h-3.5 px-1 rounded-sm border-none bg-primary/10 text-primary ml-1">
+                                    {task.entityType}
+                                </Badge>
+                            )}
                         </div>
                     )}
                     <div className="flex items-center justify-between">

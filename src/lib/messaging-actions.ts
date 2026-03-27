@@ -330,17 +330,21 @@ export async function clearVariablesForSource(sourceId: string) {
  * Fetches the contact's tag IDs, resolves them to tag names, and returns
  * formatted variables for use in message templates.
  *
+ * **Updated for Requirement 7**: Resolves tags from workspace_entities.workspaceTags
+ * for the active workspace context, ensuring workspace-scoped tag variables.
+ *
  * Returns:
  *   contact_tags  — comma-separated tag names (e.g. "Hot Lead, VIP, Engaged")
  *   tag_count     — number of tags applied
  *   tag_list      — JSON array of tag name strings (for iteration)
  *   has_tag       — JSON object mapping tag name (lowercase) → true (for conditionals)
  *
- * Requirements: FR5.2.1, FR5.2.2
+ * Requirements: FR5.2.1, FR5.2.2, Requirement 7, Requirement 11
  */
 export async function resolveTagVariables(
   contactId: string,
-  contactType: 'school' | 'prospect'
+  contactType: 'school' | 'prospect',
+  workspaceId?: string
 ): Promise<{
   contact_tags: string;
   tag_count: number;
@@ -350,12 +354,43 @@ export async function resolveTagVariables(
   const empty = { contact_tags: '', tag_count: 0, tag_list: '[]', has_tag: '{}' };
 
   try {
-    const collectionName = contactType === 'school' ? 'schools' : 'prospects';
-    const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
+    let tagIds: string[] = [];
 
-    if (!contactSnap.exists) return empty;
+    // If workspaceId is provided, resolve from workspace_entities.workspaceTags (Requirement 7)
+    if (workspaceId) {
+      // First, try to find the entity ID from the contact
+      const collectionName = contactType === 'school' ? 'schools' : 'prospects';
+      const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
 
-    const tagIds: string[] = contactSnap.data()?.tags || [];
+      if (!contactSnap.exists) return empty;
+
+      const contactData = contactSnap.data();
+      const entityId = contactData?.entityId || contactId; // Fall back to contactId if no entityId
+
+      // Query workspace_entities for workspace-scoped tags
+      const weSnap = await adminDb
+        .collection('workspace_entities')
+        .where('entityId', '==', entityId)
+        .where('workspaceId', '==', workspaceId)
+        .limit(1)
+        .get();
+
+      if (!weSnap.empty) {
+        tagIds = weSnap.docs[0].data()?.workspaceTags || [];
+      } else {
+        // Fall back to legacy tags if no workspace_entities record exists
+        tagIds = contactData?.tags || [];
+      }
+    } else {
+      // Legacy path: resolve from contact document (backward compatibility)
+      const collectionName = contactType === 'school' ? 'schools' : 'prospects';
+      const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
+
+      if (!contactSnap.exists) return empty;
+
+      tagIds = contactSnap.data()?.tags || [];
+    }
+
     if (tagIds.length === 0) return empty;
 
     // Resolve tag IDs to tag names in parallel (batch by 10 for Firestore 'in' limit)

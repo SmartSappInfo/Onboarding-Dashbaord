@@ -28,8 +28,21 @@ export type TagCategory =
   | 'custom';       // User-defined
 
 /**
+ * Tag scope types for global vs workspace tag separation (Requirement 7)
+ */
+export type TagScope = 'global' | 'workspace';
+
+/**
  * Tag Definition
  * Stored in 'tags' collection
+ * 
+ * Tag Scope Distinction (Requirement 7):
+ * - "global": Identity-level tags visible across all workspaces (e.g., "vip", "strategic-account")
+ *   Stored in: entities.globalTags
+ * - "workspace": Operational tags scoped to one workspace (e.g., "hot-lead", "billing-issue")
+ *   Stored in: workspace_entities.workspaceTags
+ * 
+ * Note: The scope field is optional during migration. Once task 12.2 is complete, it will become required.
  */
 export interface Tag {
   id: string;
@@ -39,6 +52,7 @@ export interface Tag {
   slug: string;                  // URL-safe identifier
   description?: string;          // Optional description (max 200 chars)
   category: TagCategory;         // Tag category
+  scope?: TagScope;              // Tag scope: "global" (identity-level) or "workspace" (operational) - optional during migration
   color: string;                 // Hex color code
   isSystem: boolean;             // System-generated (read-only)
   usageCount: number;            // Denormalized count for performance
@@ -170,6 +184,38 @@ export interface Organization {
 }
 
 /**
+ * Contact scope types for workspaces
+ */
+export type ContactScope = 'institution' | 'family' | 'person';
+
+/**
+ * Entity types for unified contact model
+ */
+export type EntityType = 'institution' | 'family' | 'person';
+
+/**
+ * Migration status for tracking school-to-entity migration progress (Requirement 18)
+ * 
+ * - "legacy": Not yet migrated, still using old schools collection exclusively
+ * - "migrated": Fully migrated to entities + workspace_entities model
+ * - "dual-write": Transitional state where writes go to both old and new models
+ */
+export type MigrationStatus = 'legacy' | 'migrated' | 'dual-write';
+
+/**
+ * Workspace capabilities configuration
+ */
+export interface WorkspaceCapabilities {
+  billing: boolean;
+  admissions: boolean;
+  children: boolean;
+  contracts: boolean;
+  messaging: boolean;
+  automations: boolean;
+  tasks: boolean;
+}
+
+/**
  * Defines a managed Workspace within an Organization.
  * Operational data is partitioned by these IDs.
  */
@@ -182,6 +228,9 @@ export interface Workspace {
   color?: string;
   status: 'active' | 'archived';
   statuses: WorkspaceStatus[];
+  contactScope?: ContactScope; // Declares the contact type this workspace manages
+  capabilities?: WorkspaceCapabilities; // Feature flags for workspace modules
+  scopeLocked?: boolean; // True once first entity is linked
   createdAt: string;
   updatedAt: string;
 }
@@ -217,6 +266,28 @@ export interface Attendee {
     parentName: string;
     childrenNames: string[];
     joinedAt: string;
+}
+
+/**
+ * Guardian associated with a family entity
+ */
+export interface Guardian {
+  name: string;
+  phone: string;
+  email: string;
+  relationship: string; // e.g., Father, Mother, Legal Guardian
+  isPrimary: boolean;
+}
+
+/**
+ * Child associated with a family entity
+ */
+export interface Child {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string; // ISO date string
+  gradeLevel?: string;
+  enrollmentStatus?: string;
 }
 
 export interface FocalPerson {
@@ -368,6 +439,162 @@ export interface School {
   tags?: string[];
   taggedAt?: { [tagId: string]: string };
   taggedBy?: { [tagId: string]: string };
+  /**
+   * Migration tracking field (Requirement 18)
+   * 
+   * Tracks the migration progress from the legacy schools collection to the new
+   * entities + workspace_entities model. The adapter layer uses this field to
+   * determine whether to read from the legacy schools collection or the new model.
+   * 
+   * - "legacy": Not yet migrated, still using old schools collection exclusively
+   * - "migrated": Fully migrated to entities + workspace_entities model
+   * - "dual-write": Transitional state where writes go to both old and new models
+   * 
+   * @default undefined (treated as "legacy")
+   */
+  migrationStatus?: MigrationStatus;
+}
+
+/**
+ * Institution-specific data for entities with entityType: "institution"
+ */
+export interface InstitutionData {
+  nominalRoll?: number;
+  subscriptionPackageId?: string;
+  subscriptionRate?: number;
+  billingAddress?: string;
+  currency?: string;
+  modules?: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    color: string;
+  }[];
+  implementationDate?: string; // ISO date string
+  referee?: string;
+}
+
+/**
+ * Family-specific data for entities with entityType: "family"
+ */
+export interface FamilyData {
+  guardians: Guardian[];
+  children: Child[];
+  admissionsData?: Record<string, any>;
+}
+
+/**
+ * Person-specific data for entities with entityType: "person"
+ */
+export interface PersonData {
+  firstName: string;
+  lastName: string;
+  company?: string;
+  jobTitle?: string;
+  leadSource?: string;
+}
+
+/**
+ * Unified Entity - represents a contact identity across all workspaces
+ * Stores stable identity data only (no pipeline state, no workspace-specific tags)
+ * 
+ * Tag Storage (Requirement 7):
+ * - globalTags: Identity-level tags visible across all workspaces (e.g., "vip", "strategic-account")
+ *   These tags represent fundamental attributes of the entity that transcend workspace boundaries.
+ */
+export interface Entity {
+  id: string;
+  organizationId: string;
+  entityType: EntityType;
+  name: string; // Display name (computed from firstName + lastName for person entities)
+  slug?: string; // URL-safe identifier (for institution entities)
+  contacts: FocalPerson[]; // Named contact persons
+  globalTags: string[]; // Identity-level tags visible across all workspaces (Requirement 7)
+  status?: 'active' | 'archived'; // Soft delete status
+  createdAt: string;
+  updatedAt: string;
+  // Scope-specific data (only one will be populated based on entityType)
+  institutionData?: InstitutionData;
+  familyData?: FamilyData;
+  personData?: PersonData;
+  // Reserved for future cross-entity relationships
+  relatedEntityIds?: string[];
+}
+
+/**
+ * WorkspaceEntity - represents the operational relationship between an entity and a workspace
+ * Stores workspace-specific state: pipeline position, assignee, workspace tags
+ * 
+ * Tag Storage (Requirement 7):
+ * - workspaceTags: Operational tags scoped to this specific workspace (e.g., "hot-lead", "billing-issue")
+ *   These tags represent workspace-specific state and are NOT visible in other workspaces.
+ */
+export interface WorkspaceEntity {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  entityType: EntityType;
+  pipelineId: string;
+  stageId: string;
+  assignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  };
+  status: 'active' | 'archived';
+  workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
+  lastContactedAt?: string;
+  addedAt: string;
+  updatedAt: string;
+  // Denormalized read-model fields for performance
+  displayName: string;
+  primaryEmail?: string;
+  primaryPhone?: string;
+  currentStageName?: string;
+}
+
+/**
+ * Unified contact object returned by the adapter layer (Requirement 18)
+ * 
+ * This interface represents a resolved contact that can come from either:
+ * - Legacy schools collection (when migrationStatus is "legacy")
+ * - New entities + workspace_entities model (when migrationStatus is "migrated")
+ * 
+ * The adapter layer uses this interface to provide a consistent API for
+ * accessing contact data regardless of the underlying storage model.
+ */
+export interface ResolvedContact {
+  id: string;
+  name: string;
+  slug?: string;
+  contacts: Array<{
+    name: string;
+    phone: string;
+    email: string;
+    type: string;
+    isSignatory: boolean;
+  }>;
+  // Workspace-specific operational state
+  pipelineId?: string;
+  stageId?: string;
+  stageName?: string;
+  assignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  };
+  status?: string;
+  tags: string[]; // Workspace tags for the active workspace
+  globalTags?: string[]; // Global identity tags (only for migrated entities)
+  // Entity metadata
+  entityType?: EntityType;
+  entityId?: string;
+  workspaceEntityId?: string;
+  // Migration tracking
+  migrationStatus: MigrationStatus;
+  // Legacy school data (for backward compatibility)
+  schoolData?: School;
 }
 
 export interface SubscriptionPackage {
@@ -509,8 +736,9 @@ export interface Survey {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
-  schoolId?: string | null;
-  schoolName?: string | null;
+  schoolId?: string | null; // Legacy field for backward compatibility
+  schoolName?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
 }
 
 export interface SurveyElement {
@@ -661,8 +889,9 @@ export interface PDFForm {
     backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
     patternColor?: string;
     logoUrl?: string;
-    schoolId?: string | null;
-    schoolName?: string | null;
+    schoolId?: string | null; // Legacy field for backward compatibility
+    schoolName?: string | null; // Legacy field for backward compatibility
+    entityId?: string | null; // New unified entity reference
     webhookEnabled?: boolean;
     webhookId?: string;
     showDebugProcessingModal?: boolean;
@@ -734,10 +963,15 @@ export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'partially_signe
 
 export interface Activity {
   id: string;
+  organizationId: string; // Organization tenant identifier
   workspaceId: string; // Strictly confined
-  schoolId?: string;
-  schoolName?: string;
-  schoolSlug?: string;
+  schoolId?: string; // Legacy field for backward compatibility
+  schoolName?: string; // Legacy field for backward compatibility
+  schoolSlug?: string; // Legacy field for backward compatibility
+  entityId?: string; // New unified entity reference
+  entityType?: EntityType; // Type of entity
+  displayName?: string; // Denormalized entity name at time of logging
+  entitySlug?: string; // Denormalized slug for historical readability
   userId?: string | null;
   type: string;
   source: string;
@@ -756,8 +990,10 @@ export interface Task {
   category: TaskCategory;
   assignedTo: string;
   assignedToName?: string;
-  schoolId?: string | null;
-  schoolName?: string | null;
+  schoolId?: string | null; // Legacy field for backward compatibility
+  schoolName?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType; // Type of entity
   dueDate: string;
   startDate?: string;
   createdAt: string;
@@ -831,6 +1067,34 @@ export interface AutomationCondition {
   field: string;
   operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
   value: any;
+}
+
+/**
+ * Automation Event Payload (Requirement 10.1)
+ * 
+ * Standard payload structure for all automation engine events.
+ * Ensures workspace context is carried with every event so that automations
+ * in one workspace cannot accidentally trigger actions intended for another workspace.
+ * 
+ * This addresses Risk 8 (Automation Context Confusion) from the requirements.
+ */
+export interface AutomationEventPayload {
+  /** Organization ID - root tenant identifier */
+  organizationId: string;
+  /** Workspace ID - operational context where the event occurred */
+  workspaceId: string;
+  /** Entity ID - the contact/entity that triggered the event */
+  entityId: string;
+  /** Entity Type - institution, family, or person */
+  entityType: EntityType;
+  /** Action - the specific action that triggered the event (e.g., 'school_created', 'tag_added') */
+  action: string;
+  /** Actor ID - the user who performed the action (null for system actions) */
+  actorId: string | null;
+  /** Timestamp - ISO 8601 timestamp when the event occurred */
+  timestamp: string;
+  /** Additional context data specific to the event type */
+  [key: string]: any;
 }
 
 export interface AutomationAction {
@@ -996,7 +1260,10 @@ export interface MessageLog {
     updatedAt?: string;
     variables: Record<string, any>;
     workspaceIds: string[];
-    schoolId: string | null;
+    workspaceId?: string; // Primary workspace context (Requirement 11)
+    schoolId: string | null; // Legacy field for backward compatibility
+    entityId?: string | null; // New unified entity reference
+    entityType?: EntityType; // Type of entity
     providerId: string | null;
     providerStatus: string | null;
     error?: string;

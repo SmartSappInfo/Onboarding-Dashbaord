@@ -18,7 +18,11 @@ import {
     Layout,
     Check,
     PlusCircle,
-    Palette
+    Palette,
+    Lock,
+    Building2,
+    Users,
+    User
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +56,7 @@ export default function WorkspaceEditor() {
     const [description, setDescription] = React.useState('');
     const [color, setColor] = React.useState('#3B5FFF');
     const [statuses, setStatuses] = React.useState<WorkspaceStatus[]>([]);
+    const [contactScope, setContactScope] = React.useState<'institution' | 'family' | 'person'>('institution');
 
     const workspacesQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'workspaces'), orderBy('createdAt', 'asc')) : null, 
@@ -65,6 +70,7 @@ export default function WorkspaceEditor() {
             setDescription(w.description || '');
             setColor(w.color || '#3B5FFF');
             setStatuses(w.statuses || []);
+            setContactScope(w.contactScope || 'institution');
         } else {
             setActiveWorkspace(null);
             setName('');
@@ -75,6 +81,7 @@ export default function WorkspaceEditor() {
                 { value: 'Active', label: 'Active', color: '#10b981' },
                 { value: 'Churned', label: 'Churned', color: '#ef4444' }
             ]);
+            setContactScope('institution');
         }
         setIsEditing(true);
     };
@@ -101,7 +108,14 @@ export default function WorkspaceEditor() {
 
         const result = await saveWorkspaceAction(
             activeWorkspace?.id || null,
-            { name: name.trim(), description: description.trim(), color, statuses },
+            { 
+                name: name.trim(), 
+                description: description.trim(), 
+                color, 
+                statuses,
+                contactScope: activeWorkspace ? undefined : contactScope, // Only set on creation
+                capabilities: activeWorkspace ? undefined : getDefaultCapabilities(contactScope) // Only set on creation
+            },
             user.uid
         );
 
@@ -112,6 +126,41 @@ export default function WorkspaceEditor() {
             toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
         }
         setIsSaving(false);
+    };
+
+    const getDefaultCapabilities = (scope: 'institution' | 'family' | 'person') => {
+        switch (scope) {
+            case 'institution':
+                return {
+                    billing: true,
+                    admissions: false,
+                    children: false,
+                    contracts: true,
+                    messaging: true,
+                    automations: true,
+                    tasks: true
+                };
+            case 'family':
+                return {
+                    billing: false,
+                    admissions: true,
+                    children: true,
+                    contracts: false,
+                    messaging: true,
+                    automations: true,
+                    tasks: true
+                };
+            case 'person':
+                return {
+                    billing: false,
+                    admissions: false,
+                    children: false,
+                    contracts: false,
+                    messaging: true,
+                    automations: true,
+                    tasks: true
+                };
+        }
     };
 
     const handleDelete = async (w: Workspace) => {
@@ -162,6 +211,17 @@ export default function WorkspaceEditor() {
                                 <CardTitle className="text-base font-black uppercase tracking-tight truncate">{w.name}</CardTitle>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="text-[8px] font-black uppercase px-1.5 h-4">{w.statuses?.length || 0} Statuses</Badge>
+                                    {w.contactScope && (
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4 flex items-center gap-1">
+                                            {w.contactScope === 'institution' && <Building2 className="h-2.5 w-2.5" />}
+                                            {w.contactScope === 'family' && <Users className="h-2.5 w-2.5" />}
+                                            {w.contactScope === 'person' && <User className="h-2.5 w-2.5" />}
+                                            {w.contactScope === 'institution' ? 'Schools' : w.contactScope === 'family' ? 'Families' : 'People'}
+                                        </Badge>
+                                    )}
+                                    {w.scopeLocked && (
+                                        <Lock className="h-3 w-3 text-muted-foreground" />
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -255,7 +315,244 @@ export default function WorkspaceEditor() {
                                         </div>
                                     </div>
 
+                                    {/* CONTACT SCOPE SELECTOR - Only show for new workspaces */}
+                                    {!activeWorkspace && (
+                                        <>
+                                            <Separator className="opacity-50" />
+                                            
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-2 px-1">
+                                                    <Layout className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-black uppercase tracking-widest">Contact Scope</h4>
+                                                    <Badge variant="secondary" className="text-[8px] font-black uppercase px-1.5 h-4">Required</Badge>
+                                                </div>
+
+                                                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                                    Select the type of contacts this workspace will manage. This determines the data model, UI, and workflows.
+                                                </p>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setContactScope('institution')}
+                                                        className={cn(
+                                                            "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
+                                                            contactScope === 'institution'
+                                                                ? "bg-primary/5 border-primary shadow-md"
+                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-lg transition-colors",
+                                                                    contactScope === 'institution' ? "bg-primary/10" : "bg-muted"
+                                                                )}>
+                                                                    <Building2 className={cn(
+                                                                        "h-5 w-5",
+                                                                        contactScope === 'institution' ? "text-primary" : "text-muted-foreground"
+                                                                    )} />
+                                                                </div>
+                                                                {contactScope === 'institution' && (
+                                                                    <Check className="h-5 w-5 text-primary" />
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <h5 className="text-sm font-black text-foreground">Schools</h5>
+                                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
+                                                                    Institutional contacts with billing, contracts, and subscription management.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setContactScope('family')}
+                                                        className={cn(
+                                                            "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
+                                                            contactScope === 'family'
+                                                                ? "bg-primary/5 border-primary shadow-md"
+                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-lg transition-colors",
+                                                                    contactScope === 'family' ? "bg-primary/10" : "bg-muted"
+                                                                )}>
+                                                                    <Users className={cn(
+                                                                        "h-5 w-5",
+                                                                        contactScope === 'family' ? "text-primary" : "text-muted-foreground"
+                                                                    )} />
+                                                                </div>
+                                                                {contactScope === 'family' && (
+                                                                    <Check className="h-5 w-5 text-primary" />
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <h5 className="text-sm font-black text-foreground">Families</h5>
+                                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
+                                                                    Family contacts with guardians, children, and admissions workflows.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setContactScope('person')}
+                                                        className={cn(
+                                                            "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
+                                                            contactScope === 'person'
+                                                                ? "bg-primary/5 border-primary shadow-md"
+                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-lg transition-colors",
+                                                                    contactScope === 'person' ? "bg-primary/10" : "bg-muted"
+                                                                )}>
+                                                                    <User className={cn(
+                                                                        "h-5 w-5",
+                                                                        contactScope === 'person' ? "text-primary" : "text-muted-foreground"
+                                                                    )} />
+                                                                </div>
+                                                                {contactScope === 'person' && (
+                                                                    <Check className="h-5 w-5 text-primary" />
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <h5 className="text-sm font-black text-foreground">People</h5>
+                                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
+                                                                    Individual contacts with personal CRM and lead management.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                </div>
+
+                                                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                                    <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] font-black text-blue-900 uppercase">Scope Selection</p>
+                                                        <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
+                                                            Contact scope cannot be changed after the first entity is linked to this workspace. Choose carefully based on your workflow needs.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
                                     <Separator className="opacity-50" />
+
+                                    {/* CONTACT SCOPE DISPLAY */}
+                                    {activeWorkspace?.contactScope && (
+                                        <>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <div className="flex items-center gap-2">
+                                                        {activeWorkspace.contactScope === 'institution' && <Building2 className="h-4 w-4 text-primary" />}
+                                                        {activeWorkspace.contactScope === 'family' && <Users className="h-4 w-4 text-primary" />}
+                                                        {activeWorkspace.contactScope === 'person' && <User className="h-4 w-4 text-primary" />}
+                                                        <h4 className="text-xs font-black uppercase tracking-widest">Contact Scope</h4>
+                                                    </div>
+                                                    {activeWorkspace.scopeLocked && (
+                                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                            <Lock className="h-3.5 w-3.5" />
+                                                            <span className="text-[9px] font-bold uppercase tracking-wider">Locked</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex items-start gap-4">
+                                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                                        {activeWorkspace.contactScope === 'institution' && <Building2 className="h-5 w-5 text-primary" />}
+                                                        {activeWorkspace.contactScope === 'family' && <Users className="h-5 w-5 text-primary" />}
+                                                        {activeWorkspace.contactScope === 'person' && <User className="h-5 w-5 text-primary" />}
+                                                    </div>
+                                                    <div className="space-y-1 flex-1">
+                                                        <p className="text-sm font-black text-foreground">
+                                                            This workspace manages{' '}
+                                                            <span className="text-primary">
+                                                                {activeWorkspace.contactScope === 'institution' ? 'Schools' : 
+                                                                 activeWorkspace.contactScope === 'family' ? 'Families' : 'People'}
+                                                            </span>
+                                                        </p>
+                                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
+                                                            {activeWorkspace.contactScope === 'institution' && 'Institutional contacts with billing, contracts, and subscription management.'}
+                                                            {activeWorkspace.contactScope === 'family' && 'Family contacts with guardians, children, and admissions workflows.'}
+                                                            {activeWorkspace.contactScope === 'person' && 'Individual contacts with personal CRM and lead management.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {activeWorkspace.scopeLocked && (
+                                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                                                        <Lock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] font-black text-amber-900 uppercase">Scope Locked</p>
+                                                            <p className="text-[9px] font-medium text-amber-800/70 leading-relaxed">
+                                                                Contact scope cannot be changed after entities have been linked to this workspace. This protects existing data integrity.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <Separator className="opacity-50" />
+                                        </>
+                                    )}
+
+                                    {/* CAPABILITIES TOGGLES */}
+                                    {activeWorkspace?.capabilities && (
+                                        <>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-2 px-1">
+                                                    <Settings2 className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-black uppercase tracking-widest">Workspace Capabilities</h4>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                    {Object.entries(activeWorkspace.capabilities).map(([key, enabled]) => (
+                                                        <div 
+                                                            key={key}
+                                                            className={cn(
+                                                                "p-3 rounded-xl border-2 transition-all",
+                                                                enabled 
+                                                                    ? "bg-primary/5 border-primary/30" 
+                                                                    : "bg-muted/20 border-border opacity-50"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                {enabled ? (
+                                                                    <Check className="h-3.5 w-3.5 text-primary" />
+                                                                ) : (
+                                                                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                )}
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">
+                                                                    {key}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                                    <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                                                    <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
+                                                        Capabilities control which features are available in this workspace. These can be configured independently of the contact scope.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <Separator className="opacity-50" />
+                                        </>
+                                    )}
 
                                     {/* STATUS ARCHITECT */}
                                     <div className="space-y-6">

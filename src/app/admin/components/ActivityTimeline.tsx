@@ -12,6 +12,7 @@ import { useTenant } from '@/context/TenantContext';
 
 interface ActivityTimelineProps {
   schoolId?: string | null;
+  entityId?: string | null; // New: support filtering by entityId
   userId?: string | null;
   type?: string | null;
   zoneId?: string | null;
@@ -27,11 +28,11 @@ const DateSeparator = ({ date }: { date: string }) => {
     );
 };
 
-export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ schoolId, entityId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useTenant();
 
-  // HIGH PERFORMANCE: Fetch pool of workspace-specific activities.
+  // HIGH PERFORMANCE: Fetch pool of workspace-specific activities (Requirement 12).
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
     return query(
@@ -81,6 +82,10 @@ export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit
     if (schoolId && schoolId !== 'all') {
         filtered = filtered.filter(a => a.schoolId === schoolId);
     }
+    // New: Filter by entityId (Requirement 12)
+    if (entityId && entityId !== 'all') {
+        filtered = filtered.filter(a => a.entityId === entityId);
+    }
     if (userId && userId !== 'all') {
         filtered = filtered.filter(a => a.userId === userId);
     }
@@ -89,7 +94,7 @@ export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit
     }
 
     return filtered.slice(0, dataLimit);
-  }, [allActivities, schoolId, userId, type, zoneId, schoolsInZone, dataLimit]);
+  }, [allActivities, schoolId, entityId, userId, type, zoneId, schoolsInZone, dataLimit]);
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {

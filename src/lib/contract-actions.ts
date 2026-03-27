@@ -70,9 +70,10 @@ export async function sendContractAction(input: {
     recipients: { name: string; email?: string; phone?: string; type: string }[];
     userId: string;
     publicUrl: string;
+    workspaceId?: string; // Workspace context (Requirement 11)
 }) {
     try {
-        const { contractId, emailTemplateId, smsTemplateId, recipients, schoolId, schoolName, userId, publicUrl } = input;
+        const { contractId, emailTemplateId, smsTemplateId, recipients, schoolId, schoolName, userId, publicUrl, workspaceId } = input;
 
         // 1. Prepare Dispatches
         const dispatchPromises: Promise<any>[] = [];
@@ -94,7 +95,8 @@ export async function sendContractAction(input: {
                     senderProfileId: 'default', // Fallback to default sender
                     recipient: recipient.email,
                     variables: baseVars,
-                    schoolId
+                    schoolId,
+                    workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
                 }));
             }
 
@@ -105,7 +107,8 @@ export async function sendContractAction(input: {
                     senderProfileId: 'default',
                     recipient: recipient.phone,
                     variables: baseVars,
-                    schoolId
+                    schoolId,
+                    workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
                 }));
             }
         });

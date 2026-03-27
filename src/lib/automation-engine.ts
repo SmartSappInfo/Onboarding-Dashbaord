@@ -74,7 +74,8 @@ async function executeAction(db: Firestore, action: AutomationAction, context: T
                     school_id: school.id,
                     contact_name: getContactPerson(school) || ''
                 },
-                schoolId: school.id
+                schoolId: school.id,
+                workspaceId: school.workspaceIds?.[0] || 'onboarding' // Pass workspace context (Requirement 11)
             });
             break;
 

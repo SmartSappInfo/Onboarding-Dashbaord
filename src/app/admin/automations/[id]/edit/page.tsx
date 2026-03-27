@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { Automation } from '@/lib/types';
-import { Loader2, ArrowLeft, Save, Play } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Play, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import AutomationBuilder from '../../components/AutomationBuilder';
@@ -100,6 +100,16 @@ export default function EditAutomationPage() {
                     </Button>
                 </div>
             </header>
+
+            {/* Workspace scope warning (Requirement 10.5) */}
+            {(!automation.workspaceIds || automation.workspaceIds.length === 0) && (
+                <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 z-20">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-xs font-bold text-amber-900">
+                        <span className="font-black uppercase">Warning:</span> This automation has no workspace constraint and will trigger across all workspaces. Consider adding workspace scope for better isolation.
+                    </p>
+                </div>
+            )}
 
             <div className="flex-1 relative overflow-hidden">
                 <AutomationBuilder 

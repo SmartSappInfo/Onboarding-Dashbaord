@@ -2,6 +2,7 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "next dev -p 9002",
@@ -14,10 +15,13 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:emulator": "firebase emulators:exec --only firestore 'vitest run'",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:run",
-    "migrate:tags": "ts-node --project tsconfig.json src/app/seeds/migrate-tags.ts"
+    "migrate:tags": "ts-node --project tsconfig.json src/app/seeds/migrate-tags.ts",
+    "migrate:entity-tags": "tsx scripts/migrate-entity-tags.ts",
+    "migrate:schools": "tsx scripts/migrate-schools-to-entities.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -55,6 +59,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
+    "csv-parse": "^6.2.1",
+    "csv-stringify": "^6.7.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
@@ -90,6 +96,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@fast-check/vitest": "^0.3.0",
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

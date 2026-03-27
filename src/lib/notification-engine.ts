@@ -3,6 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import { sendMessage } from './messaging-engine';
+import { resolveContact } from './contact-adapter';
 import type { School, UserProfile } from './types';
 
 interface InternalNotificationOptions {
@@ -18,6 +19,8 @@ interface InternalNotificationOptions {
 /**
  * High-performance internal notification router.
  * Resolves recipients (Manager vs Specific Users) and dispatches alerts.
+ * 
+ * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
   const { schoolId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
@@ -28,15 +31,12 @@ export async function triggerInternalNotification(options: InternalNotificationO
     const recipients = new Set<string>(); // Set of user IDs
     const resolvedContacts: { email?: string; phone?: string; name: string }[] = [];
 
-    // 1. Resolve Assigned Manager
+    // 1. Resolve Assigned Manager using adapter layer (Requirement 18)
     if (notifyManager && schoolId) {
-      const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
-      if (schoolSnap.exists) {
-        const schoolData = schoolSnap.data() as School;
-        const managerId = schoolData.assignedTo?.userId;
-        if (managerId) {
-          recipients.add(managerId);
-        }
+      // Use adapter to resolve contact from either schools or entities + workspace_entities
+      const contact = await resolveContact(schoolId, variables.workspaceId || 'onboarding');
+      if (contact && contact.assignedTo) {
+        recipients.add(contact.assignedTo);
       }
     }
 
@@ -82,7 +82,8 @@ export async function triggerInternalNotification(options: InternalNotificationO
             senderProfileId: 'default', // Fallback to default sender
             recipient: contact.email,
             variables: personalVars,
-            schoolId
+            schoolId,
+            workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
           })
         );
       }
@@ -95,7 +96,8 @@ export async function triggerInternalNotification(options: InternalNotificationO
             senderProfileId: 'default',
             recipient: contact.phone,
             variables: personalVars,
-            schoolId
+            schoolId,
+            workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
           })
         );
       }

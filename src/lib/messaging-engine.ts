@@ -10,6 +10,8 @@ import { sendEmail, type EmailAttachment } from './resend-service';
 import { getSchoolEmail, getSchoolPhone, getSignatory } from './school-helpers';
 import { getPrimaryWorkspaceId } from './workspace-helpers';
 import { resolveTagVariables } from './messaging-actions';
+import { resolveContact } from './contact-adapter';
+import { getContactEmail, getContactPhone, getContactSignatory } from './migration-status-utils';
 
 interface SendMessageInput {
   templateId: string;
@@ -18,6 +20,7 @@ interface SendMessageInput {
   variables: Record<string, any>;
   attachments?: EmailAttachment[];
   schoolId?: string | null;
+  workspaceId?: string; // Workspace context for message (Requirement 11)
   scheduledAt?: string; // ISO string
 }
 
@@ -28,9 +31,11 @@ interface SendMessageInput {
  * When 'scheduledAt' is provided, this function delegates the "waiting" period to 
  * the external providers (mNotify/Resend). The providers are responsible for 
  * maintaining the queue and firing the message at the requested time.
+ * 
+ * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
+  const { templateId, senderProfileId, recipient, variables, attachments, schoolId, workspaceId, scheduledAt } = input;
 
   try {
     // 1. Fetch Template
@@ -68,26 +73,37 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
 
-    // 3. Resolve Operational Workspace context
+    // 3. Resolve Operational Workspace context (Requirement 11)
+    // Priority: explicit workspaceId > template workspaceIds > contact workspaceIds > default
+    let resolvedWorkspaceId = workspaceId;
     let workspaceIds: string[] = template.workspaceIds || ['onboarding'];
     const finalVariables = { ...variables };
 
-    // 4. Resolve School Context (Record Priority)
+    // 4. Resolve Contact Context using Adapter Layer (Requirement 18)
     if (schoolId) {
-        const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
-        if (schoolSnap.exists) {
-            const schoolData = schoolSnap.data() as School;
-            const signatory = getSignatory(schoolData);
+        // Use adapter to resolve contact from either schools or entities + workspace_entities
+        const contextWorkspaceId = resolvedWorkspaceId || workspaceIds[0] || 'onboarding';
+        const contact = await resolveContact(schoolId, contextWorkspaceId);
+        
+        if (contact) {
+            const signatory = getContactSignatory(contact);
             
-            // Logs inherit workspace visibility from the school
-            if (schoolData.workspaceIds?.length) workspaceIds = schoolData.workspaceIds;
+            // Logs inherit workspace visibility from the contact
+            if (contact.schoolData?.workspaceIds?.length) {
+                workspaceIds = contact.schoolData.workspaceIds;
+            }
 
-            const schoolVars: any = {
-                school_name: schoolData.name,
-                school_initials: schoolData.initials,
-                school_location: schoolData.location,
-                school_phone: getSchoolPhone(schoolData),
-                school_email: getSchoolEmail(schoolData),
+            // If no explicit workspaceId provided, use the primary workspace from contact
+            if (!resolvedWorkspaceId) {
+                resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+            }
+
+            const contactVars: any = {
+                school_name: contact.name,
+                school_initials: contact.schoolData?.initials || '',
+                school_location: contact.schoolData?.location || '',
+                school_phone: getContactPhone(contact) || '',
+                school_email: getContactEmail(contact) || '',
                 contact_name: signatory?.name || '',
                 contact_email: signatory?.email || '',
                 contact_phone: signatory?.phone || '',
@@ -98,19 +114,25 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
                 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
-                schoolVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${schoolId}`;
+                contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${schoolId}`;
             }
 
-            Object.entries(schoolVars).forEach(([k, v]) => {
+            Object.entries(contactVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
 
-            // Resolve tag variables for this school (FR5.2.1, FR5.2.2)
-            const tagVars = await resolveTagVariables(schoolId, 'school');
+            // Resolve tag variables for this contact (FR5.2.1, FR5.2.2, Requirement 7, Requirement 11, Requirement 18)
+            // Pass workspaceId to resolve workspace-scoped tags from workspace_entities.workspaceTags
+            const tagVars = await resolveTagVariables(schoolId, 'school', resolvedWorkspaceId);
             Object.entries(tagVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
         }
+    }
+
+    // If still no workspaceId resolved, use template default or fallback
+    if (!resolvedWorkspaceId) {
+        resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
     }
 
     // 5. Resolve Global Constants
@@ -173,7 +195,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 9. Audit Log Generation
+    // 9. Audit Log Generation (Requirement 11 - Record workspaceId)
     const logData: Omit<MessageLog, 'id'> = {
       title: resolvedLogTitle,
       templateId: template.id,
@@ -189,6 +211,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
+      workspaceId: resolvedWorkspaceId, // Primary workspace context (Requirement 11)
       schoolId: schoolId || null,
       providerId: providerId || null,
       providerStatus: providerStatus || null,
@@ -201,7 +224,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     await logActivity({
         schoolId: schoolId || '',
         userId: null, 
-        workspaceId: workspaceIds[0] || 'onboarding',
+        workspaceId: resolvedWorkspaceId,
         type: 'notification_sent',
         source: 'system',
         description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
