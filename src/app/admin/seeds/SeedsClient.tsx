@@ -373,21 +373,21 @@ export default function SeedsClient() {
                 </div>
                 <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
                     <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <MigrationCard 
+                        <SimpleMigrationCard 
                             title="Blueprint Reconstruction" 
                             description="Harvests pipeline and stage snapshots from schools to rebuild missing operational logic."
                             onSync={() => handleAction('sync_arch', syncOperationalArchitecture)}
                             status={seedingStatus.sync_arch}
                             icon={Workflow}
                         />
-                        <MigrationCard 
+                        <SimpleMigrationCard 
                             title="Shared Registry Sync" 
                             description="Migrates Schools, Meetings, Surveys, and PDFs to shared workspace arrays."
                             onSync={() => handleAction('enrich_op', enrichOperationalData)}
                             status={seedingStatus.enrich_op}
                             icon={Layers}
                         />
-                        <MigrationCard 
+                        <SimpleMigrationCard 
                             title="Timeline Binding" 
                             description="Strictly binds activities and audit logs to their respective operational tracks."
                             onSync={() => handleAction('activities', enrichActivitiesWithWorkspace)}
@@ -686,7 +686,15 @@ export default function SeedsClient() {
   );
 }
 
-function MigrationCard({ title, description, onSync, onRollback, status, icon: Icon }: any) {
+// Simple migration card for basic seed operations
+function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon }: {
+  title: string;
+  description: string;
+  onSync: () => void;
+  onRollback?: () => void;
+  status: SeedingState;
+  icon: any;
+}) {
     return (
         <div className="p-6 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all">
             <div className="space-y-3">
@@ -708,7 +716,12 @@ function MigrationCard({ title, description, onSync, onRollback, status, icon: I
     );
 }
 
-function ProtocolButton({ label, status, onClick, icon: Icon }: any) {
+function ProtocolButton({ label, status, onClick, icon: Icon }: {
+  label: string;
+  status: SeedingState;
+  onClick: () => void;
+  icon: any;
+}) {
     return (
         <Button 
             variant="outline" 
