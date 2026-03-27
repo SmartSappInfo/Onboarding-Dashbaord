@@ -10,6 +10,7 @@ import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson,
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
+import { scheduleMultiEntityMessages, type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
@@ -69,9 +70,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import QuickTemplateDialog from '../../components/quick-template-dialog';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
+import { EntitySelector } from './EntitySelector';
+import { ContactSelector } from './ContactSelector';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -81,6 +94,9 @@ const formSchema = z.object({
     mode: z.enum(['single', 'bulk']),
     recipient: z.string().optional(),
     selectedContacts: z.array(z.string()).default([]),
+    selectedEntityIds: z.array(z.string()).default([]),
+    useMultiEntity: z.boolean().default(false),
+    selectedContactIndices: z.array(z.number()).default([]), // For multi-contact within entity (Task 11)
     variables: z.record(z.any()).default({}),
     schoolId: z.string().optional(),
     isScheduled: z.boolean().default(false),
@@ -126,6 +142,14 @@ export default function ComposerWizard() {
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
     const [smsBalance, setSmsBalance] = React.useState<number | null>(null);
 
+    // Progress Tracking State (Task 6.1)
+    const [sendProgress, setSendProgress] = React.useState({ sent: 0, total: 0, currentEntity: '' });
+    const [isSending, setIsSending] = React.useState(false);
+    
+    // Summary Reporting State (Task 6.2)
+    const [sendSummary, setSendSummary] = React.useState<ScheduleMessageResult | null>(null);
+    const [showSummaryDialog, setShowSummaryDialog] = React.useState(false);
+
     // Recipient Targeting State
     const [recipientSuggestions, setRecipientSuggestions] = React.useState<{ label: string, value: string, source: string }[]>([]);
     const [recipientSearchTerm, setRecipientSearchTerm] = React.useState('');
@@ -137,6 +161,9 @@ export default function ComposerWizard() {
             mode: 'single',
             recipient: '',
             selectedContacts: [],
+            selectedEntityIds: [],
+            useMultiEntity: false,
+            selectedContactIndices: [],
             variables: {},
             schoolId: '',
             isScheduled: false,
@@ -150,6 +177,9 @@ export default function ComposerWizard() {
     const watchedIsScheduled = watch('isScheduled');
     const watchedSchoolId = watch('schoolId');
     const watchedVariables = watch('variables');
+    const watchedUseMultiEntity = watch('useMultiEntity');
+    const watchedSelectedEntityIds = watch('selectedEntityIds');
+    const watchedSelectedContactIndices = watch('selectedContactIndices');
     
     // Watched Data Sources
     const watchedSourceMeetingId = watch('sourceMeetingId');
@@ -333,6 +363,11 @@ export default function ComposerWizard() {
         }
     }, [selectedSchool, setValue, discoverRecipients]);
 
+    // Reset contact selection when entity changes (Requirement 2.8)
+    React.useEffect(() => {
+        setValue('selectedContactIndices', []);
+    }, [watchedSchoolId, setValue]);
+
     // Handle CSV Processing
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -401,25 +436,111 @@ export default function ComposerWizard() {
 
         try {
             if (data.mode === 'single') {
-                const targets = [...data.selectedContacts];
-                if (data.recipient?.trim()) targets.push(data.recipient.trim());
-
-                if (targets.length === 0) throw new Error("No recipients selected.");
-                
-                for (const target of targets) {
-                    await sendMessage({
+                // Multi-entity mode (Task 6.1, 6.2)
+                if (data.useMultiEntity && data.selectedEntityIds.length > 0) {
+                    setIsSending(true);
+                    setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
+                    
+                    const result = await scheduleMultiEntityMessages({
                         templateId: data.templateId,
                         senderProfileId: data.senderProfileId,
-                        recipient: target,
+                        entityIds: data.selectedEntityIds,
                         variables: data.variables,
-                        schoolId: data.schoolId,
-                        scheduledAt
+                        workspaceId: user.uid,
+                        scheduledAt,
+                        onProgress: (sent, total, currentEntity) => {
+                            setSendProgress({ sent, total, currentEntity });
+                        },
+                        onError: (entityId, error) => {
+                            console.error(`Failed to send to ${entityId}:`, error);
+                        }
                     });
-                }
+                    
+                    setIsSending(false);
+                    setSendSummary(result);
+                    setShowSummaryDialog(true);
+                    
+                    // Reset form on success
+                    if (result.success) {
+                        setStep(1);
+                        form.reset();
+                    }
+                } else {
+                    // Single-recipient mode (existing logic)
+                    // Check if multi-contact within single entity is enabled (Task 11.2)
+                    if (data.schoolId && data.schoolId !== 'none' && data.selectedContactIndices.length > 0) {
+                        // Multi-contact within single entity mode
+                        const school = schools?.find(s => s.id === data.schoolId);
+                        if (school && school.focalPersons) {
+                            const selectedContacts = data.selectedContactIndices
+                                .map(idx => school.focalPersons[idx])
+                                .filter(contact => contact !== undefined)
+                                .map(contact => watchedChannel === 'email' ? contact.email : contact.phone)
+                                .filter(value => value && value.trim() !== '');
 
-                toast({ title: data.isScheduled ? 'Messages Scheduled' : 'Dispatch Complete' });
-                setStep(1);
-                form.reset();
+                            if (selectedContacts.length === 0) {
+                                throw new Error("No valid contacts selected.");
+                            }
+
+                            // Build entityContactMap for single entity with multiple contacts
+                            const entityContactMap: Record<string, string[]> = {
+                                [data.schoolId]: selectedContacts
+                            };
+
+                            setIsSending(true);
+                            setSendProgress({ sent: 0, total: selectedContacts.length, currentEntity: '' });
+
+                            const result = await scheduleMultiEntityMessages({
+                                templateId: data.templateId,
+                                senderProfileId: data.senderProfileId,
+                                entityIds: [data.schoolId],
+                                variables: data.variables,
+                                workspaceId: user.uid,
+                                scheduledAt,
+                                entityContactMap, // Pass the contact map (Requirement 2.6, 2.7, 3.7)
+                                onProgress: (sent, total, currentEntity) => {
+                                    setSendProgress({ sent, total, currentEntity });
+                                },
+                                onError: (entityId, error) => {
+                                    console.error(`Failed to send to ${entityId}:`, error);
+                                }
+                            });
+
+                            setIsSending(false);
+                            setSendSummary(result);
+                            setShowSummaryDialog(true);
+
+                            // Reset form on success
+                            if (result.success) {
+                                setStep(1);
+                                form.reset();
+                            }
+                        } else {
+                            throw new Error("Selected school not found or has no contacts.");
+                        }
+                    } else {
+                        // Original single-recipient logic
+                        const targets = [...data.selectedContacts];
+                        if (data.recipient?.trim()) targets.push(data.recipient.trim());
+
+                        if (targets.length === 0) throw new Error("No recipients selected.");
+                        
+                        for (const target of targets) {
+                            await sendMessage({
+                                templateId: data.templateId,
+                                senderProfileId: data.senderProfileId,
+                                recipient: target,
+                                variables: data.variables,
+                                schoolId: data.schoolId,
+                                scheduledAt
+                            });
+                        }
+
+                        toast({ title: data.isScheduled ? 'Messages Scheduled' : 'Dispatch Complete' });
+                        setStep(1);
+                        form.reset();
+                    }
+                }
             } else {
                 if (csvData.length === 0) throw new Error("No recipient data found.");
                 
@@ -448,6 +569,7 @@ export default function ComposerWizard() {
             }
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
+            setIsSending(false);
         } finally {
             setIsSubmitting(false);
         }
@@ -681,6 +803,97 @@ export default function ComposerWizard() {
                             <div className="space-y-8">
                                 {watchedMode === 'single' ? (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+                                        {/* Multi-Entity Mode Toggle */}
+                                        <div className="p-6 rounded-[2rem] bg-muted/10 border border-border/50 shadow-inner">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <Label className="text-sm font-black uppercase tracking-tight text-primary">Send to Multiple Schools</Label>
+                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Enable multi-entity selection mode</p>
+                                                </div>
+                                                <Controller
+                                                    name="useMultiEntity"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Switch 
+                                                            checked={field.value} 
+                                                            onCheckedChange={(checked) => {
+                                                                field.onChange(checked);
+                                                                // Clear selections when toggling
+                                                                if (checked) {
+                                                                    setValue('recipient', '');
+                                                                    setValue('schoolId', '');
+                                                                } else {
+                                                                    setValue('selectedEntityIds', []);
+                                                                }
+                                                            }} 
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Conditional Rendering: EntitySelector or Single Recipient */}
+                                        {watchedUseMultiEntity ? (
+                                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                                <div className="space-y-4">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Select Schools</Label>
+                                                    <EntitySelector
+                                                        channel={watchedChannel}
+                                                        selectedEntityIds={watchedSelectedEntityIds}
+                                                        onSelectionChange={(ids) => setValue('selectedEntityIds', ids, { shouldValidate: true })}
+                                                        maxSelections={100}
+                                                    />
+                                                </div>
+
+                                                {/* Display Selected Entities */}
+                                                {watchedSelectedEntityIds.length > 0 && (
+                                                    <div className="p-6 rounded-[2rem] bg-primary/5 border border-primary/10 shadow-inner space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Selected Schools</Label>
+                                                            <Badge className="bg-primary h-6 font-black uppercase text-[10px] px-3 rounded-xl">
+                                                                {watchedSelectedEntityIds.length} {watchedSelectedEntityIds.length === 1 ? 'School' : 'Schools'}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {watchedSelectedEntityIds.map(entityId => {
+                                                                const school = schools?.find(s => s.id === entityId);
+                                                                return school ? (
+                                                                    <div 
+                                                                        key={entityId}
+                                                                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-primary/20 shadow-sm"
+                                                                    >
+                                                                        <Building className="h-3 w-3 text-primary" />
+                                                                        <span className="text-xs font-bold text-foreground">{school.name}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const newIds = watchedSelectedEntityIds.filter(id => id !== entityId);
+                                                                                setValue('selectedEntityIds', newIds, { shouldValidate: true });
+                                                                            }}
+                                                                            className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : null;
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Validation Error Display */}
+                                                {watchedSelectedEntityIds.length === 0 && (
+                                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                                                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs font-black text-amber-900 uppercase tracking-tight">No Recipients Selected</p>
+                                                            <p className="text-[10px] text-amber-700 font-bold">Please select at least one school to continue.</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        ) : (
+                                            <>
                                         {/* Contextual Binding Selectors */}
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                             {/* School Selector (Always visible) */}
@@ -704,6 +917,19 @@ export default function ComposerWizard() {
                                                     )}
                                                 />
                                             </div>
+
+                                            {/* ContactSelector for multi-contact within entity (Task 11.2) */}
+                                            {selectedSchool && selectedSchool.focalPersons && selectedSchool.focalPersons.length > 0 && (
+                                                <div className="lg:col-span-3 space-y-2">
+                                                    <ContactSelector
+                                                        contacts={selectedSchool.focalPersons}
+                                                        channel={watchedChannel}
+                                                        selectedContactIndices={watchedSelectedContactIndices}
+                                                        onSelectionChange={(indices) => setValue('selectedContactIndices', indices, { shouldValidate: true })}
+                                                        maxSelections={50}
+                                                    />
+                                                </div>
+                                            )}
 
                                             {/* Meeting Binder */}
                                             {selectedTemplate?.category === 'meetings' && (
@@ -972,6 +1198,8 @@ export default function ComposerWizard() {
                                                 </div>
                                             ))}
                                         </div>
+                                        </>
+                                        )}
                                     </motion.div>
                                 ) : (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
@@ -1033,7 +1261,19 @@ export default function ComposerWizard() {
                             <Button type="button" variant="ghost" onClick={handlePrev} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
                                 <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
-                            <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : !csvData.length)} className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 transition-all group">
+                            <Button 
+                                type="button" 
+                                onClick={handleNext} 
+                                disabled={
+                                    !getValues('senderProfileId') || 
+                                    (watchedMode === 'single' 
+                                        ? (watchedUseMultiEntity 
+                                            ? getValues('selectedEntityIds').length === 0 
+                                            : !getValues('recipient'))
+                                        : !csvData.length)
+                                } 
+                                className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 transition-all group"
+                            >
                                 Review Blueprint <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </CardFooter>
@@ -1101,15 +1341,125 @@ export default function ComposerWizard() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="justify-between bg-muted/30 p-10 border-t">
-                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
-                                <ArrowLeft className="h-4 w-4" /> Back
-                            </Button>
-                            <Button type="submit" size="lg" disabled={isSubmitting} className="px-20 font-black shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl uppercase tracking-[0.2em] shadow-primary/30">
-                                {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
-                                {watchedMode === 'single' ? 'Launch Dispatch' : 'Execute Broadcast'}
-                            </Button>
+                        <CardFooter className="flex-col gap-6 bg-muted/30 p-10 border-t">
+                            {/* Message Count Preview (Task 8.2) */}
+                            {watchedMode === 'single' && watchedUseMultiEntity && (
+                                <div className="w-full space-y-4">
+                                    {/* Message Count Display */}
+                                    <div className={cn(
+                                        "p-6 rounded-2xl border-2 flex items-center justify-between",
+                                        watchedSelectedEntityIds.length > 50 
+                                            ? "bg-amber-50 border-amber-200" 
+                                            : "bg-blue-50 border-blue-200"
+                                    )}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "p-3 rounded-xl",
+                                                watchedSelectedEntityIds.length > 50 
+                                                    ? "bg-amber-600 text-white" 
+                                                    : "bg-blue-600 text-white"
+                                            )}>
+                                                <Users className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className={cn(
+                                                    "text-xs font-black uppercase tracking-widest",
+                                                    watchedSelectedEntityIds.length > 50 
+                                                        ? "text-amber-900" 
+                                                        : "text-blue-900"
+                                                )}>
+                                                    Estimated Message Count
+                                                </p>
+                                                <p className={cn(
+                                                    "text-3xl font-black tabular-nums",
+                                                    watchedSelectedEntityIds.length > 50 
+                                                        ? "text-amber-600" 
+                                                        : "text-blue-600"
+                                                )}>
+                                                    {watchedSelectedEntityIds.length}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {watchedSelectedEntityIds.length > 50 && (
+                                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100 border border-amber-300">
+                                                <AlertCircle className="h-4 w-4 text-amber-700" />
+                                                <span className="text-xs font-black uppercase text-amber-900 tracking-tight">
+                                                    High Volume
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Warning for Large Message Counts */}
+                                    {watchedSelectedEntityIds.length > 50 && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: -10 }} 
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="p-5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
+                                        >
+                                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-black text-amber-900 uppercase tracking-tight">
+                                                    High Volume Dispatch
+                                                </p>
+                                                <p className="text-xs text-amber-700 font-bold leading-relaxed">
+                                                    You are about to send {watchedSelectedEntityIds.length} messages. 
+                                                    This operation will be processed sequentially with a delay between messages 
+                                                    to avoid rate limits. Estimated completion time: ~{Math.ceil(watchedSelectedEntityIds.length * 0.5 / 60)} minutes.
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="w-full flex justify-between items-center">
+                                <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
+                                    <ArrowLeft className="h-4 w-4" /> Back
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    size="lg" 
+                                    disabled={isSubmitting || (watchedMode === 'single' && watchedUseMultiEntity && watchedSelectedEntityIds.length === 0)} 
+                                    className="px-20 font-black shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl uppercase tracking-[0.2em] shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
+                                    {watchedMode === 'single' ? 'Launch Dispatch' : 'Execute Broadcast'}
+                                </Button>
+                            </div>
                         </CardFooter>
+
+                        {/* Progress Tracking UI (Task 6.1) */}
+                        {isSending && sendProgress.total > 0 && (
+                            <div className="p-8 bg-muted/30 border-t">
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 20 }} 
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="space-y-4"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-black uppercase tracking-tight text-primary">Sending Messages...</p>
+                                            <p className="text-xs text-muted-foreground font-bold">
+                                                {sendProgress.sent} of {sendProgress.total} messages sent
+                                            </p>
+                                        </div>
+                                        <Badge className="bg-primary h-8 font-black uppercase text-xs px-4 rounded-xl">
+                                            {Math.round((sendProgress.sent / sendProgress.total) * 100)}%
+                                        </Badge>
+                                    </div>
+                                    <Progress 
+                                        value={(sendProgress.sent / sendProgress.total) * 100} 
+                                        className="h-3"
+                                    />
+                                    {sendProgress.currentEntity && (
+                                        <p className="text-xs text-muted-foreground font-medium">
+                                            Current: {sendProgress.currentEntity}
+                                        </p>
+                                    )}
+                                </motion.div>
+                            </div>
+                        )}
                     </Card>
                 )}
 
@@ -1173,6 +1523,124 @@ export default function ComposerWizard() {
                 senderProfileId={getValues('senderProfileId')}
                 schoolId={watchedSchoolId}
             />
+
+            {/* Summary Report Dialog (Task 6.2) */}
+            <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
+                <AlertDialogContent className="max-w-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+                            {sendSummary?.success ? (
+                                <>
+                                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                                    Bulk Send Complete
+                                </>
+                            ) : (
+                                <>
+                                    <AlertCircle className="h-6 w-6 text-amber-600" />
+                                    Bulk Send Completed with Errors
+                                </>
+                            )}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                            Message delivery summary and error report
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    {sendSummary && (
+                        <div className="space-y-6 py-4">
+                            {/* Success/Failure Counts */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-emerald-600 text-white rounded-lg">
+                                            <Check className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase text-emerald-900 tracking-tight">Successful</p>
+                                            <p className="text-2xl font-black text-emerald-600">{sendSummary.totalSent}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-red-600 text-white rounded-lg">
+                                            <X className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black uppercase text-red-900 tracking-tight">Failed</p>
+                                            <p className="text-2xl font-black text-red-600">{sendSummary.totalFailed}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Failed Entities List */}
+                            {sendSummary.failedEntities.length > 0 && (
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-black uppercase tracking-widest text-red-900">
+                                        Failed Messages ({sendSummary.failedEntities.length})
+                                    </Label>
+                                    <ScrollArea className="h-48 rounded-xl border border-red-200 bg-red-50/50">
+                                        <div className="p-4 space-y-2">
+                                            {sendSummary.failedEntities.map((failed, idx) => {
+                                                const school = schools?.find(s => s.id === failed.entityId);
+                                                return (
+                                                    <div 
+                                                        key={idx}
+                                                        className="p-3 rounded-lg bg-white border border-red-200 space-y-1"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <Building className="h-3 w-3 text-red-600" />
+                                                            <span className="text-sm font-bold text-red-900">
+                                                                {school?.name || failed.entityId}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-red-700 font-medium pl-5">
+                                                            {failed.error}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+
+                                    {/* Retry Option */}
+                                    <Button
+                                        variant="outline"
+                                        className="w-full h-12 rounded-xl font-black border-red-200 text-red-900 hover:bg-red-50 gap-2 uppercase tracking-widest text-xs"
+                                        onClick={() => {
+                                            // Set failed entity IDs for retry
+                                            const failedIds = sendSummary.failedEntities.map(f => f.entityId);
+                                            setValue('selectedEntityIds', failedIds);
+                                            setShowSummaryDialog(false);
+                                            setStep(2); // Go back to identities step
+                                            toast({
+                                                title: 'Retry Prepared',
+                                                description: `${failedIds.length} failed entities selected for retry.`
+                                            });
+                                        }}
+                                    >
+                                        <TrendingUp className="h-4 w-4" />
+                                        Retry Failed Messages
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setShowSummaryDialog(false);
+                                setSendSummary(null);
+                            }}
+                            className="rounded-xl font-black uppercase tracking-widest text-xs px-8 h-12"
+                        >
+                            Close
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

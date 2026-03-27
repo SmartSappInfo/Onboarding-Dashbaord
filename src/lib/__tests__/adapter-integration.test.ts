@@ -83,6 +83,7 @@ describe('Adapter Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await logActivity({
+        organizationId: 'org_1',
         workspaceId: 'workspace_1',
         schoolId: 'school_1',
         userId: 'user_1',
@@ -194,6 +195,7 @@ describe('Adapter Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await logActivity({
+        organizationId: 'org_1',
         workspaceId: 'workspace_1',
         schoolId: 'school_2',
         userId: 'user_1',

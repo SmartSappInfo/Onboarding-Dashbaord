@@ -129,7 +129,7 @@ export default function MeetingsHubClient() {
                 return school.assignedTo?.userId === assignedUserId;
             }).map(s => s.id)
         );
-        temp = temp.filter(m => filteredSchoolIds.has(m.schoolId));
+        temp = temp.filter(m => m.schoolId && filteredSchoolIds.has(m.schoolId));
     }
 
     // Then filter by type
@@ -173,7 +173,7 @@ export default function MeetingsHubClient() {
 
   const renderActions = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
-    const schoolEmail = schoolEmailMap.get(meeting.schoolId);
+    const schoolEmail = meeting.schoolId ? schoolEmailMap.get(meeting.schoolId) : undefined;
     const publicUrl = `/meetings/${type.slug}/${meeting.schoolSlug}`;
 
     return (
@@ -255,7 +255,7 @@ export default function MeetingsHubClient() {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName)}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}`}>
+                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}`}>
                     <Send className="mr-2 h-4 w-4" />
                     <span>Send Invite/Reminder</span>
                 </Link>
@@ -347,7 +347,7 @@ export default function MeetingsHubClient() {
                             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                                 filteredMeetings.map((meeting) => {
                                 const type = meeting.type || MEETING_TYPES[0];
-                                const logoUrl = schoolLogoMap.get(meeting.schoolId);
+                                const logoUrl = meeting.schoolId ? schoolLogoMap.get(meeting.schoolId) : undefined;
                                 return (
                                     <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">

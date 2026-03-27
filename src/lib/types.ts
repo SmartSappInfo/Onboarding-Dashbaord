@@ -642,8 +642,10 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  schoolId: string;
-  schoolName: string;
+  schoolId?: string; // Legacy field for backward compatibility
+  schoolName?: string; // Legacy field for backward compatibility
+  entityId?: string; // New unified entity reference
+  entityType?: EntityType; // Type of entity
   periodId: string;
   periodName: string;
   nominalRoll: number;
@@ -673,9 +675,11 @@ export interface Invoice {
 
 export interface Meeting {
   id: string;
-  schoolId: string;
-  schoolName: string;
-  schoolSlug: string;
+  schoolId?: string; // Legacy field for backward compatibility
+  schoolName?: string; // Legacy field for backward compatibility
+  schoolSlug?: string; // Legacy field for backward compatibility (used in public URLs)
+  entityId?: string; // New unified entity reference
+  entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
   meetingTime: string;
   meetingLink: string;
@@ -855,6 +859,9 @@ export interface SurveyResponse {
         questionId: string;
         value: any;
     }[];
+    schoolId?: string | null; // Legacy field for backward compatibility
+    entityId?: string | null; // New unified entity reference
+    entityType?: EntityType; // Type of entity
 }
 
 export interface SurveySummary {
@@ -950,7 +957,9 @@ export interface Submission {
     submittedAt: string;
     formData: { [key: string]: any };
     status: 'submitted' | 'partial';
-    schoolId?: string | null;
+    schoolId?: string | null; // Legacy field for backward compatibility
+    entityId?: string | null; // New unified entity reference
+    entityType?: EntityType; // Type of entity
 }
 
 export interface Contract {
@@ -1147,6 +1156,9 @@ export interface AutomationRun {
     finishedAt?: string;
     triggerData: Record<string, any>;
     error?: string;
+    schoolId?: string | null; // Legacy field for backward compatibility
+    entityId?: string | null; // New unified entity reference
+    entityType?: EntityType; // Type of entity
 }
 
 export interface AutomationJob {

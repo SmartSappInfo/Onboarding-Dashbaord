@@ -85,6 +85,7 @@ describe('Task Integration with Adapter Layer', () => {
         dueDate: '2024-12-31T00:00:00Z',
         reminders: [],
         reminderSent: false,
+        updatedAt: new Date().toISOString(),
       });
 
       // Verify task was created
@@ -210,6 +211,7 @@ describe('Task Integration with Adapter Layer', () => {
         dueDate: '2024-12-31T00:00:00Z',
         reminders: [],
         reminderSent: false,
+        updatedAt: new Date().toISOString(),
       });
 
       // Verify task was created
@@ -260,6 +262,7 @@ describe('Task Integration with Adapter Layer', () => {
 
       // Simulate task completion logging
       await logActivity({
+        organizationId: 'org_1',
         schoolId: 'school_3',
         userId: 'user_1',
         workspaceId: 'workspace_1',

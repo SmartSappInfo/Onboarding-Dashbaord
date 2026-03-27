@@ -168,11 +168,13 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const bestMeeting = sorted[0];
             setMeeting(bestMeeting);
 
-            const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
-            const schoolSnap = await getDoc(schoolRef);
+            if (bestMeeting.schoolId) {
+                const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
+                const schoolSnap = await getDoc(schoolRef);
 
-            if (schoolSnap.exists()) {
-                setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
+                if (schoolSnap.exists()) {
+                    setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
+                }
             } else {
                 const schoolsCol = collection(firestore, 'schools');
                 const schoolQuery = query(schoolsCol, where('slug', '==', schoolSlug.toLowerCase()), limit(1));

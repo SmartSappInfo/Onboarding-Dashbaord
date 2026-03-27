@@ -225,7 +225,7 @@ export default function ResultsClient() {
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
                             <DetailRow label="Scheduled Implementation" value={format(new Date(meeting.meetingTime), 'PPPP')} sub={format(new Date(meeting.meetingTime), 'p')} icon={Clock} />
-                            <DetailRow label="Institutional Binding" value={meeting.schoolName} sub="Active Campus Context" icon={Building} />
+                            <DetailRow label="Institutional Binding" value={meeting.schoolName || 'N/A'} sub="Active Campus Context" icon={Building} />
                             <Separator />
                             <div className="pt-2">
                                 <Button asChild variant="outline" className="w-full rounded-xl font-black h-12 uppercase text-[10px] tracking-widest border-primary/20 text-primary gap-2">

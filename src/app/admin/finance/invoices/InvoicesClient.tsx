@@ -170,7 +170,7 @@ export default function InvoicesClient() {
         if (statusFilter !== 'all') temp = temp.filter(i => i.status === statusFilter);
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
-            temp = temp.filter(i => i.schoolName.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
+            temp = temp.filter(i => i.schoolName?.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
         }
         return temp;
     }, [invoices, statusFilter, searchTerm]);

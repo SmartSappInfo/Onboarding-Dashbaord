@@ -90,7 +90,7 @@ export default function PortalsClient() {
     ) || [], [pdfs, searchTerm]);
 
     const filteredMeetings = React.useMemo(() => meetings?.filter(m => 
-        m.schoolName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        m.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         m.type?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [], [meetings, searchTerm]);
 
