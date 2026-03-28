@@ -8,11 +8,12 @@ import { resolveContact } from './contact-adapter';
 /**
  * Server action to create a task with workspace awareness and entity support.
  * 
- * Implements Requirement 13:
- * - 13.1: Includes entityId and entityType fields
- * - 13.2: Requires workspaceId to be set
- * - 13.4: Supports dual-write for legacy schools records
- * - 13.5: Populates both schoolId (legacy) and entityId (new)
+ * Implements dual-write pattern (Requirements 3.1, 25.3):
+ * - Accepts both schoolId and entityId parameters
+ * - When only entityId provided: Resolves schoolId from contact adapter
+ * - When only schoolId provided: Resolves entityId from contact adapter (if migrated)
+ * - When both provided: Uses both as-is
+ * - Always sets entityType based on resolved contact type
  * 
  * @param taskData - Task data (without id and createdAt)
  * @returns Created task document reference
@@ -21,24 +22,46 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
     try {
         const timestamp = new Date().toISOString();
         
-        // Resolve entity information using adapter (Requirement 13.4, 13.5)
+        // Initialize fields for dual-write
+        let schoolId: string | null = taskData.schoolId || null;
+        let schoolName: string | null = taskData.schoolName || null;
         let entityId: string | null = taskData.entityId || null;
         let entityType: EntityType | null = taskData.entityType || null;
-        let schoolName: string | null = taskData.schoolName || null;
         
-        // If schoolId is provided, use adapter to resolve entity info (dual-write support)
-        if (taskData.schoolId && taskData.workspaceId) {
-            const contact = await resolveContact(taskData.schoolId, taskData.workspaceId);
-            if (contact) {
-                schoolName = contact.name;
-                entityId = contact.entityId || null;
-                entityType = contact.entityType || null;
+        // Dual-write resolution logic (Requirements 3.1, 25.3)
+        if (taskData.workspaceId) {
+            // Case 1: Only entityId provided - resolve schoolId for backward compatibility
+            if (entityId && !schoolId) {
+                const contact = await resolveContact({ entityId }, taskData.workspaceId);
+                if (contact) {
+                    schoolId = contact.schoolData?.id || null;
+                    schoolName = contact.name;
+                    entityType = contact.entityType || null;
+                }
+            }
+            // Case 2: Only schoolId provided - resolve entityId if migrated
+            else if (schoolId && !entityId) {
+                const contact = await resolveContact({ schoolId }, taskData.workspaceId);
+                if (contact) {
+                    schoolName = contact.name;
+                    entityId = contact.entityId || null;
+                    entityType = contact.entityType || null;
+                }
+            }
+            // Case 3: Both provided - use as-is but ensure entityType is set
+            else if (schoolId && entityId) {
+                const contact = await resolveContact({ entityId, schoolId }, taskData.workspaceId);
+                if (contact) {
+                    schoolName = contact.name;
+                    entityType = contact.entityType || entityType;
+                }
             }
         }
         
-        // Build final task document with all fields
+        // Build final task document with dual-write fields
         const finalTaskData = {
             ...taskData,
+            schoolId,
             schoolName,
             entityId,
             entityType,
@@ -52,11 +75,11 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
         // Create task document
         const docRef = await adminDb.collection('tasks').add(finalTaskData);
         
-        // Log activity with workspace awareness (Requirement 13)
+        // Log activity with workspace awareness
         await logActivity({
             organizationId: taskData.organizationId || '',
             workspaceId: taskData.workspaceId,
-            schoolId: taskData.schoolId || undefined,
+            schoolId: schoolId || undefined,
             entityId: entityId || undefined,
             entityType: entityType || undefined,
             userId: null,
@@ -134,5 +157,54 @@ export async function deleteTaskAction(taskId: string) {
     } catch (error: any) {
         console.error('[TASK] Failed to delete task:', error);
         return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Query tasks for a contact with fallback pattern (Requirements 3.4, 3.5, 22.1, 22.3)
+ * 
+ * Accepts either entityId or schoolId as identifier:
+ * - Prefers entityId when both provided
+ * - Falls back to schoolId for legacy records
+ * - Returns all matching tasks for the contact
+ * 
+ * @param identifier - Contact identifier (entityId or schoolId)
+ * @param workspaceId - Workspace context
+ * @returns Array of tasks for the contact
+ */
+export async function getTasksForContact(
+    identifier: { entityId?: string; schoolId?: string },
+    workspaceId: string
+): Promise<Task[]> {
+    try {
+        let tasksQuery;
+        
+        // Prefer entityId when both provided (Requirement 3.4, 3.5)
+        if (identifier.entityId) {
+            tasksQuery = adminDb
+                .collection('tasks')
+                .where('workspaceId', '==', workspaceId)
+                .where('entityId', '==', identifier.entityId)
+                .orderBy('dueDate', 'asc');
+        } else if (identifier.schoolId) {
+            // Fallback to schoolId for legacy records
+            tasksQuery = adminDb
+                .collection('tasks')
+                .where('workspaceId', '==', workspaceId)
+                .where('schoolId', '==', identifier.schoolId)
+                .orderBy('dueDate', 'asc');
+        } else {
+            return [];
+        }
+        
+        const snapshot = await tasksQuery.get();
+        
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as Task[];
+    } catch (error: any) {
+        console.error('[TASK] Failed to query tasks for contact:', error);
+        return [];
     }
 }

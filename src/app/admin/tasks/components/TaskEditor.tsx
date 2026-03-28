@@ -73,6 +73,8 @@ const taskSchema = z.object({
     status: z.enum(['todo', 'in_progress', 'waiting', 'review', 'done']),
     assignedTo: z.string().min(1, 'Please assign an owner.'),
     schoolId: z.string().optional(),
+    entityId: z.string().optional(),
+    entityType: z.enum(['institution', 'family', 'person']).optional(),
     startDate: z.date().optional(),
     dueDate: z.date({ required_error: 'Due date is required.' }),
     reminders: z.array(z.object({
@@ -152,6 +154,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             status: 'todo',
             assignedTo: '',
             schoolId: '',
+            entityId: '',
+            entityType: undefined,
             dueDate: new Date(),
             reminders: [],
             notes: [],
@@ -196,6 +200,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     status: task.status,
                     assignedTo: task.assignedTo,
                     schoolId: task.schoolId || '',
+                    entityId: task.entityId || '',
+                    entityType: task.entityType || undefined,
                     startDate: task.startDate ? new Date(task.startDate) : undefined,
                     dueDate: new Date(task.dueDate),
                     reminders: (task.reminders || []).map(r => ({ ...r, reminderTime: new Date(r.reminderTime) })),
@@ -207,7 +213,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                 });
             } else {
                 reset({
-                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: '', schoolId: '', dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: '', schoolId: '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                 });
             }
         }

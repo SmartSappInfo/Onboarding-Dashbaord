@@ -13,46 +13,79 @@ type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
  * 
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  * Updated for workspace awareness (Requirement 12)
+ * Updated with dual-write pattern for entityId migration (Requirements 4.1, 25.3)
  */
 export async function logActivity(activityData: LogActivityInput): Promise<void> {
     try {
         let finalData = { ...activityData };
         
-        // 1. Ensure Denormalization (Fetch contact context if missing)
-        // Use adapter layer to resolve contact from either schools or entities + workspace_entities
-        if (activityData.schoolId && (!activityData.schoolName || !activityData.schoolSlug)) {
-            const contact = await resolveContact(activityData.schoolId, activityData.workspaceId);
-            if (contact) {
-                finalData.schoolName = contact.name;
-                finalData.schoolSlug = contact.slug;
-                // Populate entity fields if available
-                if (contact.entityId) {
-                    finalData.entityId = contact.entityId;
-                    finalData.entityType = contact.entityType;
-                    finalData.displayName = contact.name;
-                    finalData.entitySlug = contact.slug;
+        // Initialize dual-write fields
+        let schoolId: string | undefined = activityData.schoolId;
+        let schoolName: string | undefined = activityData.schoolName;
+        let schoolSlug: string | undefined = activityData.schoolSlug;
+        let entityId: string | undefined = activityData.entityId;
+        let entityType: 'institution' | 'family' | 'person' | undefined = activityData.entityType;
+        let displayName: string | undefined = activityData.displayName;
+        let entitySlug: string | undefined = activityData.entitySlug;
+        
+        // Dual-write resolution logic (Requirements 4.1, 25.3)
+        if (activityData.workspaceId) {
+            // Case 1: Only entityId provided - resolve schoolId for backward compatibility
+            if (entityId && !schoolId) {
+                const contact = await resolveContact({ entityId }, activityData.workspaceId);
+                if (contact) {
+                    schoolId = contact.schoolData?.id;
+                    schoolName = contact.name;
+                    schoolSlug = contact.slug;
+                    entityType = contact.entityType;
+                    displayName = contact.name;
+                    entitySlug = contact.slug;
+                }
+            }
+            // Case 2: Only schoolId provided - resolve entityId if migrated
+            else if (schoolId && !entityId) {
+                const contact = await resolveContact({ schoolId }, activityData.workspaceId);
+                if (contact) {
+                    schoolName = contact.name;
+                    schoolSlug = contact.slug;
+                    entityId = contact.entityId;
+                    entityType = contact.entityType;
+                    displayName = contact.name;
+                    entitySlug = contact.slug;
+                }
+            }
+            // Case 3: Both provided - ensure denormalized fields are populated
+            else if (schoolId || entityId) {
+                const contact = await resolveContact({ entityId, schoolId }, activityData.workspaceId);
+                if (contact) {
+                    schoolName = schoolName || contact.name;
+                    schoolSlug = schoolSlug || contact.slug;
+                    entityType = entityType || contact.entityType;
+                    displayName = displayName || contact.name;
+                    entitySlug = entitySlug || contact.slug;
+                    
+                    // Ensure both identifiers are populated if available
+                    if (!schoolId && contact.schoolData) {
+                        schoolId = contact.schoolData.id;
+                    }
+                    if (!entityId && contact.entityId) {
+                        entityId = contact.entityId;
+                    }
                 }
             }
         }
         
-        // 2. Denormalize entity data at time of logging (Requirement 12)
-        // If entityId is provided but displayName/entitySlug are missing, resolve them
-        if (activityData.entityId && (!activityData.displayName || !activityData.entitySlug)) {
-            const contact = await resolveContact(activityData.entityId, activityData.workspaceId);
-            if (contact) {
-                finalData.displayName = contact.name;
-                finalData.entitySlug = contact.slug;
-                finalData.entityType = contact.entityType;
-                
-                // Dual-write for legacy schools (Requirement 12)
-                // If this is a legacy school, populate both schoolId and entityId
-                if (contact.migrationStatus === 'legacy' && contact.schoolData) {
-                    finalData.schoolId = contact.id;
-                    finalData.schoolName = contact.name;
-                    finalData.schoolSlug = contact.slug;
-                }
-            }
-        }
+        // Update finalData with resolved fields
+        finalData = {
+            ...finalData,
+            schoolId,
+            schoolName,
+            schoolSlug,
+            entityId,
+            entityType,
+            displayName,
+            entitySlug,
+        };
 
         // 3. Persist the Audit Log with all workspace-aware fields (Requirement 12)
         const docRef = await adminDb.collection('activities').add({

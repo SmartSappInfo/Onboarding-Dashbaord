@@ -17,25 +17,28 @@ import { logActivity } from './activity-logger';
  * Resolves entity information for a task using the contact adapter.
  * Supports dual-write for legacy schools records (Requirement 13.4, 13.5)
  * 
- * @param schoolId - Legacy school ID (if provided)
+ * @param identifier - Contact identifier (schoolId or entityId)
  * @param workspaceId - Workspace context
  * @returns Object with schoolId, schoolName, entityId, entityType
  */
-async function resolveTaskEntityInfo(schoolId: string | null | undefined, workspaceId: string) {
-    if (!schoolId) {
+async function resolveTaskEntityInfo(
+    identifier: { schoolId?: string | null; entityId?: string | null },
+    workspaceId: string
+) {
+    if (!identifier.schoolId && !identifier.entityId) {
         return { schoolId: null, schoolName: null, entityId: null, entityType: null };
     }
 
     try {
         // Use adapter layer to resolve contact (works with both legacy and migrated records)
         const { resolveContact } = await import('./contact-adapter');
-        const contact = await resolveContact(schoolId, workspaceId);
+        const contact = await resolveContact(identifier, workspaceId);
         
         if (contact) {
             return {
-                schoolId: schoolId, // Maintain backward compatibility
+                schoolId: contact.schoolData?.id || identifier.schoolId || null,
                 schoolName: contact.name,
-                entityId: contact.entityId || null,
+                entityId: contact.entityId || identifier.entityId || null,
                 entityType: contact.entityType || null,
             };
         }
@@ -43,8 +46,13 @@ async function resolveTaskEntityInfo(schoolId: string | null | undefined, worksp
         console.error('[TASK] Failed to resolve entity info:', error);
     }
 
-    // Fallback: just use schoolId
-    return { schoolId, schoolName: null, entityId: null, entityType: null };
+    // Fallback: use provided identifiers
+    return {
+        schoolId: identifier.schoolId || null,
+        schoolName: null,
+        entityId: identifier.entityId || null,
+        entityType: null
+    };
 }
 
 /**
@@ -75,26 +83,41 @@ export function getTaskInterlinkUrl(task: Task): string | null {
 /**
  * Creates a new administrative task. (Non-blocking)
  * 
- * Updated for workspace awareness (Requirement 13):
+ * Updated for workspace awareness and dual-write pattern (Requirements 3.1, 25.3):
  * - Requires workspaceId to be set on all new tasks
  * - Supports entityId and entityType for unified entity model
  * - Maintains backward compatibility with schoolId (dual-write)
+ * - Resolves both identifiers when only one is provided
  */
 export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'createdAt'>) {
     const tasksCol = collection(db, 'tasks');
     const timestamp = new Date().toISOString();
     
-    const taskData = {
-        ...task,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        status: task.status || 'todo',
-        reminders: task.reminders || [],
-        reminderSent: false,
+    // Resolve entity information using dual-write pattern
+    const resolveAndCreate = async () => {
+        const entityInfo = await resolveTaskEntityInfo(
+            { schoolId: task.schoolId, entityId: task.entityId },
+            task.workspaceId
+        );
+        
+        const taskData = {
+            ...task,
+            schoolId: entityInfo.schoolId,
+            schoolName: entityInfo.schoolName,
+            entityId: entityInfo.entityId,
+            entityType: entityInfo.entityType,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            status: task.status || 'todo',
+            reminders: task.reminders || [],
+            reminderSent: false,
+        };
+
+        return addDoc(tasksCol, taskData);
     };
 
-    return addDoc(tasksCol, taskData).then(docRef => {
-        // Log to timeline with workspace awareness (Requirement 13)
+    return resolveAndCreate().then(docRef => {
+        // Log to timeline with workspace awareness
         logActivity({
             organizationId: task.organizationId || 'default',
             schoolId: task.schoolId || undefined,
@@ -112,7 +135,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
         const permissionError = new FirestorePermissionError({
             path: tasksCol.path,
             operation: 'create',
-            requestResourceData: taskData,
+            requestResourceData: task,
         });
         errorEmitter.emit('permission-error', permissionError);
     });

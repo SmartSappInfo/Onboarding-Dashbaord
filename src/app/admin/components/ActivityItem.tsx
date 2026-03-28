@@ -23,6 +23,11 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
   
   const hasContent = (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email') && activity.metadata?.content;
 
+  // Use denormalized entity information if available, fallback to school fields (Requirement 4.3)
+  const contactName = activity.displayName || activity.schoolName;
+  const contactId = activity.entityId || activity.schoolId;
+  const contactSlug = activity.entitySlug || activity.schoolSlug;
+
   return (
     <div className="relative pl-10">
       {/* Icon on the timeline */}
@@ -54,8 +59,8 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
             
             <p className="text-muted-foreground">
                 {activity.description}
-                {showSchoolName && activity.schoolName && (
-                    <> in <Link href={`/admin/schools/${activity.schoolId}`} className="font-semibold text-foreground hover:underline">{activity.schoolName}</Link></>
+                {showSchoolName && contactName && contactId && (
+                    <> in <Link href={`/admin/schools/${contactId}`} className="font-semibold text-foreground hover:underline">{contactName}</Link></>
                 )}
             </p>
             

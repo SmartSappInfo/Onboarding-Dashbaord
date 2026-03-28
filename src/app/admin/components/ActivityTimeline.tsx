@@ -12,7 +12,7 @@ import { useTenant } from '@/context/TenantContext';
 
 interface ActivityTimelineProps {
   schoolId?: string | null;
-  entityId?: string | null; // New: support filtering by entityId
+  entityId?: string | null; // Support filtering by entityId (Requirement 4.3)
   userId?: string | null;
   type?: string | null;
   zoneId?: string | null;
@@ -71,6 +71,7 @@ export default function ActivityTimeline({ schoolId, entityId, userId, type, zon
   }, [schools, zoneId]);
 
   // CLIENT-SIDE FILTERING: Refine the workspace-specific pool by sub-filters.
+  // Updated to support entityId filtering with schoolId fallback (Requirement 4.3, 4.5)
   const filteredActivities = React.useMemo(() => {
     if (!allActivities) return [];
 
@@ -82,9 +83,15 @@ export default function ActivityTimeline({ schoolId, entityId, userId, type, zon
     if (schoolId && schoolId !== 'all') {
         filtered = filtered.filter(a => a.schoolId === schoolId);
     }
-    // New: Filter by entityId (Requirement 12)
+    // Filter by entityId with schoolId fallback (Requirement 4.3, 4.5)
     if (entityId && entityId !== 'all') {
-        filtered = filtered.filter(a => a.entityId === entityId);
+        filtered = filtered.filter(a => {
+            // Match by entityId if available
+            if (a.entityId === entityId) return true;
+            // Fallback: match by schoolId if entityId not set (legacy records)
+            if (!a.entityId && a.schoolId === entityId) return true;
+            return false;
+        });
     }
     if (userId && userId !== 'all') {
         filtered = filtered.filter(a => a.userId === userId);

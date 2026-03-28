@@ -264,27 +264,27 @@ The core entity system (entities and workspace_entities collections) has already
 
 ### Phase 3: Feature Module Migrations
 
-- [ ] 11. Migrate Task module
-  - [ ] 11.1 Update task creation with dual-write
+- [x] 11. Migrate Task module
+  - [x] 11.1 Update task creation with dual-write
     - Update `createTask()` server action to populate both schoolId and entityId
     - Resolve schoolId from entityId when only entityId provided
     - Resolve entityId from schoolId when only schoolId provided (if migrated)
     - Set entityType based on contact type
     - _Requirements: 3.1, 25.3_
   
-  - [ ] 11.2 Update task query functions with fallback
+  - [x] 11.2 Update task query functions with fallback
     - Update `getTasksForContact()` to accept either entityId or schoolId
     - Prefer entityId when both provided
     - Add Firestore composite index for workspaceId + entityId + dueDate
     - _Requirements: 3.4, 3.5, 22.1, 22.3_
   
-  - [ ] 11.3 Update task UI components to use Contact Adapter
+  - [x] 11.3 Update task UI components to use Contact Adapter
     - Update TaskList component to resolve contact via adapter
     - Update TaskDetail component to display entity information
     - Update TaskForm component to accept entityId as primary identifier
     - _Requirements: 3.6, 3.7, 23.1, 23.2_
   
-  - [ ]* 11.4 Write property tests for task dual-write and queries
+  - [x] 11.4 Write property tests for task dual-write and queries
     - **Property 1: Dual-Write Consistency**
     - **Validates: Requirements 2.5, 3.1**
     - **Property 2: Query Fallback Pattern**
@@ -293,13 +293,13 @@ The core entity system (entities and workspace_entities collections) has already
     - Test queries work with either identifier
     - _Requirements: 26.3, 26.5_
   
-  - [ ]* 11.5 Write property test for identifier preservation
+  - [x] 11.5 Write property test for identifier preservation
     - **Property 3: Identifier Preservation Invariant**
     - **Validates: Requirements 3.2**
     - Test task updates preserve schoolId, entityId, entityType
     - _Requirements: 26.3_
   
-  - [ ]* 11.6 Write unit tests for task module
+  - [x] 11.6 Write unit tests for task module
     - Test task creation with entityId only
     - Test task creation with schoolId only
     - Test task creation with both identifiers
@@ -308,19 +308,19 @@ The core entity system (entities and workspace_entities collections) has already
     - Test Contact Adapter integration in UI
     - _Requirements: 26.2_
 
-- [ ] 12. Migrate Activity module
-  - [ ] 12.1 Update activity logging with dual-write
+- [x] 12. Migrate Activity module
+  - [x] 12.1 Update activity logging with dual-write
     - Update `logActivity()` server action to populate both schoolId and entityId
     - Add entitySlug and displayName for denormalized performance
     - Set entityType based on contact type
     - _Requirements: 4.1, 25.3_
   
-  - [ ] 12.2 Update activity query functions with fallback
+  - [x] 12.2 Update activity query functions with fallback
     - Update `getActivitiesForContact()` to accept either entityId or schoolId
     - Add Firestore composite index for workspaceId + entityId + timestamp
     - _Requirements: 4.2, 22.1, 22.3_
   
-  - [ ] 12.3 Update activity UI components to use Contact Adapter
+  - [x] 12.3 Update activity UI components to use Contact Adapter
     - Update ActivityTimeline component to resolve contact via adapter
     - Update ActivityLog component to display entity information
     - Add filtering by entityId with schoolId fallback
