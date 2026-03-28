@@ -1,0 +1,81 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Client SDK Without Emulator Connection Fails
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: Run the existing test file without modifications to observe PERMISSION_DENIED errors
+  - Test that Firestore operations (setDoc, getDocs, deleteDoc) fail with PERMISSION_DENIED when client SDK is initialized without connectFirestoreEmulator()
+  - Run test on UNFIXED code: `npm test migration-verify-operation.test.ts`
+  - **EXPECTED OUTCOME**: All 14 tests FAIL with PERMISSION_DENIED errors and timeout after 30 seconds (this is correct - it proves the bug exists)
+  - Document counterexamples found: specific operations that fail (e.g., "setDoc() throws PERMISSION_DENIED: Permission denied on resource project demo-test-project")
+  - Verify Firebase emulator is running on localhost:8080 to rule out emulator issues
+  - Mark task complete when test is run, failures are observed, and counterexamples are documented
+  - _Requirements: 1.1, 1.2, 1.3_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Test Logic and Assertions Remain Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code: Review all test assertions, data setup, and cleanup logic
+  - Document current test structure: 14 tests covering requirements 20.1-20.5
+  - Document test patterns: unique collection names with Date.now(), afterEach cleanup, entity creation
+  - Create a checklist of elements that must be preserved:
+    - All test assertions (expect statements)
+    - Test data setup (setDoc calls)
+    - Cleanup logic (deleteDoc, getDocs in afterEach)
+    - Collection naming strategy (test_tasks_${Date.now()})
+    - Entity creation patterns
+  - Verify preservation approach: Code diff will show only 2 lines changed (import and connection)
+  - Run other Admin SDK tests to establish baseline: they should pass with current setup.ts configuration
+  - **EXPECTED OUTCOME**: Documentation complete showing what must be preserved
+  - Mark task complete when preservation checklist is created and baseline is established
+  - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [ ] 3. Fix for Firebase emulator connection in client SDK test
+
+  - [ ] 3.1 Implement the fix
+    - Add `connectFirestoreEmulator` to imports from `firebase/firestore`
+    - Change import line from: `import { getFirestore, Firestore, collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';`
+    - To: `import { getFirestore, Firestore, collection, doc, setDoc, deleteDoc, getDocs, connectFirestoreEmulator } from 'firebase/firestore';`
+    - Add emulator connection in beforeEach hook after `firestore = getFirestore(app);`
+    - Add line: `connectFirestoreEmulator(firestore, 'localhost', 8080);`
+    - Verify no other changes are made to the test file
+    - _Bug_Condition: isBugCondition(testFile) where testFile.usesClientSDK = true AND testFile.callsConnectFirestoreEmulator = false_
+    - _Expected_Behavior: All Firestore operations execute against localhost:8080 emulator_
+    - _Preservation: All test logic, assertions, cleanup, and other test files remain unchanged_
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4_
+
+  - [ ] 3.2 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Client SDK With Emulator Connection Succeeds
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test: `npm test migration-verify-operation.test.ts`
+    - **EXPECTED OUTCOME**: All 14 tests PASS without PERMISSION_DENIED errors (confirms bug is fixed)
+    - Verify tests complete in reasonable time (no 30-second timeouts)
+    - Verify all requirements are validated: 20.1 (migrated count), 20.2 (unmigrated count), 20.3 (entityId validation), 20.4 (entityType validation), 20.5 (orphaned records and report)
+    - Check emulator logs to confirm operations are executing against localhost:8080
+    - _Requirements: 2.1, 2.2, 2.3_
+
+  - [x] 3.3 Verify preservation tests still pass
+    - **Property 2: Preservation** - Test Logic and Assertions Remain Unchanged
+    - **IMPORTANT**: Re-run the SAME preservation checks from task 2 - do NOT write new tests
+    - Perform code diff between original and fixed test file
+    - Confirm only 2 lines changed: import statement and emulator connection line
+    - Verify all test assertions (expect statements) remain unchanged
+    - Verify test data setup (setDoc calls) remains unchanged
+    - Verify cleanup logic (afterEach) remains unchanged
+    - Verify collection naming strategy remains unchanged
+    - Run other test files using Admin SDK to confirm no regression
+    - **EXPECTED OUTCOME**: Code diff shows only 2 lines changed, all other tests still pass (confirms no regressions)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run full test suite: `npm test migration-verify-operation.test.ts`
+  - Verify all 14 tests pass without errors
+  - Verify no PERMISSION_DENIED errors occur
+  - Verify tests complete within reasonable time
+  - Run other test files to ensure no regression
+  - Ask the user if questions arise

@@ -66,12 +66,13 @@ export async function migrateSchoolsToEntities(firestore: Firestore): Promise<Mi
                 // ENRICH: Create entity
                 const entityId = `entity_${schoolDoc.id}`;
                 const entityRef = doc(firestore, 'entities', entityId);
+                const slug = school.slug || school.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
                 batch.set(entityRef, {
                     id: entityId,
                     entityType: 'institution',
                     organizationId: DEFAULT_ORG_ID,
                     name: school.name,
-                    slug: school.slug || '',
+                    slug: slug,
                     globalTags: school.tags || [],
                     institutionData: {
                         nominalRoll: school.nominalRoll || 0,

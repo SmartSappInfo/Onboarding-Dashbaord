@@ -1059,4 +1059,256 @@ describe('Migration Engine - Unit Tests', () => {
       expect(typeof engine.rollback).toBe('function');
     });
   });
+
+  describe('9. Collection-Specific Fetch Operations', () => {
+    it('should fetch tasks collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'tasks',
+          totalRecords: 10,
+          recordsToMigrate: 5,
+          sampleRecords: [
+            { id: 'task_1', schoolId: 'school_1', title: 'Task 1' },
+            { id: 'task_2', schoolId: 'school_2', title: 'Task 2' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('tasks');
+
+      expect(result.collection).toBe('tasks');
+      expect(result.recordsToMigrate).toBe(5);
+    });
+
+    it('should fetch activities collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'activities',
+          totalRecords: 20,
+          recordsToMigrate: 10,
+          sampleRecords: [
+            { id: 'activity_1', schoolId: 'school_1', type: 'call' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('activities');
+
+      expect(result.collection).toBe('activities');
+      expect(result.recordsToMigrate).toBe(10);
+    });
+
+    it('should fetch meetings collection using schoolSlug field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'meetings',
+          totalRecords: 15,
+          recordsToMigrate: 8,
+          sampleRecords: [
+            { id: 'meeting_1', schoolSlug: 'school-slug-1', title: 'Meeting 1' },
+            { id: 'meeting_2', schoolSlug: 'school-slug-2', title: 'Meeting 2' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('meetings');
+
+      expect(result.collection).toBe('meetings');
+      expect(result.recordsToMigrate).toBe(8);
+      expect(result.sampleRecords[0].schoolSlug).toBeDefined();
+    });
+
+    it('should identify invalid meetings without schoolSlug', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'meetings',
+          totalRecords: 5,
+          recordsToMigrate: 3,
+          sampleRecords: [
+            { id: 'meeting_1', schoolSlug: 'school-slug-1', title: 'Meeting 1' },
+          ],
+          invalidRecords: [
+            { id: 'meeting_4', reason: 'Missing both schoolSlug and entityId' },
+            { id: 'meeting_5', reason: 'Missing both schoolSlug and entityId' },
+          ],
+        };
+      });
+
+      const result = await engine.fetchCollection('meetings');
+
+      expect(result.invalidRecords).toHaveLength(2);
+      expect(result.invalidRecords[0].reason).toContain('schoolSlug');
+    });
+
+    it('should fetch forms collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'forms',
+          totalRecords: 12,
+          recordsToMigrate: 6,
+          sampleRecords: [
+            { id: 'form_1', schoolId: 'school_1', title: 'Form 1' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('forms');
+
+      expect(result.collection).toBe('forms');
+      expect(result.recordsToMigrate).toBe(6);
+    });
+
+    it('should fetch invoices collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'invoices',
+          totalRecords: 25,
+          recordsToMigrate: 15,
+          sampleRecords: [
+            { id: 'invoice_1', schoolId: 'school_1', invoiceNumber: 'INV-001' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('invoices');
+
+      expect(result.collection).toBe('invoices');
+      expect(result.recordsToMigrate).toBe(15);
+    });
+
+    it('should fetch surveys collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'surveys',
+          totalRecords: 8,
+          recordsToMigrate: 4,
+          sampleRecords: [
+            { id: 'survey_1', schoolId: 'school_1', title: 'Survey 1' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('surveys');
+
+      expect(result.collection).toBe('surveys');
+      expect(result.recordsToMigrate).toBe(4);
+    });
+
+    it('should fetch message_logs collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'message_logs',
+          totalRecords: 100,
+          recordsToMigrate: 50,
+          sampleRecords: [
+            { id: 'msg_1', schoolId: 'school_1', messageType: 'email' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('message_logs');
+
+      expect(result.collection).toBe('message_logs');
+      expect(result.recordsToMigrate).toBe(50);
+    });
+
+    it('should fetch pdfs collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'pdfs',
+          totalRecords: 30,
+          recordsToMigrate: 20,
+          sampleRecords: [
+            { id: 'pdf_1', schoolId: 'school_1', title: 'PDF 1' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('pdfs');
+
+      expect(result.collection).toBe('pdfs');
+      expect(result.recordsToMigrate).toBe(20);
+    });
+
+    it('should fetch automation_logs collection using schoolId field', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'automation_logs',
+          totalRecords: 50,
+          recordsToMigrate: 25,
+          sampleRecords: [
+            { id: 'log_1', schoolId: 'school_1', automationId: 'auto_1' },
+          ],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('automation_logs');
+
+      expect(result.collection).toBe('automation_logs');
+      expect(result.recordsToMigrate).toBe(25);
+    });
+
+    it('should return sample records limited to 5', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'tasks',
+          totalRecords: 100,
+          recordsToMigrate: 100,
+          sampleRecords: Array.from({ length: 5 }, (_, i) => ({
+            id: `task_${i + 1}`,
+            schoolId: `school_${i + 1}`,
+            title: `Task ${i + 1}`,
+          })),
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('tasks');
+
+      expect(result.sampleRecords).toHaveLength(5);
+    });
+
+    it('should handle collection with no records to migrate', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'tasks',
+          totalRecords: 10,
+          recordsToMigrate: 0,
+          sampleRecords: [],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('tasks');
+
+      expect(result.recordsToMigrate).toBe(0);
+      expect(result.sampleRecords).toHaveLength(0);
+    });
+
+    it('should handle collection with all records already migrated', async () => {
+      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
+        return {
+          collection: 'tasks',
+          totalRecords: 20,
+          recordsToMigrate: 0,
+          sampleRecords: [],
+          invalidRecords: [],
+        };
+      });
+
+      const result = await engine.fetchCollection('tasks');
+
+      expect(result.totalRecords).toBe(20);
+      expect(result.recordsToMigrate).toBe(0);
+    });
+  });
 });

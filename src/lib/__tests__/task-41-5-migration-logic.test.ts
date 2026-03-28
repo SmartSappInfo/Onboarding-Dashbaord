@@ -23,7 +23,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
       organizationId,
       entityType: 'institution',
       name: school.name,
-      slug: school.slug || school.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      slug: school.slug || school.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
       contacts: school.focalPersons || [],
       globalTags: [],
       status: school.status === 'Archived' ? 'archived' : 'active',

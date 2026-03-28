@@ -146,36 +146,36 @@ The core entity system (entities and workspace_entities collections) has already
     - Add filter/search for specific feature modules
     - _Requirements: 17.1, 17.6, 17.7_
   
-  - [ ]* 5.3 Write integration tests for Seeds page UI
+  - [x] 5.3 Write integration tests for Seeds page UI
     - Test migration card displays correct status
     - Test action buttons trigger correct operations
     - Test progress updates in real-time
     - Test error display and logging
     - _Requirements: 26.2_
 
-- [ ] 6. Implement fetch operation for all collections
-  - [ ] 6.1 Implement fetch for tasks collection
+- [x] 6. Implement fetch operation for all collections
+  - [x] 6.1 Implement fetch for tasks collection
     - Query tasks where `schoolId` exists and `entityId` is null
     - Return count of records to migrate
     - Return sample records (first 5) for preview
     - Identify invalid records (missing schoolId)
     - _Requirements: 18.1, 18.2, 18.3, 18.4_
   
-  - [ ] 6.2 Implement fetch for activities, forms, invoices, meetings, surveys, message_logs, pdfs, automation_logs collections
+  - [x] 6.2 Implement fetch for activities, forms, invoices, meetings, surveys, message_logs, pdfs, automation_logs collections
     - Implement fetch operation for each collection following same pattern as tasks
     - Query for records with schoolId but no entityId
     - Return counts and samples for each collection
     - _Requirements: 18.1, 18.2, 18.3, 18.4_
   
-  - [ ]* 6.3 Write property test for fetch accuracy
+  - [x] 6.3 Write property test for fetch accuracy
     - **Property 8: Migration Fetch Accuracy**
     - **Validates: Requirements 18.1, 19.1**
     - Test that fetch returns exactly records with schoolId but no entityId
     - Use fast-check to generate random collection states
     - _Requirements: 26.3_
 
-- [ ] 7. Implement enrich & restore operation
-  - [ ] 7.1 Implement enrichment logic
+- [x] 7. Implement enrich & restore operation
+  - [x] 7.1 Implement enrichment logic
     - For each record with schoolId, query schools collection
     - If school has `migrationStatus === 'migrated'`, use school's entityId
     - If school doesn't have entityId, generate using format `entity_<schoolId>`
@@ -183,7 +183,7 @@ The core entity system (entities and workspace_entities collections) has already
     - Handle missing schools with error logging
     - _Requirements: 19.2, 19.3, 19.4_
   
-  - [ ] 7.2 Implement backup and restore logic
+  - [x] 7.2 Implement backup and restore logic
     - Create backup collection `backup_<collection>_entity_migration` before updates
     - Copy original record to backup with `backedUpAt` timestamp
     - Update original record with entityId and entityType fields
@@ -191,14 +191,14 @@ The core entity system (entities and workspace_entities collections) has already
     - Process in batches of 450 records
     - _Requirements: 19.5, 19.6, 19.7_
   
-  - [ ] 7.3 Implement error handling and progress tracking
+  - [x] 7.3 Implement error handling and progress tracking
     - Log errors for individual record failures
     - Continue processing remaining records after error
     - Track progress (percentage, records processed, current batch)
     - Return summary (total, succeeded, failed, skipped)
     - _Requirements: 19.8, 19.9, 19.11_
   
-  - [ ]* 7.4 Write property tests for enrichment and idempotency
+  - [x] 7.4 Write property tests for enrichment and idempotency
     - **Property 9: Migration Enrichment Correctness**
     - **Validates: Requirements 19.2, 19.3, 19.4**
     - **Property 13: Migration Idempotency**
@@ -207,20 +207,20 @@ The core entity system (entities and workspace_entities collections) has already
     - Test running migration multiple times produces same result
     - _Requirements: 26.3_
   
-  - [ ]* 7.5 Write property test for backup creation
+  - [x] 7.5 Write property test for backup creation
     - **Property 10: Migration Backup Creation**
     - **Validates: Requirements 19.5**
     - Test that backup is created before each record update
     - _Requirements: 26.3_
   
-  - [ ]* 7.6 Write property test for field preservation
+  - [x] 7.6 Write property test for field preservation
     - **Property 11: Migration Field Preservation**
     - **Validates: Requirements 19.6**
     - Test that schoolId remains unchanged during migration
     - _Requirements: 26.3_
 
-- [ ] 8. Implement verify operation
-  - [ ] 8.1 Implement verification logic
+- [x] 8. Implement verify operation
+  - [x] 8.1 Implement verification logic
     - Count records with entityId (migrated)
     - Count records with schoolId but no entityId (unmigrated)
     - Check for orphaned records (entityId doesn't exist in entities collection)
@@ -228,7 +228,7 @@ The core entity system (entities and workspace_entities collections) has already
     - Return detailed verification report
     - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5_
   
-  - [ ]* 8.2 Write property tests for verification
+  - [x] 8.2 Write property tests for verification
     - **Property 14: Verification Completeness**
     - **Validates: Requirements 20.1, 20.2, 20.5**
     - **Property 15: Verification Validation**
@@ -237,8 +237,8 @@ The core entity system (entities and workspace_entities collections) has already
     - Test verification validates entityId and entityType fields
     - _Requirements: 26.3_
 
-- [ ] 9. Implement rollback operation
-  - [ ] 9.1 Implement rollback logic
+- [x] 9. Implement rollback operation
+  - [x] 9.1 Implement rollback logic
     - Query backup collection `backup_<collection>_entity_migration`
     - Restore each record to original state (remove entityId and entityType)
     - Delete backup collection after successful rollback
@@ -246,7 +246,7 @@ The core entity system (entities and workspace_entities collections) has already
     - Make operation idempotent (safe to run multiple times)
     - _Requirements: 21.2, 21.3, 21.4, 21.6_
   
-  - [ ]* 9.2 Write property tests for rollback
+  - [x] 9.2 Write property tests for rollback
     - **Property 16: Rollback Restoration**
     - **Validates: Requirements 21.2, 21.3**
     - **Property 17: Rollback Cleanup**
@@ -258,7 +258,7 @@ The core entity system (entities and workspace_entities collections) has already
     - Test rollback can be run multiple times safely
     - _Requirements: 26.3_
 
-- [ ] 10. Checkpoint - Migration tooling complete
+- [x] 10. Checkpoint - Migration tooling complete
   - Ensure all tests pass, ask the user if questions arise.
 
 

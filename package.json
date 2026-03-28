@@ -97,6 +97,7 @@
   },
   "devDependencies": {
     "@fast-check/vitest": "^0.3.0",
+    "@firebase/rules-unit-testing": "^5.0.0",
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

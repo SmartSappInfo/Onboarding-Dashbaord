@@ -33,7 +33,9 @@ import type {
   FetchResult,
   RollbackResult,
   ValidationError,
-  EntityType
+  EntityType,
+  ProgressCallback,
+  MigrationProgress
 } from './migration-types';
 
 /**
@@ -59,16 +61,23 @@ export interface MigrationEngine {
   fetch(collection: string): Promise<FetchResult>;
 
   /**
+   * Fetch records for a specific collection with collection-specific logic
+   * Handles special cases like meetings using schoolSlug
+   * Requirement: 18.1, 18.2, 18.3, 18.4
+   */
+  fetchCollection(collectionName: string): Promise<FetchResult>;
+
+  /**
    * Enrich records by resolving entityId from schoolId
    * Requirement: 19.1, 19.2
    */
-  enrich(batch: MigrationBatch): Promise<EnrichedBatch>;
+  enrich(batch: MigrationBatch, onProgress?: ProgressCallback): Promise<EnrichedBatch>;
 
   /**
    * Restore enriched records to Firestore with backups
    * Requirement: 19.7
    */
-  restore(batch: EnrichedBatch): Promise<MigrationResult>;
+  restore(batch: EnrichedBatch, onProgress?: ProgressCallback): Promise<MigrationResult>;
 
   /**
    * Verify migration completeness and data integrity
@@ -139,34 +148,109 @@ export class MigrationEngineImpl implements MigrationEngine {
   }
 
   /**
+   * Fetch records for a specific collection with collection-specific logic
+   * Handles special cases like meetings using schoolSlug instead of schoolId
+   * 
+   * Requirement: 18.1, 18.2, 18.3, 18.4
+   */
+  async fetchCollection(collectionName: string): Promise<FetchResult> {
+    // Special handling for meetings collection (uses schoolSlug)
+    if (collectionName === 'meetings') {
+      return this.fetchMeetings();
+    }
+
+    // For all other collections, use the generic fetch method
+    return this.fetch(collectionName);
+  }
+
+  /**
+   * Fetch meetings collection (special case: uses schoolSlug instead of schoolId)
+   */
+  private async fetchMeetings(): Promise<FetchResult> {
+    try {
+      const collectionRef = collection(this.firestore, 'meetings');
+      
+      // Get all records in the collection
+      const allRecordsSnapshot = await getDocs(collectionRef);
+      const totalRecords = allRecordsSnapshot.size;
+
+      // Filter records that need migration (have schoolSlug but no entityId)
+      const recordsToMigrate: DocumentData[] = [];
+      const invalidRecords: Array<{ id: string; reason: string }> = [];
+
+      allRecordsSnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const id = docSnapshot.id;
+
+        // Check if record needs migration (meetings use schoolSlug)
+        if (data.schoolSlug && !data.entityId) {
+          recordsToMigrate.push({ id, ...data });
+        } else if (!data.schoolSlug && !data.entityId) {
+          // Record has neither identifier - invalid
+          invalidRecords.push({
+            id,
+            reason: 'Missing both schoolSlug and entityId'
+          });
+        }
+      });
+
+      // Get sample records (first 5)
+      const sampleRecords = recordsToMigrate.slice(0, SAMPLE_SIZE);
+
+      return {
+        collection: 'meetings',
+        totalRecords,
+        recordsToMigrate: recordsToMigrate.length,
+        sampleRecords,
+        invalidRecords
+      };
+    } catch (error) {
+      throw new Error(`Fetch operation failed for meetings: ${error}`);
+    }
+  }
+
+  /**
    * Enrich records by resolving entityId from schoolId
    * 
    * Requirement: 19.1 - Fetch all records with schoolId but no entityId
    * Requirement: 19.2 - Resolve entityId by querying schools collection
+   * Requirement: 19.3 - Use school's entityId if migrationStatus === 'migrated'
+   * Requirement: 19.4 - Generate entityId using format entity_<schoolId> if school doesn't have entityId
+   * Requirement: 19.8 - Log errors for individual record failures
+   * Requirement: 19.9 - Continue processing remaining records after error
+   * Requirement: 19.11 - Track progress (percentage, records processed, current batch)
    */
-  async enrich(batch: MigrationBatch): Promise<EnrichedBatch> {
+  async enrich(batch: MigrationBatch, onProgress?: ProgressCallback): Promise<EnrichedBatch> {
     const enrichedRecords: EnrichedRecord[] = [];
+    const errors: Array<{ id: string; error: string }> = [];
+    const totalRecords = batch.records.length;
 
-    for (const record of batch.records) {
+    for (let i = 0; i < batch.records.length; i++) {
+      const record = batch.records[i];
+      
       try {
         // Query the schools collection for this schoolId
         const schoolRef = doc(this.firestore, 'schools', record.schoolId);
         const schoolSnapshot = await getDoc(schoolRef);
 
         if (!schoolSnapshot.exists()) {
-          throw new Error(`School ${record.schoolId} not found`);
+          // Log error and continue with next record
+          const errorMsg = `School ${record.schoolId} not found`;
+          console.error(`Failed to enrich record ${record.id}: ${errorMsg}`);
+          errors.push({ id: record.id, error: errorMsg });
+          continue;
         }
 
         const schoolData = schoolSnapshot.data();
         let entityId: string;
         let entityType: EntityType = 'institution'; // Default type
 
-        // Check if school has been migrated
+        // Check if school has been migrated (Requirement 19.3)
         if (schoolData.migrationStatus === 'migrated' && schoolData.entityId) {
           // Use existing entityId from migrated school
           entityId = schoolData.entityId;
         } else {
-          // Generate entityId for non-migrated school
+          // Generate entityId for non-migrated school (Requirement 19.4)
           entityId = `entity_${record.schoolId}`;
         }
 
@@ -184,9 +268,32 @@ export class MigrationEngineImpl implements MigrationEngine {
           }
         });
       } catch (error) {
-        // Log error but continue processing
-        console.error(`Failed to enrich record ${record.id}:`, error);
-        throw error; // Re-throw to be caught by restore operation
+        // Log error and continue processing (Requirement 19.9)
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to enrich record ${record.id}:`, errorMsg);
+        errors.push({ id: record.id, error: errorMsg });
+        // Continue with next record instead of throwing
+      }
+
+      // Report progress (Requirement 19.11)
+      if (onProgress) {
+        const recordsProcessed = i + 1;
+        const percentage = Math.round((recordsProcessed / totalRecords) * 100);
+        
+        onProgress({
+          collection: batch.collection,
+          phase: 'enrich',
+          percentage,
+          recordsProcessed,
+          totalRecords,
+          currentBatch: batch.currentBatch,
+          totalBatches: batch.totalBatches,
+          errors: errors.map(e => ({
+            recordId: e.id,
+            error: e.error,
+            timestamp: new Date().toISOString()
+          }))
+        });
       }
     }
 
@@ -200,9 +307,14 @@ export class MigrationEngineImpl implements MigrationEngine {
   /**
    * Restore enriched records to Firestore with backups
    * 
+   * Requirement: 19.5 - Create backup collection before updates
+   * Requirement: 19.6 - Update original record with entityId and entityType while preserving schoolId
    * Requirement: 19.7 - Process in batches of 450 records
+   * Requirement: 19.8 - Log errors for individual record failures
+   * Requirement: 19.9 - Continue processing remaining records after error
+   * Requirement: 19.11 - Track progress (percentage, records processed, current batch)
    */
-  async restore(enrichedBatch: EnrichedBatch): Promise<MigrationResult> {
+  async restore(enrichedBatch: EnrichedBatch, onProgress?: ProgressCallback): Promise<MigrationResult> {
     const result: MigrationResult = {
       total: enrichedBatch.records.length,
       succeeded: 0,
@@ -211,22 +323,26 @@ export class MigrationEngineImpl implements MigrationEngine {
       errors: []
     };
 
-    // Process records in batches to avoid Firestore limits
+    // Process records in batches to avoid Firestore limits (Requirement 19.7)
     const batches = this.chunkArray(enrichedBatch.records, BATCH_SIZE);
+    let recordsProcessed = 0;
 
     for (let i = 0; i < batches.length; i++) {
       const batchRecords = batches[i];
       const firestoreBatch = writeBatch(this.firestore);
+      let batchSucceeded = 0;
+      let batchSkipped = 0;
 
       for (const enrichedRecord of batchRecords) {
         try {
           // Check if already migrated (idempotency)
           if (enrichedRecord.original.entityId) {
             result.skipped++;
+            batchSkipped++;
             continue;
           }
 
-          // Create backup before updating
+          // Create backup before updating (Requirement 19.5)
           const backupRef = doc(
             this.firestore,
             enrichedBatch.backupCollection,
@@ -237,7 +353,8 @@ export class MigrationEngineImpl implements MigrationEngine {
             backedUpAt: new Date().toISOString()
           });
 
-          // Update original record with entityId and entityType
+          // Update original record with entityId and entityType (Requirement 19.6)
+          // Preserves original schoolId field (dual-write)
           const recordRef = doc(
             this.firestore,
             enrichedBatch.collection,
@@ -249,7 +366,7 @@ export class MigrationEngineImpl implements MigrationEngine {
             updatedAt: new Date().toISOString()
           });
 
-          result.succeeded++;
+          batchSucceeded++;
         } catch (error) {
           result.failed++;
           result.errors.push({
@@ -262,18 +379,40 @@ export class MigrationEngineImpl implements MigrationEngine {
       // Commit the batch
       try {
         await firestoreBatch.commit();
+        result.succeeded += batchSucceeded;
+        recordsProcessed += batchRecords.length;
       } catch (error) {
-        // If batch commit fails, mark all records in batch as failed
+        // If batch commit fails, mark all non-skipped records in batch as failed (Requirement 19.9)
         for (const enrichedRecord of batchRecords) {
           if (!enrichedRecord.original.entityId) {
             result.failed++;
-            result.succeeded = Math.max(0, result.succeeded - 1);
             result.errors.push({
               id: enrichedRecord.id,
               error: `Batch commit failed: ${error}`
             });
           }
         }
+        recordsProcessed += batchRecords.length;
+      }
+
+      // Report progress (Requirement 19.11)
+      if (onProgress) {
+        const percentage = Math.round((recordsProcessed / enrichedBatch.records.length) * 100);
+        
+        onProgress({
+          collection: enrichedBatch.collection,
+          phase: 'restore',
+          percentage,
+          recordsProcessed,
+          totalRecords: enrichedBatch.records.length,
+          currentBatch: i + 1,
+          totalBatches: batches.length,
+          errors: result.errors.map(e => ({
+            recordId: e.id,
+            error: e.error,
+            timestamp: new Date().toISOString()
+          }))
+        });
       }
     }
 
@@ -487,6 +626,60 @@ export class MigrationEngineImpl implements MigrationEngine {
  */
 export function createMigrationEngine(firestore: Firestore): MigrationEngine {
   return new MigrationEngineImpl(firestore);
+}
+
+/**
+ * Collection names for feature migrations
+ */
+export const FEATURE_COLLECTIONS = [
+  'tasks',
+  'activities',
+  'forms',
+  'invoices',
+  'meetings',
+  'surveys',
+  'message_logs',
+  'pdfs',
+  'automation_logs'
+] as const;
+
+export type FeatureCollection = typeof FEATURE_COLLECTIONS[number];
+
+/**
+ * Fetch operations for all feature collections
+ * Provides a convenient way to fetch migration data for all collections
+ * 
+ * Requirements: 18.1, 18.2, 18.3, 18.4
+ */
+export async function fetchAllCollections(
+  firestore: Firestore
+): Promise<Record<FeatureCollection, FetchResult>> {
+  const engine = createMigrationEngine(firestore);
+  const results: Partial<Record<FeatureCollection, FetchResult>> = {};
+
+  for (const collectionName of FEATURE_COLLECTIONS) {
+    try {
+      results[collectionName] = await engine.fetchCollection(collectionName);
+    } catch (error) {
+      console.error(`Failed to fetch ${collectionName}:`, error);
+      // Continue with other collections even if one fails
+    }
+  }
+
+  return results as Record<FeatureCollection, FetchResult>;
+}
+
+/**
+ * Fetch operation for a single collection
+ * 
+ * Requirements: 18.1, 18.2, 18.3, 18.4
+ */
+export async function fetchCollectionData(
+  firestore: Firestore,
+  collectionName: FeatureCollection
+): Promise<FetchResult> {
+  const engine = createMigrationEngine(firestore);
+  return engine.fetchCollection(collectionName);
 }
 
 /**

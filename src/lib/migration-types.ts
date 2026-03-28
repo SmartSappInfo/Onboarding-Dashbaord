@@ -135,6 +135,11 @@ export interface MigrationProgress {
 }
 
 /**
+ * Progress callback function type
+ */
+export type ProgressCallback = (progress: MigrationProgress) => void;
+
+/**
  * Entity type for contact identification
  */
 export type EntityType = 'institution' | 'family' | 'person';

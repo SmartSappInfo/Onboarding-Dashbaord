@@ -226,6 +226,9 @@ importers:
       '@fast-check/vitest':
         specifier: ^0.3.0
         version: 0.3.0(vitest@2.1.9(@types/node@20.19.37)(jsdom@25.0.1(canvas@2.11.2))(terser@5.46.1))
+      '@firebase/rules-unit-testing':
+        specifier: ^5.0.0
+        version: 5.0.0(firebase@11.10.0)
       '@playwright/test':
         specifier: ^1.49.1
         version: 1.58.2
@@ -1028,6 +1031,12 @@ packages:
     resolution: {integrity: sha512-fU0c8HY0vrVHwC+zQ/fpXSqHyDMuuuglV94VF6Yonhz8Fg2J+KOowPGANM0SZkLvVOYpTeWp3ZmM+F6NjwWLnw==}
     peerDependencies:
       '@firebase/app': 0.x
+
+  '@firebase/rules-unit-testing@5.0.0':
+    resolution: {integrity: sha512-C6+d3Msgjnqay2ml663ChvKYoD8VsQ+TIa0e+fGq0LFC0CKSPlacT1EVGL/ryo6Rc+wFs7Fpqz3fRlYdUEa2bA==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      firebase: ^12.0.0
 
   '@firebase/storage-compat@0.3.24':
     resolution: {integrity: sha512-XHn2tLniiP7BFKJaPZ0P8YQXKiVJX+bMyE2j2YWjYfaddqiJnROJYqSomwW6L3Y+gZAga35ONXUJQju6MB6SOQ==}
@@ -8475,6 +8484,10 @@ snapshots:
       '@firebase/logger': 0.4.4
       '@firebase/util': 1.12.1
       tslib: 2.8.1
+
+  '@firebase/rules-unit-testing@5.0.0(firebase@11.10.0)':
+    dependencies:
+      firebase: 11.10.0
 
   '@firebase/storage-compat@0.3.24(@firebase/app-compat@0.4.2)(@firebase/app-types@0.9.3)(@firebase/app@0.13.2)':
     dependencies:
