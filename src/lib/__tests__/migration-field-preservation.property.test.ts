@@ -66,8 +66,8 @@ vi.mock('firebase/firestore', () => {
       if (docRef._collectionName === 'schools') {
         const schoolData = mockSchools.get(docRef._docId);
         return {
-          exists: () => !!schoolData,
-          data: () => schoolData,
+          exists: (): boolean => !!schoolData,
+          data: (): any => schoolData,
           id: docRef._docId,
         };
       }
@@ -77,13 +77,13 @@ vi.mock('firebase/firestore', () => {
       if (collectionData) {
         const recordData = collectionData.get(docRef._docId);
         return {
-          exists: () => !!recordData,
-          data: () => recordData,
+          exists: (): boolean => !!recordData,
+          data: (): any => recordData,
           id: docRef._docId,
         };
       }
       
-      return { exists: () => false, data: () => undefined };
+      return { exists: (): boolean => false, data: (): any => undefined };
     }),
     getDocs: vi.fn(async (collectionRef: any) => {
       const collectionName = collectionRef._collectionName;
@@ -91,7 +91,7 @@ vi.mock('firebase/firestore', () => {
       
       const docs = Array.from(collectionData.values()).map((data) => ({
         id: data.id,
-        data: () => data,
+        data: (): any => data,
         ref: { _collectionName: collectionName, _docId: data.id },
       }));
       

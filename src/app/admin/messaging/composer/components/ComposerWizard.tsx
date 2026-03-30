@@ -98,7 +98,9 @@ const formSchema = z.object({
     useMultiEntity: z.boolean().default(false),
     selectedContactIndices: z.array(z.number()).default([]), // For multi-contact within entity (Task 11)
     variables: z.record(z.any()).default({}),
-    schoolId: z.string().optional(),
+    schoolId: z.string().optional(), // Legacy field for backward compatibility
+    entityId: z.string().optional(), // New unified entity reference (Requirement 15.3)
+    entityType: z.enum(['institution', 'family', 'person']).optional(), // Entity type (Requirement 15.3)
     isScheduled: z.boolean().default(false),
     scheduledAt: z.date().optional(),
     // Data Source Bindings
@@ -166,6 +168,7 @@ export default function ComposerWizard() {
             selectedContactIndices: [],
             variables: {},
             schoolId: '',
+            entityId: '',
             isScheduled: false,
         }
     });
@@ -532,6 +535,8 @@ export default function ComposerWizard() {
                                 recipient: target,
                                 variables: data.variables,
                                 schoolId: data.schoolId,
+                                entityId: data.entityId, // New unified entity reference (Requirement 15.3)
+                                entityType: data.entityType, // Entity type (Requirement 15.3)
                                 scheduledAt
                             });
                         }

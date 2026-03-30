@@ -3,6 +3,72 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
+import type { Survey, SurveyResponse } from './types';
+
+/**
+ * Get surveys for a specific contact (by entityId or schoolId)
+ * Implements query fallback pattern: prefer entityId, fallback to schoolId
+ * 
+ * Requirements: 13.5, 22.1, 22.2
+ */
+export async function getSurveysForContact(
+  contactId: { entityId?: string | null; schoolId?: string | null },
+  workspaceId: string
+): Promise<Survey[]> {
+  try {
+    let query = adminDb.collection('surveys')
+      .where('workspaceIds', 'array-contains', workspaceId);
+
+    // Prefer entityId when available (Requirement 22.2)
+    if (contactId.entityId) {
+      query = query.where('entityId', '==', contactId.entityId);
+    } else if (contactId.schoolId) {
+      // Fallback to schoolId for backward compatibility (Requirement 22.1)
+      query = query.where('schoolId', '==', contactId.schoolId);
+    } else {
+      // No contact identifier provided, return empty array
+      return [];
+    }
+
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
+  } catch (error: any) {
+    console.error('Get Surveys For Contact Error:', error);
+    throw new Error(error.message || 'Failed to get surveys for contact');
+  }
+}
+
+/**
+ * Get survey responses for a specific contact (by entityId or schoolId)
+ * Implements query fallback pattern: prefer entityId, fallback to schoolId
+ * 
+ * Requirements: 13.5, 22.1, 22.2
+ */
+export async function getSurveyResponsesForContact(
+  surveyId: string,
+  contactId: { entityId?: string | null; schoolId?: string | null }
+): Promise<SurveyResponse[]> {
+  try {
+    let query = adminDb.collection('surveys').doc(surveyId).collection('responses');
+
+    // Prefer entityId when available (Requirement 22.2)
+    if (contactId.entityId) {
+      query = query.where('entityId', '==', contactId.entityId) as any;
+    } else if (contactId.schoolId) {
+      // Fallback to schoolId for backward compatibility (Requirement 22.1)
+      query = query.where('schoolId', '==', contactId.schoolId) as any;
+    } else {
+      // No contact identifier provided, return empty array
+      return [];
+    }
+
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SurveyResponse));
+  } catch (error: any) {
+    console.error('Get Survey Responses For Contact Error:', error);
+    throw new Error(error.message || 'Failed to get survey responses for contact');
+  }
+}
 
 /**
  * Clones an existing survey including its elements and result pages subcollection.
@@ -32,6 +98,10 @@ export async function cloneSurvey(surveyId: string, userId: string) {
       status: 'draft', // Default to draft for the clone for safety
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      // Preserve dual-write fields from original survey
+      schoolId: originalData.schoolId || null,
+      schoolName: originalData.schoolName || null,
+      entityId: originalData.entityId || null,
     };
 
     // Create the new survey document

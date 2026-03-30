@@ -5,6 +5,7 @@ import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, MessageLog } 
 import { revalidatePath } from 'next/cache';
 import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
+import { resolveContact } from './contact-adapter';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -287,7 +288,11 @@ export async function deleteVariable(id: string) {
 /**
  * Fetches data for a specific entity to resolve variables in the composer.
  */
-export async function fetchContextualData(entity: string, id: string, parentId?: string) {
+/**
+ * Fetches contextual data for variable resolution.
+ * Updated to use Contact Adapter for School entity (Requirement 25.4)
+ */
+export async function fetchContextualData(entity: string, id: string, parentId?: string, workspaceId?: string) {
     try {
         let data: any = null;
         if (entity === 'Meeting') {
@@ -300,8 +305,18 @@ export async function fetchContextualData(entity: string, id: string, parentId?:
             const snap = await adminDb.collection('pdfs').doc(parentId).collection('submissions').doc(id).get();
             if (snap.exists) data = snap.data();
         } else if (entity === 'School') {
-            const snap = await adminDb.collection('schools').doc(id).get();
-            if (snap.exists) data = snap.data();
+            // Use Contact Adapter for backward compatibility (Requirement 25.4)
+            if (workspaceId) {
+                const contact = await resolveContact(id, workspaceId);
+                if (contact) {
+                    // Return schoolData for backward compatibility with existing templates
+                    data = contact.schoolData || null;
+                }
+            } else {
+                // Fallback to direct query if no workspace context
+                const snap = await adminDb.collection('schools').doc(id).get();
+                if (snap.exists) data = snap.data();
+            }
         }
 
         return { success: true, data };

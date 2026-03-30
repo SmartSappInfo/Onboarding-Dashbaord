@@ -217,6 +217,73 @@ service cloud.firestore {
       allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
 
+    // --- Entity Migration Security Rules (Requirement 29) ---
+    
+    /**
+     * Enhanced security rules for feature collections using entityId
+     * These rules enforce workspace boundaries and prevent cross-workspace data leakage
+     * during and after the schoolId to entityId migration.
+     */
+    
+    // Forms collection - dual-write migration support
+    match /forms/{formId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         request.resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         resource.data.workspaceId in getUserData().workspaceIds &&
+         // Prevent workspace change
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         resource.data.workspaceId in getUserData().workspaceIds)
+      );
+    }
+    
+    // Form submissions - workspace boundary enforcement
+    match /forms/{formId}/submissions/{submissionId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if true; // Public form submissions
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId in getUserData().workspaceIds
+      );
+    }
+    
+    // Automation logs - workspace boundary enforcement
+    match /automation_logs/{logId} {
+      allow read, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+    
+    // Entity audit logs - immutable audit trail
+    match /entity_audit_logs/{logId} {
+      allow read, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('activities_view') && 
+         resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow create: if isSignedIn();
+      allow update, delete: if false; // Immutable audit logs
+    }
+
     // --- System / Analytics ---
     match /automation_runs/{runId} {
       allow read, list: if isAuthorized();
@@ -306,9 +373,13 @@ service cloud.firestore {
       );
       
       // Allow update if user has schools_edit permission
+      // Requirement 29.3: Verify user permissions for entity updates
       allow update: if isAuthorized() && (
         isSystemAdmin() ||
-        (hasPermission('schools_edit') && isOrgMatch(resource.data.organizationId))
+        (hasPermission('schools_edit') && 
+         isOrgMatch(resource.data.organizationId) &&
+         // Prevent organization change
+         request.resource.data.organizationId == resource.data.organizationId)
       );
       
       // Allow delete if user has system_admin permission
@@ -317,6 +388,9 @@ service cloud.firestore {
 
     match /workspace_entities/{workspaceEntityId} {
       // Requirement 9.5: Immediately deny reads/writes when workspace access is revoked
+      // Requirement 29.1: Enforce workspace boundaries for workspace_entities
+      // Requirement 29.2: Verify user permissions for entity updates
+      // Requirement 29.5: Prevent cross-workspace data leakage
       // 
       // CRITICAL: The user.workspaceIds array MUST be kept in sync with role-based access.
       // When a user is removed from a role OR a workspace is removed from a role's workspaceIds,
@@ -327,6 +401,7 @@ service cloud.firestore {
       // complex queries to check role membership dynamically.
       
       // Allow read if user has access to the specific workspaceId
+      // This enforces workspace boundary and prevents cross-workspace data leakage
       allow read: if isAuthorized() && (
         isSystemAdmin() ||
         resource.data.workspaceId in getUserData().workspaceIds
@@ -343,12 +418,15 @@ service cloud.firestore {
       );
       
       // Allow update if user has schools_edit permission and workspace access
+      // Requirement 29.3: Verify user permissions for entity updates
       allow update: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('schools_edit') &&
          resource.data.workspaceId in getUserData().workspaceIds &&
          // Ensure workspace access is not changed to a workspace user doesn't have access to
-         request.resource.data.workspaceId == resource.data.workspaceId)
+         // This prevents cross-workspace data leakage
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         request.resource.data.workspaceId in getUserData().workspaceIds)
       );
       
       // Allow delete if user has schools_edit permission and workspace access

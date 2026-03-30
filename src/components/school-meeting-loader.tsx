@@ -130,6 +130,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
 
           try {
             const meetingsCol = collection(firestore, 'meetings');
+            // Query by schoolSlug (supports both legacy and new meetings)
             const meetingQuery = query(
                 meetingsCol, 
                 where('schoolSlug', '==', schoolSlug.toLowerCase())
@@ -168,7 +169,37 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const bestMeeting = sorted[0];
             setMeeting(bestMeeting);
 
-            if (bestMeeting.schoolId) {
+            // Resolve school using entityId first (if available), then fallback to schoolId
+            // Requirement 9.5: Support both entityId and schoolSlug for resolution
+            if (bestMeeting.entityId) {
+                // Try to resolve from entities collection first (migrated contacts)
+                const entityRef = doc(firestore, 'entities', bestMeeting.entityId);
+                const entitySnap = await getDoc(entityRef);
+                
+                if (entitySnap.exists()) {
+                    // Entity found - use entity data
+                    const entityData = entitySnap.data();
+                    // For backward compatibility, create a School-like object from entity
+                    setSchool({
+                        id: bestMeeting.schoolId || bestMeeting.entityId,
+                        name: entityData.name,
+                        slug: entityData.slug || schoolSlug,
+                        logoUrl: entityData.institutionData?.logoUrl,
+                        entityId: bestMeeting.entityId,
+                        migrationStatus: 'migrated',
+                    } as School);
+                } else if (bestMeeting.schoolId) {
+                    // Entity not found, fallback to school
+                    const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
+                    const schoolSnap = await getDoc(schoolRef);
+                    if (schoolSnap.exists()) {
+                        setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
+                    } else {
+                        setError("Contact document could not be resolved.");
+                    }
+                }
+            } else if (bestMeeting.schoolId) {
+                // Legacy meeting - use schoolId
                 const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
                 const schoolSnap = await getDoc(schoolRef);
 
@@ -176,6 +207,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                     setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
                 }
             } else {
+                // No entityId or schoolId - fallback to slug lookup
                 const schoolsCol = collection(firestore, 'schools');
                 const schoolQuery = query(schoolsCol, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
                 const schoolSnapshot = await getDocs(schoolQuery);

@@ -148,6 +148,6 @@ export type EntityType = 'institution' | 'family' | 'person';
  * Contact identifier that can use either legacy schoolId or new entityId
  */
 export interface ContactIdentifier {
-  schoolId?: string;
-  entityId?: string;
+  schoolId?: string | null;
+  entityId?: string | null;
 }

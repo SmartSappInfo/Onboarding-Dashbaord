@@ -240,7 +240,7 @@ export default function AgreementsClient() {
                 contract.id, 
                 contract.pdfId, 
                 contract.submissionId || null, 
-                school.id, 
+                { schoolId: school.id }, 
                 user.uid
             );
             

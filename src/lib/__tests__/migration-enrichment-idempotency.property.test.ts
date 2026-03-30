@@ -57,12 +57,12 @@ vi.mock('firebase/firestore', () => {
       if (docRef._collectionName === 'schools') {
         const schoolData = mockSchools.get(docRef._docId);
         return {
-          exists: () => !!schoolData,
-          data: () => schoolData,
+          exists: (): boolean => !!schoolData,
+          data: (): any => schoolData,
           id: docRef._docId,
         };
       }
-      return { exists: () => false, data: () => undefined };
+      return { exists: (): boolean => false, data: (): any => undefined };
     }),
     getDocs: vi.fn(async (collectionRef: any) => {
       const collectionName = collectionRef._collectionName;
@@ -70,7 +70,7 @@ vi.mock('firebase/firestore', () => {
       
       const docs = Array.from(collectionData.values()).map((data) => ({
         id: data.id,
-        data: () => data,
+        data: (): any => data,
         ref: { _collectionName: collectionName, _docId: data.id },
       }));
       
@@ -592,7 +592,7 @@ describe('Property 13: Migration Idempotency', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(migratedSchoolArbitrary, { minLength: 1, maxLength: 10 }),
-        fc.nat({ min: 2, max: 5 }),
+        fc.integer({ min: 2, max: 5 }),
         async (schools, numRuns) => {
           // Setup: Create schools and unmigrated records
           schools.forEach(school => mockSchools.set(school.id, school));

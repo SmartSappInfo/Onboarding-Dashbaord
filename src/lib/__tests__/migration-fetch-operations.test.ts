@@ -345,8 +345,8 @@ describe('Migration Fetch Operations - Integration Tests', () => {
 
       // Create engine and mock fetchCollection for each collection
       const engine = createMigrationEngine(mockFirestore);
-      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async (collectionName: string) => {
-        return mockResults[collectionName as FeatureCollection];
+      (engine as any).fetchCollection = vi.fn((collectionName: string) => {
+        return Promise.resolve(mockResults[collectionName as FeatureCollection]);
       });
 
       // Manually call fetchCollection for each collection (simulating fetchAllCollections)
@@ -429,11 +429,11 @@ describe('Migration Fetch Operations - Integration Tests', () => {
       const engine = createMigrationEngine(mockFirestore);
       
       // Mock fetchCollection to succeed for some collections
-      vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async (collectionName: string) => {
+      (engine as any).fetchCollection = vi.fn((collectionName: string) => {
         if (mockResults[collectionName as keyof typeof mockResults]) {
-          return mockResults[collectionName as keyof typeof mockResults];
+          return Promise.resolve(mockResults[collectionName as keyof typeof mockResults]);
         }
-        throw new Error(`Fetch failed for ${collectionName}`);
+        return Promise.reject(new Error(`Fetch failed for ${collectionName}`));
       });
 
       // Manually call fetchCollection for collections that should succeed

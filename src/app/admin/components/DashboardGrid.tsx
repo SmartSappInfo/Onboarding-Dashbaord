@@ -57,6 +57,7 @@ const componentPropsMap = (data: any) => ({
     activities: data.activities,
     users: data.recentActivityUsers,
     schools: data.recentActivitySchools,
+    entities: data.recentActivityEntities, // New: workspace_entities for migrated contacts
   },
   zoneDistribution: { data: data.zoneDistribution },
   messagingWidget: { ...data.messagingMetrics },

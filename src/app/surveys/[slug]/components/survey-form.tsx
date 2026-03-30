@@ -999,7 +999,16 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
-        const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
+        // Dual-write: populate both schoolId and entityId fields
+        const responseData = { 
+            surveyId: survey.id, 
+            submittedAt: new Date().toISOString(), 
+            answers, 
+            score,
+            schoolId: survey.schoolId || null,
+            entityId: survey.entityId || null,
+            entityType: survey.entityId ? 'institution' as const : undefined
+        };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
         setIsSubmitting(true);
 

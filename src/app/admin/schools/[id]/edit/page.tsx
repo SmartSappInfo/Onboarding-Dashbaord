@@ -147,12 +147,15 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
   React.useEffect(() => {
     if (school && !hasInitialized) {
+      // Normalize status to capitalized form for form schema
+      const normalizedStatus = school.status === 'archived' ? 'Archived' : school.status || 'Active';
+      
       methods.reset({
         name: school.name || '',
         initials: school.initials || '',
         slogan: school.slogan || '',
         workspaceIds: school.workspaceIds || [school.track || 'onboarding'],
-        status: school.status || 'Active',
+        status: normalizedStatus as 'Active' | 'Inactive' | 'Archived',
         schoolStatus: school.schoolStatus || 'Onboarding',
         logoUrl: school.logoUrl || '',
         heroImageUrl: school.heroImageUrl || '',
@@ -210,6 +213,12 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         implementationDate: data.implementationDate?.toISOString() || null,
         updatedAt: new Date().toISOString()
     };
+
+    // TODO: Route updates to correct collections (Requirement 11.4, 11.5)
+    // - Identity fields (name, focalPersons) should update entities collection
+    // - Operational fields (assignedTo, pipelineId, stageId) should update workspace_entities collection
+    // - For now, updating schools collection for backward compatibility
+    // - Use updateProfile() from profile-actions.ts when entity migration is complete
 
     const docRef = doc(firestore, 'schools', schoolId);
     updateDoc(docRef, updateData).then(() => {

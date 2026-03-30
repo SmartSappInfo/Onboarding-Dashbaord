@@ -69,7 +69,7 @@ const taskSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters.'),
     description: z.string().min(5, 'Description is required.'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
-    category: z.enum(['call', 'visit', 'document', 'training', 'general']),
+    category: z.enum(['call', 'visit', 'document', 'training', 'follow_up', 'general']),
     status: z.enum(['todo', 'in_progress', 'waiting', 'review', 'done']),
     assignedTo: z.string().min(1, 'Please assign an owner.'),
     schoolId: z.string().optional(),

@@ -213,7 +213,7 @@ describe('Property 16: Rollback Restoration', () => {
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution' as const, 'family' as const, 'person' as const),
     title: fc.string({ minLength: 5, maxLength: 50 }),
-    description: fc.option(fc.string({ minLength: 10, maxLength: 100 })),
+    description: fc.option(fc.string({ minLength: 10, maxLength: 100 }), { nil: undefined }),
     createdAt: fc.constant('2023-01-01T00:00:00.000Z'),
   });
 
@@ -543,19 +543,22 @@ describe('Property 17: Rollback Cleanup', () => {
             const operations: Array<{ type: string; ref: any; data: any }> = [];
             let shouldFail = false;
             
-            return {
+            const batch: any = {
               set: (ref: any, data: any) => {
                 operations.push({ type: 'set', ref, data });
                 // Check if this is the problematic record
                 if (!data.schoolId && operations.length === 1) {
                   shouldFail = true;
                 }
+                return batch;
               },
               update: (ref: any, data: any) => {
                 operations.push({ type: 'update', ref, data });
+                return batch;
               },
               delete: (ref: any) => {
                 operations.push({ type: 'delete', ref, data: null });
+                return batch;
               },
               commit: async () => {
                 if (shouldFail) {
@@ -575,6 +578,7 @@ describe('Property 17: Rollback Cleanup', () => {
                 }
               },
             };
+            return batch;
           });
 
           // Execute: Rollback (should have failures)
@@ -611,7 +615,7 @@ describe('Property 18: Rollback Idempotency', () => {
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution' as const, 'family' as const, 'person' as const),
     title: fc.string({ minLength: 5, maxLength: 50 }),
-    description: fc.option(fc.string({ minLength: 10, maxLength: 100 })),
+    description: fc.option(fc.string({ minLength: 10, maxLength: 100 }), { nil: undefined }),
     createdAt: fc.constant('2023-01-01T00:00:00.000Z'),
   });
 

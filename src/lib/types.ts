@@ -9,7 +9,7 @@ export type MeetingType = typeof MEETING_TYPES[number];
 
 export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
 
-export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived';
+export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived' | 'archived';
 
 export type SchoolStatus = SchoolStatusState; // Alias for backward compatibility
 
@@ -104,6 +104,35 @@ export interface TagAuditLog {
     mergedIntoTagId?: string;
     bulkOperation?: boolean;
     affectedCount?: number;
+  };
+}
+
+/**
+ * Entity Audit Log Entry
+ * Tracks all entity and workspace_entity operations for security and compliance
+ * Requirements: 29.4
+ */
+export interface EntityAuditLog {
+  id: string;
+  organizationId: string;
+  workspaceId?: string; // Optional for entity operations, required for workspace_entity operations
+  action: 'entity_created' | 'entity_updated' | 'entity_deleted' | 'entity_read' | 
+          'workspace_entity_created' | 'workspace_entity_updated' | 'workspace_entity_deleted' | 'workspace_entity_read';
+  entityId: string;
+  entityType: 'institution' | 'family' | 'person';
+  userId: string;
+  userName: string;
+  userEmail: string;
+  timestamp: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: {
+    oldValue?: any;
+    newValue?: any;
+    changedFields?: string[];
+    bulkOperation?: boolean;
+    affectedCount?: number;
+    operationContext?: string; // e.g., 'migration', 'manual_edit', 'api_call'
   };
 }
 
@@ -407,6 +436,7 @@ export interface School {
   logoUrl?: string;
   heroImageUrl?: string;
   workspaceIds: string[]; // Shared
+  workspaceId?: string; // Singular for backward compatibility
   status: SchoolStatusState;
   schoolStatus: string;
   pipelineId: string;
@@ -435,7 +465,7 @@ export interface School {
     userId: string | null;
     name: string | null;
     email: string | null;
-  };
+  } | null;
   stage?: {
     id: string;
     name: string;
@@ -445,6 +475,7 @@ export interface School {
   track?: string;
   lifecycleStatus?: LifecycleStatus;
   createdAt: string;
+  updatedAt?: string; // ISO timestamp
   // Tagging fields
   tags?: string[];
   taggedAt?: { [tagId: string]: string };
@@ -463,6 +494,7 @@ export interface School {
    * @default undefined (treated as "legacy")
    */
   migrationStatus?: MigrationStatus;
+  entityId?: string; // Reference to the unified entity (for migrated schools)
 }
 
 /**
@@ -474,6 +506,7 @@ export interface InstitutionData {
   subscriptionRate?: number;
   billingAddress?: string;
   currency?: string;
+  focalPersons?: FocalPerson[]; // Legacy field for backward compatibility
   modules?: {
     id: string;
     name: string;
@@ -551,7 +584,7 @@ export interface WorkspaceEntity {
     userId: string | null;
     name: string | null;
     email: string | null;
-  };
+  } | null;
   status: 'active' | 'archived';
   workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
   lastContactedAt?: string;
@@ -593,14 +626,14 @@ export interface ResolvedContact {
     userId: string | null;
     name: string | null;
     email: string | null;
-  };
+  } | null;
   status?: string;
-  tags: string[]; // Workspace tags for the active workspace
+  tags?: string[]; // Workspace tags for the active workspace
   globalTags?: string[]; // Global identity tags (only for migrated entities)
   // Entity metadata
-  entityType?: EntityType;
-  entityId?: string;
-  workspaceEntityId?: string;
+  entityType?: EntityType | null;
+  entityId?: string | null;
+  workspaceEntityId?: string | null;
   // Migration tracking
   migrationStatus: MigrationStatus;
   // Legacy school data (for backward compatibility)
@@ -644,8 +677,8 @@ export interface Invoice {
   invoiceNumber: string;
   schoolId?: string; // Legacy field for backward compatibility
   schoolName?: string; // Legacy field for backward compatibility
-  entityId?: string; // New unified entity reference
-  entityType?: EntityType; // Type of entity
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType | null; // Type of entity
   periodId: string;
   periodName: string;
   nominalRoll: number;
@@ -988,14 +1021,15 @@ export interface Activity {
   schoolId?: string; // Legacy field for backward compatibility
   schoolName?: string; // Legacy field for backward compatibility
   schoolSlug?: string; // Legacy field for backward compatibility
-  entityId?: string; // New unified entity reference
-  entityType?: EntityType; // Type of entity
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType | null; // Type of entity
   displayName?: string; // Denormalized entity name at time of logging
   entitySlug?: string; // Denormalized slug for historical readability
   userId?: string | null;
   type: string;
   source: string;
   timestamp: string;
+  createdAt?: string; // Alias for timestamp for backward compatibility
   description: string;
   metadata?: any;
 }
@@ -1054,7 +1088,7 @@ export interface TaskReminder {
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskStatus = 'todo' | 'in_progress' | 'waiting' | 'review' | 'done';
-export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'general';
+export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'follow_up' | 'general';
 
 export interface Automation {
   id: string;
@@ -1269,6 +1303,7 @@ export interface SenderProfile {
 
 export interface MessageLog {
     id: string;
+    organizationId?: string; // Organization identifier for multi-tenant isolation
     title: string;
     templateId: string;
     templateName: string;
@@ -1288,6 +1323,8 @@ export interface MessageLog {
     schoolId: string | null; // Legacy field for backward compatibility
     entityId?: string | null; // New unified entity reference
     entityType?: EntityType; // Type of entity
+    displayName?: string; // Denormalized entity display name
+    schoolName?: string; // Legacy denormalized school name
     providerId: string | null;
     providerStatus: string | null;
     error?: string;

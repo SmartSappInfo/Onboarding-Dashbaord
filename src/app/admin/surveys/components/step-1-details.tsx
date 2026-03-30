@@ -68,6 +68,13 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                                             const school = schools?.find(s => s.id === val);
                                             field.onChange(val === 'none' ? null : val);
                                             setValue('schoolName', school ? school.name : null, { shouldDirty: true });
+                                            // Dual-write: populate entityId if school is migrated
+                                            // For migrated schools, entityId follows format: entity_<schoolId>
+                                            if (school && school.migrationStatus === 'migrated') {
+                                                setValue('entityId', `entity_${school.id}`, { shouldDirty: true });
+                                            } else {
+                                                setValue('entityId', null, { shouldDirty: true });
+                                            }
                                         }} 
                                         value={field.value || 'none'}
                                     >

@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MigrationCard } from '../MigrationCard';
 import type { FetchResult, MigrationResult, VerificationResult, RollbackResult } from '@/lib/migration-types';
 
 describe('MigrationCard', () => {
   const mockHandlers = {
-    onFetch: vi.fn<[], Promise<FetchResult>>(),
-    onEnrichAndRestore: vi.fn<[], Promise<MigrationResult>>(),
-    onVerify: vi.fn<[], Promise<VerificationResult>>(),
-    onRollback: vi.fn<[], Promise<RollbackResult>>()
+    onFetch: vi.fn(),
+    onEnrichAndRestore: vi.fn(),
+    onVerify: vi.fn(),
+    onRollback: vi.fn()
   };
 
   const defaultProps = {

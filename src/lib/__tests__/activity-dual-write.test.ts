@@ -13,7 +13,7 @@ import { logActivity } from '../activity-logger';
 import { getActivitiesForContact } from '../activity-actions';
 import { resolveContact } from '../contact-adapter';
 import { adminDb } from '../firebase-admin';
-import type { Activity, ResolvedContact } from '../types';
+import type { ResolvedContact } from '../types';
 
 // Mock Firebase Admin
 vi.mock('../firebase-admin', () => ({
@@ -367,6 +367,307 @@ describe('Activity Module - Dual-Write and Queries', () => {
       // Verify limit was applied
       expect(mockLimit).toHaveBeenCalledWith(25);
       expect(result).toHaveLength(25);
+    });
+  });
+
+  describe('Contact Adapter Integration', () => {
+    it('should handle contact resolution failure gracefully', async () => {
+      // Mock contact resolution failure
+      (resolveContact as any).mockResolvedValue(null);
+
+      const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_5' });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+      await logActivity({
+        organizationId: 'org_1',
+        workspaceId: 'workspace_1',
+        entityId: 'entity_nonexistent',
+        userId: 'user_1',
+        type: 'note',
+        source: 'manual',
+        description: 'Test activity with nonexistent entity',
+      });
+
+      // Verify activity was still created (graceful degradation)
+      expect(mockAdd).toHaveBeenCalled();
+      
+      // Verify activity has entityId but no resolved fields
+      const activityData = mockAdd.mock.calls[0][0];
+      expect(activityData.entityId).toBe('entity_nonexistent');
+      expect(activityData.schoolId).toBeUndefined();
+      expect(activityData.displayName).toBeUndefined();
+    });
+
+    it('should use Contact Adapter for different entity types', async () => {
+      const entityTypes: Array<'institution' | 'family' | 'person'> = ['institution', 'family', 'person'];
+      
+      for (const entityType of entityTypes) {
+        vi.clearAllMocks();
+        
+        const mockContact: ResolvedContact = {
+          id: `entity_${entityType}`,
+          name: `Test ${entityType}`,
+          slug: `test-${entityType}`,
+          contacts: [],
+          entityType,
+          entityId: `entity_${entityType}`,
+          migrationStatus: 'migrated',
+          tags: [],
+        };
+
+        (resolveContact as any).mockResolvedValue(mockContact);
+
+        const mockAdd = vi.fn().mockResolvedValue({ id: `activity_${entityType}` });
+        (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+        await logActivity({
+          organizationId: 'org_1',
+          workspaceId: 'workspace_1',
+          entityId: `entity_${entityType}`,
+          userId: 'user_1',
+          type: 'note',
+          source: 'manual',
+          description: `Test ${entityType} activity`,
+        });
+
+        // Verify entityType is correctly set
+        expect(mockAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityType,
+            displayName: `Test ${entityType}`,
+          })
+        );
+      }
+    });
+
+    it('should handle both identifiers provided with Contact Adapter', async () => {
+      const mockContact: ResolvedContact = {
+        id: 'entity_both',
+        name: 'Both Identifiers School',
+        slug: 'both-identifiers',
+        contacts: [],
+        entityType: 'institution',
+        entityId: 'entity_both',
+        migrationStatus: 'migrated',
+        schoolData: {
+          id: 'school_both',
+          name: 'Both Identifiers School',
+          slug: 'both-identifiers',
+        } as any,
+        tags: [],
+      };
+
+      (resolveContact as any).mockResolvedValue(mockContact);
+
+      const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_both' });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+      await logActivity({
+        organizationId: 'org_1',
+        workspaceId: 'workspace_1',
+        entityId: 'entity_both',
+        schoolId: 'school_both',
+        userId: 'user_1',
+        type: 'note',
+        source: 'manual',
+        description: 'Test with both identifiers',
+      });
+
+      // Verify resolveContact was called with both identifiers
+      expect(resolveContact).toHaveBeenCalledWith(
+        { entityId: 'entity_both', schoolId: 'school_both' },
+        'workspace_1'
+      );
+
+      // Verify both identifiers are preserved
+      expect(mockAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: 'entity_both',
+          schoolId: 'school_both',
+          entityType: 'institution',
+        })
+      );
+    });
+
+    it('should handle workspace-scoped queries through Contact Adapter', async () => {
+      const mockActivities = [
+        {
+          id: 'activity_ws1',
+          entityId: 'entity_123',
+          workspaceId: 'workspace_1',
+          type: 'note',
+          description: 'Workspace 1 activity',
+          timestamp: new Date().toISOString(),
+        },
+      ];
+
+      const mockGet = vi.fn().mockResolvedValue({
+        docs: mockActivities.map(a => ({ id: a.id, data: () => a })),
+      });
+
+      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+      const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+      (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
+
+      const result = await getActivitiesForContact(
+        { entityId: 'entity_123' },
+        'workspace_1'
+      );
+
+      // Verify workspace boundary is enforced
+      expect(mockWhere1).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
+      expect(result).toHaveLength(1);
+      expect(result[0].workspaceId).toBe('workspace_1');
+    });
+  });
+
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle missing workspaceId gracefully', async () => {
+      const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_no_workspace' });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+      await logActivity({
+        organizationId: 'org_1',
+        workspaceId: undefined as any,
+        entityId: 'entity_123',
+        userId: 'user_1',
+        type: 'note',
+        source: 'manual',
+        description: 'Test without workspace',
+      });
+
+      // Verify activity was created without contact resolution
+      expect(resolveContact).not.toHaveBeenCalled();
+      expect(mockAdd).toHaveBeenCalled();
+    });
+
+    it('should handle query errors gracefully', async () => {
+      const mockGet = vi.fn().mockRejectedValue(new Error('Firestore error'));
+      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+      const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+      (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
+
+      const result = await getActivitiesForContact(
+        { entityId: 'entity_123' },
+        'workspace_1'
+      );
+
+      // Verify empty array returned on error
+      expect(result).toEqual([]);
+    });
+
+    it('should handle activity types that trigger automations', async () => {
+      const mockContact: ResolvedContact = {
+        id: 'entity_automation',
+        name: 'Automation Test School',
+        slug: 'automation-test',
+        contacts: [],
+        entityType: 'institution',
+        entityId: 'entity_automation',
+        migrationStatus: 'migrated',
+        tags: [],
+      };
+
+      (resolveContact as any).mockResolvedValue(mockContact);
+
+      const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_automation' });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+      // Test activity type that triggers automation
+      await logActivity({
+        organizationId: 'org_1',
+        workspaceId: 'workspace_1',
+        entityId: 'entity_automation',
+        userId: 'user_1',
+        type: 'task_completed',
+        source: 'manual',
+        description: 'Task completed activity',
+      });
+
+      // Verify activity was created with correct type
+      expect(mockAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'task_completed',
+          entityId: 'entity_automation',
+        })
+      );
+    });
+
+    it('should handle activities with metadata', async () => {
+      const mockContact: ResolvedContact = {
+        id: 'entity_metadata',
+        name: 'Metadata Test School',
+        slug: 'metadata-test',
+        contacts: [],
+        entityType: 'institution',
+        entityId: 'entity_metadata',
+        migrationStatus: 'migrated',
+        tags: [],
+      };
+
+      (resolveContact as any).mockResolvedValue(mockContact);
+
+      const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_metadata' });
+      (adminDb.collection as any).mockReturnValue({ add: mockAdd });
+
+      const metadata = {
+        formId: 'form_123',
+        submissionId: 'submission_456',
+        customField: 'custom value',
+      };
+
+      await logActivity({
+        organizationId: 'org_1',
+        workspaceId: 'workspace_1',
+        entityId: 'entity_metadata',
+        userId: 'user_1',
+        type: 'form_submission',
+        source: 'manual',
+        description: 'Form submission activity',
+        metadata,
+      });
+
+      // Verify metadata is preserved
+      expect(mockAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata,
+        })
+      );
+    });
+
+    it('should handle default limit in getActivitiesForContact', async () => {
+      const mockActivities = Array.from({ length: 50 }, (_, i) => ({
+        id: `activity_${i}`,
+        entityId: 'entity_123',
+        workspaceId: 'workspace_1',
+        type: 'note',
+        description: `Test note ${i}`,
+        timestamp: new Date().toISOString(),
+      }));
+
+      const mockGet = vi.fn().mockResolvedValue({
+        docs: mockActivities.map(a => ({ id: a.id, data: () => a })),
+      });
+
+      const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+      const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
+      const mockWhere2 = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+      (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
+
+      // Call without limit parameter (should use default of 50)
+      const result = await getActivitiesForContact(
+        { entityId: 'entity_123' },
+        'workspace_1'
+      );
+
+      // Verify default limit of 50 was applied
+      expect(mockLimit).toHaveBeenCalledWith(50);
+      expect(result).toHaveLength(50);
     });
   });
 });

@@ -111,6 +111,7 @@ const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: stri
     visit: { label: 'Campus Visit', icon: MapPin, color: 'text-blue-500 bg-blue-50' },
     document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-50' },
     training: { label: 'Staff Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-50' },
+    follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-50' },
     general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-slate-50' }
 };
 

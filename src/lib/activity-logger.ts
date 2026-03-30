@@ -20,13 +20,13 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         let finalData = { ...activityData };
         
         // Initialize dual-write fields
-        let schoolId: string | undefined = activityData.schoolId;
-        let schoolName: string | undefined = activityData.schoolName;
-        let schoolSlug: string | undefined = activityData.schoolSlug;
-        let entityId: string | undefined = activityData.entityId;
-        let entityType: 'institution' | 'family' | 'person' | undefined = activityData.entityType;
-        let displayName: string | undefined = activityData.displayName;
-        let entitySlug: string | undefined = activityData.entitySlug;
+        let schoolId: string | null | undefined = activityData.schoolId;
+        let schoolName: string | null | undefined = activityData.schoolName;
+        let schoolSlug: string | null | undefined = activityData.schoolSlug;
+        let entityId: string | null | undefined = activityData.entityId;
+        let entityType: 'institution' | 'family' | 'person' | null | undefined = activityData.entityType;
+        let displayName: string | null | undefined = activityData.displayName;
+        let entitySlug: string | null | undefined = activityData.entitySlug;
         
         // Dual-write resolution logic (Requirements 4.1, 25.3)
         if (activityData.workspaceId) {

@@ -27,6 +27,15 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
+/**
+ * InvoiceStudioClient - Invoice Editor UI
+ * 
+ * Entity Resolution: Contact information is resolved server-side via the Contact Adapter
+ * during invoice generation. The UI displays and preserves the entity information
+ * (schoolName, entityId, entityType) from the invoice record.
+ * 
+ * Requirements: 8.2, 8.3, 23.1
+ */
 export default function InvoiceStudioClient() {
     const params = useParams();
     const router = useRouter();

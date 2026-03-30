@@ -186,8 +186,15 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
 /**
  * Saves agreement progress (Partial Submission).
+ * Updated to support dual-write pattern with entityId (Requirement 16.5)
  */
-export async function saveAgreementProgressAction(pdfId: string, schoolId: string, formData: any) {
+export async function saveAgreementProgressAction(
+    pdfId: string, 
+    schoolId: string, 
+    formData: any,
+    entityId?: string | null,
+    entityType?: 'institution' | 'family' | 'person'
+) {
     try {
         const timestamp = new Date().toISOString();
         const pdfRef = adminDb.collection('pdfs').doc(pdfId);
@@ -220,9 +227,12 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
         let submissionId = contractData?.submissionId;
         
         if (!submissionId) {
+            // Dual-write: populate both schoolId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
                 schoolId,
+                entityId: entityId || null,
+                entityType: entityType || null,
                 formData,
                 submittedAt: timestamp,
                 status: 'partial'
@@ -246,8 +256,15 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
 
 /**
  * Finalizes an agreement (Full Execution).
+ * Updated to support dual-write pattern with entityId (Requirement 16.5)
  */
-export async function finalizeAgreementAction(pdfId: string, schoolId: string, formData: any) {
+export async function finalizeAgreementAction(
+    pdfId: string, 
+    schoolId: string, 
+    formData: any,
+    entityId?: string | null,
+    entityType?: 'institution' | 'family' | 'person'
+) {
     try {
         const timestamp = new Date().toISOString();
         const pdfRef = adminDb.collection('pdfs').doc(pdfId);
@@ -280,9 +297,12 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         }
 
         if (!submissionId) {
+            // Dual-write: populate both schoolId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
                 schoolId,
+                entityId: entityId || null,
+                entityType: entityType || null,
                 formData,
                 submittedAt: timestamp,
                 status: 'submitted'
@@ -341,6 +361,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                     },
                     attachments: attachments.length > 0 ? attachments : undefined,
                     schoolId,
+                    entityId, // Pass entityId for dual-write (Requirement 16.5)
                     workspaceId // Pass workspace context (Requirement 11)
                 });
             }
@@ -364,8 +385,10 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
             });
         }
 
+        // Use entityId for activity logging if available (Requirement 16.1)
         await logActivity({
             schoolId,
+            entityId: entityId || null,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
             workspaceId: pdfData.workspaceIds[0] || 'onboarding',
@@ -499,19 +522,39 @@ export async function deleteSubmissions(pdfId: string, submissionIds: string[], 
 
 /**
  * Permanently purges specific contract submissions and resets school legal status if necessary.
+ * Updated to support entityId (Requirements 25.1, 25.2, 16.4)
  */
-export async function purgeContractAction(schoolId: string, submissionIds: string[], userId: string) {
+export async function purgeContractAction(
+    identifier: { schoolId?: string; entityId?: string },
+    submissionIds: string[],
+    userId: string
+) {
     try {
         const db = adminDb;
         const batch = db.batch();
         const timestamp = new Date().toISOString();
 
-        // 1. Locate the contract for this school
-        const contractQuery = await db.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+        // Support both schoolId and entityId (Requirement 25.1)
+        const schoolId = identifier.schoolId;
+        const entityId = identifier.entityId;
+
+        if (!schoolId && !entityId) {
+            return { success: false, error: 'Either schoolId or entityId must be provided' };
+        }
+
+        // 1. Locate the contract for this contact
+        // Prefer entityId, fallback to schoolId (Requirement 25.2)
+        let contractQuery;
+        if (entityId) {
+            contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
+        } else if (schoolId) {
+            contractQuery = await db.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+        }
+
         let currentSubmissionId = null;
         let contractRef = null;
 
-        if (!contractQuery.empty) {
+        if (contractQuery && !contractQuery.empty) {
             contractRef = contractQuery.docs[0].ref;
             currentSubmissionId = contractQuery.docs[0].data().submissionId;
         }
@@ -547,7 +590,8 @@ export async function purgeContractAction(schoolId: string, submissionIds: strin
         await batch.commit();
 
         await logActivity({
-            schoolId,
+            schoolId: schoolId || undefined,
+            entityId: entityId || undefined,
             organizationId: 'default',
             userId,
             workspaceId: 'onboarding',

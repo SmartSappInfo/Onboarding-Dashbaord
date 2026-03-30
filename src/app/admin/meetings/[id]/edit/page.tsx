@@ -177,10 +177,14 @@ export default function EditMeetingPage() {
             return;
         }
 
+        // Preserve entityId fields during edit (Requirement 9.2)
         const meetingData = {
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
+            // Preserve existing entityId from meeting (migration field)
+            entityId: meeting?.entityId || null,
+            entityType: meeting?.entityType || null,
             // Synchronize visibility with the school
             workspaceIds: data.school.workspaceIds || [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
@@ -205,6 +209,8 @@ export default function EditMeetingPage() {
         logActivity({
             organizationId: activeOrganizationId,
             schoolId: data.school.id,
+            entityId: meetingData.entityId,
+            entityType: meetingData.entityType,
             userId: user.uid,
             workspaceId: activeWorkspaceId,
             type: 'school_updated',

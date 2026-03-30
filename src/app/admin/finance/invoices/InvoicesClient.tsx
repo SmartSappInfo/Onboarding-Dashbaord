@@ -63,6 +63,15 @@ import Link from 'next/link';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+/**
+ * InvoicesClient - Invoice Registry UI
+ * 
+ * Entity Resolution: Contact information (schoolName, entityId, entityType) is resolved
+ * server-side via the Contact Adapter during invoice generation (see billing-actions.ts).
+ * The UI displays the pre-resolved entity information from the invoice record.
+ * 
+ * Requirements: 8.3, 8.5, 23.1
+ */
 export default function InvoicesClient() {
     const firestore = useFirestore();
     const router = useRouter();

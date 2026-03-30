@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
 import { syncDenormalizedFieldsToWorkspaceEntities, extractDenormalizedFields } from './denormalization-sync';
+import { logEntityCreated, logEntityUpdated, logEntityDeleted } from './entity-audit';
 import type { Entity, EntityType, InstitutionData, FamilyData, PersonData } from './types';
 
 /**
@@ -71,6 +72,8 @@ interface CreateEntityInput {
   organizationId: string;
   entityType: EntityType;
   name: string;
+  slug?: string; // Optional slug for institutions
+  globalTags?: string[]; // Optional global identity tags
   contacts?: Array<{
     name: string;
     phone: string;
@@ -82,6 +85,8 @@ interface CreateEntityInput {
   familyData?: FamilyData;
   personData?: PersonData;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   workspaceId: string;
 }
 
@@ -162,7 +167,19 @@ export async function createEntityAction(input: CreateEntityInput) {
 
     const entityRef = await adminDb.collection('entities').add(entityData);
 
-    // 6. Log activity
+    // 6. Log audit trail (Requirement 29.4)
+    await logEntityCreated({
+      organizationId: input.organizationId,
+      entityId: entityRef.id,
+      entityType: input.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      newValue: { ...entityData, id: entityRef.id },
+      operationContext: 'manual_edit',
+    });
+
+    // 7. Log activity
     await logActivity({
       organizationId: input.organizationId,
       workspaceId: input.workspaceId,
@@ -211,6 +228,8 @@ interface UpdateEntityInput {
   familyData?: Partial<FamilyData>;
   personData?: Partial<PersonData>;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   workspaceId: string;
 }
 
@@ -282,13 +301,27 @@ export async function updateEntityAction(input: UpdateEntityInput) {
     // 3. Update entity document
     await entityRef.update(updates);
 
-    // 4. Trigger denormalization sync to workspace_entities
+    // 4. Log audit trail (Requirement 29.4)
+    const updatedEntity = { ...entity, ...updates };
+    await logEntityUpdated({
+      organizationId: entity.organizationId,
+      entityId: input.entityId,
+      entityType: entity.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      oldValue: entity,
+      newValue: updatedEntity,
+      changedFields: Object.keys(updates),
+      operationContext: 'manual_edit',
+    });
+
+    // 5. Trigger denormalization sync to workspace_entities
     // Check if fields that need denormalization have changed
     const needsDenormSync = updates.name !== undefined || updates.contacts !== undefined;
     
     if (needsDenormSync) {
-      const updatedEntity = { ...entity, ...updates } as Entity;
-      const denormalizedFields = extractDenormalizedFields(updatedEntity);
+      const denormalizedFields = await extractDenormalizedFields(updatedEntity as Entity);
       
       await syncDenormalizedFieldsToWorkspaceEntities(
         input.entityId,
@@ -296,7 +329,7 @@ export async function updateEntityAction(input: UpdateEntityInput) {
       );
     }
 
-    // 5. Log activity
+    // 6. Log activity
     await logActivity({
       organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
@@ -332,6 +365,8 @@ export async function updateEntityAction(input: UpdateEntityInput) {
 interface DeleteEntityInput {
   entityId: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   workspaceId: string;
 }
 
@@ -364,9 +399,21 @@ export async function deleteEntityAction(input: DeleteEntityInput) {
       updatedAt: timestamp,
     });
 
+    // 3. Log audit trail (Requirement 29.4)
+    await logEntityDeleted({
+      organizationId: entity.organizationId,
+      entityId: input.entityId,
+      entityType: entity.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      oldValue: entity,
+      operationContext: 'manual_edit',
+    });
+
     // Note: We do NOT delete workspace_entities records to preserve history
 
-    // 3. Log activity
+    // 4. Log activity
     await logActivity({
       organizationId: entity.organizationId,
       workspaceId: input.workspaceId,

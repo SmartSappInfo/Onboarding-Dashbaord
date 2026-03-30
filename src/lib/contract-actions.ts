@@ -148,10 +148,21 @@ export async function sendContractAction(input: {
 /**
  * Permanently purges a contract record and its associated submission from the system.
  * Prevents orphan rows in the Doc Signing module.
+ * Updated to support entityId (Requirements 25.1, 25.2)
  */
-export async function deleteContractAction(contractId: string, pdfId: string, submissionId: string | null, schoolId: string, userId: string) {
+export async function deleteContractAction(
+    contractId: string,
+    pdfId: string,
+    submissionId: string | null,
+    identifier: { schoolId?: string; entityId?: string },
+    userId: string
+) {
     try {
         const batch = adminDb.batch();
+        
+        // Support both schoolId and entityId (Requirement 25.1)
+        const schoolId = identifier.schoolId;
+        const entityId = identifier.entityId;
         
         // 1. Delete primary Contract doc
         batch.delete(adminDb.collection('contracts').doc(contractId));
@@ -163,9 +174,10 @@ export async function deleteContractAction(contractId: string, pdfId: string, su
 
         await batch.commit();
 
-        // 3. Log activity for audit trail
+        // 3. Log activity for audit trail with both identifiers (Requirement 25.2)
         await logActivity({
-            schoolId,
+            schoolId: schoolId || undefined,
+            entityId: entityId || undefined,
             organizationId: 'default',
             userId,
             workspaceId: "onboarding",

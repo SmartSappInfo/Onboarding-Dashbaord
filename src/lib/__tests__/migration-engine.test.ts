@@ -68,7 +68,6 @@ describe('Migration Engine - Unit Tests', () => {
       const mockGetDocs = vi.fn().mockResolvedValue(createMockSnapshot(mockRecords));
       const mockCollection = vi.fn().mockReturnValue({});
       
-      vi.mocked(mockFirestore.collection).mockReturnValue({} as any);
       vi.spyOn(engine as any, 'fetch').mockImplementation(async () => {
         return {
           collection: 'tasks',

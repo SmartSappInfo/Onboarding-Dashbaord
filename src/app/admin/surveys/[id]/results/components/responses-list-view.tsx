@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import type { Survey, SurveyResponse, SurveyQuestion } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyQuestion, ResolvedContact } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +32,60 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth, useUser } from '@/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { deleteSurveyResponses } from '@/lib/survey-actions';
+import { resolveContact } from '@/lib/contact-adapter';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
+
+/**
+ * Component to display entity information for a survey response
+ * Uses Contact Adapter to resolve entity data from either entityId or schoolId
+ * Requirements: 13.4, 23.1
+ */
+function EntityInfo({ response }: { response: SurveyResponse }) {
+    const { activeWorkspaceId } = useWorkspace();
+    const [contact, setContact] = React.useState<ResolvedContact | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        async function loadContact() {
+            if (!response.entityId && !response.schoolId) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const resolved = await resolveContact(
+                    { entityId: response.entityId, schoolId: response.schoolId },
+                    activeWorkspaceId
+                );
+                setContact(resolved);
+            } catch (error) {
+                console.error('Failed to resolve contact:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        loadContact();
+    }, [response.entityId, response.schoolId, activeWorkspaceId]);
+
+    if (isLoading) {
+        return <Skeleton className="h-5 w-24" />;
+    }
+
+    if (!contact) {
+        return <span className="text-xs text-muted-foreground">-</span>;
+    }
+
+    return (
+        <div className="flex items-center gap-2">
+            <Building2 className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs font-medium truncate max-w-[150px]" title={contact.name}>
+                {contact.name}
+            </span>
+        </div>
+    );
+}
 
 function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, responses: SurveyResponse[], isLoading: boolean }) {
     const router = useRouter();
@@ -158,6 +211,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                             />
                         </TableHead>
                         <TableHead className="sticky left-[50px] bg-muted z-20 w-[200px] whitespace-nowrap text-[10px] font-bold uppercase tracking-widest py-4">Submitted At</TableHead>
+                        <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest py-4">Contact</TableHead>
                         {survey.scoringEnabled && (
                             <TableHead className="w-[100px] text-center text-[10px] font-bold uppercase tracking-widest py-4">Score</TableHead>
                         )}
@@ -173,6 +227,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                     <TableRow key={i}>
                         <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                         <TableCell className="sticky left-[50px] bg-card"><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         {survey.scoringEnabled && <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>}
                         {questions.map(q => (
                             <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
@@ -191,6 +246,9 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                         </TableCell>
                         <TableCell className="sticky left-[50px] bg-background group-hover:bg-muted/30 font-medium whitespace-nowrap border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                             <span className="text-xs">{format(new Date(response.submittedAt), "MMM d, yyyy · p")}</span>
+                        </TableCell>
+                        <TableCell>
+                            <EntityInfo response={response} />
                         </TableCell>
                         {survey.scoringEnabled && (
                             <TableCell className="text-center font-bold">
@@ -232,7 +290,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                     ))
                 ) : (
                     <TableRow>
-                    <TableCell colSpan={questions.length + 4} className="h-48 text-center text-muted-foreground italic">
+                    <TableCell colSpan={questions.length + 5} className="h-48 text-center text-muted-foreground italic">
                         No responses received for this survey yet.
                     </TableCell>
                     </TableRow>

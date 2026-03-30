@@ -77,11 +77,11 @@ vi.mock('firebase/firestore', () => {
       if (docRef._collectionName === 'entities') {
         const entityData = mockEntities.get(docRef._docId);
         return {
-          exists: () => !!entityData,
-          data: () => entityData,
+          exists: (): boolean => !!entityData,
+          data: (): any => entityData,
         };
       }
-      return { exists: () => false };
+      return { exists: (): boolean => false };
     }),
     query: vi.fn((collectionRef: any, ...constraints: any[]) => collectionRef),
     where: vi.fn(() => ({})),

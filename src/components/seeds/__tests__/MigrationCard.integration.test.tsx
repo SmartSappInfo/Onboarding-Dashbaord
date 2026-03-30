@@ -22,10 +22,10 @@ import type {
 
 describe('MigrationCard Integration Tests', () => {
   const mockHandlers = {
-    onFetch: vi.fn<[], Promise<FetchResult>>(),
-    onEnrichAndRestore: vi.fn<[], Promise<MigrationResult>>(),
-    onVerify: vi.fn<[], Promise<VerificationResult>>(),
-    onRollback: vi.fn<[], Promise<RollbackResult>>()
+    onFetch: vi.fn(),
+    onEnrichAndRestore: vi.fn(),
+    onVerify: vi.fn(),
+    onRollback: vi.fn()
   };
 
   const defaultProps = {

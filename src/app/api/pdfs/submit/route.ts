@@ -12,7 +12,7 @@ import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
-    const { pdfId, formData, schoolId: submittedSchoolId } = await req.json();
+    const { pdfId, formData, schoolId: submittedSchoolId, entityId: submittedEntityId, entityType: submittedEntityType } = await req.json();
 
     if (!pdfId || !formData) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });
@@ -30,17 +30,22 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Form is not published' }, { status: 403 });
     }
 
-    // Determine the target school for contract logic
+    // Determine the target identifiers for contract logic (dual-write support)
     const targetSchoolId = submittedSchoolId || pdfData.schoolId;
+    const targetEntityId = submittedEntityId || pdfData.entityId;
+    const targetEntityType = submittedEntityType || null;
 
     const timestamp = new Date().toISOString();
 
+    // Dual-write: populate both schoolId and entityId (Requirement 16.5)
     const submissionData = {
       pdfId,
       submittedAt: timestamp,
       formData,
       status: 'submitted',
-      schoolId: targetSchoolId || null
+      schoolId: targetSchoolId || null,
+      entityId: targetEntityId || null,
+      entityType: targetEntityType
     };
 
     const submissionRef = await pdfRef.collection('submissions').add(submissionData);
@@ -65,8 +70,10 @@ export async function POST(req: Request) {
                 updatedAt: timestamp
             });
             
+            // Use entityId for activity logging if available (Requirement 16.1)
             await logActivity({
                 schoolId: targetSchoolId,
+                entityId: targetEntityId || null,
                 organizationId: pdfData.organizationId || 'default',
                 userId: null,
                 workspaceId: pdfData.workspaceIds[0] || 'onboarding',
@@ -116,6 +123,7 @@ export async function POST(req: Request) {
                     download_url: result_url
                 },
                 schoolId: targetSchoolId || undefined,
+                entityId: targetEntityId || undefined, // Pass entityId for dual-write (Requirement 16.5)
                 workspaceId // Pass workspace context (Requirement 11)
             });
         }
@@ -144,6 +152,7 @@ export async function POST(req: Request) {
     if (!pdfData.isContractDocument || !targetSchoolId) {
         await logActivity({
             schoolId: targetSchoolId || '',
+            entityId: targetEntityId || null,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
             workspaceId: 'onboarding',

@@ -100,7 +100,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
         
         try {
             // High-fidelity server-side purge
-            const result = await purgeContractAction(school.id, selectedSubIds, 'current-user-placeholder');
+            const result = await purgeContractAction({ schoolId: school.id }, selectedSubIds, 'current-user-placeholder');
             
             if (result.success) {
                 toast({ title: 'Records Purged', description: 'Legal history has been successfully sanitized.' });

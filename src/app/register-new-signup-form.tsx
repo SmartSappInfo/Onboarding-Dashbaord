@@ -20,7 +20,8 @@ import {
     Loader2, 
     Target
 } from "lucide-react";
-import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { handleSignupAction } from '@/lib/signup-actions';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -205,54 +206,52 @@ export default function NewSchoolSignupForm() {
       return;
     }
 
-    // 2. Save to Firestore
+    // 2. Create entity and workspace_entity records (Requirements 10.1, 10.2, 10.3)
     if (!firestore) return;
-
-    const slug = data.organization
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
 
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    const schoolData = {
-      name: data.organization,
-      slug,
-      location: data.location,
-      nominalRoll: data.nominalRoll,
-      moduleRequestNotes: data.modules,
-      implementationDate: data.implementationDate.toISOString(),
-      referee: data.referee,
-      includeDroneFootage: data.includeDroneFootage,
-      stage: { id: 'welcome', name: 'Welcome', order: 1 },
-      workspaceIds: ['onboarding'], // Default track for new signups
-      focalPersons: data.focalPersons,
-      // Financial Data
-      billingAddress: data.billingAddress,
-      currency: data.currency,
-      subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
-      subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
-      subscriptionRate: data.subscriptionRate,
-      discountPercentage: data.discountPercentage,
-      arrearsBalance: data.arrearsBalance,
-      creditBalance: data.creditBalance,
-      additionalEmails: data.notifySchoolEmails,
-      additionalPhones: data.notifySchoolSmsNumbers,
-      status: 'Active',
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      await addDoc(collection(firestore, 'schools'), schoolData);
-      toast({ title: "Registration Successful!", description: "Institutional profile initialized." });
-      form.reset();
+      // Use the new signup action that creates entity + workspace_entity
+      // This does NOT create legacy school records (Requirement 10.3)
+      const result = await handleSignupAction({
+        organizationId: 'default_org', // TODO: Get from user context
+        workspaceId: 'onboarding', // Default workspace for new signups
+        name: data.organization,
+        location: data.location,
+        focalPersons: data.focalPersons,
+        nominalRoll: data.nominalRoll,
+        billingAddress: data.billingAddress,
+        currency: data.currency,
+        subscriptionPackageId: data.subscriptionPackageId === 'none' ? undefined : data.subscriptionPackageId,
+        subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
+        subscriptionRate: data.subscriptionRate,
+        discountPercentage: data.discountPercentage,
+        arrearsBalance: data.arrearsBalance,
+        creditBalance: data.creditBalance,
+        implementationDate: data.implementationDate.toISOString(),
+        referee: data.referee,
+        includeDroneFootage: data.includeDroneFootage,
+        pipelineId: 'default_pipeline', // TODO: Get default pipeline for onboarding workspace
+        stageId: 'welcome', // Default stage for new signups
+        userId: 'system', // TODO: Get from user context if available
+      });
+
+      if (result.success) {
+        toast({ 
+          title: "Registration Successful!", 
+          description: "Institutional profile initialized with entity architecture." 
+        });
+        form.reset();
+      } else {
+        throw new Error(result.error || 'Failed to create signup');
+      }
     } catch (error: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'schools',
-          operation: 'create',
-          requestResourceData: schoolData,
-      }));
+      toast({
+        variant: "destructive",
+        title: "Registration Failed",
+        description: error.message || "Could not complete signup. Please try again.",
+      });
     }
   };
 

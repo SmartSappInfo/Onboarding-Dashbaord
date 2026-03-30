@@ -69,6 +69,9 @@ const formSchema = z.object({
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  // New entityId fields for dual-write
+  entityId: z.string().optional(),
+  entityType: z.enum(['institution', 'family', 'person']).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -112,6 +115,8 @@ export default function NewMeetingPage() {
       adminAlertSpecificUserIds: [],
       adminAlertEmailTemplateId: '',
       adminAlertSmsTemplateId: '',
+      entityId: undefined,
+      entityType: undefined,
     },
   });
 
@@ -149,10 +154,15 @@ export default function NewMeetingPage() {
             return;
         }
         
+        // Dual-write: populate both legacy schoolId and new entityId fields
         const meetingData = {
+            // Legacy fields (backward compatibility)
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
+            // New entityId fields (if school is migrated)
+            entityId: data.school.entityId || null,
+            entityType: (data.school.entityId ? 'institution' : null) as 'institution' | null,
             // Inherit multi-workspace visibility from the school
             workspaceIds: data.school.workspaceIds || [activeWorkspaceId], 
             meetingTime: data.meetingTime.toISOString(),
@@ -176,6 +186,8 @@ export default function NewMeetingPage() {
         logActivity({
             organizationId: activeOrganizationId,
             schoolId: data.school.id,
+            entityId: data.school.entityId || null,
+            entityType: data.school.entityId ? 'institution' : null,
             userId: user.uid,
             workspaceId: activeWorkspaceId,
             type: 'meeting_created',

@@ -4,6 +4,11 @@ import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
 import { revalidatePath } from 'next/cache';
+import { 
+  logWorkspaceEntityCreated, 
+  logWorkspaceEntityUpdated, 
+  logWorkspaceEntityDeleted 
+} from './entity-audit';
 import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
 
 /**
@@ -44,6 +49,8 @@ interface LinkEntityToWorkspaceInput {
     email: string | null;
   };
   userId: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 /**
@@ -185,7 +192,20 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 
     const workspaceEntityRef = await adminDb.collection('workspace_entities').add(workspaceEntityData);
 
-    // 9. Lock workspace contactScope if this is the first entity
+    // 9. Log audit trail (Requirement 29.4)
+    await logWorkspaceEntityCreated({
+      organizationId: entity.organizationId,
+      workspaceId: input.workspaceId,
+      entityId: input.entityId,
+      entityType: entity.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      newValue: { ...workspaceEntityData, id: workspaceEntityRef.id },
+      operationContext: 'manual_edit',
+    });
+
+    // 10. Lock workspace contactScope if this is the first entity
     if (isFirstEntity) {
       await workspaceRef.update({
         scopeLocked: true,
@@ -208,7 +228,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       });
     }
 
-    // 10. Log entity linked activity
+    // 11. Log entity linked activity
     await logActivity({
       organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
@@ -249,6 +269,8 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 interface UnlinkEntityFromWorkspaceInput {
   workspaceEntityId: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 /**
@@ -284,7 +306,20 @@ export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWor
     // 3. Delete workspace_entities document
     await workspaceEntityRef.delete();
 
-    // 4. Log activity
+    // 4. Log audit trail (Requirement 29.4)
+    await logWorkspaceEntityDeleted({
+      organizationId: workspaceEntity.organizationId,
+      workspaceId: workspaceEntity.workspaceId,
+      entityId: workspaceEntity.entityId,
+      entityType: workspaceEntity.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      oldValue: workspaceEntity,
+      operationContext: 'manual_edit',
+    });
+
+    // 5. Log activity
     await logActivity({
       organizationId: workspaceEntity.organizationId,
       workspaceId: workspaceEntity.workspaceId,
@@ -332,6 +367,8 @@ interface UpdateWorkspaceEntityInput {
   status?: 'active' | 'archived';
   workspaceTags?: string[];
   userId: string;
+  userName?: string;
+  userEmail?: string;
 }
 
 /**
@@ -394,12 +431,28 @@ export async function updateWorkspaceEntityAction(input: UpdateWorkspaceEntityIn
     // 3. Update workspace_entities document
     await workspaceEntityRef.update(updates);
 
-    // 4. Get entity details for logging
+    // 4. Log audit trail (Requirement 29.4)
+    const updatedWorkspaceEntity = { ...workspaceEntity, ...updates };
+    await logWorkspaceEntityUpdated({
+      organizationId: workspaceEntity.organizationId,
+      workspaceId: workspaceEntity.workspaceId,
+      entityId: workspaceEntity.entityId,
+      entityType: workspaceEntity.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      oldValue: workspaceEntity,
+      newValue: updatedWorkspaceEntity,
+      changedFields: Object.keys(updates).filter(k => k !== 'updatedAt'),
+      operationContext: 'manual_edit',
+    });
+
+    // 5. Get entity details for logging
     const entityRef = adminDb.collection('entities').doc(workspaceEntity.entityId);
     const entitySnap = await entityRef.get();
     const entity = entitySnap.exists ? ({ id: entitySnap.id, ...entitySnap.data() } as Entity) : null;
 
-    // 5. Log activity
+    // 6. Log activity
     await logActivity({
       organizationId: workspaceEntity.organizationId,
       workspaceId: workspaceEntity.workspaceId,

@@ -151,6 +151,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-02-10T14:20:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const entity = transformSchoolToEntity(school);
@@ -174,6 +175,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2022-05-15T09:00:00Z',
         updatedAt: '2023-12-31T23:59:59Z',
         schoolStatus: 'Archived',
+      pipelineId: 'pipeline-1',
       };
 
       const entity = transformSchoolToEntity(school);
@@ -193,6 +195,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2023-08-20T11:45:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const entity = transformSchoolToEntity(school);
@@ -206,12 +209,14 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         id: 'school-5',
         organizationId: 'org-1',
         name: 'Test School!!!',
+        slug: 'test-school',
         workspaceIds: ['workspace-1'],
         status: 'Active',
         focalPersons: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const entity = transformSchoolToEntity(school);
@@ -233,6 +238,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-01-05T08:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const entity = transformSchoolToEntity(school);
@@ -349,6 +355,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const workspaceEntities = transformSchoolToWorkspaceEntities(school, 'entity-1');
@@ -373,6 +380,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const workspaceEntities = transformSchoolToWorkspaceEntities(school, 'entity-1');
@@ -408,6 +416,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const workspaceEntities = transformSchoolToWorkspaceEntities(school, 'entity-1');
@@ -435,6 +444,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
         schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
       };
 
       const entity1 = transformSchoolToEntity(school);
@@ -533,6 +543,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
           schoolStatus: 'Active',
+        pipelineId: 'pipeline-1',
         },
         {
           id: 'school-2',
@@ -545,6 +556,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
           schoolStatus: 'Active',
+        pipelineId: 'pipeline-1',
         },
         {
           id: 'school-3',
@@ -557,6 +569,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
           schoolStatus: 'Archived',
+        pipelineId: 'pipeline-1',
         },
       ];
 

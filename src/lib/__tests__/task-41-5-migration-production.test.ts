@@ -159,6 +159,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       createdAt: '2024-02-10T14:20:00Z',
       updatedAt: timestamp,
       schoolStatus: 'Active',
+      pipelineId: 'pipeline-1',
     };
 
     // School 3: Archived school (status edge case)

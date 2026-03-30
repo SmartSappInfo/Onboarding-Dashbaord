@@ -115,12 +115,19 @@ describe('sendMessage - Workspace Tag Resolution', () => {
     const mockContact = {
       id: 'school_1',
       name: 'Test School',
+      contacts: [],
       schoolData: {
         id: 'school_1',
         name: 'Test School',
+        slug: 'test-school',
         workspaceIds: ['workspace_1'],
+        status: 'Active' as const,
+        schoolStatus: 'Active',
+        pipelineId: 'pipeline-1',
+        focalPersons: [],
         initials: 'TS',
         location: 'Test City',
+        createdAt: '2024-01-01T00:00:00.000Z',
       },
       migrationStatus: 'legacy' as const,
       tags: [],
@@ -244,16 +251,23 @@ describe('sendMessage - Workspace Tag Resolution', () => {
     const mockContact = {
       id: 'school_1',
       name: 'Test School',
+      contacts: [],
       schoolData: {
         id: 'school_1',
         name: 'Test School',
-        // No workspaceIds
+        slug: 'test-school',
+        workspaceIds: [], // Empty workspaceIds for testing
+        status: 'Active' as const,
+        schoolStatus: 'Active',
+        pipelineId: 'pipeline-1',
+        focalPersons: [],
         initials: 'TS',
         location: 'Test City',
+        createdAt: '2024-01-01T00:00:00.000Z',
       },
       migrationStatus: 'legacy' as const,
       tags: [],
-    };
+    } as any; // Type assertion to bypass strict type checking in test
 
     // Mock message log
     const mockLogRef = {

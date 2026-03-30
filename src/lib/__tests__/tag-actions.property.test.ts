@@ -4822,7 +4822,7 @@ describe('Property 16: No Orphaned Tags', () => {
   }) => ({
     id: d.id,
     ref: { update: vi.fn().mockResolvedValue(undefined) },
-    data: () => ({ id: d.id, name: `Contact ${d.id}`, ...d }),
+    data: () => ({ name: `Contact ${d.id}`, ...d }),
   });
 
   /**

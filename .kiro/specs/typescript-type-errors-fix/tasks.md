@@ -1,0 +1,107 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - TypeScript Compilation Failures
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the 312 type errors exist
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases - specific files with known type errors
+  - Test that TypeScript compiler reports errors for files with type mismatches (from Bug Condition in design)
+  - The test assertions should verify:
+    - assignedTo: null causes type error (null not assignable to type)
+    - ResolvedContact without tags causes missing property error
+    - School with workspaceId causes excess property error
+    - Import firestore causes module export error
+    - entityId: null causes type error (null not in union)
+    - TaskCategory 'follow_up' causes literal type mismatch
+    - SchoolStatusState 'archived' (lowercase) causes type comparison error
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found to understand root cause (e.g., "assignedTo: null in WorkspaceEntity causes 'Type null is not assignable' error")
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Runtime Behavior and Type Inference Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for files that currently compile successfully
+  - Write property-based tests capturing observed behavior patterns from Preservation Requirements:
+    - Test logic and assertions continue to work exactly as before
+    - Runtime behavior of all functions remains identical
+    - Business logic in server actions and utilities functions the same way
+    - Data structures created at runtime have the same shape
+    - Null/undefined handling in runtime code works the same way
+    - Type inference for correctly typed code remains accurate
+    - Optional property handling continues to work
+    - Union type behavior remains consistent
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [x] 3. Fix TypeScript type errors
+
+  - [x] 3.1 Phase 1: Core Type Definition Updates (src/lib/types.ts)
+    - Update WorkspaceEntity.assignedTo to allow null: `assignedTo?: { userId: string | null; name: string | null; email: string | null; } | null`
+    - Make ResolvedContact.tags optional: `tags?: string[]`
+    - Add null to nullable property unions (entityId, entityType, schoolId): change `string | undefined` to `string | null | undefined`
+    - Add missing properties to School type: `workspaceId?: string`, `updatedAt?: string`
+    - Add 'follow_up' to TaskCategory: `'call' | 'visit' | 'document' | 'training' | 'follow_up' | 'general'`
+    - Fix SchoolStatusState to include lowercase 'archived' or update code to use 'Archived'
+    - Update ContactIdentifier type to allow null for schoolId and other nullable properties
+    - _Bug_Condition: isBugCondition(code) where typeChecker.getDiagnostics(code).length > 0 AND diagnostics include type assignment errors_
+    - _Expected_Behavior: typeChecker.getDiagnostics(code_fixed).length === 0 for all files with type errors_
+    - _Preservation: All code that currently compiles successfully remains unaffected_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18_
+
+  - [x] 3.2 Phase 2: Export/Import Fixes
+    - Export firestore from src/firebase/config.ts: `export { firestore }` or `export const firestore = ...`
+    - Export MigrationEngine from src/lib/migration-types.ts (or wherever defined)
+    - Import resolveContact in src/lib/messaging-actions.ts from contact-adapter
+    - Add scopeLocked to linkEntityToWorkspaceAction return type in src/lib/workspace-entity-actions.ts
+    - _Bug_Condition: Import statements reference non-existent exports causing module resolution errors_
+    - _Expected_Behavior: All imports resolve correctly and modules export required symbols_
+    - _Preservation: Existing imports and exports continue to work_
+    - _Requirements: 2.9, 2.10, 2.11_
+
+  - [x] 3.3 Phase 3: Test Mock Updates
+    - Add tags property to all ResolvedContact mocks in tests (empty array `[]` is acceptable)
+    - Add required properties to School mocks in tests (status, schoolStatus, pipelineId, createdAt)
+    - Add status and statuses to Workspace mocks in tests
+    - Add scopeLocked to linkEntityToWorkspaceAction mock returns
+    - Fix modules array type or update test code to match type definition
+    - Remove focalPersons from InstitutionData test mocks or add to type definition
+    - _Bug_Condition: Test mocks don't include all required properties from interfaces_
+    - _Expected_Behavior: All test mocks satisfy their declared types_
+    - _Preservation: Test logic and assertions remain unchanged_
+    - _Requirements: 2.2, 2.3, 2.4, 2.7, 2.14, 2.15_
+
+  - [x] 3.4 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - TypeScript Compilation Success
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify that `pnpm typecheck` reports zero errors
+    - Verify that `pnpm build` completes successfully
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18_
+
+  - [x] 3.5 Verify preservation tests still pass
+    - **Property 2: Preservation** - Runtime Behavior and Type Inference Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Verify that `pnpm test:run` has same number of passing tests as before
+    - Verify that production build generates identical JavaScript output (types are erased at runtime)
+    - Confirm all tests still pass after fix (no regressions)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Run `pnpm typecheck` and verify zero errors
+  - Run `pnpm test:run` and verify all tests pass
+  - Run `pnpm build` and verify production build succeeds
+  - Verify type inference still works correctly in IDE (manual check)
+  - Ask the user if questions arise

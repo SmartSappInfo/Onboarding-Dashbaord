@@ -9,7 +9,19 @@ import { ArrowRight } from "lucide-react";
 import * as React from 'react';
 
 // This component now receives all necessary data as props
-export function RecentActivity({ activities, users, schools }: { activities: Activity[], users: UserProfile[], schools: School[] }) {
+// Updated to support both entityId (migrated) and schoolId (legacy) references
+// Requirements: 6.2, 6.4
+export function RecentActivity({ 
+  activities, 
+  users, 
+  schools, 
+  entities 
+}: { 
+  activities: Activity[], 
+  users: UserProfile[], 
+  schools: School[],
+  entities?: any[] // workspace_entities for migrated contacts
+}) {
   
   const usersMap = React.useMemo(() => {
     if (!users) return new Map<string, UserProfile>();
@@ -20,6 +32,25 @@ export function RecentActivity({ activities, users, schools }: { activities: Act
     if (!schools) return new Map<string, School>();
     return new Map(schools.map(school => [school.id, school]));
   }, [schools]);
+  
+  // Map workspace_entities by entityId for quick lookup
+  const entitiesMap = React.useMemo(() => {
+    if (!entities) return new Map<string, any>();
+    return new Map(entities.map(entity => [entity.entityId, entity]));
+  }, [entities]);
+  
+  // Helper to resolve contact for an activity (supports both entityId and schoolId)
+  const resolveContact = React.useCallback((activity: Activity) => {
+    // Prefer entityId if available (migrated contacts)
+    if (activity.entityId && entitiesMap.has(activity.entityId)) {
+      return entitiesMap.get(activity.entityId);
+    }
+    // Fallback to schoolId (legacy contacts)
+    if (activity.schoolId && schoolsMap.has(activity.schoolId)) {
+      return schoolsMap.get(activity.schoolId);
+    }
+    return undefined;
+  }, [entitiesMap, schoolsMap]);
 
   return (
     <DashboardCard title="Recent Activity">
@@ -28,15 +59,18 @@ export function RecentActivity({ activities, users, schools }: { activities: Act
             <div className="relative space-y-6">
                 <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
                 {activities.length > 0 ? (
-                    activities.map(activity => (
-                        <ActivityItem
-                            key={activity.id}
-                            activity={activity}
-                            user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                            school={activity.schoolId ? schoolsMap.get(activity.schoolId) : undefined}
-                            showSchoolName={true}
-                        />
-                    ))
+                    activities.map(activity => {
+                        const contact = resolveContact(activity);
+                        return (
+                            <ActivityItem
+                                key={activity.id}
+                                activity={activity}
+                                user={activity.userId ? usersMap.get(activity.userId) : undefined}
+                                school={contact}
+                                showSchoolName={true}
+                            />
+                        );
+                    })
                 ) : (
                     <p className="text-muted-foreground text-sm text-center pt-10">No recent activity.</p>
                 )}

@@ -145,7 +145,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         meetingLink: 'https://meet.google.com/xyz-abc-def',
         type: {
           id: 'kickoff',
-          name: 'Kickoff Meeting',
+          name: 'Kickoff',
           slug: 'kickoff',
         },
       };

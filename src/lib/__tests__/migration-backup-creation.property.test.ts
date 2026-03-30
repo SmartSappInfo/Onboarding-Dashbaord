@@ -64,8 +64,8 @@ vi.mock('firebase/firestore', () => {
       if (docRef._collectionName === 'schools') {
         const schoolData = mockSchools.get(docRef._docId);
         return {
-          exists: () => !!schoolData,
-          data: () => schoolData,
+          exists: (): boolean => !!schoolData,
+          data: (): any => schoolData,
           id: docRef._docId,
         };
       }
@@ -75,13 +75,13 @@ vi.mock('firebase/firestore', () => {
       if (collectionData) {
         const recordData = collectionData.get(docRef._docId);
         return {
-          exists: () => !!recordData,
-          data: () => recordData,
+          exists: (): boolean => !!recordData,
+          data: (): any => recordData,
           id: docRef._docId,
         };
       }
       
-      return { exists: () => false, data: () => undefined };
+      return { exists: (): boolean => false, data: (): any => undefined };
     }),
     getDocs: vi.fn(async (collectionRef: any) => {
       const collectionName = collectionRef._collectionName;
@@ -204,6 +204,8 @@ describe('Property 10: Migration Backup Creation', () => {
   const unmigratedRecordArbitrary = (schoolId: string, recordId: string) => fc.record({
     id: fc.constant(recordId),
     schoolId: fc.constant(schoolId),
+    entityId: fc.option(fc.uuid(), { nil: undefined }),
+    entityType: fc.option(fc.constantFrom('institution' as const, 'family' as const, 'person' as const), { nil: undefined }),
     title: fc.string({ minLength: 5, maxLength: 50 }).filter(s => s.trim().length > 0),
     description: fc.option(fc.string({ minLength: 10, maxLength: 100 }), { nil: undefined }),
     status: fc.option(fc.constantFrom('todo', 'in_progress', 'done'), { nil: undefined }),

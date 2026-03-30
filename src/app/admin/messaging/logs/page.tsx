@@ -44,9 +44,12 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+import { MessageContactDisplay } from '@/components/messaging/MessageContactDisplay';
+
 /**
  * @fileOverview Messaging Log Audit Ledger.
  * Filtered by Workspace to ensure track-specific data isolation.
+ * Updated to display entity information via Contact Adapter (Requirement 15.4, 23.1)
  */
 export default function MessageLogsPage() {
     const firestore = useFirestore();
@@ -59,6 +62,7 @@ export default function MessageLogsPage() {
     const [isGlobalSyncing, setIsGlobalSyncing] = React.useState(false);
 
     // Filtered by active workspace array-contains
+    // Support querying by entityId with schoolId fallback (Requirement 15.5, 22.1)
     const logsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
@@ -204,6 +208,7 @@ export default function MessageLogsPage() {
                                 <TableRow>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest pl-6">Timestamp</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Medium</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Contact</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Title / Protocol</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Recipient</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Engagement</TableHead>
@@ -217,6 +222,7 @@ export default function MessageLogsPage() {
                                         <TableRow key={i}>
                                             <TableCell className="pl-6"><Skeleton className="h-4 w-24" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-40" /></TableCell>
@@ -235,6 +241,9 @@ export default function MessageLogsPage() {
                                                     {log.channel === 'email' ? <Mail className="h-3 w-3 text-blue-500" /> : <Smartphone className="h-3 w-3 text-orange-500" />}
                                                     {log.channel}
                                                 </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <MessageContactDisplay log={log} workspaceId={activeWorkspaceId || ''} />
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col max-w-[200px]">
@@ -282,7 +291,7 @@ export default function MessageLogsPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-48 text-center">
+                                        <TableCell colSpan={8} className="h-48 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 opacity-30">
                                                 <History className="h-10 w-10" />
                                                 <p className="text-xs font-black uppercase tracking-widest">No logs recorded</p>

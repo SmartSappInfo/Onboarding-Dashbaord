@@ -3,6 +3,9 @@
 import { adminDb } from './firebase-admin';
 import type { School, Entity, WorkspaceEntity, EntityType, MigrationStatus, ResolvedContact } from './types';
 
+// Re-export ResolvedContact for test compatibility
+export type { ResolvedContact } from './types';
+
 /**
  * @fileOverview Backward Compatibility Adapter Layer
  * 
@@ -23,8 +26,8 @@ import type { School, Entity, WorkspaceEntity, EntityType, MigrationStatus, Reso
  * Contact identifier that can be either schoolId or entityId
  */
 export interface ContactIdentifier {
-  schoolId?: string;
-  entityId?: string;
+  schoolId?: string | null;
+  entityId?: string | null;
 }
 
 /**

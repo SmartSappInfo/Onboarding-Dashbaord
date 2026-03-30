@@ -21,7 +21,8 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm test:run",
     "migrate:tags": "ts-node --project tsconfig.json src/app/seeds/migrate-tags.ts",
     "migrate:entity-tags": "tsx scripts/migrate-entity-tags.ts",
-    "migrate:schools": "tsx scripts/migrate-schools-to-entities.ts"
+    "migrate:schools": "tsx scripts/migrate-schools-to-entities.ts",
+    "migrate:cleanup-logs": "tsx scripts/cleanup-migration-logs.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

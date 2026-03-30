@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { collection, addDoc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,8 @@ import { Calendar } from "./ui/calendar";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
-import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore } from "@/firebase";
+import { handleSignupAction } from "@/lib/signup-actions";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -142,60 +143,54 @@ export default function NewSchoolSignupForm() {
       return; // Stop if webhook fails
     }
 
-    // 2. Save to Firestore
+    // 2. Create entity and workspace_entity records (Requirements 10.1, 10.2, 10.3)
     if (!firestore) {
       toast({
         variant: "destructive",
-        title: "Firestore not available",
+        title: "System not available",
         description: "Could not save school record. Please check your connection.",
       });
       return;
     }
 
-    const slug = data.organization
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-    const schoolData = {
-      name: data.organization,
-      slug,
-      contactPerson: data.contactPerson,
-      email: data.email,
-      phone: data.phone,
-      location: data.location,
-      nominalRoll: data.nominalRoll,
-      modules: data.modules,
-      implementationDate: data.implementationDate.toISOString(),
-      referee: data.referee,
-      includeDroneFootage: data.includeDroneFootage,
-      stage: { id: 'welcome', name: 'Welcome', order: 1 },
-    };
-
     try {
-      const schoolsCollection = collection(firestore, 'schools');
-      await addDoc(schoolsCollection, schoolData);
-      
-      toast({
-        title: "Registration Successful!",
-        description: "Your new school signup has been submitted and saved.",
+      // Use the new signup action that creates entity + workspace_entity
+      // This does NOT create legacy school records (Requirement 10.3)
+      const result = await handleSignupAction({
+        organizationId: 'default_org', // TODO: Get from user context
+        workspaceId: 'onboarding', // Default workspace for new signups
+        name: data.organization,
+        location: data.location,
+        focalPersons: [{
+          name: data.contactPerson,
+          email: data.email,
+          phone: data.phone,
+          type: 'School Owner',
+          isSignatory: true,
+        }],
+        nominalRoll: data.nominalRoll,
+        implementationDate: data.implementationDate.toISOString(),
+        referee: data.referee,
+        includeDroneFootage: data.includeDroneFootage,
+        pipelineId: 'default_pipeline', // TODO: Get default pipeline for onboarding workspace
+        stageId: 'welcome', // Default stage for new signups
+        userId: 'system', // TODO: Get from user context if available
       });
-      form.reset();
 
+      if (result.success) {
+        toast({
+          title: "Registration Successful!",
+          description: "Your new school signup has been submitted and saved.",
+        });
+        form.reset();
+      } else {
+        throw new Error(result.error || 'Failed to create signup');
+      }
     } catch (error: any) {
-      const schoolsCollection = collection(firestore, 'schools');
-      const permissionError = new FirestorePermissionError({
-          path: schoolsCollection.path,
-          operation: 'create',
-          requestResourceData: schoolData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: "Could not save the new school record to the database. Please check your permissions or contact support.",
+        description: error.message || "Could not save the new school record. Please try again.",
       });
     }
   };

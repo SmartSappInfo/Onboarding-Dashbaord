@@ -20,6 +20,8 @@ interface SendMessageInput {
   variables: Record<string, any>;
   attachments?: EmailAttachment[];
   schoolId?: string | null;
+  entityId?: string | null; // New unified entity reference
+  entityType?: 'institution' | 'family' | 'person'; // Entity type
   workspaceId?: string; // Workspace context for message (Requirement 11)
   scheduledAt?: string; // ISO string
 }
@@ -35,7 +37,7 @@ interface SendMessageInput {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, attachments, schoolId, workspaceId, scheduledAt } = input;
+  const { templateId, senderProfileId, recipient, variables, attachments, schoolId, entityId, entityType, workspaceId, scheduledAt } = input;
 
   try {
     // 1. Fetch Template
@@ -80,13 +82,27 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const finalVariables = { ...variables };
 
     // 4. Resolve Contact Context using Adapter Layer (Requirement 18)
-    if (schoolId) {
+    // Support dual-write: accept either schoolId or entityId (Requirement 15.1, 15.2)
+    let resolvedSchoolId = schoolId;
+    let resolvedEntityId = entityId;
+    let resolvedEntityType = entityType;
+
+    if (schoolId || entityId) {
         // Use adapter to resolve contact from either schools or entities + workspace_entities
         const contextWorkspaceId = resolvedWorkspaceId || workspaceIds[0] || 'onboarding';
-        const contact = await resolveContact(schoolId, contextWorkspaceId);
+        const contact = await resolveContact(schoolId || entityId || '', contextWorkspaceId);
         
         if (contact) {
             const signatory = getContactSignatory(contact);
+            
+            // Dual-write: populate both identifiers (Requirement 15.2)
+            if (contact.schoolData?.id) {
+                resolvedSchoolId = contact.schoolData.id;
+            }
+            if (contact.entityId) {
+                resolvedEntityId = contact.entityId;
+                resolvedEntityType = contact.entityType || 'institution';
+            }
             
             // Logs inherit workspace visibility from the contact
             if (contact.schoolData?.workspaceIds?.length) {
@@ -110,11 +126,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 contact_position: signatory?.type || '',
             };
             
-            const contractSnap = await adminDb.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+            const contractSnap = await adminDb.collection('contracts').where('schoolId', '==', resolvedSchoolId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
                 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
-                contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${schoolId}`;
+                contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${resolvedSchoolId}`;
             }
 
             Object.entries(contactVars).forEach(([k, v]) => {
@@ -123,7 +139,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
             // Resolve tag variables for this contact (FR5.2.1, FR5.2.2, Requirement 7, Requirement 11, Requirement 18)
             // Pass workspaceId to resolve workspace-scoped tags from workspace_entities.workspaceTags
-            const tagVars = await resolveTagVariables(schoolId, 'school', resolvedWorkspaceId);
+            const tagVars = await resolveTagVariables(resolvedSchoolId || resolvedEntityId || '', 'school', resolvedWorkspaceId);
             Object.entries(tagVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
@@ -195,7 +211,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 9. Audit Log Generation (Requirement 11 - Record workspaceId)
+    // 9. Audit Log Generation (Requirement 11 - Record workspaceId, Requirement 15.2 - Dual-write)
     const logData: Omit<MessageLog, 'id'> = {
       title: resolvedLogTitle,
       templateId: template.id,
@@ -212,7 +228,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
       workspaceId: resolvedWorkspaceId, // Primary workspace context (Requirement 11)
-      schoolId: schoolId || null,
+      schoolId: resolvedSchoolId || null, // Legacy field (dual-write)
+      entityId: resolvedEntityId || null, // New unified entity reference (dual-write)
+      entityType: resolvedEntityType, // Entity type (dual-write)
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
@@ -222,7 +240,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const logRef = await adminDb.collection('message_logs').add(logData);
 
     await logActivity({
-        schoolId: schoolId || '',
+        schoolId: resolvedSchoolId || '',
+        entityId: resolvedEntityId || null,
+        entityType: resolvedEntityType,
         organizationId: 'default',
         userId: null, 
         workspaceId: resolvedWorkspaceId,

@@ -102,7 +102,7 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
  * Extracts denormalized fields from an entity document.
  * Used to compute what fields need to be synced to workspace_entities.
  */
-export function extractDenormalizedFields(entity: Entity): DenormalizedFields {
+export async function extractDenormalizedFields(entity: Entity): Promise<DenormalizedFields> {
   const fields: DenormalizedFields = {
     displayName: entity.name,
   };

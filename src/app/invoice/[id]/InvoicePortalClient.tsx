@@ -20,6 +20,15 @@ import { cn } from '@/lib/utils';
 import { SmartSappLogo, SmartSappIcon } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * InvoicePortalClient - Public Invoice Display & PDF Generation
+ * 
+ * Entity Resolution: Contact information (schoolName, entityId, entityType) is resolved
+ * server-side via the Contact Adapter during invoice generation. The PDF includes
+ * the pre-resolved entity information from the invoice record.
+ * 
+ * Requirements: 8.5, 23.1
+ */
 interface InvoicePortalClientProps {
     invoice: Invoice;
 }

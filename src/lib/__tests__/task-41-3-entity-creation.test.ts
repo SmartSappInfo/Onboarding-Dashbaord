@@ -96,6 +96,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           tasks: true,
         },
         scopeLocked: false,
+        status: 'active',
+        statuses: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -141,7 +143,10 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
               subscriptionRate: 50,
               billingAddress: '123 School St',
               currency: 'USD',
-              modules: ['billing', 'admissions'],
+              modules: [
+          { id: 'billing', name: 'Billing', abbreviation: 'BIL', color: '#3b82f6' },
+          { id: 'admissions', name: 'Admissions', abbreviation: 'ADM', color: '#10b981' }
+        ],
               implementationDate: '2024-01-01',
               referee: 'District Office',
             },
@@ -202,7 +207,10 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           subscriptionRate: 50,
           billingAddress: '123 School St',
           currency: 'USD',
-          modules: ['billing', 'admissions'],
+          modules: [
+          { id: 'billing', name: 'Billing', abbreviation: 'BIL', color: '#3b82f6' },
+          { id: 'admissions', name: 'Admissions', abbreviation: 'ADM', color: '#10b981' }
+        ],
           implementationDate: '2024-01-01',
           referee: 'District Office',
         },
@@ -301,6 +309,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           tasks: true,
         },
         scopeLocked: false,
+        status: 'active',
+        statuses: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -574,6 +584,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           tasks: true,
         },
         scopeLocked: false,
+        status: 'active',
+        statuses: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -758,6 +770,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           tasks: true,
         },
         scopeLocked: false,
+        status: 'active',
+        statuses: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -855,6 +869,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           tasks: true,
         },
         scopeLocked: false,
+        status: 'active',
+        statuses: [],
         createdAt: timestamp,
         updatedAt: timestamp,
       };

@@ -5,11 +5,12 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
-import type { School, FocalPerson, Task, Tag, TagAuditLog } from '@/lib/types';
+import type { School, FocalPerson, Task, Tag, TagAuditLog, ResolvedContact } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { resolveContact } from '@/lib/contact-adapter';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -107,6 +108,35 @@ export default function SchoolDetailPage() {
 
     const { data: school, isLoading } = useDoc<School>(schoolDocRef);
 
+    // Resolve contact data using Contact Adapter (Requirement 11.1)
+    const [resolvedContact, setResolvedContact] = React.useState<ResolvedContact | null>(null);
+    const [isResolvingContact, setIsResolvingContact] = React.useState(false);
+
+    React.useEffect(() => {
+        async function loadContactData() {
+            if (!schoolId || !activeWorkspaceId) return;
+            
+            setIsResolvingContact(true);
+            try {
+                // Try to resolve by entityId first, fallback to schoolId
+                const contact = await resolveContact(
+                    { schoolId, entityId: school?.entityId },
+                    activeWorkspaceId
+                );
+                setResolvedContact(contact);
+            } catch (error) {
+                console.error('[PROFILE] Failed to resolve contact:', error);
+                setResolvedContact(null);
+            } finally {
+                setIsResolvingContact(false);
+            }
+        }
+
+        if (school) {
+            loadContactData();
+        }
+    }, [school, schoolId, activeWorkspaceId]);
+
     // Tasks Subscription for this school
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -143,10 +173,10 @@ export default function SchoolDetailPage() {
     const { data: tagAuditLogs } = useCollection<TagAuditLog>(tagAuditQuery);
 
     // Navigation Entity Resolution
-    useSetBreadcrumb(school?.name);
+    useSetBreadcrumb(resolvedContact?.name || school?.name);
 
-    if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
-    if (!school) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/schools')}>Back to List</Button></div>;
+    if (isLoading || isResolvingContact) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
+    if (!school || !resolvedContact) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/schools')}>Back to List</Button></div>;
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {
@@ -280,14 +310,22 @@ export default function SchoolDetailPage() {
                                 </Badge>
                                 <Separator orientation="vertical" className="h-4" />
                                 <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm uppercase tracking-widest"><MapPin className="h-3.5 w-3.5" /> {school.zone?.name}</span>
+                                {resolvedContact.migrationStatus === 'migrated' && (
+                                    <>
+                                        <Separator orientation="vertical" className="h-4" />
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-blue-200 text-blue-600 bg-blue-50">
+                                            Entity System
+                                        </Badge>
+                                    </>
+                                )}
                             </div>
-                            <h2 className="text-3xl font-black tracking-tight uppercase">{school.name}</h2>
-                            {/* Tag Selector */}
+                            <h2 className="text-3xl font-black tracking-tight uppercase">{resolvedContact.name}</h2>
+                            {/* Tag Selector - Display workspace tags from resolved contact */}
                             <div className="flex flex-wrap items-center gap-2">
                                 <TagSelector
                                     contactId={school.id}
                                     contactType="school"
-                                    currentTagIds={school.tags || []}
+                                    currentTagIds={resolvedContact.tags || []}
                                 />
                             </div>
                         </div>
@@ -319,8 +357,8 @@ export default function SchoolDetailPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-border/50">
-                                        {school.focalPersons && school.focalPersons.length > 0 ? (
-                                            school.focalPersons.map((person, idx) => (
+                                        {resolvedContact.contacts && resolvedContact.contacts.length > 0 ? (
+                                            resolvedContact.contacts.map((person, idx) => (
                                                 <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors">
                                                     <div className="flex items-center gap-4">
                                                         <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
@@ -355,8 +393,9 @@ export default function SchoolDetailPage() {
                                         <div className="p-3 bg-white rounded-2xl shadow-sm border border-primary/10"><Users className="h-6 w-6 text-primary" /></div>
                                     </div>
                                     <div className="space-y-6">
-                                        <DetailItem icon={UserCheck} label="Primary Handler" value={school.assignedTo?.name || 'Unassigned'} />
+                                        <DetailItem icon={UserCheck} label="Primary Handler" value={resolvedContact.assignedTo?.name || 'Unassigned'} />
                                         <DetailItem icon={Target} label="Source Workspace" value={toTitleCase(getPrimaryWorkspaceId(school))} />
+                                        <DetailItem icon={Workflow} label="Pipeline Stage" value={resolvedContact.stageName || 'Not Set'} />
                                         <Separator />
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Functional Interests</p>

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Bot } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Bot, Building, Users, User } from 'lucide-react';
 import { getActivityIcon } from '@/lib/activity-icons';
 
 interface ActivityItemProps {
@@ -15,18 +16,38 @@ interface ActivityItemProps {
   school?: School;
 }
 
+// Entity type icons for visual distinction
+const ENTITY_TYPE_ICONS = {
+  institution: Building,
+  family: Users,
+  person: User,
+};
+
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
+/**
+ * ActivityItem Component
+ * 
+ * Displays activity information with entity support.
+ * Uses denormalized entity fields (displayName, entitySlug, entityType) for performance.
+ * Falls back to legacy school fields for backward compatibility.
+ * 
+ * Requirements: 4.3, 4.5, 23.1, 23.3, 23.5 (Task 35.2)
+ */
 export default function ActivityItem({ activity, user, showSchoolName = false }: ActivityItemProps) {
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
   const hasContent = (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email') && activity.metadata?.content;
 
-  // Use denormalized entity information if available, fallback to school fields (Requirement 4.3)
+  // Use denormalized entity information if available, fallback to school fields (Requirement 4.3, 23.5)
   const contactName = activity.displayName || activity.schoolName;
   const contactId = activity.entityId || activity.schoolId;
   const contactSlug = activity.entitySlug || activity.schoolSlug;
+  const entityType = activity.entityType;
+  const isLegacy = !activity.entityId && !!activity.schoolId;
+  
+  const EntityIcon = entityType ? ENTITY_TYPE_ICONS[entityType] : Building;
 
   return (
     <div className="relative pl-10">
@@ -60,7 +81,20 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
             <p className="text-muted-foreground">
                 {activity.description}
                 {showSchoolName && contactName && contactId && (
-                    <> in <Link href={`/admin/schools/${contactId}`} className="font-semibold text-foreground hover:underline">{contactName}</Link></>
+                    <> in <Link href={`/admin/schools/${contactId}`} className="font-semibold text-foreground hover:underline inline-flex items-center gap-1">
+                        <EntityIcon className="h-3 w-3" />
+                        {contactName}
+                        {entityType && (
+                            <Badge variant="outline" className="text-[8px] h-4 px-1 ml-1">
+                                {entityType}
+                            </Badge>
+                        )}
+                        {isLegacy && (
+                            <Badge variant="secondary" className="text-[8px] h-4 px-1 ml-1">
+                                legacy
+                            </Badge>
+                        )}
+                    </Link></>
                 )}
             </p>
             

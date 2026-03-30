@@ -28,7 +28,7 @@ export interface WorkspaceListItem {
     userId: string | null;
     name: string | null;
     email: string | null;
-  };
+  } | null;
   status: string;
   workspaceTags: string[];
   lastContactedAt?: string;
