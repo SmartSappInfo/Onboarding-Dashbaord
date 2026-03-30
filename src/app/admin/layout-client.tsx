@@ -156,7 +156,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
     { href: '/admin/schools', icon: School, label: 'Schools', visible: hasPerm('schools_view') },
-    { href: '/admin/prospects', icon: Target, label: 'Prospects', visible: hasPerm('prospects_view') },
+    // { href: '/admin/prospects', icon: Target, label: 'Prospects', visible: hasPerm('prospects_view') }, // TODO: Implement prospects page
     { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') || hasPerm('prospects_view') },
     { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: hasPerm('tasks_manage') },
     { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: hasPerm('meetings_manage') },

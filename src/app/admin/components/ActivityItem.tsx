@@ -78,7 +78,7 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
                 <span className="font-semibold flex items-center gap-2"><Bot className="h-4 w-4" /> System</span>
             )}
             
-            <p className="text-muted-foreground">
+            <span className="text-muted-foreground">
                 {activity.description}
                 {showSchoolName && contactName && contactId && (
                     <> in <Link href={`/admin/schools/${contactId}`} className="font-semibold text-foreground hover:underline inline-flex items-center gap-1">
@@ -96,7 +96,7 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
                         )}
                     </Link></>
                 )}
-            </p>
+            </span>
             
             <span className="text-muted-foreground/80">&middot;</span>
             
