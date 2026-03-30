@@ -111,6 +111,13 @@ export default function SeedsClient() {
 
   const [migrationLog, setMigrationLog] = useState<string[]>([]);
 
+  // Debug: Log when component mounts
+  React.useEffect(() => {
+    console.log('SeedsClient mounted');
+    console.log('Feature migration status:', featureMigrationStatus);
+    console.log('Is unlocked:', isUnlocked);
+  }, [isUnlocked]);
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'mijay2123') {
@@ -489,10 +496,17 @@ export default function SeedsClient() {
             </section>
 
             {/* Feature Data Migration Section - NEW */}
-            <section className="space-y-6">
+            <section className="space-y-6" id="feature-migration">
                 <div className="flex items-center gap-3">
                     <Badge variant="outline" className="bg-blue-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-blue-200 text-blue-600">Feature Data Migration</Badge>
                     <div className="h-px flex-1 bg-gradient-to-r from-blue-200 to-transparent" />
+                </div>
+                
+                {/* Debug Info */}
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+                    <p className="text-xs font-bold text-yellow-900">
+                        DEBUG: Feature Migration Section Loaded - {Object.keys(featureMigrationStatus).length} features configured
+                    </p>
                 </div>
                 
                 <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-blue-100 overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
@@ -650,6 +664,66 @@ export default function SeedsClient() {
                                 unmigratedRecords={featureMigrationStatus.automation_logs.unmigratedRecords}
                                 failedRecords={featureMigrationStatus.automation_logs.failedRecords}
                                 {...createFeatureMigrationHandlers('automation_logs')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Form Submissions"
+                                collectionName="form_submissions"
+                                description="Migrate form submission records to use entityId for contact references"
+                                status={featureMigrationStatus.form_submissions.status}
+                                totalRecords={featureMigrationStatus.form_submissions.totalRecords}
+                                migratedRecords={featureMigrationStatus.form_submissions.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.form_submissions.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.form_submissions.failedRecords}
+                                {...createFeatureMigrationHandlers('form_submissions')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Survey Responses"
+                                collectionName="survey_responses"
+                                description="Migrate survey response records to use entityId for contact references"
+                                status={featureMigrationStatus.survey_responses.status}
+                                totalRecords={featureMigrationStatus.survey_responses.totalRecords}
+                                migratedRecords={featureMigrationStatus.survey_responses.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.survey_responses.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.survey_responses.failedRecords}
+                                {...createFeatureMigrationHandlers('survey_responses')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Signups"
+                                collectionName="signups"
+                                description="Migrate signup records to use entityId for contact references"
+                                status={featureMigrationStatus.signups.status}
+                                totalRecords={featureMigrationStatus.signups.totalRecords}
+                                migratedRecords={featureMigrationStatus.signups.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.signups.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.signups.failedRecords}
+                                {...createFeatureMigrationHandlers('signups')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Profiles"
+                                collectionName="profiles"
+                                description="Migrate profile records to use entityId for contact references"
+                                status={featureMigrationStatus.profiles.status}
+                                totalRecords={featureMigrationStatus.profiles.totalRecords}
+                                migratedRecords={featureMigrationStatus.profiles.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.profiles.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.profiles.failedRecords}
+                                {...createFeatureMigrationHandlers('profiles')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Settings"
+                                collectionName="settings"
+                                description="Migrate settings records to use entityId for contact references"
+                                status={featureMigrationStatus.settings.status}
+                                totalRecords={featureMigrationStatus.settings.totalRecords}
+                                migratedRecords={featureMigrationStatus.settings.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.settings.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.settings.failedRecords}
+                                {...createFeatureMigrationHandlers('settings')}
                             />
                         </div>
                     </CardContent>
