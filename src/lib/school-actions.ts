@@ -20,6 +20,7 @@ export async function convertToOnboardingAction(
     userId: string
 ) {
     try {
+      
         const timestamp = new Date().toISOString();
         const schoolRef = adminDb.collection('schools').doc(schoolId);
         const schoolSnap = await schoolRef.get();
@@ -77,4 +78,88 @@ export async function convertToOnboardingAction(
         console.error(">>> [SCHOOL:CONVERT] Failed:", e.message);
         return { success: false, error: e.message };
     }
+}
+
+/**
+ * Creates a new school record with proper workspace and pipeline initialization.
+ * Uses server-side Firebase Admin SDK to bypass client-side security rules.
+ */
+export async function createSchoolAction(data: Partial<School>, userId: string) {
+  try {
+    const timestamp = new Date().toISOString();
+    const slug = data.name?.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    // Resolve initial pipeline and stage
+    const primaryWorkspaceId = data.workspaceIds?.includes('onboarding') 
+      ? 'onboarding' 
+      : data.workspaceIds?.[0] || 'onboarding';
+
+    let initialPipelineId = 'institutional_onboarding';
+    let defaultStage = { 
+      id: 'stg_institutional_onboarding_0', 
+      name: 'Welcome', 
+      order: 1, 
+      color: '#f72585' 
+    };
+
+    // Try to get the actual pipeline for the workspace
+    const pipelinesSnap = await adminDb.collection('pipelines')
+      .where('workspaceId', '==', primaryWorkspaceId)
+      .limit(1)
+      .get();
+
+    if (!pipelinesSnap.empty) {
+      initialPipelineId = pipelinesSnap.docs[0].id;
+
+      // Get the first stage of this pipeline
+      const stagesSnap = await adminDb.collection('onboardingStages')
+        .where('pipelineId', '==', initialPipelineId)
+        .orderBy('order', 'asc')
+        .limit(1)
+        .get();
+
+      if (!stagesSnap.empty) {
+        const stageData = stagesSnap.docs[0].data();
+        defaultStage = {
+          id: stagesSnap.docs[0].id,
+          name: stageData.name,
+          order: stageData.order,
+          color: stageData.color
+        };
+      }
+    }
+
+    const schoolData = {
+      ...data,
+      slug,
+      pipelineId: initialPipelineId,
+      track: primaryWorkspaceId,
+      stage: defaultStage,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    const docRef = await adminDb.collection('schools').add(schoolData);
+
+    // Log activity
+    await logActivity({
+      schoolId: docRef.id,
+      schoolName: data.name || 'Unknown',
+      schoolSlug: slug || '',
+      organizationId: data.organizationId || 'default',
+      userId,
+      workspaceId: primaryWorkspaceId,
+      type: 'school_created',
+      source: 'user_action',
+      description: `registered new record: "${data.name}" in ${data.workspaceIds?.length || 0} hubs`,
+    });
+
+    revalidatePath('/admin/schools');
+    revalidatePath('/admin/pipeline');
+
+    return { success: true, id: docRef.id };
+  } catch (e: any) {
+    console.error(">>> [SCHOOL:CREATE] Failed:", e.message);
+    return { success: false, error: e.message };
+  }
 }

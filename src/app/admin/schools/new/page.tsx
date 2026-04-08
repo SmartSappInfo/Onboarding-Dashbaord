@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Target as ProspectIcon, Layout } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { collection, addDoc, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +30,7 @@ import { FocalPersonManager } from '../components/FocalPersonManager';
 import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
 import { MediaSelect } from '../components/media-select';
-import { logActivity } from '@/lib/activity-logger';
+import { createSchoolAction } from '@/lib/school-actions';
 import { type UserProfile, type SubscriptionPackage, type OnboardingStage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -179,51 +179,34 @@ export default function NewSchoolPage() {
     const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    // 1. Resolve Initial Pipeline (Priority: Onboarding if present in array, else first selected)
-    const primaryWId = data.workspaceIds.includes('onboarding') ? 'onboarding' : data.workspaceIds[0];
-    const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('workspaceId', '==', primaryWId), limit(1)));
-    const initialPipelineId = !pSnap.empty ? pSnap.docs[0].id : 'institutional_onboarding';
-
-    const stagesSnap = await getDocs(query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', initialPipelineId), orderBy('order', 'asc'), limit(1)));
-    const defaultStage = !stagesSnap.empty 
-        ? { id: stagesSnap.docs[0].id, name: stagesSnap.docs[0].data().name, order: stagesSnap.docs[0].data().order, color: stagesSnap.docs[0].data().color }
-        : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
-
     const { assignedToId, ...rest } = data;
     const schoolData = {
       ...rest,
-      slug,
       assignedTo,
-      pipelineId: initialPipelineId,
-      track: primaryWId, // Legacy context
       organizationId: activeOrganizationId,
       logoUrl: data.logoUrl || null,
       heroImageUrl: data.heroImageUrl || null,
       subscriptionPackageId: data.subscriptionPackageId || null,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
-      stage: defaultStage,
-      createdAt: new Date().toISOString(),
     };
 
-    const schoolsCol = collection(firestore, 'schools');
     try {
-      const docRef = await addDoc(schoolsCol, schoolData);
-      toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
-      await logActivity({
-          schoolId: docRef.id, 
-          schoolName: data.name, 
-          schoolSlug: slug, 
-          organizationId: activeOrganizationId,
-          userId: user.uid,
-          workspaceId: data.workspaceIds[0] || 'onboarding',
-          type: 'school_created', 
-          source: 'user_action',
-          description: `registered new record: "${data.name}" in ${data.workspaceIds.length} hubs`,
-      });
-      router.push('/admin/schools');
+      const result = await createSchoolAction(schoolData, user.uid);
+      
+      if (result.success) {
+        toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
+        router.push('/admin/schools');
+      } else {
+        throw new Error(result.error || 'Failed to create school');
+      }
     } catch (error: any) {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: schoolsCol.path, operation: 'create', requestResourceData: schoolData }));
+      toast({ 
+        title: 'Save Failed', 
+        description: error.message || 'An error occurred while creating the school',
+        variant: 'destructive'
+      });
+      console.error('School creation error:', error);
     }
   };
 
