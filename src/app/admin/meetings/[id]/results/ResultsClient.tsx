@@ -159,6 +159,11 @@ export default function ResultsClient() {
                         <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-white shadow-sm">
                             <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
                         </Button>
+                        {meeting.registrationEnabled && (
+                            <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
+                                <Users className="mr-2 h-4 w-4" /> View Registrants
+                            </Button>
+                        )}
                         <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-black shadow-xl shadow-primary/20 h-11 px-8 uppercase tracking-widest text-[10px] gap-2">
                             {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
                             Export Attendance

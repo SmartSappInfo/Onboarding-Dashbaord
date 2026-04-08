@@ -15,6 +15,7 @@ import ScrollDownIndicator from './scroll-down-indicator';
 import AnimatedHeroShapes from './animated-hero-shapes';
 import { motion } from 'framer-motion';
 import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
+import MeetingJoinSection from '@/components/meeting-join-section';
 
 interface KickoffMeetingHeroProps {
   school: School;
@@ -115,12 +116,7 @@ export default function KickoffMeetingHero({ school, meeting }: KickoffMeetingHe
             </div>
             
             {meetingState === 'UPCOMING' && (
-              <JoinMeetingForm
-                meetingId={meeting.id}
-                schoolId={school.id}
-                meetingLink={meeting.meetingLink || ''}
-                meetingTime={meeting.meetingTime || ''}
-              />
+              <MeetingJoinSection meeting={meeting} schoolId={school.id} />
             )}
             
             {meetingState === 'ENDED_NO_RECORDING' && (

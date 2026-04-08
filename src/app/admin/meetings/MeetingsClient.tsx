@@ -23,6 +23,8 @@ import {
     Calendar as CalendarIcon, 
     BarChart3, 
     LayoutList, 
+    Users,
+    ClipboardCheck,
     LayoutGrid
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -255,11 +257,19 @@ export default function MeetingsHubClient() {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}`}>
+                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
                     <Send className="mr-2 h-4 w-4" />
                     <span>Send Invite/Reminder</span>
                 </Link>
             </DropdownMenuItem>
+            {meeting.registrationEnabled && (
+                <DropdownMenuItem asChild>
+                    <Link href={`/admin/meetings/${meeting.id}/registrants`}>
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>View Registrants</span>
+                    </Link>
+                </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"

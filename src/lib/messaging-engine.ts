@@ -146,6 +146,43 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
+    // 4.5 Resolve Personalized Meeting Link (Webinar Lifecycle Phase 2)
+    // If a _meetingId is passed, check if the recipient is a registrant and append their token
+    const meetingId = finalVariables._meetingId;
+    if (meetingId && (finalVariables.meeting_link || finalVariables.link)) {
+        let registrantDoc = null;
+        
+        // Try email match
+        const targetEmail = finalVariables.contact_email || recipient;
+        if (targetEmail && targetEmail.includes('@')) {
+            const emailQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('email', '==', targetEmail).limit(1).get();
+            if (!emailQuery.empty) registrantDoc = emailQuery.docs[0];
+        }
+
+        // Try phone match
+        if (!registrantDoc) {
+            const targetPhone = finalVariables.contact_phone || recipient;
+            if (targetPhone) {
+                const phoneQuery = await adminDb.collection(`meetings/${meetingId}/registrants`).where('phone', '==', targetPhone).limit(1).get();
+                if (!phoneQuery.empty) registrantDoc = phoneQuery.docs[0];
+            }
+        }
+
+        if (registrantDoc) {
+            const token = registrantDoc.data().token;
+            if (token) {
+                if (finalVariables.meeting_link) {
+                    const sep = finalVariables.meeting_link.includes('?') ? '&' : '?';
+                    finalVariables.meeting_link = `${finalVariables.meeting_link}${sep}token=${token}`;
+                }
+                if (finalVariables.link) {
+                    const sep = finalVariables.link.includes('?') ? '&' : '?';
+                    finalVariables.link = `${finalVariables.link}${sep}token=${token}`;
+                }
+            }
+        }
+    }
+
     // If still no workspaceId resolved, use template default or fallback
     if (!resolvedWorkspaceId) {
         resolvedWorkspaceId = workspaceIds[0] || 'onboarding';

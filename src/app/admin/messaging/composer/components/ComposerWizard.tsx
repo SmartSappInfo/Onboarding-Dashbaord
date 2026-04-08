@@ -200,6 +200,26 @@ export default function ComposerWizard() {
         fetchBalance();
     }, []);
 
+    // Load initial values from URL (Requirement: Send Invite/Reminder)
+    React.useEffect(() => {
+        if (!searchParams) return;
+        
+        let hasChanges = false;
+        const currentRecipient = getValues('recipient');
+        const recipientParam = searchParams.get('recipient');
+        
+        if (recipientParam && recipientParam !== currentRecipient) {
+            setValue('recipient', recipientParam);
+            hasChanges = true;
+        }
+
+        searchParams.forEach((value, key) => {
+            if (key.startsWith('var_')) {
+                setValue(`variables.${key.replace('var_', '')}`, value);
+            }
+        });
+    }, [searchParams, setValue, getValues]);
+
     // Load Collections for Contextual Binding
     const templatesQuery = useMemoFirebase(() => {
         if (!firestore) return null;

@@ -121,6 +121,11 @@ service cloud.firestore {
         allow create: if true;
         allow read, list: if isAuthorized();
       }
+
+      match /registrants/{rId} {
+        allow create: if true;
+        allow read, list, update: if isAuthorized();
+      }
     }
 
     match /invoices/{invoiceId} {

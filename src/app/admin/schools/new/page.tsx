@@ -184,11 +184,11 @@ export default function NewSchoolPage() {
       ...rest,
       assignedTo,
       organizationId: activeOrganizationId,
-      logoUrl: data.logoUrl || null,
-      heroImageUrl: data.heroImageUrl || null,
-      subscriptionPackageId: data.subscriptionPackageId || null,
+      logoUrl: data.logoUrl || undefined,
+      heroImageUrl: data.heroImageUrl || undefined,
+      subscriptionPackageId: data.subscriptionPackageId || undefined,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
-      implementationDate: data.implementationDate?.toISOString() || null,
+      implementationDate: data.implementationDate?.toISOString() || undefined,
     };
 
     try {

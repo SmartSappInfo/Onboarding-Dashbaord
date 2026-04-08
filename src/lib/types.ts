@@ -724,6 +724,14 @@ export interface Meeting {
   heroDescription?: string;
   heroTagline?: string;
   heroCtaLabel?: string;
+  // Registration configuration (Phase 2 - Meetings V2)
+  registrationEnabled?: boolean;
+  registrationRequiredToJoin?: boolean;
+  registrationMode?: 'open' | 'approval_required';
+  registrationFields?: MeetingRegistrationField[];
+  registrationSuccessMessage?: string;
+  capacityLimit?: number;
+  waitlistEnabled?: boolean;
   recordingUrl?: string;
   brochureUrl?: string;
   adminAlertsEnabled?: boolean;
@@ -732,6 +740,38 @@ export interface Meeting {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+}
+
+export interface MeetingRegistrationField {
+  id: string;
+  key: string;
+  label: string;
+  type: 'text' | 'email' | 'phone' | 'select' | 'multiselect' | 'checkbox' | 'textarea';
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  order: number;
+}
+
+export type MeetingRegistrantStatus = 'registered' | 'approved' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show';
+
+export interface MeetingRegistrant {
+  id: string;
+  meetingId: string;
+  workspaceIds: string[];
+  token: string;
+  status: MeetingRegistrantStatus;
+  registrationData: Record<string, any>;
+  name: string;
+  email?: string;
+  phone?: string;
+  registeredAt: string;
+  approvedAt?: string;
+  attendedAt?: string;
+  cancelledAt?: string;
+  personalizedMeetingUrl?: string;
+  lastInviteSentAt?: string;
+  lastReminderSentAt?: string;
 }
 
 export interface MediaAsset {

@@ -126,6 +126,14 @@
       ]
     },
     {
+      "collectionGroup": "meetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type.slug", "order": "ASCENDING" },
+        { "fieldPath": "schoolSlug", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "surveys",
       "queryScope": "COLLECTION",
       "fields": [
