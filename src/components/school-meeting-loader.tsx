@@ -18,6 +18,7 @@ import TestimonialsSection from './testimonials-section';
 import WelcomeSection from './welcome-section';
 import KickoffMeetingHero from './kickoff-meeting-hero';
 import TrainingMeetingHero from './training-meeting-hero';
+import WebinarMeetingHero from './webinar-meeting-hero';
 import MeetingNotFound from './meeting-not-found';
 import RecordingSection from './recording-section';
 
@@ -100,6 +101,16 @@ const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting 
   return (
     <>
       <TrainingMeetingHero school={school} meeting={meeting} />
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
+  )
+}
+
+const WebinarLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+  return (
+    <>
+      <WebinarMeetingHero school={school} meeting={meeting} />
+      {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
   )
@@ -252,6 +263,8 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
         return <KickoffLayout school={school} meeting={meeting} />;
       case 'training':
         return <TrainingLayout school={school} meeting={meeting} />;
+      case 'webinar':
+        return <WebinarLayout school={school} meeting={meeting} />;
       default:
         return <div className="container py-20 text-center text-destructive font-black uppercase tracking-widest">Unsupported Protocol.</div>;
     }

@@ -20,7 +20,13 @@ import {
     Video,
     Eye,
     ExternalLink,
-    ImageIcon
+    ImageIcon,
+    ChevronRight,
+    ChevronLeft,
+    Check,
+    Type,
+    Sparkles,
+    Bell,
 } from 'lucide-react';
 
 import type { School, Meeting, MeetingType } from '@/lib/types';
@@ -36,6 +42,7 @@ import {
   Form,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,6 +57,8 @@ import { triggerInternalNotification } from '@/lib/notification-engine';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { format } from 'date-fns';
 import { MediaSelect } from '../../../schools/components/media-select';
+import { getMeetingHeroDefaults } from '@/lib/meeting-hero-defaults';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -62,9 +71,12 @@ const formSchema = z.object({
   type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
+  heroTitle: z.string().optional().or(z.literal('')),
+  heroDescription: z.string().optional().or(z.literal('')),
+  heroTagline: z.string().optional().or(z.literal('')),
+  heroCtaLabel: z.string().optional().or(z.literal('')),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  // Internal Notifications
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
@@ -75,8 +87,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const WIZARD_STEPS = [
+  { id: 'config', label: 'Configuration', icon: Calendar, description: 'Setup, timing & assets' },
+  { id: 'hero', label: 'Hero Content', icon: Type, description: 'Public-facing messaging' },
+  { id: 'options', label: 'Options', icon: Bell, description: 'Notifications & advanced' },
+] as const;
+
 /**
- * @fileOverview Session Architecture Editor.
+ * @fileOverview Multi-step Session Architecture Editor (Phase 1 - Meetings V2).
  * Re-aligned to support multi-workspace sharing based on school context.
  */
 export default function EditMeetingPage() {
@@ -91,6 +109,7 @@ export default function EditMeetingPage() {
   const { activeOrganizationId } = useTenant();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [currentStep, setCurrentStep] = React.useState(0);
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
@@ -117,6 +136,10 @@ export default function EditMeetingPage() {
       type: undefined,
       meetingLink: '',
       heroImageUrl: '',
+      heroTitle: '',
+      heroDescription: '',
+      heroTagline: '',
+      heroCtaLabel: '',
       recordingUrl: '',
       brochureUrl: '',
       adminAlertsEnabled: false,
@@ -147,6 +170,10 @@ export default function EditMeetingPage() {
             type: selectedType,
             meetingLink: meeting.meetingLink || '',
             heroImageUrl: meeting.heroImageUrl || '',
+            heroTitle: meeting.heroTitle || '',
+            heroDescription: meeting.heroDescription || '',
+            heroTagline: meeting.heroTagline || '',
+            heroCtaLabel: meeting.heroCtaLabel || '',
             recordingUrl: meeting.recordingUrl || '',
             brochureUrl: meeting.brochureUrl || '',
             adminAlertsEnabled: meeting.adminAlertsEnabled || false,
@@ -174,23 +201,25 @@ export default function EditMeetingPage() {
         if (isDuplicate) {
             form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
             toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
+            setCurrentStep(0);
             return;
         }
 
-        // Preserve entityId fields during edit (Requirement 9.2)
         const meetingData = {
             schoolId: data.school.id,
             schoolName: data.school.name,
             schoolSlug: data.schoolSlug,
-            // Preserve existing entityId from meeting (migration field)
             entityId: meeting?.entityId || null,
             entityType: meeting?.entityType || null,
-            // Synchronize visibility with the school
             workspaceIds: data.school.workspaceIds || [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
             heroImageUrl: data.heroImageUrl || '',
+            heroTitle: data.heroTitle || '',
+            heroDescription: data.heroDescription || '',
+            heroTagline: data.heroTagline || '',
+            heroCtaLabel: data.heroCtaLabel || '',
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
             adminAlertsEnabled: data.adminAlertsEnabled,
@@ -250,6 +279,18 @@ export default function EditMeetingPage() {
 
   const publicUrl = watchedType && watchedSlug ? `/meetings/${watchedType.slug}/${watchedSlug}` : null;
 
+  const handleNext = () => {
+    if (currentStep < WIZARD_STEPS.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
   const isGlobalLoading = isLoadingMeeting || isLoadingSchools || !hasInitialized;
 
   if (isGlobalLoading) {
@@ -270,6 +311,7 @@ export default function EditMeetingPage() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8 text-left">
+        {/* Header */}
         <div className="flex items-center justify-end">
             <div className="flex items-center gap-2">
                 {publicUrl && (
@@ -287,9 +329,58 @@ export default function EditMeetingPage() {
             </div>
         </div>
 
+        {/* Step Indicator */}
+        <div className="flex items-center gap-2 p-2 bg-background rounded-2xl border shadow-sm">
+          {WIZARD_STEPS.map((step, index) => {
+            const StepIcon = step.icon;
+            const isActive = index === currentStep;
+            const isCompleted = index < currentStep;
+            return (
+              <React.Fragment key={step.id}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(index)}
+                  className={cn(
+                    "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left",
+                    isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
+                    isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
+                    !isActive && !isCompleted && "hover:bg-muted/50 opacity-60"
+                  )}
+                >
+                  <div className={cn(
+                    "p-2 rounded-lg shrink-0 transition-colors",
+                    isActive && "bg-primary text-white",
+                    isCompleted && "bg-emerald-500 text-white",
+                    !isActive && !isCompleted && "bg-muted text-muted-foreground"
+                  )}>
+                    {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+                  </div>
+                  <div className="hidden sm:block min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest truncate">
+                      {step.label}
+                    </p>
+                    <p className="text-[9px] font-medium text-muted-foreground truncate">
+                      {step.description}
+                    </p>
+                  </div>
+                </button>
+                {index < WIZARD_STEPS.length - 1 && (
+                  <ChevronRight className={cn(
+                    "h-4 w-4 shrink-0 transition-colors",
+                    index < currentStep ? "text-emerald-500" : "text-muted-foreground/30"
+                  )} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+
+            {/* ──────── STEP 1: Configuration ──────── */}
+            <div className={cn(currentStep !== 0 && "hidden")}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
                     <CardHeader className="bg-muted/30 border-b pb-6">
@@ -304,7 +395,6 @@ export default function EditMeetingPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6 space-y-8 bg-background">
-                        {/* Institution & Category Group */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
@@ -370,7 +460,6 @@ export default function EditMeetingPage() {
 
                         <Separator className="bg-border/50" />
 
-                        {/* Logistics Group */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
@@ -409,26 +498,157 @@ export default function EditMeetingPage() {
 
                         <Separator className="bg-border/50" />
 
-                        {/* Visuals Group */}
-                        <div className="space-y-6">
-                            <FormField
-                                control={form.control}
-                                name="heroImageUrl"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
-                                            <ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media
-                                        </FormLabel>
+                        <FormField
+                            control={form.control}
+                            name="schoolSlug"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">URL Path Context</FormLabel>
+                                    <div className="flex flex-col sm:flex-row group transition-all">
+                                        <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+                                            /meetings/{watchedType?.slug || 'parent-engagement'}/
+                                        </div>
                                         <FormControl>
-                                            <MediaSelect 
-                                                value={field.value} 
-                                                onValueChange={field.onChange} 
-                                                className="rounded-2xl"
+                                            <Input 
+                                                {...field} 
+                                                placeholder="e.g. school-slug" 
+                                                className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
-                                            The primary visual for the session portal.
-                                        </FormDescription>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-6">
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
+                        <CardHeader className="bg-primary/10 border-b pb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                        <Globe className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <CardTitle className="text-sm font-black tracking-tight uppercase">Public URL</CardTitle>
+                                    </div>
+                                </div>
+                                {publicUrl && (
+                                    <Button asChild variant="link" size="sm" className="text-primary font-black text-[10px] uppercase tracking-widest">
+                                        <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-3 w-3 mr-1.5" />
+                                            View
+                                        </a>
+                                    </Button>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            <div className="p-3 bg-background rounded-xl border font-mono text-xs break-all text-muted-foreground">
+                                /meetings/{watchedType?.slug || '...'}/{watchedSlug || '...'}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+              </div>
+            </div>
+
+            {/* ──────── STEP 2: Hero Content ──────── */}
+            <div className={cn(currentStep !== 1 && "hidden")}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-violet-500/10 rounded-xl">
+                                <Type className="h-5 w-5 text-violet-600" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Hero Content</CardTitle>
+                                <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8 bg-background">
+                        <FormField
+                            control={form.control}
+                            name="heroTitle"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Hero Title</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            {...field} 
+                                            placeholder="e.g. Join Our Digital Transformation Journey"
+                                            className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg"
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
+                                        The main headline on the public meeting page. Leave blank to use the type default.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="heroDescription"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Hero Description</FormLabel>
+                                    <FormControl>
+                                        <Textarea 
+                                            {...field} 
+                                            placeholder="A short paragraph describing the session..."
+                                            rows={4}
+                                            className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none"
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
+                                        Supporting text below the title. Leave blank for the type default.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <Separator className="bg-border/50" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="heroTagline"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Tagline (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                {...field} 
+                                                placeholder="e.g. Free for all parents"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="heroCtaLabel"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">CTA Button Label (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                {...field} 
+                                                placeholder="e.g. Register Now"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -437,7 +657,78 @@ export default function EditMeetingPage() {
 
                         <Separator className="bg-border/50" />
 
-                        {/* Assets Group */}
+                        <FormField
+                            control={form.control}
+                            name="heroImageUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                        <ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media
+                                    </FormLabel>
+                                    <FormControl>
+                                        <MediaSelect 
+                                            value={field.value} 
+                                            onValueChange={field.onChange} 
+                                            className="rounded-2xl"
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter text-left">
+                                        The primary visual for the session portal.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-6">
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
+                        <CardHeader className="bg-muted/30 border-b pb-4">
+                            <CardTitle className="text-sm font-black tracking-tight uppercase flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                Live Preview
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                                {watchedType?.name || 'Meeting'}
+                            </div>
+                            <h3 className="text-lg font-black uppercase tracking-tight leading-tight">
+                                {form.watch('heroTitle') || 'Hero Title Will Appear Here'}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-4">
+                                {form.watch('heroDescription') || 'Hero description text will appear here...'}
+                            </p>
+                            {form.watch('heroTagline') && (
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                                    {form.watch('heroTagline')}
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+              </div>
+            </div>
+
+            {/* ──────── STEP 3: Options ──────── */}
+            <div className={cn(currentStep !== 2 && "hidden")}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Settings2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Advanced Options</CardTitle>
+                                <CardDescription className="text-xs font-medium text-left">Recording, brochure, and notifications.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8 bg-background">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
@@ -473,58 +764,10 @@ export default function EditMeetingPage() {
                     </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
-                    <CardHeader className="bg-primary/10 border-b pb-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                                    <Globe className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg font-black tracking-tight uppercase">Public Addressing</CardTitle>
-                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest text-left">Define the public URL identity.</CardDescription>
-                                </div>
-                            </div>
-                            {publicUrl && (
-                                <Button asChild variant="link" size="sm" className="text-primary font-black text-[10px] uppercase tracking-widest">
-                                    <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                                        <ExternalLink className="h-3 w-3 mr-1.5" />
-                                        View Portal
-                                    </a>
-                                </Button>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <FormField
-                            control={form.control}
-                            name="schoolSlug"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
-                                    <div className="flex flex-col sm:flex-row group transition-all">
-                                        <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
-                                            /meetings/{watchedType?.slug || 'parent-engagement'}/
-                                        </div>
-                                        <FormControl>
-                                            <Input 
-                                                {...field} 
-                                                placeholder="e.g. school-slug" 
-                                                className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
-                                            />
-                                        </FormControl>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                    </Card>
+                    <InternalNotificationConfig prefix="adminAlert" />
                 </div>
 
                 <div className="space-y-8">
-                    <InternalNotificationConfig prefix="adminAlert" />
-
                     <div className="pt-4 sticky top-24">
                         <Button 
                             type="submit" 
@@ -537,7 +780,55 @@ export default function EditMeetingPage() {
                         </Button>
                     </div>
                 </div>
+              </div>
             </div>
+
+            {/* ──────── Wizard Navigation ──────── */}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrev}
+                disabled={currentStep === 0}
+                className="rounded-xl font-bold gap-2 h-12 px-6"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1.5">
+                {WIZARD_STEPS.map((_, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-300",
+                      index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20"
+                    )}
+                  />
+                ))}
+              </div>
+
+              {currentStep < WIZARD_STEPS.length - 1 ? (
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  className="rounded-xl font-bold gap-2 h-12 px-6"
+                >
+                  Next Step
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg"
+                >
+                  {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Update Session
+                </Button>
+              )}
+            </div>
+
           </form>
         </FormProvider>
       </div>

@@ -3,6 +3,7 @@ export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
   { id: 'training', name: 'Training', slug: 'training' },
+  { id: 'webinar', name: 'Webinar', slug: 'webinar' },
 ] as const;
 
 export type MeetingType = typeof MEETING_TYPES[number];
@@ -718,6 +719,11 @@ export interface Meeting {
   meetingLink: string;
   type: MeetingType;
   heroImageUrl?: string;
+  // Editable hero content overrides (Phase 1 - Meetings V2)
+  heroTitle?: string;
+  heroDescription?: string;
+  heroTagline?: string;
+  heroCtaLabel?: string;
   recordingUrl?: string;
   brochureUrl?: string;
   adminAlertsEnabled?: boolean;

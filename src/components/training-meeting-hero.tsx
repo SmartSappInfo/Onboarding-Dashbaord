@@ -10,9 +10,11 @@ import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import ScrollDownIndicator from './scroll-down-indicator';
 import AnimatedHeroShapes from './animated-hero-shapes';
 import { motion } from 'framer-motion';
+import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
 
 interface TrainingMeetingHeroProps {
   school: School;
@@ -87,11 +89,15 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
               </div>
             )}
 
+            <Badge variant="secondary" className="mb-4 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+              {meeting.type?.name || 'Training'}
+            </Badge>
+
             <h1 className="font-headline text-3xl font-black tracking-tighter sm:text-5xl md:text-6xl uppercase leading-none">
-              Staff Training Session
+              {getHeroTitle(meeting.type?.id || 'training', school.name, meeting.heroTitle)}
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-foreground/80 font-medium max-w-xl">
-              This session is designed to get your staff comfortable with the SmartSapp platform. We will cover key features for student management, parent communication, and daily operations.
+              {getHeroDescription(meeting.type?.id || 'training', school.name, meeting.heroDescription)}
             </p>
 
             <div className="my-8 w-full">

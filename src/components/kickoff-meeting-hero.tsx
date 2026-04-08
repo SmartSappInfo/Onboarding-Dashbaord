@@ -10,9 +10,11 @@ import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import ScrollDownIndicator from './scroll-down-indicator';
 import AnimatedHeroShapes from './animated-hero-shapes';
 import { motion } from 'framer-motion';
+import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
 
 interface KickoffMeetingHeroProps {
   school: School;
@@ -87,11 +89,15 @@ export default function KickoffMeetingHero({ school, meeting }: KickoffMeetingHe
               </div>
             )}
 
+            <Badge variant="secondary" className="mb-4 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+              {meeting.type?.name || 'Kickoff'}
+            </Badge>
+
             <h1 className="font-headline text-3xl font-black tracking-tighter sm:text-5xl md:text-6xl uppercase leading-none">
-              Institutional Kickoff Meeting
+              {getHeroTitle(meeting.type?.id || 'kickoff', school.name, meeting.heroTitle)}
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-foreground/80 font-medium max-w-xl">
-              Welcome to the kickoff meeting for {school.name}. We'll discuss the onboarding process, set timelines, and answer your initial questions to ensure a smooth start.
+              {getHeroDescription(meeting.type?.id || 'kickoff', school.name, meeting.heroDescription)}
             </p>
 
             <div className="my-8 w-full">

@@ -7,23 +7,23 @@ import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
 import { format, isAfter } from 'date-fns';
-import { Calendar, Clock, PlayCircle } from 'lucide-react';
+import { Calendar, Clock, PlayCircle, Radio } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ScrollDownIndicator from './scroll-down-indicator';
 import AnimatedHeroShapes from './animated-hero-shapes';
 import { motion } from 'framer-motion';
-import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
+import { getHeroTitle, getHeroDescription, getHeroCtaLabel } from '@/lib/meeting-hero-defaults';
 
-interface MeetingHeroProps {
+interface WebinarMeetingHeroProps {
   school: School;
   meeting: Meeting;
 }
 
 const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0";
 
-export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
+export default function WebinarMeetingHero({ school, meeting }: WebinarMeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
         return;
       }
       
-      const meetingEndTime = new Date(new Date(meeting.meetingTime).getTime() + 2 * 60 * 60 * 1000); // 2 hours after start
+      const meetingEndTime = new Date(new Date(meeting.meetingTime).getTime() + 2 * 60 * 60 * 1000);
       if (isAfter(new Date(), meetingEndTime)) {
         setMeetingState('ENDED_NO_RECORDING');
       } else {
@@ -42,15 +42,17 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
     };
 
     checkMeetingState();
-    const interval = setInterval(checkMeetingState, 60000); // Check every minute
+    const interval = setInterval(checkMeetingState, 60000);
     return () => clearInterval(interval);
   }, [meeting.meetingTime, meeting.recordingUrl]);
+
+  const ctaLabel = getHeroCtaLabel(meeting.type?.id || 'webinar', meeting.heroCtaLabel);
 
   return (
     <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 h-screen flex items-center overflow-hidden">
         <LightRays
             raysOrigin="top-center"
-            raysColor="#3B5FFF"
+            raysColor="#8B5CF6"
             raysSpeed={1}
             lightSpread={0.5}
             rayLength={3}
@@ -89,15 +91,16 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
               </div>
             )}
 
-            <Badge variant="secondary" className="mb-4 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-              {meeting.type?.name || 'Parent Engagement'}
+            <Badge className="mb-4 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-violet-500/10 text-violet-600 border-violet-500/20 hover:bg-violet-500/20">
+              <Radio className="h-3 w-3 mr-1.5 animate-pulse" />
+              {meeting.type?.name || 'Webinar'}
             </Badge>
 
             <h1 className="font-headline text-3xl font-black tracking-tighter sm:text-5xl md:text-6xl uppercase leading-none">
-              {getHeroTitle(meeting.type?.id || 'parent', school.name, meeting.heroTitle)}
+              {getHeroTitle(meeting.type?.id || 'webinar', school.name, meeting.heroTitle)}
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-foreground/80 font-medium max-w-xl">
-              {getHeroDescription(meeting.type?.id || 'parent', school.name, meeting.heroDescription)}
+              {getHeroDescription(meeting.type?.id || 'webinar', school.name, meeting.heroDescription)}
             </p>
 
             <div className="my-8 w-full">
@@ -125,8 +128,8 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             
             {meetingState === 'ENDED_NO_RECORDING' && (
               <div className="w-full max-w-md mx-auto md:mx-0 p-6 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-center shadow-xl">
-                <p className="text-lg font-black uppercase text-foreground">Meeting has ended</p>
-                <p className="text-xs font-bold text-muted-foreground uppercase mt-1">Recording will be available soon</p>
+                <p className="text-lg font-black uppercase text-foreground">Webinar has ended</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase mt-1">Replay will be available soon</p>
               </div>
             )}
 
@@ -134,7 +137,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
               <Button asChild size="lg" className="h-14 px-10 rounded-2xl font-black uppercase tracking-widest text-sm shadow-2xl active:scale-95 transition-all">
                 <a href="#recording">
                   <PlayCircle className="mr-2 h-6 w-6" />
-                  Watch Meeting Recording
+                  Watch Replay
                 </a>
               </Button>
             )}
@@ -154,7 +157,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
                           src={meeting.heroImageUrl || DEFAULT_HERO}
                           alt={`Hero image for ${school.name}`}
                           fill
-                          className="object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(59,95,255,0.3)]"
+                          className="object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(139,92,246,0.3)]"
                           priority
                       />
                   </div>
@@ -162,7 +165,8 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
           </div>
         </div>
       </div>
-      <ScrollDownIndicator href="#welcome" />
+      {meetingState === 'ENDED_WITH_RECORDING' && <ScrollDownIndicator href="#recording" />}
+      {meetingState === 'UPCOMING' && <ScrollDownIndicator href="#welcome" />}
     </section>
   );
 }
