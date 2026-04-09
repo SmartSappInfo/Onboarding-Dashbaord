@@ -41,19 +41,18 @@ import {
     Timer,
     Settings2,
     FileCheck,
-    Target
+    Target,
+    Tags
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { ThemeProvider } from '@/components/theme-provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
 import NotificationBell from './components/NotificationBell';
-import WorkspaceSwitcher from './components/WorkspaceSwitcher';
-import OrganizationSwitcher from './components/OrganizationSwitcher';
+import UnifiedOrgWorkspaceSwitcher from './components/UnifiedOrgWorkspaceSwitcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -170,6 +169,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: hasPerm('studios_view') },
     { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: hasPerm('studios_view') },
     { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: hasPerm('studios_view') },
+    { href: '/admin/contacts/tags', icon: Tags, label: 'Tags', visible: hasPerm('tags_view') },
   ];
 
   const financeNavItems = [
@@ -280,8 +280,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
           <div className="flex items-center gap-3 shrink-0">
-              <OrganizationSwitcher />
-              <WorkspaceSwitcher />
+              <UnifiedOrgWorkspaceSwitcher />
               {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
               <NotificationBell />
               <div className="h-8 w-px bg-border mx-1" />
@@ -324,7 +323,6 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
 export default function AdminLayoutClient({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <NavigationProvider>
         <GlobalFilterProvider>
           <TenantProvider>
@@ -332,6 +330,5 @@ export default function AdminLayoutClient({ children }: { children: ReactNode })
           </TenantProvider>
         </GlobalFilterProvider>
       </NavigationProvider>
-    </ThemeProvider>
   );
 }

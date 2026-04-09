@@ -2,15 +2,16 @@ import { Suspense } from 'react';
 import RegistrantsClient from './RegistrantsClient';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function RegistrantsPage({ params }: { params: { id: string } }) {
+export default async function RegistrantsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <Suspense fallback={
-        <div className="h-full w-full p-8 space-y-4">
-            <Skeleton className="h-10 w-[250px]" />
-            <Skeleton className="h-[500px] w-full rounded-2xl" />
-        </div>
+      <div className="h-full w-full p-8 space-y-4">
+        <Skeleton className="h-10 w-[250px]" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
+      </div>
     }>
-      <RegistrantsClient meetingId={params.id} />
+      <RegistrantsClient meetingId={id} />
     </Suspense>
   );
 }

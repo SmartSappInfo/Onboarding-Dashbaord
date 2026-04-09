@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, where } from 'firebase/firestore';
-import { useCollection, useFirestore } from '@/firebase';
-import type { WorkspaceEntity } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import type { ResolvedContact } from '@/lib/types';
+import { getContactEmail, getContactPhone } from '@/lib/migration-status-utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,14 +24,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Search, X, Building, AlertCircle, ChevronLeft, ChevronRight, Users, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface EntitySelectorProps {
   channel: 'email' | 'sms';
   onSelectionChange: (entityIds: string[]) => void;
   selectedEntityIds: string[];
-  maxSelections?: number;
 }
 
 // Entity type icons for better visual distinction
@@ -48,22 +47,92 @@ const SEARCH_DEBOUNCE_MS = 300;
  * 
  * Displays workspace entities and allows multi-selection for messaging.
  * Uses entityId as the primary identifier and resolves entity information
- * from entities + workspace_entities collections via Contact Adapter.
- * 
- * Requirements: 23.2, 23.4 (Task 35.1)
+ * from entities + workspace_entities collections via Client SDK.
  */
 export function EntitySelector({
   channel,
   onSelectionChange,
   selectedEntityIds,
-  maxSelections = 100,
 }: EntitySelectorProps) {
   const firestore = useFirestore();
-  const { activeWorkspace: currentWorkspace } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
   const [currentPage, setCurrentPage] = React.useState(1);
   const [showSelectAllDialog, setShowSelectAllDialog] = React.useState(false);
+
+  // 1. Fetch Workspace Entities (Migrated)
+  const weQuery = useMemoFirebase(() => 
+    firestore && activeWorkspaceId ? query(
+      collection(firestore, 'workspace_entities'),
+      where('workspaceId', '==', activeWorkspaceId)
+    ) : null,
+  [firestore, activeWorkspaceId]);
+  const { data: workspaceEntitiesRaw, isLoading: isWelsLoading } = useCollection<any>(weQuery);
+
+  // 2. Fetch Schools (Legacy)
+  const schoolsQuery = useMemoFirebase(() => 
+    firestore && activeWorkspaceId ? query(
+      collection(firestore, 'schools'),
+      where('workspaceIds', 'array-contains', activeWorkspaceId)
+    ) : null,
+  [firestore, activeWorkspaceId]);
+  const { data: schoolsRaw, isLoading: isSchoolsLoading } = useCollection<any>(schoolsQuery);
+
+  const isLoading = isWelsLoading || isSchoolsLoading;
+
+  // 3. Map to Unified ResolvedContact format
+  const workspaceEntities = React.useMemo(() => {
+    if (!activeWorkspaceId) return [];
+
+    const contacts: ResolvedContact[] = [];
+
+    // Map Schools
+    if (schoolsRaw) {
+        schoolsRaw.forEach(school => {
+            // Skip if migrated (will be handled by workspace_entities)
+            if (school.migrationStatus === 'migrated') return;
+
+            contacts.push({
+                id: school.id,
+                name: school.name,
+                slug: school.slug,
+                contacts: school.focalPersons || [],
+                pipelineId: school.pipelineId,
+                stageId: school.stage?.id,
+                stageName: school.stage?.name,
+                assignedTo: school.assignedTo,
+                status: school.status,
+                tags: school.tags || [],
+                migrationStatus: (school.migrationStatus || 'legacy') as any,
+                schoolData: school
+            });
+        });
+    }
+
+    // Map Workspace Entities
+    if (workspaceEntitiesRaw) {
+        workspaceEntitiesRaw.forEach(we => {
+            contacts.push({
+                id: we.entityId || we.id,
+                entityId: we.entityId,
+                workspaceEntityId: we.id,
+                name: we.displayName,
+                contacts: [], // In entities, we resolve contacts on server during dispatch
+                pipelineId: we.pipelineId,
+                stageId: we.stageId,
+                stageName: we.currentStageName,
+                assignedTo: we.assignedTo,
+                status: we.status,
+                tags: we.workspaceTags || [],
+                migrationStatus: 'migrated',
+                entityType: we.entityType
+            });
+        });
+    }
+
+    return contacts;
+  }, [activeWorkspaceId, schoolsRaw, workspaceEntitiesRaw]);
 
   // Debounce search input
   React.useEffect(() => {
@@ -75,33 +144,22 @@ export function EntitySelector({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Load workspace entities from Firestore (Requirement 23.2)
-  const workspaceEntitiesQuery = React.useMemo(() => {
-    if (!firestore || !currentWorkspace?.id) return null;
-    return query(
-      collection(firestore, 'workspace_entities'),
-      where('workspaceId', '==', currentWorkspace.id),
-      where('status', '==', 'active'),
-      orderBy('displayName', 'asc')
-    );
-  }, [firestore, currentWorkspace?.id]);
-
-  const { data: workspaceEntities, isLoading } = useCollection<WorkspaceEntity>(workspaceEntitiesQuery);
-
   // Filter entities based on search term (Requirement 23.2)
   const filteredEntities = React.useMemo(() => {
     if (!workspaceEntities) return [];
-    
+
     const searchLower = debouncedSearchTerm.toLowerCase().trim();
     if (!searchLower) return workspaceEntities;
 
     return workspaceEntities.filter((entity) => {
-      const nameMatch = entity.displayName?.toLowerCase().includes(searchLower);
-      const emailMatch = entity.primaryEmail?.toLowerCase().includes(searchLower);
-      const phoneMatch = entity.primaryPhone?.toLowerCase().includes(searchLower);
+      const nameMatch = entity.name?.toLowerCase().includes(searchLower);
+      const email = getContactEmail(entity);
+      const phone = getContactPhone(entity);
+      const emailMatch = email?.toLowerCase().includes(searchLower);
+      const phoneMatch = phone?.toLowerCase().includes(searchLower);
       const typeMatch = entity.entityType?.toLowerCase().includes(searchLower);
-      const stageMatch = entity.currentStageName?.toLowerCase().includes(searchLower);
-      
+      const stageMatch = entity.stageName?.toLowerCase().includes(searchLower);
+
       return nameMatch || emailMatch || phoneMatch || typeMatch || stageMatch;
     });
   }, [workspaceEntities, debouncedSearchTerm]);
@@ -117,15 +175,11 @@ export function EntitySelector({
   // Handle individual entity selection (Requirement 23.4 - populate entityId)
   const handleToggleEntity = (entityId: string) => {
     const isSelected = selectedEntityIds.includes(entityId);
-    
+
     if (isSelected) {
       // Remove from selection
       onSelectionChange(selectedEntityIds.filter(id => id !== entityId));
     } else {
-      // Add to selection if under limit
-      if (selectedEntityIds.length >= maxSelections) {
-        return; // Silently ignore if at max
-      }
       onSelectionChange([...selectedEntityIds, entityId]);
     }
   };
@@ -136,7 +190,7 @@ export function EntitySelector({
   };
 
   const confirmSelectAll = () => {
-    const allIds = filteredEntities.slice(0, maxSelections).map(e => e.entityId);
+    const allIds = filteredEntities.map(e => e.entityId || e.id);
     onSelectionChange(allIds);
     setShowSelectAllDialog(false);
   };
@@ -154,7 +208,7 @@ export function EntitySelector({
   // Get selected entity details for display (Requirement 23.2)
   const selectedEntities = React.useMemo(() => {
     if (!workspaceEntities) return [];
-    return workspaceEntities.filter(e => selectedEntityIds.includes(e.entityId));
+    return workspaceEntities.filter(e => selectedEntityIds.includes(e.entityId || e.id));
   }, [workspaceEntities, selectedEntityIds]);
 
   // Handle pagination
@@ -195,7 +249,7 @@ export function EntitySelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary">
-            {selectedEntityIds.length} / {maxSelections} selected
+            {selectedEntityIds.length} selected
           </Badge>
           {filteredEntities.length > 0 && (
             <span className="text-sm text-muted-foreground">
@@ -218,7 +272,6 @@ export function EntitySelector({
               variant="outline"
               size="sm"
               onClick={handleSelectAll}
-              disabled={selectedEntityIds.length >= maxSelections}
             >
               Select All
             </Button>
@@ -226,15 +279,7 @@ export function EntitySelector({
         </div>
       </div>
 
-      {/* Maximum Selection Warning */}
-      {selectedEntityIds.length >= maxSelections && (
-        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <span className="text-sm text-amber-900 dark:text-amber-100">
-            Maximum selection limit of {maxSelections} contacts reached
-          </span>
-        </div>
-      )}
+
 
       {/* Selected Entities Display (Requirement 23.2) */}
       {selectedEntities.length > 0 && (
@@ -246,28 +291,28 @@ export function EntitySelector({
             <ScrollArea className="h-32">
               <div className="space-y-2">
                 {selectedEntities.map((entity) => {
-                  const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType] || Building;
+                  const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType as keyof typeof ENTITY_TYPE_ICONS] || Building;
                   return (
                     <div
-                      key={entity.entityId}
+                      key={entity.entityId || entity.id}
                       className="flex items-center justify-between p-2 bg-muted rounded-md"
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm truncate">{entity.displayName}</span>
+                        <span className="text-sm truncate">{entity.name}</span>
                         <Badge variant="outline" className="text-xs">
-                          {entity.entityType}
+                          {entity.entityType || 'Unknown'}
                         </Badge>
-                        {entity.currentStageName && (
+                        {entity.stageName && (
                           <span className="text-xs text-muted-foreground truncate">
-                            {entity.currentStageName}
+                            {entity.stageName}
                           </span>
                         )}
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleRemoveEntity(entity.entityId)}
+                        onClick={() => handleRemoveEntity(entity.entityId || entity.id)}
                         className="h-6 w-6 p-0"
                       >
                         <X className="h-3 w-3" />
@@ -305,49 +350,47 @@ export function EntitySelector({
               <ScrollArea className="h-96">
                 <div className="space-y-1">
                   {paginatedEntities.map((entity) => {
-                    const isSelected = selectedEntityIds.includes(entity.entityId);
-                    const isDisabled = !isSelected && selectedEntityIds.length >= maxSelections;
-                    const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType] || Building;
+                    const mappedEntityId = entity.entityId || entity.id;
+                    const isSelected = selectedEntityIds.includes(mappedEntityId);
+                    const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType as keyof typeof ENTITY_TYPE_ICONS] || Building;
 
                     return (
                       <div
-                        key={entity.entityId}
+                        key={mappedEntityId}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-md border transition-colors",
                           isSelected && "bg-primary/5 border-primary",
-                          !isSelected && "hover:bg-muted",
-                          isDisabled && "opacity-50 cursor-not-allowed"
+                          !isSelected && "hover:bg-muted"
                         )}
                       >
                         <Checkbox
-                          id={`entity-${entity.entityId}`}
+                          id={`entity-${mappedEntityId}`}
                           checked={isSelected}
-                          onCheckedChange={() => handleToggleEntity(entity.entityId)}
-                          disabled={isDisabled}
+                          onCheckedChange={() => handleToggleEntity(mappedEntityId)}
                         />
                         <label
-                          htmlFor={`entity-${entity.entityId}`}
+                          htmlFor={`entity-${mappedEntityId}`}
                           className="flex-1 cursor-pointer"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <p className="text-sm font-medium truncate">{entity.displayName}</p>
+                                <p className="text-sm font-medium truncate">{entity.name}</p>
                                 <Badge variant="outline" className="text-xs">
-                                  {entity.entityType}
+                                  {entity.entityType || 'Unknown'}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                {entity.primaryEmail && (
-                                  <span className="truncate">{entity.primaryEmail}</span>
+                                {getContactEmail(entity) && (
+                                  <span className="truncate">{getContactEmail(entity)}</span>
                                 )}
-                                {entity.primaryPhone && (
-                                  <span className="truncate">{entity.primaryPhone}</span>
+                                {getContactPhone(entity) && (
+                                  <span className="truncate">{getContactPhone(entity)}</span>
                                 )}
-                                {entity.currentStageName && (
+                                {entity.stageName && (
                                   <Badge variant="secondary" className="text-xs">
-                                    {entity.currentStageName}
+                                    {entity.stageName}
                                   </Badge>
                                 )}
                               </div>
@@ -399,11 +442,8 @@ export function EntitySelector({
           <AlertDialogHeader>
             <AlertDialogTitle>Select All Contacts?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will select {Math.min(filteredEntities.length, maxSelections)} contacts
-              {filteredEntities.length > maxSelections && 
-                ` (limited to maximum of ${maxSelections})`
-              }.
-              {' '}You will send approximately {Math.min(filteredEntities.length, maxSelections)} messages.
+              This will select all {filteredEntities.length} matching contacts. 
+              You will queue approximately {filteredEntities.length} messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

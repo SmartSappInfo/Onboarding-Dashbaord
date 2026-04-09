@@ -250,8 +250,7 @@ export async function getWorkspaceContacts(
     // Query legacy schools for non-migrated contacts
     let schoolQuery = adminDb
       .collection('schools')
-      .where('workspaceIds', 'array-contains', workspaceId)
-      .where('migrationStatus', 'in', ['legacy', null]);
+      .where('workspaceIds', 'array-contains', workspaceId);
 
     if (filters?.pipelineId) {
       schoolQuery = schoolQuery.where('pipelineId', '==', filters.pipelineId);
@@ -264,6 +263,9 @@ export async function getWorkspaceContacts(
 
     for (const doc of schoolSnap.docs) {
       const school = { id: doc.id, ...doc.data() } as School;
+      
+      // Skip if already migrated (they are handled in the workspace_entities query above)
+      if (school.migrationStatus === 'migrated') continue;
       
       // Apply tag filter if specified
       if (filters?.tags && filters.tags.length > 0) {

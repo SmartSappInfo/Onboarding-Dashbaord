@@ -5,31 +5,33 @@ import { useParams, useRouter } from 'next/navigation';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import type { Meeting, Attendee, School } from '@/lib/types';
-import { 
-    Users, 
-    Baby, 
-    Clock, 
-    ArrowLeft, 
-    Download, 
-    ShieldCheck, 
-    TrendingUp, 
-    LayoutList, 
-    Building, 
-    Calendar, 
-    Target, 
-    BarChart3, 
-    CheckCircle2, 
-    CalendarCheck, 
-    Contact, 
-    ChevronRight, 
-    FileSpreadsheet, 
-    Zap, 
+import {
+    Users,
+    Baby,
+    Clock,
+    ArrowLeft,
+    Download,
+    ShieldCheck,
+    TrendingUp,
+    LayoutList,
+    Building,
+    Calendar,
+    Target,
+    BarChart3,
+    CheckCircle2,
+    CalendarCheck,
+    Contact,
+    ChevronRight,
+    FileSpreadsheet,
+    Zap,
     RotateCcw,
     Settings2,
     Loader2,
-    ArrowRight
+    ArrowRight,
+    AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -38,14 +40,14 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip as ChartTooltip, 
-    ResponsiveContainer, 
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as ChartTooltip,
+    ResponsiveContainer,
     Cell,
     LineChart,
     Line
@@ -55,26 +57,26 @@ import {
  * @fileOverview Meeting Intelligence Portal.
  * Visualizes session attendance, family reach, and child census.
  */
-export default function ResultsClient() {
+export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?: string }) {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
     const firestore = useFirestore();
-    const meetingId = params.id as string;
+    const meetingId = meetingIdProp || (params.id as string);
 
     const [isExporting, setIsExporting] = React.useState(false);
 
     // Data Subscriptions
-    const meetingRef = useMemoFirebase(() => 
-        firestore ? doc(firestore, 'meetings', meetingId) : null, 
-    [firestore, meetingId]);
-    
-    const attendeesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, `meetings/${meetingId}/attendees`), orderBy('joinedAt', 'desc')) : null, 
-    [firestore, meetingId]);
+    const meetingRef = useMemoFirebase(() =>
+        firestore ? doc(firestore, 'meetings', meetingId) : null,
+        [firestore, meetingId]);
 
-    const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingRef);
-    const { data: attendees, isLoading: isLoadingAttendees } = useCollection<Attendee>(attendeesQuery);
+    const attendeesQuery = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, `meetings/${meetingId}/attendees`), orderBy('joinedAt', 'desc')) : null,
+        [firestore, meetingId]);
+
+    const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingRef);
+    const { data: attendees, isLoading: isLoadingAttendees, error: attendeesError } = useCollection<Attendee>(attendeesQuery);
 
     const metrics = React.useMemo(() => {
         if (!attendees) return { families: 0, children: 0, avgChildren: 0 };
@@ -105,7 +107,7 @@ export default function ResultsClient() {
                 `"${a.childrenNames?.join(', ') || ''}"`,
                 `"${format(new Date(a.joinedAt), 'yyyy-MM-dd HH:mm:ss')}"`
             ]);
-            
+
             const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -135,12 +137,30 @@ export default function ResultsClient() {
         );
     }
 
+    if (meetingError || attendeesError) {
+        const error = meetingError || attendeesError;
+        return (
+            <div className="p-8 max-w-7xl mx-auto">
+                <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle className="font-black uppercase tracking-widest text-[10px]">Intelligence Error</AlertTitle>
+                    <AlertDescription className="text-sm font-medium mt-1">
+                        {error?.message || 'Access Denied or Connection Failure. Please verify your permissions.'}
+                    </AlertDescription>
+                    <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
+                        Refresh Intelligence
+                    </Button>
+                </Alert>
+            </div>
+        );
+    }
+
     if (!meeting) return <div className="p-20 text-center font-black uppercase tracking-widest opacity-20">Session Not Found</div>;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-50 text-left">
             <div className="max-w-7xl mx-auto space-y-10 pb-32">
-                
+
                 {/* Executive Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="flex items-center gap-5">
@@ -198,15 +218,15 @@ export default function ResultsClient() {
                                         <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
                                         <XAxis dataKey="time" axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 'black' }} />
                                         <YAxis axisLine={false} tickLine={false} fontSize={10} />
-                                        <ChartTooltip 
+                                        <ChartTooltip
                                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}
                                         />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="count" 
-                                            stroke="hsl(var(--primary))" 
-                                            strokeWidth={4} 
-                                            dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }} 
+                                        <Line
+                                            type="monotone"
+                                            dataKey="count"
+                                            stroke="hsl(var(--primary))"
+                                            strokeWidth={4}
+                                            dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
                                             activeDot={{ r: 8, strokeWidth: 0 }}
                                             name="Family Joins"
                                         />

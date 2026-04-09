@@ -19,6 +19,7 @@ export interface ScheduleMessageInput {
   onError?: (entityId: string, error: string) => void;
   // Optional: Multi-contact support (Requirement 2.6, 2.7, 2.8, 3.7)
   entityContactMap?: Record<string, string[]>; // Map of entityId to array of recipient emails/phones
+  contactScope?: 'primary' | 'signatories' | 'all' | 'custom';
 }
 
 /**
@@ -58,7 +59,8 @@ export async function scheduleMultiEntityMessages(
     delayMs = 500,
     onProgress,
     onError,
-    entityContactMap
+    entityContactMap,
+    contactScope = 'primary'
   } = input;
 
   // Calculate total messages (considering multi-contact per entity)
@@ -90,7 +92,35 @@ export async function scheduleMultiEntityMessages(
     const entityId = entityIds[i];
     
     // Get contacts for this entity (Requirement 2.6, 2.7, 3.7)
-    const entityContacts = entityContactMap?.[entityId] || [];
+    let entityContacts = entityContactMap?.[entityId] || [];
+    
+    // If scope is provided and no custom map, resolve contacts via adapter (Task 35.3)
+    if (contactScope && !entityContactMap?.[entityId]) {
+      const { resolveContact } = await import('./contact-adapter');
+      const { getContactEmail, getContactPhone } = await import('./migration-status-utils');
+      
+      const contact = await resolveContact(entityId, workspaceId || 'onboarding');
+      if (contact) {
+        const channel = variables.channel || 'email'; // Need to know channel from somewhere
+        // We actually get template channel in ComposerWizard, but here we can infer from variables if passed
+        // Or better, we just resolve all potential contacts and sendMessage handles the rest
+        
+        if (contactScope === 'primary') {
+             const email = getContactEmail(contact);
+             const phone = getContactPhone(contact);
+             entityContacts = channel === 'email' ? (email ? [email] : []) : (phone ? [phone] : []);
+        } else if (contactScope === 'signatories') {
+             entityContacts = contact.contacts
+                 .filter(c => c.isSignatory)
+                 .map(c => channel === 'email' ? c.email : c.phone)
+                 .filter(v => !!v);
+        } else if (contactScope === 'all') {
+             entityContacts = contact.contacts
+                 .map(c => channel === 'email' ? c.email : c.phone)
+                 .filter(v => !!v);
+        }
+      }
+    }
     
     // If no specific contacts, send one message (existing behavior)
     const recipients = entityContacts.length > 0 ? entityContacts : [''];

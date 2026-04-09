@@ -19,7 +19,7 @@ export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned' | 'Lead' | 'Lo
 /**
  * Tag Category Types
  */
-export type TagCategory = 
+export type TagCategory =
   | 'behavioral'    // Actions taken (Downloaded, Attended, Clicked)
   | 'demographic'   // Location, size, type
   | 'interest'      // Product/service interests
@@ -117,8 +117,8 @@ export interface EntityAuditLog {
   id: string;
   organizationId: string;
   workspaceId?: string; // Optional for entity operations, required for workspace_entity operations
-  action: 'entity_created' | 'entity_updated' | 'entity_deleted' | 'entity_read' | 
-          'workspace_entity_created' | 'workspace_entity_updated' | 'workspace_entity_deleted' | 'workspace_entity_read';
+  action: 'entity_created' | 'entity_updated' | 'entity_deleted' | 'entity_read' |
+  'workspace_entity_created' | 'workspace_entity_updated' | 'workspace_entity_deleted' | 'workspace_entity_read';
   entityId: string;
   entityType: 'institution' | 'family' | 'person';
   userId: string;
@@ -151,13 +151,13 @@ export interface TagFilterQuery {
   };
 }
 
-export type AutomationTrigger = 
-  | 'SCHOOL_CREATED' 
-  | 'SCHOOL_STAGE_CHANGED' 
-  | 'TASK_COMPLETED' 
-  | 'SURVEY_SUBMITTED' 
-  | 'PDF_SIGNED' 
-  | 'WEBHOOK_RECEIVED' 
+export type AutomationTrigger =
+  | 'SCHOOL_CREATED'
+  | 'SCHOOL_STAGE_CHANGED'
+  | 'TASK_COMPLETED'
+  | 'SURVEY_SUBMITTED'
+  | 'PDF_SIGNED'
+  | 'WEBHOOK_RECEIVED'
   | 'MEETING_CREATED'
   | 'TAG_ADDED'
   | 'TAG_REMOVED';
@@ -207,10 +207,23 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   logoUrl?: string;
   primaryColor?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  status?: 'active' | 'archived';
+  settings?: {
+    defaultCurrency?: string;
+    defaultTimezone?: string;
+    defaultLanguage?: string;
+  };
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 /**
@@ -254,7 +267,7 @@ export interface Workspace {
   organizationId: string; // Anchored to an Org
   name: string;
   description?: string;
-  icon?: string; 
+  icon?: string;
   color?: string;
   status: 'active' | 'archived';
   statuses: WorkspaceStatus[];
@@ -292,10 +305,10 @@ export interface BillingProfile {
 }
 
 export interface Attendee {
-    id: string;
-    parentName: string;
-    childrenNames: string[];
-    joinedAt: string;
+  id: string;
+  parentName: string;
+  childrenNames: string[];
+  joinedAt: string;
 }
 
 /**
@@ -835,227 +848,227 @@ export interface Survey {
 }
 
 export interface SurveyElement {
-    id: string;
-    type: string;
-    title?: string;
-    hidden?: boolean;
-    style?: {
-        textAlign?: 'left' | 'center' | 'right' | 'justify';
-    };
+  id: string;
+  type: string;
+  title?: string;
+  hidden?: boolean;
+  style?: {
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+  };
 }
 
 export interface SurveyQuestion extends SurveyElement {
-    type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone';
-    title: string;
-    isRequired: boolean;
-    placeholder?: string;
-    defaultValue?: any;
-    options?: string[];
-    allowOther?: boolean;
-    minLength?: number;
-    maxLength?: number;
-    enableScoring?: boolean;
-    optionScores?: number[];
-    yesScore?: number;
-    noScore?: number;
-    autoAdvance?: boolean;
+  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone';
+  title: string;
+  isRequired: boolean;
+  placeholder?: string;
+  defaultValue?: any;
+  options?: string[];
+  allowOther?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  enableScoring?: boolean;
+  optionScores?: number[];
+  yesScore?: number;
+  noScore?: number;
+  autoAdvance?: boolean;
 }
 
 export interface SurveyLayoutBlock extends SurveyElement {
-    type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
-    variant?: 'h1' | 'h2' | 'h3';
-    text?: string;
-    url?: string;
-    html?: string;
-    renderAsPage?: boolean;
-    validateBeforeNext?: boolean;
-    stepperTitle?: string;
-    description?: string; // For section descriptions
+  type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
+  variant?: 'h1' | 'h2' | 'h3';
+  text?: string;
+  url?: string;
+  html?: string;
+  renderAsPage?: boolean;
+  validateBeforeNext?: boolean;
+  stepperTitle?: string;
+  description?: string; // For section descriptions
 }
 
 export interface SurveyLogicBlock extends SurveyElement {
-    type: 'logic';
-    rules: {
-        sourceQuestionId: string;
-        operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
-        targetValue?: any;
-        action: {
-            type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
-            targetElementId?: string;
-            targetElementIds?: string[];
-        };
-    }[];
+  type: 'logic';
+  rules: {
+    sourceQuestionId: string;
+    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
+    targetValue?: any;
+    action: {
+      type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
+      targetElementId?: string;
+      targetElementIds?: string[];
+    };
+  }[];
 }
 
 export interface SurveyResultRule {
-    id: string;
-    label: string;
-    minScore: number;
-    maxScore: number;
-    priority: number;
-    pageId: string;
-    emailTemplateId?: string;
-    emailSenderProfileId?: string;
-    smsTemplateId?: string;
-    smsSenderProfileId?: string;
+  id: string;
+  label: string;
+  minScore: number;
+  maxScore: number;
+  priority: number;
+  pageId: string;
+  emailTemplateId?: string;
+  emailSenderProfileId?: string;
+  smsTemplateId?: string;
+  smsSenderProfileId?: string;
 }
 
 export interface SurveyResultPage {
-    id: string;
-    name: string;
-    isDefault: boolean;
-    blocks: SurveyResultBlock[];
+  id: string;
+  name: string;
+  isDefault: boolean;
+  blocks: SurveyResultBlock[];
 }
 
 export interface SurveyResultBlock {
-    id: string;
-    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer';
-    title?: string;
-    content?: string;
-    url?: string;
-    link?: string;
-    openInNewTab?: boolean;
-    variant?: 'h1' | 'h2' | 'h3';
-    listStyle?: 'ordered' | 'unordered';
-    items?: string[];
-    style?: {
-        textAlign?: 'left' | 'center' | 'right' | 'justify';
-        variant?: string;
-        animate?: boolean;
-        color?: string;
-        backgroundColor?: string;
-        padding?: string;
-        width?: string;
-    };
+  id: string;
+  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer';
+  title?: string;
+  content?: string;
+  url?: string;
+  link?: string;
+  openInNewTab?: boolean;
+  variant?: 'h1' | 'h2' | 'h3';
+  listStyle?: 'ordered' | 'unordered';
+  items?: string[];
+  style?: {
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    variant?: string;
+    animate?: boolean;
+    color?: string;
+    backgroundColor?: string;
+    padding?: string;
+    width?: string;
+  };
 }
 
 export interface SurveyResponse {
-    id: string;
-    surveyId: string;
-    submittedAt: string;
-    score?: number;
-    answers: {
-        questionId: string;
-        value: any;
-    }[];
-    schoolId?: string | null; // Legacy field for backward compatibility
-    entityId?: string | null; // New unified entity reference
-    entityType?: EntityType; // Type of entity
+  id: string;
+  surveyId: string;
+  submittedAt: string;
+  score?: number;
+  answers: {
+    questionId: string;
+    value: any;
+  }[];
+  schoolId?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType; // Type of entity
 }
 
 export interface SurveySummary {
-    id: string;
-    summary: string;
-    createdAt: string;
-    prompt?: string;
+  id: string;
+  summary: string;
+  createdAt: string;
+  prompt?: string;
 }
 
 export interface SurveySession {
-    id: string;
-    surveyId: string;
-    maxStepReached: number;
-    isSubmitted: boolean;
-    updatedAt: string;
+  id: string;
+  surveyId: string;
+  maxStepReached: number;
+  isSubmitted: boolean;
+  updatedAt: string;
 }
 
 export interface PdfSession {
-    id: string;
-    pdfId: string;
-    maxPageReached: number;
-    isSubmitted: boolean;
-    updatedAt: string;
+  id: string;
+  pdfId: string;
+  maxPageReached: number;
+  isSubmitted: boolean;
+  updatedAt: string;
 }
 
 export interface PDFForm {
-    id: string;
-    organizationId?: string; // Organization context for multi-tenant support
-    workspaceIds: string[]; // Shared
-    name: string;
-    publicTitle: string;
-    slug: string;
-    storagePath: string;
-    downloadUrl: string;
-    status: 'draft' | 'published' | 'archived';
-    fields: PDFFormField[];
-    namingFieldId?: string | null;
-    displayFieldIds?: string[];
-    isContractDocument?: boolean;
-    passwordProtected?: boolean;
-    password?: string;
-    backgroundColor?: string;
-    backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
-    patternColor?: string;
-    logoUrl?: string;
-    schoolId?: string | null; // Legacy field for backward compatibility
-    schoolName?: string | null; // Legacy field for backward compatibility
-    entityId?: string | null; // New unified entity reference
-    webhookEnabled?: boolean;
-    webhookId?: string;
-    showDebugProcessingModal?: boolean;
-    confirmationMessagingEnabled?: boolean;
-    confirmationTemplateId?: string;
-    confirmationSenderProfileId?: string;
-    adminAlertsEnabled?: boolean;
-    adminAlertChannel?: 'email' | 'sms' | 'both';
-    adminAlertNotifyManager?: boolean;
-    adminAlertSpecificUserIds?: string[];
-    adminAlertEmailTemplateId?: string;
-    adminAlertSmsTemplateId?: string;
-    resultsShared?: boolean;
-    resultsPassword?: string;
-    createdBy?: string;
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  organizationId?: string; // Organization context for multi-tenant support
+  workspaceIds: string[]; // Shared
+  name: string;
+  publicTitle: string;
+  slug: string;
+  storagePath: string;
+  downloadUrl: string;
+  status: 'draft' | 'published' | 'archived';
+  fields: PDFFormField[];
+  namingFieldId?: string | null;
+  displayFieldIds?: string[];
+  isContractDocument?: boolean;
+  passwordProtected?: boolean;
+  password?: string;
+  backgroundColor?: string;
+  backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
+  patternColor?: string;
+  logoUrl?: string;
+  schoolId?: string | null; // Legacy field for backward compatibility
+  schoolName?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  webhookEnabled?: boolean;
+  webhookId?: string;
+  showDebugProcessingModal?: boolean;
+  confirmationMessagingEnabled?: boolean;
+  confirmationTemplateId?: string;
+  confirmationSenderProfileId?: string;
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
+  resultsShared?: boolean;
+  resultsPassword?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PDFFormField {
-    id: string;
-    label: string;
-    type: string;
-    position: { x: number; y: number };
-    dimensions: { width: number; height: number };
-    pageNumber: number;
-    required?: boolean;
-    fontSize?: number;
-    alignment?: 'left' | 'center' | 'right';
-    verticalAlignment?: 'top' | 'center' | 'bottom';
-    color?: string;
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    textTransform?: 'none' | 'uppercase' | 'capitalize';
-    placeholder?: string;
-    options?: string[];
-    staticText?: string;
-    variableKey?: string;
+  id: string;
+  label: string;
+  type: string;
+  position: { x: number; y: number };
+  dimensions: { width: number; height: number };
+  pageNumber: number;
+  required?: boolean;
+  fontSize?: number;
+  alignment?: 'left' | 'center' | 'right';
+  verticalAlignment?: 'top' | 'center' | 'bottom';
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  textTransform?: 'none' | 'uppercase' | 'capitalize';
+  placeholder?: string;
+  options?: string[];
+  staticText?: string;
+  variableKey?: string;
 }
 
 export interface Submission {
-    id: string;
-    pdfId: string;
-    submittedAt: string;
-    formData: { [key: string]: any };
-    status: 'submitted' | 'partial';
-    schoolId?: string | null; // Legacy field for backward compatibility
-    entityId?: string | null; // New unified entity reference
-    entityType?: EntityType; // Type of entity
+  id: string;
+  pdfId: string;
+  submittedAt: string;
+  formData: { [key: string]: any };
+  status: 'submitted' | 'partial';
+  schoolId?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType; // Type of entity
 }
 
 export interface Contract {
-    id: string;
-    schoolId: string;
-    schoolName: string;
-    pdfId: string;
-    pdfName: string;
-    status: ContractStatus;
-    submissionId?: string;
-    signedAt?: string;
-    sentAt?: string;
-    createdAt: string;
-    updatedAt: string;
-    emailTemplateId?: string;
-    smsTemplateId?: string;
-    recipients: { name: string; email?: string; phone?: string; type: string }[];
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  pdfId: string;
+  pdfName: string;
+  status: ContractStatus;
+  submissionId?: string;
+  signedAt?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  emailTemplateId?: string;
+  smsTemplateId?: string;
+  recipients: { name: string; email?: string; phone?: string; type: string }[];
 }
 
 export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'partially_signed' | 'signed' | 'expired';
@@ -1112,24 +1125,24 @@ export interface Task {
 }
 
 export interface TaskNote {
-    id: string;
-    content: string;
-    createdAt: string;
-    authorName?: string;
+  id: string;
+  content: string;
+  createdAt: string;
+  authorName?: string;
 }
 
 export interface TaskAttachment {
-    id: string;
-    name: string;
-    url: string;
-    type: string;
-    createdAt: string;
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
 }
 
 export interface TaskReminder {
-    reminderTime: string;
-    channels: ('notification' | 'email' | 'sms')[];
-    sent: boolean;
+  reminderTime: string;
+  channels: ('notification' | 'email' | 'sms')[];
+  sent: boolean;
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -1228,36 +1241,36 @@ export interface CampaignSession {
 }
 
 export interface AutomationRun {
-    id: string;
-    automationId: string;
-    automationName: string;
-    status: 'running' | 'completed' | 'failed';
-    startedAt: string;
-    finishedAt?: string;
-    triggerData: Record<string, any>;
-    error?: string;
-    schoolId?: string | null; // Legacy field for backward compatibility
-    entityId?: string | null; // New unified entity reference
-    entityType?: EntityType; // Type of entity
+  id: string;
+  automationId: string;
+  automationName: string;
+  status: 'running' | 'completed' | 'failed';
+  startedAt: string;
+  finishedAt?: string;
+  triggerData: Record<string, any>;
+  error?: string;
+  schoolId?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType; // Type of entity
 }
 
 export interface AutomationJob {
-    id: string;
-    automationId: string;
-    runId: string;
-    targetNodeId: string;
-    payload: Record<string, any>;
-    executeAt: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+  id: string;
+  automationId: string;
+  runId: string;
+  targetNodeId: string;
+  payload: Record<string, any>;
+  executeAt: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 export interface Webhook {
-    id: string;
-    name: string;
-    url: string;
-    createdAt: string;
-    updatedAt: string;
-    createdBy: string;
+  id: string;
+  name: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
 }
 
 export interface VariableDefinition {
@@ -1276,164 +1289,164 @@ export interface VariableDefinition {
 }
 
 export interface MessageTemplate {
-    id: string;
-    name: string;
-    category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance' | 'contracts';
-    channel: 'email' | 'sms';
-    subject?: string;
-    previewText?: string;
-    body: string;
-    blocks?: MessageBlock[];
-    variables: string[];
-    styleId?: string;
-    isActive: boolean;
-    workspaceIds: string[];
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  name: string;
+  category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance' | 'contracts';
+  channel: 'email' | 'sms';
+  subject?: string;
+  previewText?: string;
+  body: string;
+  blocks?: MessageBlock[];
+  variables: string[];
+  styleId?: string;
+  isActive: boolean;
+  workspaceIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MessageBlock {
-    id: string;
-    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card';
-    title?: string;
-    content?: string;
-    url?: string;
-    link?: string;
-    variant?: 'h1' | 'h2' | 'h3';
-    listStyle?: 'ordered' | 'unordered';
-    items?: string[];
-    style?: {
-        textAlign?: 'left' | 'center' | 'right' | 'justify';
-        backgroundColor?: string;
-        color?: string;
-        padding?: string;
-        width?: string;
-        variant?: string;
-        animate?: boolean;
-    };
-    visibilityLogic?: {
-        rules: MessageBlockRule[];
-        matchType: 'all' | 'any';
-    };
+  id: string;
+  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card';
+  title?: string;
+  content?: string;
+  url?: string;
+  link?: string;
+  variant?: 'h1' | 'h2' | 'h3';
+  listStyle?: 'ordered' | 'unordered';
+  items?: string[];
+  style?: {
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    backgroundColor?: string;
+    color?: string;
+    padding?: string;
+    width?: string;
+    variant?: string;
+    animate?: boolean;
+  };
+  visibilityLogic?: {
+    rules: MessageBlockRule[];
+    matchType: 'all' | 'any';
+  };
 }
 
 export interface MessageBlockRule {
-    variableKey: string;
-    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty';
-    value?: string;
+  variableKey: string;
+  operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty';
+  value?: string;
 }
 
 export interface MessageStyle {
-    id: string;
-    name: string;
-    htmlWrapper: string;
-    workspaceIds: string[];
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  name: string;
+  htmlWrapper: string;
+  workspaceIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SenderProfile {
-    id: string;
-    name: string;
-    channel: 'email' | 'sms';
-    identifier: string; // The from email or Sender ID
-    isDefault: boolean;
-    isActive: boolean;
-    workspaceIds: string[];
-    mNotifyStatus?: 'approved' | 'pending' | 'not_registered';
-    mNotifyMessage?: string;
-    resendStatus?: 'verified' | 'pending' | 'not_registered';
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  name: string;
+  channel: 'email' | 'sms';
+  identifier: string; // The from email or Sender ID
+  isDefault: boolean;
+  isActive: boolean;
+  workspaceIds: string[];
+  mNotifyStatus?: 'approved' | 'pending' | 'not_registered';
+  mNotifyMessage?: string;
+  resendStatus?: 'verified' | 'pending' | 'not_registered';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MessageLog {
-    id: string;
-    organizationId?: string; // Organization identifier for multi-tenant isolation
-    title: string;
-    templateId: string;
-    templateName: string;
-    senderProfileId: string;
-    senderName: string;
-    channel: 'email' | 'sms';
-    recipient: string;
-    subject?: string | null;
-    previewText?: string | null;
-    body: string;
-    status: 'sent' | 'failed' | 'scheduled';
-    sentAt: string;
-    updatedAt?: string;
-    variables: Record<string, any>;
-    workspaceIds: string[];
-    workspaceId?: string; // Primary workspace context (Requirement 11)
-    schoolId: string | null; // Legacy field for backward compatibility
-    entityId?: string | null; // New unified entity reference
-    entityType?: EntityType; // Type of entity
-    displayName?: string; // Denormalized entity display name
-    schoolName?: string; // Legacy denormalized school name
-    providerId: string | null;
-    providerStatus: string | null;
-    error?: string;
-    hasAttachments?: boolean;
-    attachmentCount?: number;
-    openedCount?: number;
-    clickedCount?: number;
+  id: string;
+  organizationId?: string; // Organization identifier for multi-tenant isolation
+  title: string;
+  templateId: string;
+  templateName: string;
+  senderProfileId: string;
+  senderName: string;
+  channel: 'email' | 'sms';
+  recipient: string;
+  subject?: string | null;
+  previewText?: string | null;
+  body: string;
+  status: 'sent' | 'failed' | 'scheduled';
+  sentAt: string;
+  updatedAt?: string;
+  variables: Record<string, any>;
+  workspaceIds: string[];
+  workspaceId?: string; // Primary workspace context (Requirement 11)
+  schoolId: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // New unified entity reference
+  entityType?: EntityType; // Type of entity
+  displayName?: string; // Denormalized entity display name
+  schoolName?: string; // Legacy denormalized school name
+  providerId: string | null;
+  providerStatus: string | null;
+  error?: string;
+  hasAttachments?: boolean;
+  attachmentCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
 }
 
 export interface MessageJob {
-    id: string;
-    templateId: string;
-    senderProfileId: string;
-    channel: 'email' | 'sms';
-    status: 'queued' | 'processing' | 'completed' | 'failed';
-    totalRecipients: number;
-    processed: number;
-    success: number;
-    failed: number;
-    createdBy: string;
-    createdAt: string;
+  id: string;
+  templateId: string;
+  senderProfileId: string;
+  channel: 'email' | 'sms';
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  totalRecipients: number;
+  processed: number;
+  success: number;
+  failed: number;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface MessageTask {
-    id: string;
-    recipient: string;
-    variables: Record<string, any>;
-    status: 'pending' | 'sent' | 'failed';
-    providerId?: string;
-    sentAt?: string;
-    error?: string;
+  id: string;
+  recipient: string;
+  variables: Record<string, any>;
+  status: 'pending' | 'sent' | 'failed';
+  providerId?: string;
+  sentAt?: string;
+  error?: string;
 }
 
 export interface Module {
-    id: string;
-    name: string;
-    abbreviation: string;
-    color: string;
-    description?: string;
-    order: number;
+  id: string;
+  name: string;
+  abbreviation: string;
+  color: string;
+  description?: string;
+  order: number;
 }
 
 export interface Perspective {
-    id: string;
-    name: string;
-    description?: string;
-    color: string;
-    status: 'active' | 'archived';
-    slug: string;
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  status: 'active' | 'archived';
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardLayout {
-    componentIds: string[];
+  componentIds: string[];
 }
 
 export interface BillingSettings {
-    levyPercent: number;
-    vatPercent: number;
-    defaultDiscount: number;
-    paymentInstructions: string;
-    signatureName: string;
-    signatureDesignation: string;
-    signatureUrl?: string;
+  levyPercent: number;
+  vatPercent: number;
+  defaultDiscount: number;
+  paymentInstructions: string;
+  signatureName: string;
+  signatureDesignation: string;
+  signatureUrl?: string;
 }

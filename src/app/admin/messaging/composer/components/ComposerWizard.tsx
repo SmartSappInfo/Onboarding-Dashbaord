@@ -6,16 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, doc, getDoc, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson, MessageLog, Meeting, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, Meeting, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
-import { scheduleMultiEntityMessages, type ScheduleMessageResult } from '@/lib/sequential-scheduler';
+import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
-import { fetchContextualData } from '@/lib/messaging-actions';
+import { fetchContextualData, resolveRecipientContacts } from '@/lib/messaging-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
-import { getSchoolEmail, getSchoolPhone, getContactPerson } from '@/lib/school-helpers';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,16 +27,16 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
-import { 
-    Check, 
-    ChevronRight, 
-    Smartphone, 
-    Mail, 
-    Users, 
-    User, 
-    Upload, 
-    Loader2, 
-    Sparkles, 
+import {
+    Check,
+    ChevronRight,
+    Smartphone,
+    Mail,
+    Users,
+    User,
+    Upload,
+    Loader2,
+    Sparkles,
     Eye,
     X,
     AlertCircle,
@@ -70,7 +70,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
+import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -95,8 +95,7 @@ const formSchema = z.object({
     recipient: z.string().optional(),
     selectedContacts: z.array(z.string()).default([]),
     selectedEntityIds: z.array(z.string()).default([]),
-    useMultiEntity: z.boolean().default(false),
-    selectedContactIndices: z.array(z.number()).default([]), // For multi-contact within entity (Task 11)
+    contactScope: z.enum(['primary', 'signatories', 'all']).default('primary'),
     variables: z.record(z.any()).default({}),
     schoolId: z.string().optional(), // Legacy field for backward compatibility
     entityId: z.string().optional(), // New unified entity reference (Requirement 15.3)
@@ -116,13 +115,23 @@ type FormData = z.infer<typeof formSchema>;
 export default function ComposerWizard() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { activeWorkspace } = useWorkspace() as any;
+
+    // Dynamic terminology based on workspace scope
+    const getEntityTypeName = React.useCallback((plural = false) => {
+        const scope = activeWorkspace?.contactScope || 'institution';
+        if (scope === 'family') return plural ? 'Families' : 'Family';
+        if (scope === 'prospect') return plural ? 'Prospects' : 'Prospect';
+        return plural ? 'Institutions' : 'Institution';
+    }, [activeWorkspace?.contactScope]);
+
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const [step, setStep] = React.useState(1);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
-    
+
     // AI Refiner State
     const [isRefining, setIsRefining] = React.useState(false);
     const [selectedTone, setSelectedTone] = React.useState<'formal' | 'friendly' | 'urgent' | 'concise'>('formal');
@@ -131,14 +140,14 @@ export default function ComposerWizard() {
     const [csvData, setCsvData] = React.useState<any[]>([]);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
     const [columnMapping, setColumnMapping] = React.useState<Record<string, string>>({});
-    
+
     // Tag Audience Segment State (FR5.1.1, FR5.1.2, FR5.1.3)
     const [tagSegment, setTagSegment] = React.useState<TagSegment>({
         includeTagIds: [],
         excludeTagIds: [],
         includeLogic: 'OR',
     });
-    
+
     const [jobId, setJobId] = React.useState<string | null>(null);
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
@@ -147,14 +156,11 @@ export default function ComposerWizard() {
     // Progress Tracking State (Task 6.1)
     const [sendProgress, setSendProgress] = React.useState({ sent: 0, total: 0, currentEntity: '' });
     const [isSending, setIsSending] = React.useState(false);
-    
+
     // Summary Reporting State (Task 6.2)
     const [sendSummary, setSendSummary] = React.useState<ScheduleMessageResult | null>(null);
     const [showSummaryDialog, setShowSummaryDialog] = React.useState(false);
-
-    // Recipient Targeting State
-    const [recipientSuggestions, setRecipientSuggestions] = React.useState<{ label: string, value: string, source: string }[]>([]);
-    const [recipientSearchTerm, setRecipientSearchTerm] = React.useState('');
+    const [sampleVariables, setSampleVariables] = React.useState<Record<string, any>>({});
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -164,9 +170,7 @@ export default function ComposerWizard() {
             recipient: '',
             selectedContacts: [],
             selectedEntityIds: [],
-            useMultiEntity: false,
-            selectedContactIndices: [],
-            variables: {},
+            contactScope: 'primary',
             schoolId: '',
             entityId: '',
             isScheduled: false,
@@ -178,12 +182,11 @@ export default function ComposerWizard() {
     const watchedTemplateId = watch('templateId');
     const watchedMode = watch('mode');
     const watchedIsScheduled = watch('isScheduled');
-    const watchedSchoolId = watch('schoolId');
     const watchedVariables = watch('variables');
-    const watchedUseMultiEntity = watch('useMultiEntity');
+
     const watchedSelectedEntityIds = watch('selectedEntityIds');
-    const watchedSelectedContactIndices = watch('selectedContactIndices');
-    
+    const watchedContactScope = watch('contactScope');
+
     // Watched Data Sources
     const watchedSourceMeetingId = watch('sourceMeetingId');
     const watchedSourceSurveyId = watch('sourceSurveyId');
@@ -203,21 +206,15 @@ export default function ComposerWizard() {
     // Load initial values from URL (Requirement: Send Invite/Reminder)
     React.useEffect(() => {
         if (!searchParams) return;
-        
+
         let hasChanges = false;
         const currentRecipient = getValues('recipient');
         const recipientParam = searchParams.get('recipient');
-        
+
         if (recipientParam && recipientParam !== currentRecipient) {
             setValue('recipient', recipientParam);
             hasChanges = true;
         }
-
-        searchParams.forEach((value, key) => {
-            if (key.startsWith('var_')) {
-                setValue(`variables.${key.replace('var_', '')}`, value);
-            }
-        });
     }, [searchParams, setValue, getValues]);
 
     // Load Collections for Contextual Binding
@@ -230,11 +227,6 @@ export default function ComposerWizard() {
         if (!firestore) return null;
         return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel));
     }, [firestore, watchedChannel]);
-
-    const schoolsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
-    }, [firestore]);
 
     const meetingsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -263,70 +255,16 @@ export default function ComposerWizard() {
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
     const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
-    const selectedTemplate = React.useMemo(() => 
-        templates?.find(t => t.id === watchedTemplateId), 
-    [templates, watchedTemplateId]);
+    const selectedTemplate = React.useMemo(() =>
+        templates?.find(t => t.id === watchedTemplateId),
+        [templates, watchedTemplateId]);
 
-    const selectedSchool = React.useMemo(() => 
-        schools?.find(s => s.id === watchedSchoolId),
-    [schools, watchedSchoolId]);
-
-    // Recipient Discovery Logic
-    const discoverRecipients = React.useCallback((data: any, source: string) => {
-        const candidates: { label: string, value: string, source: string }[] = [];
-        if (!data) return candidates;
-
-        const isEmail = watchedChannel === 'email';
-        
-        // Strategy 1: Check standard fields
-        if (isEmail && data.email) candidates.push({ label: `School Admin (${data.email})`, value: data.email, source });
-        if (!isEmail && data.phone) candidates.push({ label: `School Phone (${data.phone})`, value: data.phone, source });
-        if (data.contactPerson) candidates.push({ label: `Contact: ${data.contactPerson}`, value: isEmail ? data.email : data.phone, source });
-
-        // Strategy 2: Check deep focal persons (Schools)
-        if (data.focalPersons && Array.isArray(data.focalPersons)) {
-            data.focalPersons.forEach((p: FocalPerson) => {
-                candidates.push({ label: `${p.type}: ${p.name}`, value: isEmail ? p.email : p.phone, source: 'Focal Person' });
-            });
-        }
-
-        // Strategy 3: Dynamic harvesting from survey answers or PDF fields
-        if (data.answers || data.formData) {
-            const fields = data.answers || Object.entries(data.formData).map(([k, v]) => ({ questionId: k, value: v }));
-            fields.forEach((f: any) => {
-                const val = String(f.value);
-                if (isEmail && val.includes('@') && val.includes('.')) {
-                    candidates.push({ label: `Detected Email`, value: val, source });
-                } else if (!isEmail && val.length >= 10 && /^\+?[\d\s-]+$/.test(val)) {
-                    candidates.push({ label: `Detected Phone`, value: val, source });
-                }
-            });
-        }
-
-        return candidates.filter(c => !!c.value);
-    }, [watchedChannel]);
-
-    // Search Result Filtering
-    const searchResults = React.useMemo(() => {
-        if (!recipientSearchTerm || !schools) return [];
-        const s = recipientSearchTerm.toLowerCase();
-        const results: { label: string, value: string, source: string }[] = [];
-
-        schools.forEach(school => {
-            if (school.name.toLowerCase().includes(s)) {
-                results.push(...discoverRecipients(school, school.name));
-            }
-        });
-
-        return results.slice(0, 5);
-    }, [recipientSearchTerm, schools, discoverRecipients]);
 
     // Handle Contextual Binding (Automatic Resolution)
     React.useEffect(() => {
@@ -352,12 +290,11 @@ export default function ComposerWizard() {
                     result.data.answers?.forEach((a: any) => {
                         setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value));
                     });
-                    setRecipientSuggestions(discoverRecipients(result.data, 'Survey'));
                 }
             }
         };
         resolveResponse();
-    }, [watchedSourceResponseId, watchedSourceSurveyId, setValue, discoverRecipients]);
+    }, [watchedSourceResponseId, watchedSourceSurveyId, setValue]);
 
     React.useEffect(() => {
         const resolveSubmission = async () => {
@@ -367,29 +304,36 @@ export default function ComposerWizard() {
                     Object.entries(result.data.formData || {}).forEach(([key, val]) => {
                         setValue(`variables.${key}`, String(val));
                     });
-                    setRecipientSuggestions(discoverRecipients(result.data, 'PDF'));
                 }
             }
         };
         resolveSubmission();
-    }, [watchedSourceSubmissionId, watchedSourcePdfId, setValue, discoverRecipients]);
+    }, [watchedSourceSubmissionId, watchedSourcePdfId, setValue]);
 
-    // Smart Variable Resolution for Schools
+    // Fetch sample data for Preview (Task: Live Simulation)
     React.useEffect(() => {
-        if (selectedSchool) {
-            setValue('variables.school_name', selectedSchool.name);
-            setValue('variables.school_location', selectedSchool.location || '');
-            setValue('variables.school_phone', getSchoolPhone(selectedSchool) || '');
-            setValue('variables.school_email', getSchoolEmail(selectedSchool) || '');
-            setValue('variables.contact_name', getContactPerson(selectedSchool) || '');
-            setRecipientSuggestions(discoverRecipients(selectedSchool, 'School'));
+        if (step === 3 && watchedSelectedEntityIds.length > 0 && watchedMode === 'single') {
+            const fetchSample = async () => {
+                const firstId = watchedSelectedEntityIds[0];
+                const res = await fetchContextualData('School', firstId, undefined, activeWorkspace?.id);
+                if (res.success && res.data) {
+                    // Extract common fields for simulation
+                    const sample = {
+                        name: res.data.name,
+                        school_name: res.data.name,
+                        email: res.data.email,
+                        phone: res.data.phone,
+                        contact_name: res.data.focalPerson?.name || res.data.name,
+                        first_name: (res.data.focalPerson?.name || res.data.name || '').split(' ')[0],
+                    };
+                    setSampleVariables(sample);
+                }
+            };
+            fetchSample();
         }
-    }, [selectedSchool, setValue, discoverRecipients]);
+    }, [step, watchedSelectedEntityIds, watchedMode, activeWorkspace?.id]);
 
-    // Reset contact selection when entity changes (Requirement 2.8)
-    React.useEffect(() => {
-        setValue('selectedContactIndices', []);
-    }, [watchedSchoolId, setValue]);
+
 
     // Handle CSV Processing
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -416,7 +360,7 @@ export default function ComposerWizard() {
 
             setCsvHeaders(headers);
             setCsvData(data);
-            
+
             const mapping: Record<string, string> = {};
             selectedTemplate?.variables.forEach(v => {
                 const match = headers.find(h => h.toLowerCase() === v.toLowerCase());
@@ -459,122 +403,97 @@ export default function ComposerWizard() {
 
         try {
             if (data.mode === 'single') {
-                // Multi-entity mode (Task 6.1, 6.2)
-                if (data.useMultiEntity && data.selectedEntityIds.length > 0) {
-                    setIsSending(true);
-                    setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
-                    
-                    const result = await scheduleMultiEntityMessages({
-                        templateId: data.templateId,
-                        senderProfileId: data.senderProfileId,
-                        entityIds: data.selectedEntityIds,
-                        variables: data.variables,
-                        workspaceId: user.uid,
-                        scheduledAt,
-                        onProgress: (sent, total, currentEntity) => {
-                            setSendProgress({ sent, total, currentEntity });
-                        },
-                        onError: (entityId, error) => {
-                            console.error(`Failed to send to ${entityId}:`, error);
+                if (data.selectedEntityIds.length === 0) {
+                    throw new Error(`Please select at least one ${getEntityTypeName(false).toLowerCase()}.`);
+                }
+
+                setIsSending(true);
+                setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
+
+                const results: any = {
+                    success: true,
+                    totalSent: 0,
+                    totalFailed: 0,
+                    failedEntities: [],
+                    logIds: []
+                };
+
+                // Sequential Client-Side Loop (Fixes Server Reference Error)
+                for (let i = 0; i < data.selectedEntityIds.length; i++) {
+                    const entityId = data.selectedEntityIds[i];
+                    setSendProgress(prev => ({ ...prev, currentEntity: entityId }));
+
+                    try {
+                        // 1. Resolve recipients for this scope
+                        const recipients = await resolveRecipientContacts({
+                            entityId,
+                            workspaceId: activeWorkspace?.id,
+                            contactScope: data.contactScope,
+                            channel: data.channel
+                        });
+
+                        if (recipients.length === 0) {
+                            results.totalFailed++;
+                            results.failedEntities.push({ entityId, error: 'No matching contacts found for selected scope/channel.' });
+                            continue;
                         }
-                    });
-                    
-                    setIsSending(false);
-                    setSendSummary(result);
-                    setShowSummaryDialog(true);
-                    
-                    // Reset form on success
-                    if (result.success) {
-                        setStep(1);
-                        form.reset();
-                    }
-                } else {
-                    // Single-recipient mode (existing logic)
-                    // Check if multi-contact within single entity is enabled (Task 11.2)
-                    if (data.schoolId && data.schoolId !== 'none' && data.selectedContactIndices.length > 0) {
-                        // Multi-contact within single entity mode
-                        const school = schools?.find(s => s.id === data.schoolId);
-                        if (school && school.focalPersons) {
-                            const selectedContacts = data.selectedContactIndices
-                                .map(idx => school.focalPersons[idx])
-                                .filter(contact => contact !== undefined)
-                                .map(contact => watchedChannel === 'email' ? contact.email : contact.phone)
-                                .filter(value => value && value.trim() !== '');
 
-                            if (selectedContacts.length === 0) {
-                                throw new Error("No valid contacts selected.");
-                            }
+                        // 2. Send to each recipient
+                        for (const recipient of recipients) {
+                            try {
+                                const res = await sendMessage({
+                                    templateId: data.templateId,
+                                    senderProfileId: data.senderProfileId,
+                                    recipient,
+                                    variables: { ...data.variables, channel: data.channel },
+                                    workspaceId: activeWorkspace?.id,
+                                    scheduledAt,
+                                    entityId: entityId,
+                                });
 
-                            // Build entityContactMap for single entity with multiple contacts
-                            const entityContactMap: Record<string, string[]> = {
-                                [data.schoolId]: selectedContacts
-                            };
-
-                            setIsSending(true);
-                            setSendProgress({ sent: 0, total: selectedContacts.length, currentEntity: '' });
-
-                            const result = await scheduleMultiEntityMessages({
-                                templateId: data.templateId,
-                                senderProfileId: data.senderProfileId,
-                                entityIds: [data.schoolId],
-                                variables: data.variables,
-                                workspaceId: user.uid,
-                                scheduledAt,
-                                entityContactMap, // Pass the contact map (Requirement 2.6, 2.7, 3.7)
-                                onProgress: (sent, total, currentEntity) => {
-                                    setSendProgress({ sent, total, currentEntity });
-                                },
-                                onError: (entityId, error) => {
-                                    console.error(`Failed to send to ${entityId}:`, error);
+                                if (res.success) {
+                                    results.totalSent++;
+                                    if (res.logId) results.logIds.push(res.logId);
+                                } else {
+                                    results.totalFailed++;
+                                    results.failedEntities.push({ entityId: `${entityId} (${recipient})`, error: res.error || 'Unknown error' });
                                 }
-                            });
-
-                            setIsSending(false);
-                            setSendSummary(result);
-                            setShowSummaryDialog(true);
-
-                            // Reset form on success
-                            if (result.success) {
-                                setStep(1);
-                                form.reset();
+                            } catch (err: any) {
+                                results.totalFailed++;
+                                results.failedEntities.push({ entityId: `${entityId} (${recipient})`, error: err.message });
                             }
-                        } else {
-                            throw new Error("Selected school not found or has no contacts.");
                         }
-                    } else {
-                        // Original single-recipient logic
-                        const targets = [...data.selectedContacts];
-                        if (data.recipient?.trim()) targets.push(data.recipient.trim());
-
-                        if (targets.length === 0) throw new Error("No recipients selected.");
-                        
-                        for (const target of targets) {
-                            await sendMessage({
-                                templateId: data.templateId,
-                                senderProfileId: data.senderProfileId,
-                                recipient: target,
-                                variables: data.variables,
-                                schoolId: data.schoolId,
-                                entityId: data.entityId, // New unified entity reference (Requirement 15.3)
-                                entityType: data.entityType, // Entity type (Requirement 15.3)
-                                scheduledAt
-                            });
-                        }
-
-                        toast({ title: data.isScheduled ? 'Messages Scheduled' : 'Dispatch Complete' });
-                        setStep(1);
-                        form.reset();
+                    } catch (e: any) {
+                        results.totalFailed++;
+                        results.failedEntities.push({ entityId, error: `Critical Failure: ${e.message}` });
                     }
+
+                    // Update progress
+                    setSendProgress(prev => ({ ...prev, sent: i + 1 }));
+
+                    // Sequential Delay (500ms)
+                    if (i < data.selectedEntityIds.length - 1) {
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                }
+
+                setIsSending(false);
+                setSendSummary(results);
+                setShowSummaryDialog(true);
+
+                if (results.totalSent > 0) {
+                    setStep(1);
+                    form.reset();
                 }
             } else {
                 if (csvData.length === 0) throw new Error("No recipient data found.");
-                
+
                 const recipients = csvData.map(row => {
                     const mappedVars: Record<string, any> = { ...data.variables };
                     Object.entries(columnMapping).forEach(([templateVar, csvCol]) => {
                         mappedVars[templateVar] = row[csvCol];
                     });
-                    
+
                     return {
                         recipient: row.recipient || row.phone || row.email || row[Object.values(columnMapping)[0] || ''],
                         variables: mappedVars
@@ -659,18 +578,18 @@ export default function ComposerWizard() {
                                 <div className="space-y-4">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Communication Medium</Label>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <Button 
-                                            type="button" 
-                                            variant={watchedChannel === 'email' ? 'default' : 'outline'} 
+                                        <Button
+                                            type="button"
+                                            variant={watchedChannel === 'email' ? 'default' : 'outline'}
                                             className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'email' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'email')}
                                         >
                                             <Mail className="h-7 w-7" />
                                             <span className="font-black uppercase text-[10px] tracking-[0.2em]">Email</span>
                                         </Button>
-                                        <Button 
-                                            type="button" 
-                                            variant={watchedChannel === 'sms' ? 'default' : 'outline'} 
+                                        <Button
+                                            type="button"
+                                            variant={watchedChannel === 'sms' ? 'default' : 'outline'}
                                             className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'sms' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'sms')}
                                         >
@@ -683,10 +602,10 @@ export default function ComposerWizard() {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center px-1">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-primary">2. Core Template</Label>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="sm" 
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
                                             className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1"
                                             onClick={() => setIsQuickCreateOpen(true)}
                                         >
@@ -803,17 +722,17 @@ export default function ComposerWizard() {
                                 <div className="space-y-4">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">4. Dispatch Mode</Label>
                                     <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50 shadow-inner">
-                                        <Button 
-                                            type="button" 
-                                            variant={watchedMode === 'single' ? 'secondary' : 'ghost'} 
+                                        <Button
+                                            type="button"
+                                            variant={watchedMode === 'single' ? 'secondary' : 'ghost'}
                                             className={cn("h-12 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all", watchedMode === 'single' && "bg-white shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'single')}
                                         >
                                             <Target className="mr-2 h-4 w-4" /> Targeted
                                         </Button>
-                                        <Button 
-                                            type="button" 
-                                            variant={watchedMode === 'bulk' ? 'secondary' : 'ghost'} 
+                                        <Button
+                                            type="button"
+                                            variant={watchedMode === 'bulk' ? 'secondary' : 'ghost'}
                                             className={cn("h-12 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all", watchedMode === 'bulk' && "bg-white shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'bulk')}
                                         >
@@ -828,135 +747,77 @@ export default function ComposerWizard() {
                             <div className="space-y-8">
                                 {watchedMode === 'single' ? (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                                        {/* Multi-Entity Mode Toggle - ALWAYS VISIBLE IN TARGETED MODE */}
-                                        <div className="p-6 rounded-[2rem] bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 shadow-lg">
-                                            <div className="flex items-center justify-between">
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-base font-black uppercase tracking-tight text-primary flex items-center gap-2">
-                                                        <Users className="h-5 w-5" />
-                                                        Send to Multiple Schools
-                                                    </Label>
-                                                    <p className="text-xs text-muted-foreground font-semibold">Enable multi-entity selection mode to send to multiple institutions</p>
-                                                </div>
-                                                <Controller
-                                                    name="useMultiEntity"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Switch 
-                                                            checked={field.value} 
-                                                            onCheckedChange={(checked) => {
-                                                                field.onChange(checked);
-                                                                // Clear selections when toggling
-                                                                if (checked) {
-                                                                    setValue('recipient', '');
-                                                                    setValue('schoolId', '');
-                                                                } else {
-                                                                    setValue('selectedEntityIds', []);
-                                                                }
-                                                            }} 
-                                                            className="data-[state=checked]:bg-primary"
-                                                        />
-                                                    )}
+                                        <div className="space-y-6">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">
+                                                    Select {getEntityTypeName(true)}
+                                                </Label>
+                                                <EntitySelector
+                                                    channel={watchedChannel}
+                                                    selectedEntityIds={watchedSelectedEntityIds}
+                                                    onSelectionChange={(ids) => {
+                                                        setValue('selectedEntityIds', ids, { shouldValidate: true });
+                                                        if (ids.length === 1) {
+                                                            setValue('schoolId', ids[0]);
+                                                        } else {
+                                                            setValue('schoolId', '');
+                                                        }
+                                                    }}
                                                 />
                                             </div>
+
+                                            {/* Validation Error Display */}
+                                            {watchedSelectedEntityIds.length === 0 && (
+                                                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                                                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-black text-amber-900 uppercase tracking-tight">No Selection</p>
+                                                        <p className="text-[10px] text-amber-700 font-bold">Please select at least one {getEntityTypeName(false).toLowerCase()} to continue.</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Conditional Rendering: EntitySelector or Single Recipient */}
-                                        {watchedUseMultiEntity ? (
-                                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                                                <div className="space-y-4">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Select Schools</Label>
-                                                    <EntitySelector
-                                                        channel={watchedChannel}
-                                                        selectedEntityIds={watchedSelectedEntityIds}
-                                                        onSelectionChange={(ids) => setValue('selectedEntityIds', ids, { shouldValidate: true })}
-                                                        maxSelections={100}
-                                                    />
-                                                </div>
-
-                                                {/* Display Selected Entities */}
-                                                {watchedSelectedEntityIds.length > 0 && (
-                                                    <div className="p-6 rounded-[2rem] bg-primary/5 border border-primary/10 shadow-inner space-y-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Selected Schools</Label>
-                                                            <Badge className="bg-primary h-6 font-black uppercase text-[10px] px-3 rounded-xl">
-                                                                {watchedSelectedEntityIds.length} {watchedSelectedEntityIds.length === 1 ? 'School' : 'Schools'}
-                                                            </Badge>
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {watchedSelectedEntityIds.map(entityId => {
-                                                                const school = schools?.find(s => s.id === entityId);
-                                                                return school ? (
-                                                                    <div 
-                                                                        key={entityId}
-                                                                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-primary/20 shadow-sm"
-                                                                    >
-                                                                        <Building className="h-3 w-3 text-primary" />
-                                                                        <span className="text-xs font-bold text-foreground">{school.name}</span>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                const newIds = watchedSelectedEntityIds.filter(id => id !== entityId);
-                                                                                setValue('selectedEntityIds', newIds, { shouldValidate: true });
-                                                                            }}
-                                                                            className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
-                                                                        >
-                                                                            <X className="h-3 w-3" />
-                                                                        </button>
-                                                                    </div>
-                                                                ) : null;
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Validation Error Display */}
-                                                {watchedSelectedEntityIds.length === 0 && (
-                                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                                                        <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs font-black text-amber-900 uppercase tracking-tight">No Recipients Selected</p>
-                                                            <p className="text-[10px] text-amber-700 font-bold">Please select at least one school to continue.</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        ) : (
-                                            <>
                                         {/* Contextual Binding Selectors */}
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            {/* School Selector (Always visible) */}
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                                    <Building className="h-3 w-3" /> Bind Institution
-                                                </Label>
-                                                <Controller
-                                                    name="schoolId"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold">
-                                                                <SelectValue placeholder="Pick school..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
-                                                                <SelectItem value="none">Independent</SelectItem>
-                                                                {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-
-                                            {/* ContactSelector for multi-contact within entity (Task 11.2) */}
-                                            {selectedSchool && selectedSchool.focalPersons && selectedSchool.focalPersons.length > 0 && (
-                                                <div className="lg:col-span-3 space-y-2">
-                                                    <ContactSelector
-                                                        contacts={selectedSchool.focalPersons}
-                                                        channel={watchedChannel}
-                                                        selectedContactIndices={watchedSelectedContactIndices}
-                                                        onSelectionChange={(indices) => setValue('selectedContactIndices', indices, { shouldValidate: true })}
-                                                        maxSelections={50}
-                                                    />
+                                            {/* Contact Scope Binding (Task 35.2) */}
+                                            {watchedSelectedEntityIds.length > 0 && (
+                                                <div className="lg:col-span-3 space-y-4 pb-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                                                            <Users className="h-3 w-3" /> Target Audience
+                                                        </Label>
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-50">
+                                                            Server-Side Resolution Enabled
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        {[
+                                                            { id: 'primary', label: 'Primary Context', desc: 'Sends to the main email/phone recorded for the entity.' },
+                                                            { id: 'signatories', label: 'Signatories', desc: 'Broadcasts exclusively to Decision Makers (Signatories).' },
+                                                            { id: 'all', label: 'Blast All', desc: 'Every recorded contact persona within the entity profile.' }
+                                                        ].map(scope => (
+                                                            <div 
+                                                                key={scope.id}
+                                                                onClick={() => setValue('contactScope', scope.id as any)}
+                                                                className={cn(
+                                                                    "cursor-pointer border-2 rounded-2xl p-5 transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group",
+                                                                    watchedContactScope === scope.id ? "bg-primary/[0.03] border-primary shadow-lg ring-1 ring-primary/20" : "bg-white border-primary/5 hover:border-primary/20 shadow-sm"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <p className="font-black text-xs uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">{scope.label}</p>
+                                                                    {watchedContactScope === scope.id && (
+                                                                        <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in-50 duration-300" />
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">{scope.desc}</p>
+                                                                {watchedContactScope === scope.id && (
+                                                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary/20 animate-in slide-in-from-left duration-500" />
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -1076,7 +937,7 @@ export default function ComposerWizard() {
                                                                             <SelectItem value="none">None</SelectItem>
                                                                             {submissions?.map(s => (
                                                                                 <SelectItem key={s.id} value={s.id}>
-                                                                                    {format(new Date(s.submittedAt), 'MMM d, HH:mm')} - ID: {s.id.substring(0,8)}
+                                                                                    {format(new Date(s.submittedAt), 'MMM d, HH:mm')} - ID: {s.id.substring(0, 8)}
                                                                                 </SelectItem>
                                                                             ))}
                                                                         </SelectContent>
@@ -1089,146 +950,33 @@ export default function ComposerWizard() {
                                             )}
                                         </div>
 
-                                        <div className="h-px bg-border/50" />
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Manual Recipient Overlay</Label>
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <div className={cn(
-                                                                    "flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border transition-all duration-500",
-                                                                    recipientSuggestions.length > 0 ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-muted-foreground opacity-20 bg-muted/10 border-border"
-                                                                )}>
-                                                                    <CheckCircle2 className="h-2.5 w-2.5" /> Discovery Engine
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Targeting suggestions harvested from bound records</TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                </div>
-                                                
-                                                <div className="space-y-4">
-                                                    <div className="relative group">
-                                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-20 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-                                                        <Controller
-                                                            name="recipient"
-                                                            control={control}
-                                                            render={({ field }) => (
-                                                                <Input 
-                                                                    {...field} 
-                                                                    placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} 
-                                                                    className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-12 focus-visible:ring-1 focus-visible:ring-primary/20"
-                                                                    value={field.value || ''}
-                                                                    onChange={(e) => {
-                                                                        field.onChange(e.target.value);
-                                                                        setRecipientSearchTerm(e.target.value);
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        />
-                                                    </div>
-                                                    
-                                                    {/* Smart Suggestions & Discovery Hub */}
-                                                    {(recipientSuggestions.length > 0 || searchResults.length > 0) && (
-                                                        <div className="p-4 rounded-2xl bg-slate-50 border border-border shadow-inner space-y-4 animate-in fade-in slide-in-from-top-2">
-                                                            {recipientSuggestions.length > 0 && (
-                                                                <div className="space-y-2">
-                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Discovered Contacts</p>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {recipientSuggestions.map((sug, i) => (
-                                                                            <button
-                                                                                key={i}
-                                                                                type="button"
-                                                                                onClick={() => { setValue('recipient', sug.value); setRecipientSearchTerm(''); }}
-                                                                                className={cn(
-                                                                                    "flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all hover:scale-105 active:scale-95 shadow-sm",
-                                                                                    watch('recipient') === sug.value ? "bg-primary border-primary text-white" : "bg-white border-primary/10 text-primary hover:bg-primary/5"
-                                                                                )}
-                                                                            >
-                                                                                <Contact className="h-3.5 w-3.5" />
-                                                                                <div className="text-left leading-none">
-                                                                                    <p className="text-[10px] font-black uppercase tracking-tighter truncate max-w-[120px]">{sug.label}</p>
-                                                                                    <p className="text-[8px] opacity-60 font-bold uppercase mt-0.5">{sug.source}</p>
-                                                                                </div>
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {searchResults.length > 0 && recipientSearchTerm && (
-                                                                <div className="space-y-2 pt-2 border-t border-border/50">
-                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-primary ml-1">Network Search</p>
-                                                                    <div className="space-y-1">
-                                                                        {searchResults.map((res, i) => (
-                                                                            <button
-                                                                                key={i}
-                                                                                type="button"
-                                                                                onClick={() => { setValue('recipient', res.value); setRecipientSearchTerm(''); }}
-                                                                                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-primary/10 transition-colors group"
-                                                                            >
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <Building className="h-3 w-3 text-muted-foreground opacity-40" />
-                                                                                    <span className="text-xs font-bold text-foreground/80">{res.label}</span>
-                                                                                </div>
-                                                                                <Badge variant="outline" className="text-[8px] font-black uppercase text-primary border-primary/20 opacity-0 group-hover:opacity-100">{res.source}</Badge>
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                        <div className="space-y-4 pt-4 border-t border-border/50">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
+                                            <Controller
+                                                name="isScheduled"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <div className="flex items-center justify-between h-16 bg-muted/20 rounded-[1.25rem] px-6 shadow-inner">
+                                                        <div className="flex items-center gap-3">
+                                                            <CalendarClock className="h-5 w-5 text-muted-foreground" />
+                                                            <span className="text-xs font-bold uppercase tracking-widest">Enable Scheduling</span>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
+                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                    </div>
+                                                )}
+                                            />
+                                            {watchedIsScheduled && (
                                                 <Controller
-                                                    name="isScheduled"
+                                                    name="scheduledAt"
                                                     control={control}
                                                     render={({ field }) => (
-                                                        <div className="flex items-center justify-between h-16 bg-muted/20 rounded-[1.25rem] px-6 shadow-inner">
-                                                            <div className="flex items-center gap-3">
-                                                                <CalendarClock className="h-5 w-5 text-muted-foreground" />
-                                                                <span className="text-xs font-bold uppercase tracking-widest">Enable Scheduling</span>
-                                                            </div>
-                                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                                        </div>
+                                                        <DateTimePicker value={field.value} onChange={field.onChange} />
                                                     )}
                                                 />
-                                                {watchedIsScheduled && (
-                                                    <Controller
-                                                        name="scheduledAt"
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <DateTimePicker value={field.value} onChange={field.onChange} />
-                                                        )}
-                                                    />
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 bg-muted/10 p-6 rounded-[2rem] border border-border/50 shadow-inner">
-                                            <div className="col-span-full flex items-center justify-between mb-2">
-                                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Context Overrides</Label>
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">Auto-filled via binding</Badge>
-                                            </div>
-                                            {selectedTemplate?.variables.map(v => (
-                                                <div key={v} className="space-y-2">
-                                                    <Label className="text-[9px] font-black uppercase ml-1 text-muted-foreground">{v.replace(/_/g, ' ')}</Label>
-                                                    <Controller
-                                                        name={`variables.${v}`}
-                                                        control={control}
-                                                        render={({ field }) => <Input {...field} value={field.value ?? ''} className="bg-white border border-primary/10 h-11 rounded-xl shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4" />}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        </>
-                                        )}
+
                                     </motion.div>
                                 ) : (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
@@ -1255,7 +1003,7 @@ export default function ComposerWizard() {
                                                         </div>
                                                         <Badge className="bg-primary h-7 font-black uppercase text-[10px] px-4 rounded-xl shadow-lg">{csvData.length} Records</Badge>
                                                     </div>
-                                                    
+
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                         {selectedTemplate?.variables.map(v => (
                                                             <div key={v} className="space-y-2">
@@ -1290,17 +1038,15 @@ export default function ComposerWizard() {
                             <Button type="button" variant="ghost" onClick={handlePrev} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
                                 <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
-                            <Button 
-                                type="button" 
-                                onClick={handleNext} 
+                            <Button
+                                type="button"
+                                onClick={handleNext}
                                 disabled={
-                                    !getValues('senderProfileId') || 
-                                    (watchedMode === 'single' 
-                                        ? (watchedUseMultiEntity 
-                                            ? getValues('selectedEntityIds').length === 0 
-                                            : !getValues('recipient'))
+                                    !getValues('senderProfileId') ||
+                                    (watchedMode === 'single'
+                                        ? getValues('selectedEntityIds').length === 0
                                         : !csvData.length)
-                                } 
+                                }
                                 className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 transition-all group"
                             >
                                 Review Blueprint <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
@@ -1349,9 +1095,9 @@ export default function ComposerWizard() {
                                         </div>
                                     </div>
 
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
+                                    <Button
+                                        type="button"
+                                        variant="outline"
                                         onClick={() => setIsTestModalOpen(true)}
                                         className="w-full h-14 rounded-2xl font-black border-primary/20 text-primary hover:bg-primary/5 gap-3 uppercase tracking-widest text-sm shadow-lg"
                                     >
@@ -1363,29 +1109,29 @@ export default function ComposerWizard() {
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-3 ml-1">
                                         <Eye className="h-4 w-4" /> Live Payload Simulation
                                     </Label>
-                                    <MessagePreviewer 
-                                        template={selectedTemplate!} 
-                                        variables={{ ...getValues('variables'), ...(watchedMode === 'bulk' ? csvData[0] : {}) }} 
+                                    <MessagePreviewer
+                                        template={selectedTemplate!}
+                                        variables={{ ...sampleVariables, ...getValues('variables'), ...(watchedMode === 'bulk' ? csvData[0] : {}) }}
                                     />
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="flex-col gap-6 bg-muted/30 p-10 border-t">
                             {/* Message Count Preview (Task 8.2) */}
-                            {watchedMode === 'single' && watchedUseMultiEntity && (
+                            {watchedSelectedEntityIds.length > 0 && (
                                 <div className="w-full space-y-4">
                                     {/* Message Count Display */}
                                     <div className={cn(
                                         "p-6 rounded-2xl border-2 flex items-center justify-between",
-                                        watchedSelectedEntityIds.length > 50 
-                                            ? "bg-amber-50 border-amber-200" 
+                                        watchedSelectedEntityIds.length > 50
+                                            ? "bg-amber-50 border-amber-200"
                                             : "bg-blue-50 border-blue-200"
                                     )}>
                                         <div className="flex items-center gap-4">
                                             <div className={cn(
                                                 "p-3 rounded-xl",
-                                                watchedSelectedEntityIds.length > 50 
-                                                    ? "bg-amber-600 text-white" 
+                                                watchedSelectedEntityIds.length > 50
+                                                    ? "bg-amber-600 text-white"
                                                     : "bg-blue-600 text-white"
                                             )}>
                                                 <Users className="h-5 w-5" />
@@ -1393,16 +1139,16 @@ export default function ComposerWizard() {
                                             <div>
                                                 <p className={cn(
                                                     "text-xs font-black uppercase tracking-widest",
-                                                    watchedSelectedEntityIds.length > 50 
-                                                        ? "text-amber-900" 
+                                                    watchedSelectedEntityIds.length > 50
+                                                        ? "text-amber-900"
                                                         : "text-blue-900"
                                                 )}>
                                                     Estimated Message Count
                                                 </p>
                                                 <p className={cn(
                                                     "text-3xl font-black tabular-nums",
-                                                    watchedSelectedEntityIds.length > 50 
-                                                        ? "text-amber-600" 
+                                                    watchedSelectedEntityIds.length > 50
+                                                        ? "text-amber-600"
                                                         : "text-blue-600"
                                                 )}>
                                                     {watchedSelectedEntityIds.length}
@@ -1421,8 +1167,8 @@ export default function ComposerWizard() {
 
                                     {/* Warning for Large Message Counts */}
                                     {watchedSelectedEntityIds.length > 50 && (
-                                        <motion.div 
-                                            initial={{ opacity: 0, y: -10 }} 
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className="p-5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
                                         >
@@ -1432,8 +1178,8 @@ export default function ComposerWizard() {
                                                     High Volume Dispatch
                                                 </p>
                                                 <p className="text-xs text-amber-700 font-bold leading-relaxed">
-                                                    You are about to send {watchedSelectedEntityIds.length} messages. 
-                                                    This operation will be processed sequentially with a delay between messages 
+                                                    You are about to send {watchedSelectedEntityIds.length} messages.
+                                                    This operation will be processed sequentially with a delay between messages
                                                     to avoid rate limits. Estimated completion time: ~{Math.ceil(watchedSelectedEntityIds.length * 0.5 / 60)} minutes.
                                                 </p>
                                             </div>
@@ -1446,10 +1192,10 @@ export default function ComposerWizard() {
                                 <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
                                     <ArrowLeft className="h-4 w-4" /> Back
                                 </Button>
-                                <Button 
-                                    type="submit" 
-                                    size="lg" 
-                                    disabled={isSubmitting || (watchedMode === 'single' && watchedUseMultiEntity && watchedSelectedEntityIds.length === 0)} 
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    disabled={isSubmitting || (watchedSelectedEntityIds.length === 0)}
                                     className="px-20 font-black shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl uppercase tracking-[0.2em] shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
@@ -1461,8 +1207,8 @@ export default function ComposerWizard() {
                         {/* Progress Tracking UI (Task 6.1) */}
                         {isSending && sendProgress.total > 0 && (
                             <div className="p-8 bg-muted/30 border-t">
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 20 }} 
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className="space-y-4"
                                 >
@@ -1477,8 +1223,8 @@ export default function ComposerWizard() {
                                             {Math.round((sendProgress.sent / sendProgress.total) * 100)}%
                                         </Badge>
                                     </div>
-                                    <Progress 
-                                        value={(sendProgress.sent / sendProgress.total) * 100} 
+                                    <Progress
+                                        value={(sendProgress.sent / sendProgress.total) * 100}
                                         className="h-3"
                                     />
                                     {sendProgress.currentEntity && (
@@ -1508,7 +1254,7 @@ export default function ComposerWizard() {
                                     <p className="text-6xl font-black tabular-nums tracking-tighter text-primary">{jobProgress}%</p>
                                 </div>
                                 <div className="h-6 w-full bg-muted/30 rounded-full overflow-hidden border-2 p-1.5 shadow-inner">
-                                    <motion.div 
+                                    <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${jobProgress}%` }}
                                         className="h-full bg-primary rounded-full shadow-[0_0_25px_rgba(59,95,255,0.6)]"
@@ -1535,7 +1281,7 @@ export default function ComposerWizard() {
                 )}
             </form>
 
-            <QuickTemplateDialog 
+            <QuickTemplateDialog
                 open={isQuickCreateOpen}
                 onOpenChange={setIsQuickCreateOpen}
                 channel={watchedChannel}
@@ -1543,14 +1289,14 @@ export default function ComposerWizard() {
                 onCreated={(id) => setValue('templateId', id, { shouldDirty: true })}
             />
 
-            <TestDispatchDialog 
+            <TestDispatchDialog
                 open={isTestModalOpen}
                 onOpenChange={setIsTestModalOpen}
                 channel={watchedChannel}
                 templateId={watchedTemplateId}
                 variables={getValues('variables')}
                 senderProfileId={getValues('senderProfileId')}
-                schoolId={watchedSchoolId}
+                schoolId={getValues('schoolId')}
             />
 
             {/* Summary Report Dialog (Task 6.2) */}
@@ -1611,25 +1357,22 @@ export default function ComposerWizard() {
                                     </Label>
                                     <ScrollArea className="h-48 rounded-xl border border-red-200 bg-red-50/50">
                                         <div className="p-4 space-y-2">
-                                            {sendSummary.failedEntities.map((failed, idx) => {
-                                                const school = schools?.find(s => s.id === failed.entityId);
-                                                return (
-                                                    <div 
+                                             {sendSummary.failedEntities.map((failed, idx) => (
+                                                    <div
                                                         key={idx}
                                                         className="p-3 rounded-lg bg-white border border-red-200 space-y-1"
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <Building className="h-3 w-3 text-red-600" />
                                                             <span className="text-sm font-bold text-red-900">
-                                                                {school?.name || failed.entityId}
+                                                                {failed.entityId}
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-red-700 font-medium pl-5">
                                                             {failed.error}
                                                         </p>
                                                     </div>
-                                                );
-                                            })}
+                                                ))}
                                         </div>
                                     </ScrollArea>
 
@@ -1691,7 +1434,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
         );
     }
 
-    const resolvedBody = template.blocks?.length 
+    const resolvedBody = template.blocks?.length
         ? renderBlocksToHtml(template.blocks, combinedVars)
         : resolveVariables(template.body, combinedVars);
 

@@ -87,3 +87,20 @@ export function getContactSignatory(contact: ResolvedContact) {
   }
   return null;
 }
+
+/**
+ * Helper function to get the specific contact person matching a recipient string.
+ * Used for independent variable resolution (Requirement 35.3).
+ */
+export function getRecipientContact(contact: ResolvedContact, recipient?: string) {
+  if (!contact.contacts || contact.contacts.length === 0) return null;
+  if (!recipient) return getContactSignatory(contact);
+
+  const target = recipient.toLowerCase().trim();
+  const match = contact.contacts.find(c => 
+    (c.email && c.email.toLowerCase().trim() === target) ||
+    (c.phone && c.phone.trim() === target)
+  );
+
+  return match || getContactSignatory(contact);
+}

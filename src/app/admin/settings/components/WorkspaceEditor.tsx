@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import type { Workspace, WorkspaceStatus } from '@/lib/types';
 import { 
     Zap, 
@@ -47,6 +48,7 @@ export default function WorkspaceEditor() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { activeOrganizationId, activeOrganization } = useTenant();
     
     const [isEditing, setIsEditing] = React.useState(false);
     const [activeWorkspace, setActiveWorkspace] = React.useState<Workspace | null>(null);
@@ -58,9 +60,16 @@ export default function WorkspaceEditor() {
     const [statuses, setStatuses] = React.useState<WorkspaceStatus[]>([]);
     const [contactScope, setContactScope] = React.useState<'institution' | 'family' | 'person'>('institution');
 
+    // Filter workspaces by current organization
     const workspacesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'workspaces'), orderBy('createdAt', 'asc')) : null, 
-    [firestore]);
+        firestore && activeOrganizationId 
+            ? query(
+                collection(firestore, 'workspaces'), 
+                where('organizationId', '==', activeOrganizationId),
+                orderBy('createdAt', 'asc')
+            ) 
+            : null, 
+    [firestore, activeOrganizationId]);
     const { data: workspaces, isLoading } = useCollection<Workspace>(workspacesQuery);
 
     const handleOpenEdit = (w?: Workspace) => {
@@ -103,7 +112,7 @@ export default function WorkspaceEditor() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !name.trim()) return;
+        if (!user || !name.trim() || !activeOrganizationId) return;
         setIsSaving(true);
 
         const result = await saveWorkspaceAction(
@@ -113,6 +122,7 @@ export default function WorkspaceEditor() {
                 description: description.trim(), 
                 color, 
                 statuses,
+                organizationId: activeWorkspace?.organizationId || activeOrganizationId, // Preserve or set organizationId
                 contactScope: activeWorkspace ? undefined : contactScope, // Only set on creation
                 capabilities: activeWorkspace ? undefined : getDefaultCapabilities(contactScope) // Only set on creation
             },
@@ -120,7 +130,7 @@ export default function WorkspaceEditor() {
         );
 
         if (result.success) {
-            toast({ title: 'Workspace Updated', description: 'Institutional record updated successfully.' });
+            toast({ title: 'Workspace Updated', description: 'Workspace saved successfully.' });
             setIsEditing(false);
         } else {
             toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
@@ -190,9 +200,15 @@ export default function WorkspaceEditor() {
             <div className="flex items-center justify-between px-1">
                 <div className="text-left">
                     <h3 className="text-xl font-black uppercase tracking-tight text-foreground">Workspace Architect</h3>
-                    <p className="text-sm text-muted-foreground font-medium">Manage global tracks and independent status lifecycles.</p>
+                    <p className="text-sm text-muted-foreground font-medium">
+                        Manage workspaces for <span className="font-bold text-primary">{activeOrganization?.name || 'current organization'}</span>
+                    </p>
                 </div>
-                <Button onClick={() => handleOpenEdit()} className="rounded-xl font-black h-11 px-6 shadow-lg gap-2">
+                <Button 
+                    onClick={() => handleOpenEdit()} 
+                    className="rounded-xl font-black h-11 px-6 shadow-lg gap-2"
+                    disabled={!activeOrganizationId}
+                >
                     <Plus className="h-4 w-4" /> New Workspace
                 </Button>
             </div>

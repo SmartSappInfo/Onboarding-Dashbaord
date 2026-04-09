@@ -15,7 +15,8 @@ import {
     Search,
     UserCheck,
     ClipboardCheck,
-    Calendar
+    Calendar,
+    AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,6 +27,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RegistrantsClient({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
@@ -38,7 +41,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
     return doc(firestore, 'meetings', meetingId);
   }, [firestore, meetingId]);
   
-  const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
+  const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
 
   useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}/registrants`);
 
@@ -48,7 +51,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
     return query(collection(firestore, `meetings/${meetingId}/registrants`), orderBy('registeredAt', 'desc'));
   }, [firestore, meetingId]);
 
-  const { data: registrants, isLoading: isLoadingRegistrants } = useCollection<MeetingRegistrant>(registrantsColRef);
+  const { data: registrants, isLoading: isLoadingRegistrants, error: registrantsError } = useCollection<MeetingRegistrant>(registrantsColRef);
 
   // Derived Stats
   const stats = useMemo(() => {
@@ -127,6 +130,24 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
 
   if (isLoadingMeeting || isLoadingRegistrants) {
       return <div className="p-8"><Skeleton className="h-[500px] w-full rounded-2xl" /></div>;
+  }
+
+  if (meetingError || registrantsError) {
+      const error = meetingError || registrantsError;
+      return (
+          <div className="p-8 max-w-7xl mx-auto">
+              <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle className="font-black uppercase tracking-widest text-[10px]">Database Error</AlertTitle>
+                  <AlertDescription className="text-sm font-medium mt-1">
+                      {error?.message || 'An error occurred while fetching data. Check your connection or permissions.'}
+                  </AlertDescription>
+                  <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
+                      Retry Connection
+                  </Button>
+              </Alert>
+          </div>
+      );
   }
 
   return (

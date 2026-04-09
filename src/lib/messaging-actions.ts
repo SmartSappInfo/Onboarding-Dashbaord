@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
 import { resolveContact } from './contact-adapter';
+import { getContactEmail, getContactPhone } from './migration-status-utils';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -547,4 +548,48 @@ export async function previewCampaignAudience(params: {
     console.error('previewCampaignAudience error:', error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Resolves specific recipient contacts (emails/phones) for an entity based on scope and channel.
+ * Used by the client-side dispatch loop to build a concrete list of recipients.
+ * 
+ * Requirement 35.3
+ */
+export async function resolveRecipientContacts(params: {
+    entityId: string;
+    workspaceId?: string;
+    contactScope: 'primary' | 'signatories' | 'all' | 'custom';
+    channel: 'email' | 'sms';
+}): Promise<string[]> {
+    const { entityId, workspaceId = 'onboarding', contactScope, channel } = params;
+    
+    try {
+        const contact = await resolveContact(entityId, workspaceId);
+        if (!contact) return [];
+
+        let recipients: string[] = [];
+
+        if (contactScope === 'primary') {
+            const email = getContactEmail(contact);
+            const phone = getContactPhone(contact);
+            const val = channel === 'email' ? email : phone;
+            recipients = val ? [val] : [];
+        } else if (contactScope === 'signatories') {
+            recipients = contact.contacts
+                .filter(c => c.isSignatory)
+                .map(c => channel === 'email' ? c.email : (c.phone || ''))
+                .filter(v => !!v);
+        } else if (contactScope === 'all') {
+            recipients = contact.contacts
+                .map(c => channel === 'email' ? c.email : (c.phone || ''))
+                .filter(v => !!v);
+        }
+
+        // Return recipients or empty array for sendMessage to handle auto-resolution
+        return recipients.length > 0 ? recipients : [''];
+    } catch (error) {
+        console.error(`[RESOLVE_CONTACTS] Error for ${entityId}:`, error);
+        return ['']; // Fallback to auto-resolution
+    }
 }

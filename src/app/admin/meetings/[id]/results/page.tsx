@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   description: 'Visualize session reach, attendance velocity, and family census data.',
 };
 
-export default function MeetingResultsPage() {
-  return <ResultsClient />;
+export default async function MeetingResultsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ResultsClient meetingId={id} />;
 }

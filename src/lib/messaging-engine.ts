@@ -11,7 +11,7 @@ import { getSchoolEmail, getSchoolPhone, getSignatory } from './school-helpers';
 import { getPrimaryWorkspaceId } from './workspace-helpers';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
-import { getContactEmail, getContactPhone, getContactSignatory } from './migration-status-utils';
+import { getContactEmail, getContactPhone, getContactSignatory, getRecipientContact } from './migration-status-utils';
 
 interface SendMessageInput {
   templateId: string;
@@ -93,7 +93,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         const contact = await resolveContact(schoolId || entityId || '', contextWorkspaceId);
         
         if (contact) {
-            const signatory = getContactSignatory(contact);
+            const signatory = getRecipientContact(contact, recipient);
             
             // Dual-write: populate both identifiers (Requirement 15.2)
             if (contact.schoolData?.id) {
@@ -124,6 +124,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 contact_email: signatory?.email || '',
                 contact_phone: signatory?.phone || '',
                 contact_position: signatory?.type || '',
+                // Standard Aliases (Task: Automatic Binding)
+                name: signatory?.name || contact.name || '',
+                email: signatory?.email || getContactEmail(contact) || '',
+                phone: signatory?.phone || getContactPhone(contact) || '',
+                first_name: (signatory?.name || contact.name || '').split(' ')[0],
+                id: resolvedEntityId || resolvedSchoolId || '',
             };
             
             const contractSnap = await adminDb.collection('contracts').where('schoolId', '==', resolvedSchoolId).limit(1).get();
