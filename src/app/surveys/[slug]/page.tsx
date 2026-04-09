@@ -1,19 +1,23 @@
-
-import { adminDb } from '@/lib/firebase-admin';
 import type { Metadata, ResolvingMetadata } from 'next';
 import type { Survey } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import { notFound } from 'next/navigation';
 
+import { firestore } from '@/firebase/config';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
+
 const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
 
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     try {
-        const querySnapshot = await adminDb.collection('surveys')
-            .where('slug', '==', slug)
-            .where('status', '==', 'published')
-            .limit(1)
-            .get();
+        const surveysRef = collection(firestore, 'surveys');
+        const q = query(
+            surveysRef, 
+            where('slug', '==', slug), 
+            where('status', '==', 'published'), 
+            limit(1)
+        );
+        const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
             return null;

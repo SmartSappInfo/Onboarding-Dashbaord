@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import type { Survey } from '@/lib/types';
+import { useDoc, useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { SmartSappLogo } from '@/components/icons';
@@ -88,6 +90,16 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     const [isSubmitted, setIsSubmitted] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
 
+    const firestore = useFirestore();
+    const schoolDocRef = React.useMemo(() => {
+        if (!firestore || !survey.schoolId) return null;
+        return doc(firestore, 'schools', survey.schoolId);
+    }, [firestore, survey.schoolId]);
+    
+    const { data: school } = useDoc<any>(schoolDocRef);
+    
+    const displayLogoUrl = survey.logoUrl || school?.logoUrl || school?.branding?.logoUrl;
+
     React.useEffect(() => {
         setIsMounted(true);
     }, []);
@@ -105,9 +117,9 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                  <main className="flex-grow flex items-center justify-center p-4 relative z-10">
                     <div className="max-w-4xl w-full mx-auto text-center">
                         <div className="flex justify-center mb-8">
-                          {survey.logoUrl ? (
+                          {displayLogoUrl ? (
                               <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                  <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
+                                  <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
                               </div>
                           ) : (
                               <SmartSappLogo className="h-10 sm:h-12" />
@@ -146,9 +158,9 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                 <div className="max-w-4xl mx-auto py-5 sm:py-10 px-4">
                     {/* Persistent Logo Header */}
                     <div className="flex justify-center mb-6 sm:mb-8">
-                        {survey.logoUrl ? (
+                        {displayLogoUrl ? (
                             <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
+                                <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
                             </div>
                         ) : (
                             <SmartSappLogo className="h-10 sm:h-12" />

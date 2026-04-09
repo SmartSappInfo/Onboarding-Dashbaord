@@ -30,6 +30,7 @@ interface EntitySelectorProps {
   channel: 'email' | 'sms';
   onSelectionChange: (entityIds: string[]) => void;
   selectedEntityIds: string[];
+  maxSelections?: number;
 }
 
 // Entity type icons for better visual distinction

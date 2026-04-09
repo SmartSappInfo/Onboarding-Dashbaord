@@ -892,9 +892,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         setAutomationStatuses(prev => prev.map(s => s.id === id ? { ...s, status, error } : s));
     };
 
+    const [matchedOutcome, setMatchedOutcome] = React.useState<SurveyResultRule | undefined>(undefined);
+
     const handleAcknowledgeSuccess = () => {
         setIsStatusModalOpen(false);
-        if (survey.scoringEnabled && lastSubmissionId) {
+        // Only route to result page if a customized result page is configured for this outcome
+        if (survey.scoringEnabled && lastSubmissionId && matchedOutcome?.pageId && matchedOutcome.pageId !== 'none') {
             router.push(`/surveys/${survey.slug}/result/${lastSubmissionId}`);
         } else {
             onSubmitted();
@@ -917,6 +920,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
+        setMatchedOutcome(outcome);
 
         const emailQuestion = survey.elements.filter(isQuestion).find(q => 
             q.type === 'email' || 
@@ -1432,7 +1436,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             {isSubmitting ? (
                                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working...</>
                             ) : (
-                                <><Check className="mr-2 h-5 w-5" /> Continue to Results</>
+                                <><Check className="mr-2 h-5 w-5" /> Continue</>
                             )}
                         </Button>
                     </DialogFooter>

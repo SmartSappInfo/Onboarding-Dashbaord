@@ -1,4 +1,4 @@
-import { adminDb } from './src/lib/firebase-admin';
+import { adminDb } from '../src/lib/firebase-admin';
 
 async function dump() {
     console.log("Dumping a school document...");

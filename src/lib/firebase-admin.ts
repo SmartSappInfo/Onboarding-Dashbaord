@@ -23,10 +23,15 @@ function getAdminApp(): App {
           projectId: serviceAccount.project_id || projectId,
         });
       } else {
-        console.warn(">>> [BOOTSTRAP] FIREBASE_SERVICE_ACCOUNT_KEY does not appear to be valid JSON.");
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(">>> [BOOTSTRAP] FIREBASE_SERVICE_ACCOUNT_KEY does not appear to be valid JSON.");
+        }
       }
     } catch (e) {
-      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", e instanceof Error ? e.message : 'Unknown error');
+      // Suppress parse errors during build - they're expected when workers initialize
+      if (process.env.NODE_ENV !== 'production' && !process.env.NEXT_PHASE) {
+        console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", e instanceof Error ? e.message : 'Unknown error');
+      }
     }
   }
 

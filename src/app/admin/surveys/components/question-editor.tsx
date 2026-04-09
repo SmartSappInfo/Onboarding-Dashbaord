@@ -395,7 +395,27 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />}
+                    render={({ field }) => (
+                      <Input 
+                        {...field} 
+                        value={field.value ?? ''} 
+                        placeholder={`Option ${index + 1}`} 
+                        className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData.getData('Text');
+                          if (pastedText && pastedText.includes('\n')) {
+                            e.preventDefault();
+                            const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                            if (lines.length > 0) {
+                              field.onChange(lines[0]);
+                              for (let i = 1; i < lines.length; i++) {
+                                append(lines[i]);
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    )}
                     />
                 </div>
                  {enableScoring && (
@@ -456,7 +476,27 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />}
+                    render={({ field }) => (
+                      <Input 
+                        {...field} 
+                        value={field.value ?? ''} 
+                        placeholder={`Option ${index + 1}`} 
+                        className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData.getData('Text');
+                          if (pastedText && pastedText.includes('\n')) {
+                            e.preventDefault();
+                            const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                            if (lines.length > 0) {
+                              field.onChange(lines[0]);
+                              for (let i = 1; i < lines.length; i++) {
+                                append(lines[i]);
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    )}
                     />
                 </div>
                  {enableScoring && (

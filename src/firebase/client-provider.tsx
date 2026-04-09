@@ -26,7 +26,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   useEffect(() => {
     const seedOrgArchitecture = async () => {
-      if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development' || pathname?.startsWith('/forms/')) {
+      if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development' || !pathname?.startsWith('/admin')) {
         return;
       }
       

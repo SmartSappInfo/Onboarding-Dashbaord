@@ -495,6 +495,53 @@ export default function SeedsClient() {
                 </Card>
             </section>
 
+            {/* Dedicated Survey Migration Section - Highly Visible */}
+            <section className="space-y-6" id="survey-migration">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-amber-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-amber-200 text-amber-600">Dedicated Survey Migration</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-amber-200 to-transparent" />
+                </div>
+                
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-2 ring-amber-400 overflow-hidden bg-gradient-to-br from-amber-50/80 to-white">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-amber-700">
+                            <CheckSquare className="h-6 w-6 text-amber-600" />
+                            Migrate Surveys & Responses
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-medium text-amber-900/60 uppercase tracking-tighter">
+                            Mandatory data migration for all Survey architecture. Binds forms to the new Workspace Entities.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-amber-100 shadow-inner">
+                            <MigrationCard
+                                featureName="Surveys Configuration"
+                                collectionName="surveys"
+                                description="Migrate survey records to use entityId for contact references"
+                                status={featureMigrationStatus.surveys.status}
+                                totalRecords={featureMigrationStatus.surveys.totalRecords}
+                                migratedRecords={featureMigrationStatus.surveys.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.surveys.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.surveys.failedRecords}
+                                {...createFeatureMigrationHandlers('surveys')}
+                            />
+                            
+                            <MigrationCard
+                                featureName="Survey Responses"
+                                collectionName="survey_responses"
+                                description="Migrate survey response records to use entityId for contact references"
+                                status={featureMigrationStatus.survey_responses.status}
+                                totalRecords={featureMigrationStatus.survey_responses.totalRecords}
+                                migratedRecords={featureMigrationStatus.survey_responses.migratedRecords}
+                                unmigratedRecords={featureMigrationStatus.survey_responses.unmigratedRecords}
+                                failedRecords={featureMigrationStatus.survey_responses.failedRecords}
+                                {...createFeatureMigrationHandlers('survey_responses')}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
             {/* Feature Data Migration Section - NEW */}
             <section className="space-y-6" id="feature-migration">
                 <div className="flex items-center gap-3">
@@ -618,18 +665,7 @@ export default function SeedsClient() {
                                 {...createFeatureMigrationHandlers('meetings')}
                             />
                             
-                            <MigrationCard
-                                featureName="Surveys"
-                                collectionName="surveys"
-                                description="Migrate survey records to use entityId for contact references"
-                                status={featureMigrationStatus.surveys.status}
-                                totalRecords={featureMigrationStatus.surveys.totalRecords}
-                                migratedRecords={featureMigrationStatus.surveys.migratedRecords}
-                                unmigratedRecords={featureMigrationStatus.surveys.unmigratedRecords}
-                                failedRecords={featureMigrationStatus.surveys.failedRecords}
-                                {...createFeatureMigrationHandlers('surveys')}
-                            />
-                            
+
                             <MigrationCard
                                 featureName="Message Logs"
                                 collectionName="message_logs"
@@ -678,18 +714,7 @@ export default function SeedsClient() {
                                 {...createFeatureMigrationHandlers('form_submissions')}
                             />
                             
-                            <MigrationCard
-                                featureName="Survey Responses"
-                                collectionName="survey_responses"
-                                description="Migrate survey response records to use entityId for contact references"
-                                status={featureMigrationStatus.survey_responses.status}
-                                totalRecords={featureMigrationStatus.survey_responses.totalRecords}
-                                migratedRecords={featureMigrationStatus.survey_responses.migratedRecords}
-                                unmigratedRecords={featureMigrationStatus.survey_responses.unmigratedRecords}
-                                failedRecords={featureMigrationStatus.survey_responses.failedRecords}
-                                {...createFeatureMigrationHandlers('survey_responses')}
-                            />
-                            
+
                             <MigrationCard
                                 featureName="Signups"
                                 collectionName="signups"

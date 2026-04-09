@@ -25,7 +25,7 @@ import {
     Layout,
     Eye
 } from 'lucide-react';
-import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
+import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School, type WorkspaceEntity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
@@ -157,11 +157,11 @@ export default function NewSurveyPage() {
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
     const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
-    const schoolsQuery = useMemoFirebase(() => {
+    const institutionsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), where('entityType', '==', 'institution'), orderBy('displayName', 'asc'));
     }, [firestore, activeWorkspaceId]);
-    const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: institutions } = useCollection<WorkspaceEntity>(institutionsQuery);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -372,7 +372,7 @@ export default function NewSurveyPage() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                                         <div className={cn("space-y-8", mobileMode === 'preview' && "hidden md:block")}>
-                                            <Step1Details schools={schools || []} />
+                                            <Step1Details institutions={institutions || []} />
                                         </div>
                                         <div className={cn("sticky top-0 h-[calc(100vh-250px)]", mobileMode === 'edit' && "hidden md:block")}>
                                             <LivePreviewPane />
@@ -400,7 +400,7 @@ export default function NewSurveyPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                        <div className="mt-8 p-4 sm:p-6 bg-background border-t">
                             <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
                                 <div className="flex items-center gap-4 text-left">

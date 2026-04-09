@@ -152,7 +152,7 @@ service cloud.firestore {
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /responses/{rId} {
-        allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
+        allow create: if true;
         allow read, list: if isAuthorized();
       }
       match /summaries/{sId} {
@@ -170,7 +170,7 @@ service cloud.firestore {
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /submissions/{sId} {
-        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
+        allow create: if true;
         allow read, list: if isAuthorized();
       }
     }

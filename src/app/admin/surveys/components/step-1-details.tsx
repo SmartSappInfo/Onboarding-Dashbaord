@@ -11,13 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
-import type { School } from '@/lib/types';
+import type { WorkspaceEntity } from '@/lib/types';
 
 interface Step1DetailsProps {
-    schools?: School[];
+    institutions?: WorkspaceEntity[];
 }
 
-export default function Step1Details({ schools }: Step1DetailsProps) {
+export default function Step1Details({ institutions }: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
 
     return (
@@ -58,23 +58,18 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                             )}
                         />
                         <Controller
-                            name="schoolId"
+                            name="entityId"
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Associated Campus</Label>
                                     <Select 
                                         onValueChange={(val) => {
-                                            const school = schools?.find(s => s.id === val);
+                                            const institution = institutions?.find(i => i.entityId === val);
                                             field.onChange(val === 'none' ? null : val);
-                                            setValue('schoolName', school ? school.name : null, { shouldDirty: true });
-                                            // Dual-write: populate entityId if school is migrated
-                                            // For migrated schools, entityId follows format: entity_<schoolId>
-                                            if (school && school.migrationStatus === 'migrated') {
-                                                setValue('entityId', `entity_${school.id}`, { shouldDirty: true });
-                                            } else {
-                                                setValue('entityId', null, { shouldDirty: true });
-                                            }
+                                            setValue('schoolName', institution ? institution.displayName : null, { shouldDirty: true });
+                                            // Ensure schoolId gets wiped when binding to entityId
+                                            setValue('schoolId', null, { shouldDirty: true });
                                         }} 
                                         value={field.value || 'none'}
                                     >
@@ -83,7 +78,7 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
                                             <SelectItem value="none">Global / Generic</SelectItem>
-                                            {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                            {institutions?.map(i => <SelectItem key={i.entityId} value={i.entityId}>{i.displayName}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>

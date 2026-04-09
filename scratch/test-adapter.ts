@@ -1,4 +1,4 @@
-import { getWorkspaceContacts } from './src/lib/contact-adapter';
+import { getWorkspaceContacts } from '../src/lib/contact-adapter';
 
 async function test() {
     console.log("Testing getWorkspaceContacts...");

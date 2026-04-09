@@ -16,7 +16,7 @@
 ## AI & Automation
 
 - **Genkit** (v1.20.0) - AI flow orchestration
-- **Google Genai** (@genkit-ai/google-genai) - LLM integration
+- **Google Gemini** (@genkit-ai/google-genai) - LLM integration
 
 ## UI & Styling
 
