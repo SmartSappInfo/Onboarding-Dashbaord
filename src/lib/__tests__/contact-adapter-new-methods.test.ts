@@ -14,7 +14,6 @@ import {
   resolveContact,
   contactExists,
   clearContactCache,
-  type ContactIdentifier,
 } from '../contact-adapter';
 import { adminDb } from '../firebase-admin';
 import type { Entity, WorkspaceEntity } from '../types';
@@ -101,8 +100,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = { entityId: 'entity_1' };
-      const result = await resolveContact(identifier, 'workspace_1');
+      const result = await resolveContact('entity_1', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_1');
@@ -111,7 +109,7 @@ describe('Contact Adapter New Methods', () => {
       expect(result?.migrationStatus).toBe('migrated');
     });
 
-    it('should prefer entityId over entityId when both provided', async () => {
+    it('should resolve contact from legacy ID', async () => {
       const mockEntity: Entity = {
         id: 'entity_1',
         organizationId: 'org_1',
@@ -149,10 +147,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = {
-        entityId: 'school_1',
-      };
-      const result = await resolveContact(identifier, 'workspace_1');
+      const result = await resolveContact('school_1', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_1');
@@ -177,8 +172,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = { entityId: 'entity_1' };
-      const result = await contactExists(identifier);
+      const result = await contactExists('entity_1');
 
       expect(result).toBe(true);
     });
@@ -199,8 +193,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = { entityId: 'school_1' };
-      const result = await contactExists(identifier);
+      const result = await contactExists('school_1');
 
       expect(result).toBe(true);
     });
@@ -229,10 +222,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = {
-        entityId: 'nonexistent',
-      };
-      const result = await contactExists(identifier);
+      const result = await contactExists('nonexistent');
 
       expect(result).toBe(false);
     });
@@ -282,13 +272,13 @@ describe('Contact Adapter New Methods', () => {
       (adminDb.collection as any) = mockCollection;
 
       // First call - should hit database
-      const result1 = await resolveContact({ entityId: 'entity_1' }, 'workspace_1');
+      const result1 = await resolveContact('entity_1', 'workspace_1');
       expect(result1?.name).toBe('Cached Entity');
       expect(callCount).toBe(1);
 
       // Second call - should use cache
-      const result2 = await resolveContact({ entityId: 'entity_1' }, 'workspace_1');
-      expect(result2?.name).toBe('Cached Entity');
+      const result2 = await resolveContact('entity_1', 'workspace_1');
+      expect(result1?.name).toBe('Cached Entity');
       expect(callCount).toBe(1); // Should not increment
 
       // Verify both results are the same
@@ -338,14 +328,14 @@ describe('Contact Adapter New Methods', () => {
       (adminDb.collection as any) = mockCollection;
 
       // First call
-      await resolveContact({ entityId: 'entity_1' }, 'workspace_1');
+      await resolveContact('entity_1', 'workspace_1');
       expect(callCount).toBe(1);
 
       // Clear cache
       clearContactCache();
 
       // Second call - should hit database again
-      await resolveContact({ entityId: 'entity_1' }, 'workspace_1');
+      await resolveContact('entity_1', 'workspace_1');
       expect(callCount).toBe(2);
     });
   });

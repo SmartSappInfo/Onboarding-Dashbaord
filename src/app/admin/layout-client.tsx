@@ -44,7 +44,6 @@ import {
     Target,
     Tags
 } from 'lucide-react';
-import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -68,6 +67,7 @@ import { NavigationProvider } from '@/context/NavigationContext';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
+import { useTerminology } from '@/hooks/use-terminology';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { AppPermissionId, Role } from '@/lib/types';
 
@@ -80,6 +80,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
+  const { plural } = useTerminology();
   
   const [mounted, setMounted] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
@@ -154,7 +155,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
-    { href: '/admin/entities', icon: School, label: 'Schools', visible: hasPerm('schools_view') },
+    { href: '/admin/entities', icon: School, label: plural, visible: hasPerm('schools_view') },
     // { href: '/admin/prospects', icon: Target, label: 'Prospects', visible: hasPerm('prospects_view') }, // TODO: Implement prospects page
     { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') || hasPerm('prospects_view') },
     { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: hasPerm('tasks_manage') },
@@ -189,13 +190,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar collapsible="icon" className="bg-[#0A1427] text-white border-r-0 shadow-2xl print:hidden">
-        <SidebarHeader className="p-6 group-data-[collapsible=icon]:p-2">
-          <Link href="/admin" className="flex items-center gap-3 font-semibold group">
-            <div className="bg-white rounded-xl p-1.5 shadow-xl group-hover:scale-110 transition-transform shrink-0">
-              <SmartSappIcon variant="primary" className="h-6 w-6" />
-            </div>
-            <span className="text-xl font-black uppercase tracking-tighter text-white group-data-[collapsible=icon]:hidden">SmartSapp</span>
-          </Link>
+        <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
+           <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
         </SidebarHeader>
         
         <SidebarContent className="mt-4 overflow-x-hidden">
@@ -280,7 +276,6 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
           <div className="flex items-center gap-3 shrink-0">
-              <UnifiedOrgWorkspaceSwitcher />
               {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
               <NotificationBell />
               <div className="h-8 w-px bg-border mx-1" />

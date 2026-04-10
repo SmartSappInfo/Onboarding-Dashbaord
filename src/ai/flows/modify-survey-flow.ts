@@ -6,7 +6,7 @@
  * - modifySurvey - A function that takes current survey state and a message to produce an updated state.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 
 // Redefining schemas for the prompt to ensure the model has full context of the structure
@@ -97,10 +97,14 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 
 const ModifySurveyInputSchema = z.object({
   userMessage: z.string().describe('The user\'s request for changes.'),
+  docContent: z.string().optional().describe('Extracted text from an uploaded document.'),
+  docDataUri: z.string().optional().describe('multimodal PDF data URI.'),
+  docUrl: z.string().url().optional().describe('URL of the document in media library.'),
+  sourceUrl: z.string().url().optional().describe('A webpage URL to analyze for survey content.'),
   currentSurvey: z.object({
-    title: z.string(),
-    description: z.string(),
-    elements: z.array(z.any()),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    elements: z.array(z.any()).default([]),
     scoringEnabled: z.boolean().optional(),
     maxScore: z.number().optional(),
     resultRules: z.array(z.any()).optional(),
@@ -120,6 +124,9 @@ const ModifySurveyInputSchema = z.object({
     showCoverPage: z.boolean().optional(),
     showSurveyTitles: z.boolean().optional(),
   }),
+  organizationId: z.string().optional(),
+  provider: z.string().optional().default('googleai'),
+  modelId: z.string().optional().default('gemini-1.5-flash'),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
 
@@ -155,22 +162,31 @@ const modifyPrompt = ai.definePrompt({
     name: 'modifySurveyPrompt',
     input: { schema: ModifySurveyInputSchema },
     output: { schema: ModifySurveyOutputSchema },
-    prompt: `You are an expert Survey Architect. You help users refine their surveys through conversation.
+    prompt: `You are an expert Survey Architect and Institutional Analyst. You help users refine their surveys through conversation and document analysis.
+    
+We are building specifically for "Entities" (Institutions, Campuses, Hubs).
 
 ### YOUR TASK:
-Review the current survey structure and the user's request. Modify the survey to fulfill the request while maintaining logical integrity and a professional tone.
+Review the current survey structure (if any) and the user's request. You may also be provided with content from an uploaded document (Docx, Txt, PDF) or a URL. 
+
+If this is a NEW survey (empty current state), your primary goal is to COMPOSE a complete, functional survey structure from the provided materials.
 
 ### RULES:
-1. **Consistency**: Ensure new elements match the existing naming conventions and styles.
+1. **Consistency**: Ensure new elements match professional standards and logical conventions.
 2. **Logic Updates**: If you add or remove questions, update any 'logic' blocks or 'resultRules' that might be affected.
-3. **Scoring**: If 'scoringEnabled' is true, ensure new questions have appropriate scores and 'maxScore' is updated to the new possible maximum.
+3. **Scoring**: If 'scoringEnabled' is true (or if the content suggests an assessment), ensure questions have appropriate scores and 'maxScore' is updated.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
-5. **Layouts**: When adding 'heading' blocks, use an appropriate 'variant' (h1, h2, h3).
-6. **Styling & Metadata**: Preserve existing background colors, patterns, video settings, and logo URLs unless specifically asked to change them.
-7. **High-Engagement Video**: You can set 'videoUrl', 'videoThumbnailUrl', and 'videoCaption'.
+5. **Layouts**: Use appropriate variants for headings (h1, h2, h3).
+6. **Multimodal Analysis**: If a PDF Data URI is provided, use it for deep discovery of fields and structure.
+7. **Entity Focus**: Always refer to the institution/campus as an "Entity". Avoid terms like "School" unless it's part of the official name.
 8. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
---- CURRENT SURVEY ---
+--- SOURCE MATERIALS ---
+{{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}
+{{#if sourceUrl}}WEBPAGE CONTENT will be provided via multimodal if available, otherwise analyze the request.{{/if}}
+{{#if docDataUri}}MULTIMODAL PDF: {{media url=docDataUri}}{{/if}}
+
+--- CURRENT SURVEY STATE ---
 Title: {{{currentSurvey.title}}}
 Description: {{{currentSurvey.description}}}
 Elements: {{{json currentSurvey.elements}}}
@@ -192,12 +208,32 @@ const modifySurveyFlow = ai.defineFlow(
         outputSchema: ModifySurveyOutputSchema,
     },
     async (input) => {
+        // If a source URL is provided, try to fetch its text content to supplement the prompt
+        if (input.sourceUrl && !input.docContent) {
+            try {
+                const response = await fetch(input.sourceUrl);
+                if (response.ok) {
+                    const text = await response.text();
+                    input.docContent = text.substring(0, 15000); // Limit to avoid prompt blowup
+                }
+            } catch (e) {
+                console.error("Failed to fetch source URL in flow:", e);
+            }
+        }
+
         let retries = 0;
         const maxRetries = 3;
         
         while (retries < maxRetries) {
             try {
-                const { output } = await modifyPrompt(input);
+                // Resolve dynamic model based on organization and user preference
+                const resolvedModel = await getModel({
+                    organizationId: input.organizationId,
+                    provider: input.provider || 'googleai',
+                    modelId: input.modelId || 'gemini-1.5-flash',
+                });
+
+                const { output } = await modifyPrompt(input, { model: resolvedModel });
                 if (!output) throw new Error("The AI model failed to process the request.");
                 return output;
             } catch (error: any) {

@@ -69,10 +69,9 @@ describe('Profile Module Migration - Task 19', () => {
       vi.mocked(resolveContact).mockResolvedValueOnce(mockContact);
 
       const result = await resolveContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
-
       expect(result).toBeDefined();
       expect(result?.name).toBe('Test School');
       expect(result?.migrationStatus).toBe('migrated');
@@ -107,10 +106,9 @@ describe('Profile Module Migration - Task 19', () => {
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
       const result = await resolveContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
-
       // Verify entity information is present
       expect(result?.name).toBe('Test School');
       expect(result?.contacts).toHaveLength(1);
@@ -144,10 +142,9 @@ describe('Profile Module Migration - Task 19', () => {
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
       const result = await resolveContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
-
       // Verify workspace-specific information is present
       expect(result?.pipelineId).toBe('pipeline_1');
       expect(result?.stageId).toBe('stage_2');
@@ -186,7 +183,7 @@ describe('Profile Module Migration - Task 19', () => {
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
       const result = await resolveContact(
-        { entityId: 'school_456' },
+        'school_456',
         'workspace_1'
       );
 
@@ -388,7 +385,7 @@ describe('Profile Module Migration - Task 19', () => {
 
       // Simulate URL: /admin/entities/school_123
       const result = await resolveContact(
-        { entityId: 'school_123' },
+        'school_123',
         'workspace_1'
       );
 
@@ -418,10 +415,9 @@ describe('Profile Module Migration - Task 19', () => {
 
       // Simulate URL: /admin/entities/entity_123 or /admin/contacts/entity_123
       const result = await resolveContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
-
       expect(result).toBeDefined();
       expect(result?.entityId).toBe('entity_123');
       expect(result?.migrationStatus).toBe('migrated');

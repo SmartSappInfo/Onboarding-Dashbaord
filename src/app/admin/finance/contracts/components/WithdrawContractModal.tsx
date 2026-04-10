@@ -26,7 +26,7 @@ import {
     CheckCircle2,
     X
 } from 'lucide-react';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { collection, query, where, getDocs, doc } from 'firebase/firestore';
 import { purgeContractAction } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +45,7 @@ interface WithdrawContractModalProps {
  */
 export default function WithdrawContractModal({ school, open, onOpenChange }: WithdrawContractModalProps) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     
     const [isLoadingData, setIsLoadingData] = React.useState(true);
@@ -100,7 +101,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
         
         try {
             // High-fidelity server-side purge
-            const result = await purgeContractAction({ entityId: school.id }, selectedSubIds, 'current-user-placeholder');
+            const result = await purgeContractAction(school.id, selectedSubIds, user?.uid || 'system');
             
             if (result.success) {
                 toast({ title: 'Records Purged', description: 'Legal history has been successfully sanitized.' });

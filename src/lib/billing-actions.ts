@@ -40,20 +40,18 @@ export async function getPublicInvoiceAction(id: string) {
  * @param workspaceId - Optional workspace filter
  */
 export async function getInvoicesForContactAction(
-    contactIdentifier: { entityId?: string; entityId?: string },
+    entityId: string,
     workspaceId?: string
 ) {
     try {
         const db = adminDb;
         let query = db.collection('invoices');
         
-        // Prefer entityId when both are provided (Requirement 22.1)
-        if (contactIdentifier.entityId) {
-            query = query.where('entityId', '==', contactIdentifier.entityId) as any;
-        } else if (contactIdentifier.entityId) {
-            query = query.where('entityId', '==', contactIdentifier.entityId) as any;
+        // Use unified entityId (Requirement 22.1)
+        if (entityId) {
+            query = query.where('entityId', '==', entityId) as any;
         } else {
-            throw new Error("Either entityId or entityId must be provided");
+            throw new Error("Entity ID must be provided");
         }
         
         // Add workspace filter if provided
@@ -114,10 +112,9 @@ export async function generateInvoiceAction(
         
         const school = contact.schoolData;
         
-        // Dual-write: Extract both identifiers for backward compatibility
-        const entityId = school.id;
-        const entityId = contact.entityId || null;
-        const entityType = contact.entityType || null;
+        // Use unified entity identifier
+        const entityId = contact.id;
+        const entityType = contact.entityType || 'institution';
 
         const pkgSnap = await db.collection('subscription_packages').doc(school.subscriptionPackageId || 'none').get();
         const pkgData = pkgSnap.exists ? pkgSnap.data() : null;
@@ -140,9 +137,6 @@ export async function generateInvoiceAction(
         // 4. Construct Record with dual-write (Requirement 8.1)
         const invoiceData: Omit<Invoice, 'id'> = {
             invoiceNumber,
-            // Dual-write: populate both legacy and new fields
-            entityId,
-            entityName: school.name,
             entityId,
             entityType,
             periodId,
@@ -181,7 +175,7 @@ export async function generateInvoiceAction(
 
         const docRef = await db.collection('invoices').add(invoiceData);
         
-        // Log activity with dual-write support
+        // Log activity
         await logActivity({
             entityId,
             organizationId: school.organizationId || 'default',
@@ -215,11 +209,9 @@ export async function updateInvoiceAction(id: string, updates: Partial<Invoice>,
         
         const existingInvoice = existingDoc.data() as Invoice;
         
-        // Preserve identifier fields (Requirement 8.2)
         const safeUpdates = {
             ...updates,
-            // Ensure these fields are not accidentally removed
-            entityId: updates.entityId ?? existingInvoice.entityId: updates.entityId ?? existingInvoice.entityId,
+            entityId: updates.entityId ?? existingInvoice.entityId,
             entityType: updates.entityType ?? existingInvoice.entityType,
             updatedAt: new Date().toISOString()
         };

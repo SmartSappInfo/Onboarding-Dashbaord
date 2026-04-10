@@ -56,6 +56,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 
+import { useTerminology } from '@/hooks/use-terminology';
+
 const getInitials = (name?: string) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -77,6 +79,20 @@ export default function EntitiesClient() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
+  const { 
+    singular, 
+    plural, 
+    addNew, 
+    importBulk, 
+    noFound, 
+    deleteConfirm, 
+    deleteLabel, 
+    updateStatus, 
+    termName, 
+    termStatus,
+    viewConsole,
+    editProfile
+  } = useTerminology();
 
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
@@ -228,7 +244,7 @@ export default function EntitiesClient() {
     if (!firestore || !schoolToDelete) return;
     const docRef = doc(firestore, 'schools', schoolToDelete.id);
     deleteDoc(docRef).then(() => {
-        toast({ title: 'School Deleted', description: `${schoolToDelete.name} has been removed.` });
+        toast({ title: `${singular} Deleted`, description: `${schoolToDelete.name} has been removed.` });
         setSchoolToDelete(null);
     }).catch((error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
@@ -255,7 +271,7 @@ export default function EntitiesClient() {
                     <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
                         <Link href="/admin/entities/upload">
                             <FileUp className="mr-2 h-4 w-4" />
-                            Bulk Import
+                            {importBulk}
                         </Link>
                     </Button>
                     <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95 text-white">
@@ -266,7 +282,7 @@ export default function EntitiesClient() {
                     <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
                         <Link href="/admin/entities/new">
                             <PlusCircle className="mr-2 h-5 w-5" />
-                            Add New School
+                            {addNew}
                         </Link>
                     </Button>
                 </div>
@@ -318,7 +334,7 @@ export default function EntitiesClient() {
                     <TableHeader className="bg-muted/30">
                     <TableRow>
                         <TableHead className="w-[80px]"></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">School Name <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
                         <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Visibility</span></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
@@ -420,11 +436,11 @@ export default function EntitiesClient() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
                                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">View Console</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
                                     
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
                                         <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" /></div>
-                                        <span className="font-bold text-sm">Update School Status</span>
+                                        <span className="font-bold text-sm">{updateStatus}</span>
                                     </DropdownMenuItem>
 
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringSchool(school)}>
@@ -439,7 +455,7 @@ export default function EntitiesClient() {
 
                                     <DropdownMenuSeparator className="my-2" />
                                     
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Edit Profile</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${school.id}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
                                         <Link href={`/admin/messaging/composer?entityId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
@@ -449,7 +465,7 @@ export default function EntitiesClient() {
                                     </DropdownMenuItem>
                                     
                                     <DropdownMenuSeparator className="my-2" />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setSchoolToDelete(school)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">Delete School</span></DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setSchoolToDelete(school)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -457,7 +473,7 @@ export default function EntitiesClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground italic">No school records found for the active workspace.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>
@@ -465,7 +481,7 @@ export default function EntitiesClient() {
         </div>
       </div>
       <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">Delete School?</AlertDialogTitle><AlertDialogDescription>This will permanently remove <span className="font-bold">{schoolToDelete?.name}</span> and all its interaction history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSchool} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Delete Campus</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will permanently remove <span className="font-bold">{schoolToDelete?.name}</span> and all its interaction history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSchool} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Delete Campus</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
       
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />

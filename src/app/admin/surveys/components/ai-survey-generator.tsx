@@ -20,12 +20,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, UploadCloud, Sparkles } from 'lucide-react';
-
-import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { addDoc, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
 import { generateSurvey } from '@/ai/flows/generate-survey-flow';
-import type { Survey } from '@/lib/types';
+import type { Survey, UserProfile } from '@/lib/types';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import AiModelSelector from '@/components/ai/AiModelSelector';
+import { Loader2, Sparkles } from 'lucide-react';
 
 
 const formSchema = z.object({
@@ -42,6 +43,8 @@ export default function AiSurveyGenerator() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
+  const { activeOrganizationId } = useWorkspace();
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const form = useForm<FormData>({
@@ -85,7 +88,27 @@ export default function AiSurveyGenerator() {
             sourceType = 'url';
         }
 
-        const generatedData = await generateSurvey({ sourceType, content });
+        // Fetch user preferences for model and provider
+        let provider = 'googleai';
+        let modelId = 'gemini-1.5-flash';
+        
+        if (user && firestore) {
+            const userRef = doc(firestore, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                const profile = userSnap.data() as UserProfile;
+                provider = profile.preferredAiProvider || 'googleai';
+                modelId = profile.preferredAiModel || 'gemini-1.5-flash';
+            }
+        }
+
+        const generatedData = await generateSurvey({ 
+            sourceType, 
+            content,
+            organizationId: activeOrganizationId,
+            provider,
+            modelId,
+        });
 
         if (!generatedData || !generatedData.title) {
             throw new Error('AI model did not return a valid survey structure.');
@@ -149,6 +172,10 @@ export default function AiSurveyGenerator() {
             </div>
             <CardTitle className="text-2xl font-black">AI Survey Architect</CardTitle>
             <CardDescription className="text-base">Provide your source material and the AI will build a complete, scored assessment flow for you.</CardDescription>
+            
+            <div className="mt-6 flex justify-center">
+                <AiModelSelector className="items-center" />
+            </div>
         </CardHeader>
         <CardContent className="pt-8">
             <Form {...form}>

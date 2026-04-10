@@ -547,7 +547,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getTasksForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -642,7 +642,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getActivitiesForContact(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
 
@@ -653,7 +653,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getActivitiesForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -666,7 +666,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getActivitiesForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -692,7 +692,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getActivitiesForContact(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
 
@@ -720,7 +720,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getActivitiesForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -730,7 +730,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
       it('should return empty array when no identifier provided', async () => {
         const results = await getActivitiesForContact(
-          {},
+          '',
           'workspace_1'
         );
 
@@ -748,7 +748,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         await loadSettings(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
 
@@ -761,7 +761,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         await loadSettings(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -798,7 +798,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         await loadSettings(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -844,7 +844,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const result = await loadSettings(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -859,7 +859,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const result = await loadSettings(
-          { entityId: 'entity_nonexistent' },
+          'entity_nonexistent',
           'workspace_1'
         );
 
@@ -874,7 +874,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveysForContact(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
 
@@ -885,7 +885,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveysForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -897,7 +897,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         await getSurveyResponsesForContact(
           'survey_1',
-          { entityId: 'entity_1' }
+          'entity_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
@@ -908,7 +908,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         await getSurveyResponsesForContact(
           'survey_1',
-          { entityId: 'school_1' }
+          'school_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
@@ -920,7 +920,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveysForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -933,7 +933,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         await getSurveyResponsesForContact(
           'survey_1',
-          { entityId: 'school_1' }
+          'school_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
@@ -960,7 +960,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getSurveysForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -970,7 +970,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
       it('should return empty array when no identifier provided', async () => {
         const results = await getSurveysForContact(
-          {},
+          '',
           'workspace_1'
         );
 
@@ -1080,7 +1080,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
       // Test task query enforces workspace
       await getTasksForContact(
-        { entityId: 'entity_1' },
+        'entity_1',
         'workspace_1'
       );
       expect(mockWhere).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
@@ -1090,7 +1090,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
       // Test activity query enforces workspace
       await getActivitiesForContact(
-        { entityId: 'entity_1' },
+        'entity_1',
         'workspace_1'
       );
       expect(mockWhere).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
@@ -1100,7 +1100,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
       // Test settings query enforces workspace
       await loadSettings(
-        { entityId: 'entity_1' },
+        'entity_1',
         'workspace_1'
       );
       expect(mockWhere).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
@@ -1133,7 +1133,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
       mockGet.mockRejectedValue(new Error('Query failed'));
 
       const results = await getTasksForContact(
-        { entityId: 'entity_1' },
+        'entity_1',
         'workspace_1'
       );
 

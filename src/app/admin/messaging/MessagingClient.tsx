@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useTerminology } from '@/hooks/use-terminology';
 import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-actions';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +55,7 @@ export default function MessagingClient() {
     const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
     const [reportData, setReportData] = React.useState<any[]>([]);
     const [isLoadingReport, setIsLoadingReport] = React.useState(false);
+    const { singular } = useTerminology();
 
     // Fetch logs for analytics
     const logsCol = useMemoFirebase(() => {
@@ -131,7 +133,7 @@ export default function MessagingClient() {
     const infrastructure = [
         {
             title: 'Variable Registry',
-            description: 'Map School, Meeting, and Survey fields to dynamic message tags.',
+            description: `Map ${singular}, Meeting, and Survey fields to dynamic message tags.`,
             icon: Database,
             href: '/admin/messaging/variables',
             color: 'text-primary',

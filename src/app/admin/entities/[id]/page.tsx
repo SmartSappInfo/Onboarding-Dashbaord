@@ -66,6 +66,7 @@ import ChangeStatusModal from '../components/ChangeStatusModal';
 import TransferPipelineModal from '../components/TransferPipelineModal';
 import ConvertLeadModal from '../components/ConvertLeadModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -92,6 +93,20 @@ export default function SchoolDetailPage() {
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
     const { activeWorkspaceId } = useWorkspace();
+    const { 
+        singular, 
+        plural, 
+        addNew, 
+        importBulk, 
+        noFound, 
+        deleteConfirm, 
+        deleteLabel, 
+        updateStatus, 
+        termName, 
+        termStatus,
+        viewConsole,
+        editProfile
+    } = useTerminology();
     
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
@@ -177,7 +192,7 @@ export default function SchoolDetailPage() {
     useSetBreadcrumb(resolvedContact?.name || school?.name);
 
     if (isLoading || isResolvingContact) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
-    if (!school || !resolvedContact) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
+    if (!school || !resolvedContact) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">{singular} Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {
@@ -240,7 +255,7 @@ export default function SchoolDetailPage() {
                             onClick={() => setStatusModalOpen(true)}
                         >
                             <ShieldCheck className="mr-2 h-4 w-4" /> 
-                            Update School Status
+                            {updateStatus}
                         </Button>
                         <Button 
                             variant="outline" 
@@ -444,7 +459,7 @@ export default function SchoolDetailPage() {
                             ) : (
                                 <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
                                     <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending actions for this campus</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending actions for this {singular.toLowerCase()}</p>
                                 </div>
                             )}
                         </div>

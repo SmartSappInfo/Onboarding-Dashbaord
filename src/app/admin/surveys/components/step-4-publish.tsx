@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Globe, AlertCircle, ShieldCheck, Zap, Layout } from 'lucide-react';
 import WebhookManager from './webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
+import ExternalNotificationConfig from './external-notification-config';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -131,6 +132,7 @@ export default function Step4Publish() {
 
             <div className="space-y-8">
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
+                <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
             </div>
         </div>
     );

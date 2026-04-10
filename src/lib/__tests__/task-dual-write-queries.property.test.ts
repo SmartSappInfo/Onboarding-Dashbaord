@@ -1,19 +1,16 @@
-/**
- * Property-Based Tests: Task Dual-Write and Query Fallback
+ * Property-Based Tests: Task Unified Entity Architecture
  * 
- * **Property 1: Dual-Write Consistency**
+ * **Property 1: Unified Entity Consistency**
  * **Validates: Requirements 2.5, 3.1**
  * 
- * For any new task created with a contact identifier, the system should populate
- * both entityId (if available from legacy data) and entityId fields.
+ * For any new task created, the system should strictly use the entityId
+ * as the primary identifier.
  * 
- * **Property 2: Query Fallback Pattern**
+ * **Property 2: Direct Identifier Pattern**
  * **Validates: Requirements 3.4, 3.5**
  * 
- * For any task query that filters by contact, the system should accept either
- * entityId or entityId as the identifier parameter, preferring entityId when
- * both are provided, and successfully return matching records.
- */
+ * For any task query that filters by contact, the system should accept a string-based
+ * entityId and successfully return matching records.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';
@@ -38,14 +35,15 @@ const workspaceEntities = new Map<string, any>();
 // Mock contact adapter
 vi.mock('../contact-adapter', () => ({
   resolveContact: vi.fn().mockImplementation(async (
-    identifier: { entityId?: string; entityId?: string },
+    entityId: string,
     workspaceId: string
   ): Promise<ResolvedContact | null> => {
-    // Try to resolve by entityId first
-    if (identifier.entityId) {
-      const entity = entities.get(identifier.entityId);
+    // Direct resolution by entityId
+    if (entityId) {
+      // 1. Try resolving as a new entity
+      const entity = entities.get(entityId);
       if (entity) {
-        const weKey = `${workspaceId}_${identifier.entityId}`;
+        const weKey = `${workspaceId}_${entityId}`;
         const workspaceEntity = workspaceEntities.get(weKey);
         
         return {
@@ -56,38 +54,13 @@ vi.mock('../contact-adapter', () => ({
           entityType: entity.entityType,
           entityId: entity.id,
           migrationStatus: 'migrated',
-          schoolData: identifier.entityId ? schools.get(identifier.entityId) : undefined,
           tags: workspaceEntity?.workspaceTags || [],
         };
       }
-    }
-    
-    // Fallback to entityId
-    if (identifier.entityId) {
-      const school = schools.get(identifier.entityId);
+      
+      // 2. Try resolving as a legacy school
+      const school = schools.get(entityId);
       if (school) {
-        // Check if school is migrated
-        if (school.migrationStatus === 'migrated' && school.entityId) {
-          const entity = entities.get(school.entityId);
-          if (entity) {
-            const weKey = `${workspaceId}_${school.entityId}`;
-            const workspaceEntity = workspaceEntities.get(weKey);
-            
-            return {
-              id: entity.id,
-              name: entity.name,
-              slug: entity.slug,
-              contacts: entity.contacts || [],
-              entityType: entity.entityType,
-              entityId: entity.id,
-              migrationStatus: 'migrated',
-              schoolData: school,
-              tags: workspaceEntity?.workspaceTags || [],
-            };
-          }
-        }
-        
-        // Legacy school (not migrated)
         return {
           id: school.id,
           name: school.name,
@@ -224,28 +197,19 @@ const taskDataArbitrary = fc.record({
     .map(timestamp => new Date(timestamp).toISOString()),
 });
 
-describe('Property 1: Dual-Write Consistency', () => {
+describe('Property 1: Unified Entity Consistency', () => {
   beforeEach(() => {
     __testStorage.reset();
     vi.clearAllMocks();
   });
 
-  it('should populate both entityId and entityId when creating task with entityId for migrated contact', async () => {
+  it('should use entityId when creating task for migrated contact', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityArbitrary,
         taskDataArbitrary,
-        schoolArbitrary,
-        async (entity, taskData, school) => {
-          // Setup: Create migrated school with entity
-          const migratedSchool = {
-            ...school,
-            migrationStatus: 'migrated' as const,
-            entityId: entity.id,
-          };
-          
+        async (entity, taskData) => {
           __testStorage.entities.set(entity.id, entity);
-          __testStorage.schools.set(school.id, migratedSchool);
           __testStorage.workspaceEntities.set(
             `${taskData.workspaceId}_${entity.id}`,
             {
@@ -256,24 +220,23 @@ describe('Property 1: Dual-Write Consistency', () => {
             }
           );
 
-          // Create task with only entityId
+          // Create task with entityId
           const result = await createTaskAction({
             ...taskData,
-            entityId: school.id, // Provide entityId to simulate dual-write scenario
+            entityId: entity.id,
             reminders: [],
             reminderSent: false,
           });
 
           expect(result.success).toBe(true);
 
-          // Verify task was created with both identifiers
+          // Verify task was created with unified identifier
           const createdTask = Array.from(__testStorage.tasks.values()).find(
             (t: any) => t.id === result.id
           );
 
           expect(createdTask).toBeDefined();
           expect(createdTask.entityId).toBe(entity.id);
-          expect(createdTask.entityId).toBe(school.id);
           expect(createdTask.entityType).toBe(entity.entityType);
           expect(createdTask.entityName).toBe(entity.name);
         }
@@ -333,22 +296,15 @@ describe('Property 1: Dual-Write Consistency', () => {
     );
   });
 
-  it('should maintain entityId only for legacy (non-migrated) contacts', async () => {
+  it('should maintain legacy ID as the primary entityId for legacy (non-migrated) contacts', async () => {
     await fc.assert(
       fc.asyncProperty(
         taskDataArbitrary,
         schoolArbitrary,
         async (taskData, school) => {
-          // Setup: Create legacy school (not migrated)
-          const legacySchool = {
-            ...school,
-            migrationStatus: 'not_started' as const,
-            entityId: undefined,
-          };
-          
-          __testStorage.schools.set(school.id, legacySchool);
+          __testStorage.schools.set(school.id, school);
 
-          // Create task with only entityId
+          // Create task with legacy ID
           const result = await createTaskAction({
             ...taskData,
             entityId: school.id,
@@ -358,14 +314,13 @@ describe('Property 1: Dual-Write Consistency', () => {
 
           expect(result.success).toBe(true);
 
-          // Verify task was created with entityId but no entityId
+          // Verify task was created with entityId
           const createdTask = Array.from(__testStorage.tasks.values()).find(
             (t: any) => t.id === result.id
           );
 
           expect(createdTask).toBeDefined();
           expect(createdTask.entityId).toBe(school.id);
-          expect(createdTask.entityId).toBeNull();
         }
       ),
       { numRuns: 30 }
@@ -373,13 +328,13 @@ describe('Property 1: Dual-Write Consistency', () => {
   });
 });
 
-describe('Property 2: Query Fallback Pattern', () => {
+describe('Property 2: Direct Identifier Pattern', () => {
   beforeEach(() => {
     __testStorage.reset();
     vi.clearAllMocks();
   });
 
-  it('should query tasks by entityId and return matching records', async () => {
+  it('should query tasks by entityId string and return matching records', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityArbitrary,
@@ -404,142 +359,37 @@ describe('Property 2: Query Fallback Pattern', () => {
             const task = {
               ...taskData,
               id: `task_${entity.id}_${i}`,
-              entityId: null,
-              title: `${taskData.title} ${i}`,
-            };
-            __testStorage.tasks.set(task.id, task);
-            createdTaskIds.push(task.id);
-          }
-
-          // Query by entityId
-          const results = await getTasksForContact(
-            { entityId: entity.id },
-            taskData.workspaceId
-          );
-
-          // Verify all tasks returned
-          expect(results.length).toBe(taskCount);
-          expect(results.every((t: Task) => t.entityId === entity.id)).toBe(true);
-          expect(results.every((t: Task) => t.workspaceId === taskData.workspaceId)).toBe(true);
-        }
-      ),
-      { numRuns: 30 }
-    );
-  });
-
-  it('should query tasks by entityId and return matching records', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        schoolArbitrary,
-        taskDataArbitrary,
-        fc.integer({ min: 1, max: 5 }),
-        async (school, taskData, taskCount) => {
-          // Setup: Create legacy school
-          const legacySchool = {
-            ...school,
-            migrationStatus: 'not_started' as const,
-          };
-          __testStorage.schools.set(school.id, legacySchool);
-
-          // Create multiple tasks for this school
-          const createdTaskIds: string[] = [];
-          for (let i = 0; i < taskCount; i++) {
-            const task = {
-              ...taskData,
-              id: `task_${school.id}_${i}`,
-              entityId: null,
-              title: `${taskData.title} ${i}`,
-            };
-            __testStorage.tasks.set(task.id, task);
-            createdTaskIds.push(task.id);
-          }
-
-          // Query by entityId
-          const results = await getTasksForContact(
-            { entityId: school.id },
-            taskData.workspaceId
-          );
-
-          // Verify all tasks returned
-          expect(results.length).toBe(taskCount);
-          expect(results.every((t: Task) => t.entityId === school.id)).toBe(true);
-          expect(results.every((t: Task) => t.workspaceId === taskData.workspaceId)).toBe(true);
-        }
-      ),
-      { numRuns: 30 }
-    );
-  });
-
-  it('should prefer entityId when both entityId and entityId are provided', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        entityArbitrary,
-        schoolArbitrary,
-        taskDataArbitrary,
-        async (entity, school, taskData) => {
-          // Setup: Create migrated school with entity
-          const migratedSchool = {
-            ...school,
-            migrationStatus: 'migrated' as const,
-            entityId: entity.id,
-          };
-          
-          __testStorage.entities.set(entity.id, entity);
-          __testStorage.schools.set(school.id, migratedSchool);
-          __testStorage.workspaceEntities.set(
-            `${taskData.workspaceId}_${entity.id}`,
-            {
-              id: `${taskData.workspaceId}_${entity.id}`,
-              workspaceId: taskData.workspaceId,
               entityId: entity.id,
-              workspaceTags: [],
-            }
-          );
+              title: `${taskData.title} ${i}`,
+            };
+            __testStorage.tasks.set(task.id, task);
+            createdTaskIds.push(task.id);
+          }
 
-          // Create task with entityId
-          const taskWithEntity = {
-            ...taskData,
-            id: `task_entity_${entity.id}`,
-            entityId: school.id,
-            title: 'Task with entity',
-          };
-          __testStorage.tasks.set(taskWithEntity.id, taskWithEntity);
-
-          // Create task with only entityId (different task)
-          const taskWithSchoolOnly = {
-            ...taskData,
-            id: `task_school_${school.id}`,
-            entityId: null,
-            title: 'Task with school only',
-          };
-          __testStorage.tasks.set(taskWithSchoolOnly.id, taskWithSchoolOnly);
-
-          // Query with both identifiers - should prefer entityId
+          // Query by entityId string
           const results = await getTasksForContact(
-            { entityId: school.id },
+            entity.id,
             taskData.workspaceId
           );
 
-          // Verify only tasks with entityId are returned
-          expect(results.length).toBeGreaterThan(0);
+          // Verify all tasks returned
+          expect(results.length).toBe(taskCount);
           expect(results.every((t: Task) => t.entityId === entity.id)).toBe(true);
-          
-          // Verify task with only entityId is NOT returned
-          expect(results.find((t: Task) => t.id === taskWithSchoolOnly.id)).toBeUndefined();
+          expect(results.every((t: Task) => t.workspaceId === taskData.workspaceId)).toBe(true);
         }
       ),
       { numRuns: 30 }
     );
   });
 
-  it('should return empty array when neither identifier is provided', async () => {
+  it('should return empty array when no identifier is provided', async () => {
     await fc.assert(
       fc.asyncProperty(
         taskDataArbitrary,
         async (taskData) => {
-          // Query with no identifiers
+          // Query with no identifier
           const results = await getTasksForContact(
-            {},
+            '',
             taskData.workspaceId
           );
 
@@ -612,13 +462,13 @@ describe('Property 2: Query Fallback Pattern', () => {
     
     // Query from workspace A
     const resultsA = await getTasksForContact(
-      { entityId: entity.id },
+      entity.id,
       workspaceA
     );
     
     // Query from workspace B
     const resultsB = await getTasksForContact(
-      { entityId: entity.id },
+      entity.id,
       workspaceB
     );
     

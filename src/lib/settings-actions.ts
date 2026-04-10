@@ -15,8 +15,7 @@ import { adminDb } from './firebase-admin';
 interface EntitySettings {
   id: string;
   organizationId?: string; // Organization identifier
-  entityId?: string | null;
-  entityId?: string | null;
+  entityId: string | null;
   entityType?: 'institution' | 'family' | 'person' | null;
   workspaceId: string;
   
@@ -51,29 +50,25 @@ interface EntitySettings {
 /**
  * Load settings for an entity
  * 
- * @param identifier - Entity or school identifier
+ * @param entityId - Unified Entity Identifier
  * @param workspaceId - Workspace ID
  * @returns Settings or null if not found
  */
 export async function loadSettings(
-  identifier: { entityId?: string; entityId?: string },
+  entityId: string,
   workspaceId: string
 ): Promise<{ success: boolean; settings?: EntitySettings; error?: string }> {
   try {
-    let query = adminDb
-      .collection('settings')
-      .where('workspaceId', '==', workspaceId);
-    
-    // Prefer entityId, fallback to entityId
-    if (identifier.entityId) {
-      query = query.where('entityId', '==', identifier.entityId);
-    } else if (identifier.entityId) {
-      query = query.where('entityId', '==', identifier.entityId);
-    } else {
-      return { success: false, error: 'Either entityId or entityId must be provided' };
+    if (!entityId) {
+        return { success: false, error: 'entityId must be provided' };
     }
-    
-    const snapshot = await query.limit(1).get();
+
+    const snapshot = await adminDb
+      .collection('settings')
+      .where('workspaceId', '==', workspaceId)
+      .where('entityId', '==', entityId)
+      .limit(1)
+      .get();
     
     if (snapshot.empty) {
       return { success: true, settings: undefined };
@@ -127,15 +122,14 @@ export async function updateSettings(
 }
 
 /**
- * Create settings for an entity with dual-write
+ * Create settings for an entity
  * 
  * @param input - Settings creation input
  * @returns Success status with settings ID
  */
 export async function createSettings(
   input: {
-    entityId?: string;
-    entityId?: string;
+    entityId: string | null;
     entityType?: 'institution' | 'family' | 'person';
     workspaceId: string;
     notificationsEnabled?: boolean;
@@ -147,7 +141,7 @@ export async function createSettings(
     const now = new Date().toISOString();
     
     const settings: Omit<EntitySettings, 'id'> = {
-      entityId: input.entityId || null,
+      entityId: input.entityId,
       entityType: input.entityType || null,
       workspaceId: input.workspaceId,
       notificationsEnabled: input.notificationsEnabled ?? true,

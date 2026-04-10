@@ -108,7 +108,7 @@ function EditSchoolForm({ entityId }: EditFormProps) {
         if (!entityId || !activeWorkspaceId) return;
         setIsSchoolLoading(true);
         try {
-            const contact = await resolveContact({ entityId }, activeWorkspaceId);
+            const contact = await resolveContact(entityId, activeWorkspaceId);
             
             // If contact is found, build a unified object merging legacy schoolData and new fields
             if (contact) {

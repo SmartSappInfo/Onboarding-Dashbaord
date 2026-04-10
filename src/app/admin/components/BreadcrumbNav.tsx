@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/context/NavigationContext';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTerminology } from '@/hooks/use-terminology';
 
 /**
  * @fileOverview High-fidelity Breadcrumb Navigation with Adaptive Truncation and ID Filtering.
@@ -54,6 +55,7 @@ export function BreadcrumbNav() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const { customLabels } = useNavigation();
+  const { plural } = useTerminology();
 
   const segments = pathname.split('/').filter(Boolean);
   
@@ -67,7 +69,7 @@ export function BreadcrumbNav() {
       currentPath += `/${segment}`;
       
       const customLabel = customLabels[currentPath];
-      const mapLabel = segmentMap[segment];
+      const mapLabel = segment === 'schools' ? `${plural} Directory` : segmentMap[segment];
       
       // If we have a human-readable label (from map or resolved from DB), include it.
       // Technical IDs (Firestore UIDs) that don't have a label are skipped.

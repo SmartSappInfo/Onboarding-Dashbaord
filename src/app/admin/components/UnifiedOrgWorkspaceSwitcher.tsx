@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useTenant } from '@/context/TenantContext';
+import { useRouter } from 'next/navigation';
 import { 
     Building, 
     ChevronDown, 
@@ -13,7 +14,8 @@ import {
     Users,
     User,
     Building2,
-    ChevronRight
+    ChevronRight,
+    ExternalLink
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -31,7 +33,12 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
+import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { ContactScope } from '@/lib/types';
+
+interface UnifiedOrgWorkspaceSwitcherProps {
+    variant?: 'sidebar' | 'header';
+}
 
 /**
  * Unified Organization and Workspace Switcher
@@ -43,8 +50,8 @@ import type { ContactScope } from '@/lib/types';
  * Dropdown reveals:
  * - All organizations (for super admins)
  * - Workspaces under each organization (expandable sub-menu)
- * - Manage Organizations button
- * - Manage Workspaces button
+ * - Manage Organizations button (at bottom)
+ * - Manage Workspaces button (inside each org sub-menu)
  */
 
 const ENTITY_TYPE_ICONS = {
@@ -65,7 +72,7 @@ function getScopeLabel(scope: ContactScope | undefined): string | null {
     return scopeMap[scope];
 }
 
-export default function UnifiedOrgWorkspaceSwitcher() {
+export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: UnifiedOrgWorkspaceSwitcherProps) {
     const { 
         activeOrganizationId, 
         activeOrganization, 
@@ -78,6 +85,8 @@ export default function UnifiedOrgWorkspaceSwitcher() {
         isSuperAdmin,
         isLoading 
     } = useTenant();
+    const { state } = useSidebar();
+    const router = useRouter();
 
     const [expandedOrgId, setExpandedOrgId] = React.useState<string | null>(null);
 
@@ -88,16 +97,26 @@ export default function UnifiedOrgWorkspaceSwitcher() {
     }
 
     const handleOrganizationSwitch = (orgId: string) => {
-        if (isSuperAdmin) {
-            setActiveOrganization(orgId);
-            // Auto-select first workspace in the new organization
-            const orgWorkspaces = availableOrganizations
-                .find(o => o.id === orgId)
-                ?.id === orgId ? accessibleWorkspaces : [];
+        if (!isSuperAdmin) return;
+        
+        const org = availableOrganizations.find(o => o.id === orgId);
+        if (!org) return;
+
+        setActiveOrganization(orgId);
+        
+        // Find workspaces for this organization
+        const orgWorkspaces = accessibleWorkspaces.filter(w => w.organizationId === orgId);
+        
+        if (orgWorkspaces.length > 0) {
+            // Respect default workspace if it exists and is accessible
+            const targetWorkspaceId = org.defaultWorkspaceId && orgWorkspaces.find(w => w.id === org.defaultWorkspaceId)
+                ? org.defaultWorkspaceId
+                : orgWorkspaces[0].id;
             
-            if (orgWorkspaces.length > 0) {
-                setActiveWorkspace(orgWorkspaces[0].id);
-            }
+            setActiveWorkspace(targetWorkspaceId);
+        } else {
+            // No workspaces: navigate to settings/details page
+            router.push('/admin/settings');
         }
     };
 
@@ -106,60 +125,92 @@ export default function UnifiedOrgWorkspaceSwitcher() {
         ? ENTITY_TYPE_ICONS[activeWorkspace.contactScope] 
         : Zap;
 
+    const trigger = variant === 'sidebar' ? (
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                        size="lg"
+                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl h-14 bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                    >
+                        <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-white text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
+                            {activeOrganization?.logoUrl ? (
+                                <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
+                            ) : (
+                                <Building className="size-5 text-primary" />
+                            )}
+                        </div>
+                        <div className="grid flex-1 text-left text-sm leading-tight ml-1 group-data-[collapsible=icon]:hidden">
+                            <span className="truncate font-black uppercase tracking-tighter text-white text-base">
+                                {activeOrganization?.name || 'Organization'}
+                            </span>
+                            <span className="truncate text-[10px] font-bold uppercase tracking-widest text-white/40 leading-none mt-0.5">
+                                {activeWorkspace?.name || 'No Workspace selected'}
+                            </span>
+                        </div>
+                        <ChevronRight className="ml-auto size-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all group-data-[collapsible=icon]:hidden" />
+                    </SidebarMenuButton>
+                </DropdownMenuTrigger>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    ) : (
+        <DropdownMenuTrigger asChild>
+            <Button 
+                variant="outline" 
+                className="h-12 px-4 rounded-xl gap-3 border-2 transition-all duration-300 shadow-sm hover:shadow-md"
+                style={{ 
+                    borderColor: activeWorkspace?.color ? `${activeWorkspace.color}20` : '#3B5FFF20',
+                    backgroundColor: activeWorkspace?.color ? `${activeWorkspace.color}05` : '#3B5FFF05',
+                }}
+            >
+                {/* Organization Logo/Icon */}
+                <div className="flex items-center gap-2">
+                    {activeOrganization?.logoUrl ? (
+                        <img 
+                            src={activeOrganization.logoUrl} 
+                            alt={activeOrganization.name}
+                            className="h-8 w-8 rounded-lg object-cover shadow-sm"
+                        />
+                    ) : (
+                        <div className="p-1.5 bg-primary text-white rounded-lg shadow-sm">
+                            <Building className="h-5 w-5" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Organization & Workspace Info */}
+                <div className="flex flex-col items-start min-w-0 text-left">
+                    <span className="text-[9px] font-black uppercase tracking-widest leading-none mb-1 opacity-60">
+                        {activeOrganization?.name || 'Organization'}
+                    </span>
+                    {activeWorkspace && (
+                        <div className="flex items-center gap-1.5">
+                            <div 
+                                className="p-0.5 rounded transition-all"
+                                style={{ backgroundColor: activeWorkspace.color || '#3B5FFF' }}
+                            >
+                                <ScopeIcon className="h-3 w-3 text-white" />
+                            </div>
+                            <span className="text-xs font-black uppercase tracking-tight truncate leading-none max-w-[120px]">
+                                {activeWorkspace.name}
+                            </span>
+                            {scopeLabel && (
+                                <Badge variant="secondary" className="text-[8px] font-bold uppercase px-1 h-3.5">
+                                    {scopeLabel}
+                                </Badge>
+                            )}
+                        </div>
+                    )}
+                </div>
+                
+                <ChevronDown className="h-4 w-4 opacity-40 ml-auto" />
+            </Button>
+        </DropdownMenuTrigger>
+    );
+
     return (
         <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-                <Button 
-                    variant="outline" 
-                    className="h-12 px-4 rounded-xl gap-3 border-2 transition-all duration-300 shadow-sm hover:shadow-md"
-                    style={{ 
-                        borderColor: activeWorkspace?.color ? `${activeWorkspace.color}20` : '#3B5FFF20',
-                        backgroundColor: activeWorkspace?.color ? `${activeWorkspace.color}05` : '#3B5FFF05',
-                    }}
-                >
-                    {/* Organization Logo/Icon */}
-                    <div className="flex items-center gap-2">
-                        {activeOrganization?.logoUrl ? (
-                            <img 
-                                src={activeOrganization.logoUrl} 
-                                alt={activeOrganization.name}
-                                className="h-8 w-8 rounded-lg object-cover shadow-sm"
-                            />
-                        ) : (
-                            <div className="p-1.5 bg-primary text-white rounded-lg shadow-sm">
-                                <Building className="h-5 w-5" />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Organization & Workspace Info */}
-                    <div className="flex flex-col items-start min-w-0 text-left">
-                        <span className="text-[9px] font-black uppercase tracking-widest leading-none mb-1 opacity-60">
-                            {activeOrganization?.name || 'Organization'}
-                        </span>
-                        {activeWorkspace && (
-                            <div className="flex items-center gap-1.5">
-                                <div 
-                                    className="p-0.5 rounded transition-all"
-                                    style={{ backgroundColor: activeWorkspace.color || '#3B5FFF' }}
-                                >
-                                    <ScopeIcon className="h-3 w-3 text-white" />
-                                </div>
-                                <span className="text-xs font-black uppercase tracking-tight truncate leading-none max-w-[120px]">
-                                    {activeWorkspace.name}
-                                </span>
-                                {scopeLabel && (
-                                    <Badge variant="secondary" className="text-[8px] font-bold uppercase px-1 h-3.5">
-                                        {scopeLabel}
-                                    </Badge>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    
-                    <ChevronDown className="h-4 w-4 opacity-40 ml-auto" />
-                </Button>
-            </DropdownMenuTrigger>
+            {trigger}
             
             <DropdownMenuContent 
                 align="start" 
@@ -197,8 +248,17 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                                     <Building className="h-4 w-4" />
                                                 )}
                                             </div>
-                                            <div className="flex-1 min-w-0 text-left">
-                                                <p className="font-black text-xs uppercase truncate">{org.name}</p>
+                                            <div 
+                                                className="flex-1 min-w-0 text-left cursor-pointer group/org"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOrganizationSwitch(org.id);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    <p className="font-black text-xs uppercase truncate group-hover/org:text-primary transition-colors">{org.name}</p>
+                                                    <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/org:opacity-100 text-primary transition-all" />
+                                                </div>
                                                 <p className="text-[9px] font-medium text-muted-foreground">
                                                     {orgWorkspaces.length} workspace{orgWorkspaces.length !== 1 ? 's' : ''}
                                                 </p>
@@ -207,7 +267,7 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                         </DropdownMenuSubTrigger>
                                         
                                         <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl">
-                                            <div className="px-3 py-2 mb-2">
+                                            <div className="px-3 py-2 mb-2 flex items-center justify-between">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                                     {org.name} Workspaces
                                                 </p>
@@ -221,6 +281,7 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                                 <ScrollArea className="max-h-[300px]">
                                                     {orgWorkspaces.map(w => {
                                                         const isActive = activeWorkspaceId === w.id && isActiveOrg;
+                                                        const isDefault = org.defaultWorkspaceId === w.id;
                                                         const wScopeLabel = getScopeLabel(w.contactScope);
                                                         const WScopeIcon = w.contactScope ? ENTITY_TYPE_ICONS[w.contactScope] : Zap;
 
@@ -229,7 +290,7 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                                                 key={w.id}
                                                                 onClick={() => {
                                                                     if (!isActiveOrg) {
-                                                                        handleOrganizationSwitch(org.id);
+                                                                        setActiveOrganization(org.id);
                                                                     }
                                                                     setActiveWorkspace(w.id);
                                                                 }}
@@ -247,7 +308,12 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
                                                                     <div className="flex items-center gap-2">
-                                                                        <p className="font-black text-xs uppercase truncate">{w.name}</p>
+                                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                                            <p className="font-black text-xs uppercase truncate">{w.name}</p>
+                                                                            {isDefault && (
+                                                                                <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" title="Default Workspace" />
+                                                                            )}
+                                                                        </div>
                                                                         {wScopeLabel && (
                                                                             <Badge 
                                                                                 variant={isActive ? "secondary" : "outline"}
@@ -275,6 +341,21 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                                                     })}
                                                 </ScrollArea>
                                             )}
+
+                                            <DropdownMenuSeparator className="my-2" />
+                                            
+                                            <DropdownMenuItem 
+                                                onClick={() => {
+                                                    setActiveOrganization(org.id);
+                                                    router.push('/admin/settings');
+                                                }}
+                                                className="rounded-lg p-2 gap-3 cursor-pointer text-primary hover:bg-primary/5"
+                                            >
+                                                <div className="p-1.5 bg-primary/10 rounded-lg">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </div>
+                                                <span className="font-bold text-[9px] uppercase tracking-widest">Manage Workspaces</span>
+                                            </DropdownMenuItem>
                                         </DropdownMenuSubContent>
                                     </DropdownMenuSub>
                                 );
@@ -348,15 +429,6 @@ export default function UnifiedOrgWorkspaceSwitcher() {
                             </Link>
                         </DropdownMenuItem>
                     )}
-                    
-                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer text-primary hover:bg-primary/5">
-                        <Link href="/admin/settings">
-                            <div className="p-1.5 bg-primary/10 rounded-lg">
-                                <PlusCircle className="h-4 w-4" />
-                            </div>
-                            <span className="font-bold text-[10px] uppercase tracking-widest">Manage Workspaces</span>
-                        </Link>
-                    </DropdownMenuItem>
                 </div>
             </DropdownMenuContent>
         </DropdownMenu>

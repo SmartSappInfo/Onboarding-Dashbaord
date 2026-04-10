@@ -144,10 +144,3 @@ export type ProgressCallback = (progress: MigrationProgress) => void;
  */
 export type EntityType = 'institution' | 'family' | 'person';
 
-/**
- * Contact identifier that can use either legacy entityId or new entityId
- */
-export interface ContactIdentifier {
-  entityId?: string | null;
-  entityId?: string | null;
-}

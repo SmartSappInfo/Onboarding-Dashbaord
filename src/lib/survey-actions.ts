@@ -3,7 +3,8 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { Survey, SurveyResponse, Webhook } from './types';
+import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
+import type { Survey, SurveyResponse, Webhook, FocalPerson } from './types';
 
 /**
  * Get surveys for a specific contact (by entityId or entityId)
@@ -12,19 +13,15 @@ import type { Survey, SurveyResponse, Webhook } from './types';
  * Requirements: 13.5, 22.1, 22.2
  */
 export async function getSurveysForContact(
-  contactId: { entityId?: string | null; entityId?: string | null },
+  entityId: string,
   workspaceId: string
 ): Promise<Survey[]> {
   try {
     let query = adminDb.collection('surveys')
       .where('workspaceIds', 'array-contains', workspaceId);
 
-    // Prefer entityId when available (Requirement 22.2)
-    if (contactId.entityId) {
-      query = query.where('entityId', '==', contactId.entityId);
-    } else if (contactId.entityId) {
-      // Fallback to entityId for backward compatibility (Requirement 22.1)
-      query = query.where('entityId', '==', contactId.entityId);
+    if (entityId) {
+      query = query.where('entityId', '==', entityId);
     } else {
       // No contact identifier provided, return empty array
       return [];
@@ -46,17 +43,13 @@ export async function getSurveysForContact(
  */
 export async function getSurveyResponsesForContact(
   surveyId: string,
-  contactId: { entityId?: string | null; entityId?: string | null }
+  entityId: string
 ): Promise<SurveyResponse[]> {
   try {
     let query = adminDb.collection('surveys').doc(surveyId).collection('responses');
 
-    // Prefer entityId when available (Requirement 22.2)
-    if (contactId.entityId) {
-      query = query.where('entityId', '==', contactId.entityId) as any;
-    } else if (contactId.entityId) {
-      // Fallback to entityId for backward compatibility (Requirement 22.1)
-      query = query.where('entityId', '==', contactId.entityId) as any;
+    if (entityId) {
+      query = query.where('entityId', '==', entityId) as any;
     } else {
       // No contact identifier provided, return empty array
       return [];
@@ -98,10 +91,9 @@ export async function cloneSurvey(surveyId: string, userId: string) {
       status: 'draft', // Default to draft for the clone for safety
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // Preserve dual-write fields from original survey
+      // Unified identifier pattern
       entityId: originalData.entityId || null,
       entityName: originalData.entityName || null,
-      entityId: originalData.entityId || null,
     };
 
     // Create the new survey document
@@ -190,6 +182,46 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         isSubmitted: true,
         updatedAt: new Date().toISOString()
       }, { merge: true });
+    }
+    
+    // 3. Handle Notifications (Admin & External)
+    const surveySnap = await surveyRef.get();
+    if (surveySnap.exists) {
+      const surveyData = surveySnap.data() as Survey;
+      const workspaceId = surveyData.workspaceIds[0] || 'default';
+      
+      const notificationVars = {
+        ...responseData.answers.reduce((acc: any, ans: any) => ({ ...acc, [ans.questionId]: ans.value }), {}),
+        survey_title: surveyData.title,
+        survey_id: surveyId,
+        submission_id: docRef.id,
+        workspaceId
+      };
+
+      // Internal Team Alerts
+      if (surveyData.adminAlertsEnabled) {
+        await triggerInternalNotification({
+          entityId: responseData.entityId,
+          notifyManager: surveyData.adminAlertNotifyManager,
+          specificUserIds: surveyData.adminAlertSpecificUserIds,
+          emailTemplateId: surveyData.adminAlertEmailTemplateId,
+          smsTemplateId: surveyData.adminAlertSmsTemplateId,
+          variables: notificationVars,
+          channel: surveyData.adminAlertChannel
+        });
+      }
+
+      // External Stakeholder Alerts (Requirement 3)
+      if (surveyData.externalAlertsEnabled && responseData.entityId) {
+        await triggerExternalNotification({
+          entityId: responseData.entityId,
+          contactTypes: surveyData.externalAlertContactTypes || [],
+          emailTemplateId: surveyData.externalAlertEmailTemplateId,
+          smsTemplateId: surveyData.externalAlertSmsTemplateId,
+          variables: notificationVars,
+          channel: surveyData.externalAlertChannel
+        });
+      }
     }
 
     return { success: true, id: docRef.id };

@@ -151,7 +151,6 @@ describe('Invoice Module Migration', () => {
       expect(mockAdd).toHaveBeenCalled();
       
       const invoiceData = mockAdd.mock.calls[0][0];
-      expect(invoiceData.entityId).toBe('school_123');
       expect(invoiceData.entityId).toBe('entity_123');
       expect(invoiceData.entityType).toBe('institution');
       expect(invoiceData.entityName).toBe('Test School');
@@ -247,7 +246,6 @@ describe('Invoice Module Migration', () => {
       
       const invoiceData = mockAdd.mock.calls[0][0];
       expect(invoiceData.entityId).toBe('school_456');
-      expect(invoiceData.entityId).toBeNull();
       expect(invoiceData.entityType).toBeNull();
     });
   });
@@ -314,7 +312,6 @@ describe('Invoice Module Migration', () => {
       expect(mockUpdate).toHaveBeenCalled();
       
       const updateData = mockUpdate.mock.calls[0][0];
-      expect(updateData.entityId).toBe('school_123');
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
       expect(updateData.status).toBe('sent');
@@ -383,7 +380,6 @@ describe('Invoice Module Migration', () => {
       // entityId should be preserved from existing invoice
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
-      expect(updateData.entityId).toBe('school_123');
     });
   });
 
@@ -422,7 +418,7 @@ describe('Invoice Module Migration', () => {
 
       // Act
       const result = await getInvoicesForContactAction(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -461,7 +457,7 @@ describe('Invoice Module Migration', () => {
 
       // Act
       const result = await getInvoicesForContactAction(
-        { entityId: 'school_456' },
+        'school_456',
         'workspace_1'
       );
 
@@ -499,23 +495,22 @@ describe('Invoice Module Migration', () => {
 
       // Act
       const result = await getInvoicesForContactAction(
-        { entityId: 'school_123' }
+        'school_123'
       );
 
       // Assert
       expect(result.success).toBe(true);
       // Should use entityId, not entityId
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
-      expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_123');
     });
 
     it('should throw error when neither entityId nor entityId is provided', async () => {
       // Act
-      const result = await getInvoicesForContactAction({});
+      const result = await getInvoicesForContactAction('');
 
       // Assert
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Either entityId or entityId must be provided');
+      expect(result.error).toContain('Entity ID is required');
     });
   });
 

@@ -8,6 +8,7 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { Meeting, School } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { getSchoolEmail } from '@/lib/school-helpers';
+import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -80,6 +81,7 @@ export default function MeetingsHubClient() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('list');
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+  const { singular, plural } = useTerminology();
 
   const meetingsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -335,7 +337,7 @@ export default function MeetingsHubClient() {
                             <TableHeader className="bg-muted/30">
                             <TableRow>
                                 <TableHead className="w-[80px]"></TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">School Context</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">{singular} Context</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Protocol Type</TableHead>
                                 <TableHead className="w-[250px] text-[10px] font-black uppercase tracking-widest py-4">Target Window</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Portal Status</TableHead>

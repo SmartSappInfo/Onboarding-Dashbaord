@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Zone } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/context/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +16,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function ZoneEditor() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { activeOrganizationId } = useTenant();
   
   const zonesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'zones'), orderBy('name', 'asc'));
-  }, [firestore]);
+    if (!firestore || !activeOrganizationId) return null;
+    return query(
+      collection(firestore, 'zones'), 
+      where('organizationId', '==', activeOrganizationId),
+      orderBy('name', 'asc')
+    );
+  }, [firestore, activeOrganizationId]);
   const { data: zones, isLoading } = useCollection<Zone>(zonesQuery);
   
   const [newZoneName, setNewZoneName] = React.useState('');
@@ -32,7 +38,10 @@ export default function ZoneEditor() {
     if (!newZoneName.trim() || !firestore) return;
     setIsAdding(true);
     try {
-      await addDoc(collection(firestore, 'zones'), { name: newZoneName.trim() });
+      await addDoc(collection(firestore, 'zones'), { 
+        name: newZoneName.trim(),
+        organizationId: activeOrganizationId 
+      });
       setNewZoneName('');
       toast({ title: 'Zone Added', description: `"${newZoneName}" has been added.` });
     } catch (error) {
@@ -71,14 +80,14 @@ export default function ZoneEditor() {
   return (
     <>
       <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b pb-6">
+        <CardHeader className="bg-muted/30 border-b pb-6 text-left">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-xl">
                 <MapPin className="h-5 w-5 text-primary" />
             </div>
             <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Zone Management</CardTitle>
-                <CardDescription className="text-xs font-medium">Define organizational zones for school grouping and reporting.</CardDescription>
+                <CardTitle className="text-lg font-black uppercase tracking-tight">Zone Architecture</CardTitle>
+                <CardDescription className="text-xs font-medium">Manage operational areas and zones to categorize and group workspace entities.</CardDescription>
             </div>
           </div>
         </CardHeader>

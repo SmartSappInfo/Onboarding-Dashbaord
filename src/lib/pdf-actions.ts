@@ -50,15 +50,7 @@ function resolvePdfVariables(text: string, school?: School): string {
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     let school: School | undefined = undefined;
     if (pdfForm.entityId) {
-        // Use adapter to resolve contact from either schools or entities + workspace_entities
-        // Use first workspaceId from the array, fallback to 'onboarding'
-        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
-        const contact = await resolveContact(pdfForm.entityId, workspaceId);
-        if (contact && contact.schoolData) {
-            school = contact.schoolData;
-        }
-    } else if (pdfForm.entityId) {
-        // Support new entityId field (Requirement 26)
+        // Use adapter to resolve contact (Requirement 18)
         const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
         const contact = await resolveContact(pdfForm.entityId, workspaceId);
         if (contact && contact.schoolData) {
@@ -192,7 +184,6 @@ export async function saveAgreementProgressAction(
     pdfId: string, 
     entityId: string, 
     formData: any,
-    entityId?: string | null,
     entityType?: 'institution' | 'family' | 'person'
 ) {
     try {
@@ -209,7 +200,7 @@ export async function saveAgreementProgressAction(
         if (contractQuery.empty) {
             const pdfSnap = await pdfRef.get();
             contractDoc = await contractsCol.add({
-                entityId,
+                entityId: entityId,
                 entityName: (formData.school_name || 'School'),
                 pdfId,
                 pdfName: pdfSnap.data()?.name || 'Agreement',
@@ -227,10 +218,9 @@ export async function saveAgreementProgressAction(
         let submissionId = contractData?.submissionId;
         
         if (!submissionId) {
-            // Dual-write: populate both entityId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
-                entityId: entityId || null,
+                entityId,
                 entityType: entityType || null,
                 formData,
                 submittedAt: timestamp,
@@ -239,7 +229,7 @@ export async function saveAgreementProgressAction(
             submissionId = subRef.id;
             await contractDoc.update({ submissionId });
         } else {
-            await pdfRef.collection('submissions').doc(submissionId).update({
+           await pdfRef.collection('submissions').doc(submissionId).update({
                 formData,
                 submittedAt: timestamp,
                 status: 'partial'
@@ -261,7 +251,6 @@ export async function finalizeAgreementAction(
     pdfId: string, 
     entityId: string, 
     formData: any,
-    entityId?: string | null,
     entityType?: 'institution' | 'family' | 'person'
 ) {
     try {
@@ -279,7 +268,7 @@ export async function finalizeAgreementAction(
 
         if (contractQuery.empty) {
             const newContract = await contractsCol.add({
-                entityId,
+                entityId: entityId,
                 entityName: (formData.school_name || pdfData.entityName || 'School'),
                 pdfId,
                 pdfName: pdfData.name || 'Agreement',
@@ -296,10 +285,9 @@ export async function finalizeAgreementAction(
         }
 
         if (!submissionId) {
-            // Dual-write: populate both entityId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
-                entityId: entityId || null,
+                entityId,
                 entityType: entityType || null,
                 formData,
                 submittedAt: timestamp,
@@ -358,7 +346,7 @@ export async function finalizeAgreementAction(
                         download_url: result_url
                     },
                     attachments: attachments.length > 0 ? attachments : undefined,
-                    entityId, // Pass entityId for dual-write (Requirement 16.5)
+                    entityId,
                     workspaceId // Pass workspace context (Requirement 11)
                 });
             }
@@ -384,7 +372,7 @@ export async function finalizeAgreementAction(
 
         // Use entityId for activity logging if available (Requirement 16.1)
         await logActivity({
-            entityId: entityId || null,
+            entityId,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
             workspaceId: pdfData.workspaceIds[0] || 'onboarding',
@@ -521,7 +509,7 @@ export async function deleteSubmissions(pdfId: string, submissionIds: string[], 
  * Updated to support entityId (Requirements 25.1, 25.2, 16.4)
  */
 export async function purgeContractAction(
-    identifier: { entityId?: string; entityId?: string },
+    entityId: string,
     submissionIds: string[],
     userId: string
 ) {
@@ -530,22 +518,12 @@ export async function purgeContractAction(
         const batch = db.batch();
         const timestamp = new Date().toISOString();
 
-        // Support both entityId and entityId (Requirement 25.1)
-        const entityId = identifier.entityId;
-        const entityId = identifier.entityId;
-
-        if (!entityId && !entityId) {
-            return { success: false, error: 'Either entityId or entityId must be provided' };
+        if (!entityId) {
+            return { success: false, error: 'entityId must be provided' };
         }
 
         // 1. Locate the contract for this contact
-        // Prefer entityId, fallback to entityId (Requirement 25.2)
-        let contractQuery;
-        if (entityId) {
-            contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
-        } else if (entityId) {
-            contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
-        }
+        const contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
 
         let currentSubmissionId = null;
         let contractRef = null;
@@ -586,7 +564,7 @@ export async function purgeContractAction(
         await batch.commit();
 
         await logActivity({
-            entityId: entityId || undefined,
+            entityId,
             organizationId: 'default',
             userId,
             workspaceId: 'onboarding',

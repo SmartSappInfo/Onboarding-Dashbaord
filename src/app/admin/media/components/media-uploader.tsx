@@ -52,9 +52,15 @@ interface MediaUploaderProps {
   onUploadSuccess: () => void;
   onUploadComplete?: (asset: MediaAsset) => void;
   acceptedFileTypes?: ('image' | 'video' | 'audio' | 'document')[];
+  defaultWorkspaceId?: string;
 }
 
-export default function MediaUploader({ onUploadSuccess, onUploadComplete, acceptedFileTypes = ['image', 'video', 'audio', 'document'] }: MediaUploaderProps) {
+export default function MediaUploader({ 
+  onUploadSuccess, 
+  onUploadComplete, 
+  acceptedFileTypes = ['image', 'video', 'audio', 'document'],
+  defaultWorkspaceId
+}: MediaUploaderProps) {
   const [stagedFiles, setStagedFiles] = useState<FileState[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -66,14 +72,16 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+  const { activeWorkspaceId, allowedWorkspaces, isSuperAdmin } = useWorkspace();
 
   // Initialize selected workspace
   useEffect(() => {
-    if (activeWorkspaceId && selectedWorkspaces.length === 0) {
+    if (defaultWorkspaceId) {
+        setSelectedWorkspaces([defaultWorkspaceId]);
+    } else if (activeWorkspaceId && selectedWorkspaces.length === 0) {
         setSelectedWorkspaces([activeWorkspaceId]);
     }
-  }, [activeWorkspaceId, selectedWorkspaces.length]);
+  }, [activeWorkspaceId, defaultWorkspaceId, selectedWorkspaces.length]);
 
   const workspaceOptions = React.useMemo(() => 
     allowedWorkspaces.map(w => ({ label: w.name, value: w.id })), 
@@ -175,9 +183,12 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
 
   const handleUpload = async () => {
-    if (stagedFiles.length === 0 || !user || !firestore || selectedWorkspaces.length === 0) {
+    // Super admins can upload without a workspace (Global Asset)
+    const isGlobalAllowed = isSuperAdmin || defaultWorkspaceId === 'global';
+    
+    if (stagedFiles.length === 0 || !user || !firestore || (selectedWorkspaces.length === 0 && !isGlobalAllowed)) {
         if(!user) toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
-        if(selectedWorkspaces.length === 0) toast({ variant: 'destructive', title: 'Workspace Selection Required', description: 'Select at least one workspace.' });
+        if(selectedWorkspaces.length === 0 && !isGlobalAllowed) toast({ variant: 'destructive', title: 'Workspace Selection Required', description: 'Select at least one workspace.' });
         return;
     }
     setIsUploading(true);
@@ -310,16 +321,18 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
     <div className="space-y-6">
       <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-dashed text-left">
           <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-              <Layout className="h-3 w-3" /> Targeted Workspaces
+              <Layout className="h-3 w-3" /> Targeted Workspaces {isSuperAdmin && <span className="text-muted-foreground font-normal">(Optional for Admins)</span>}
           </Label>
           <MultiSelect 
               options={workspaceOptions}
               value={selectedWorkspaces}
               onChange={setSelectedWorkspaces}
-              placeholder="Select destination hubs..."
+              placeholder={isSuperAdmin ? "Global Asset (No hubs selected)" : "Select destination hubs..."}
               className="bg-white border-primary/10 rounded-xl shadow-sm h-11"
           />
-          <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 px-1">Asset will be shared across all selected hubs.</p>
+          <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 px-1">
+            {selectedWorkspaces.length > 0 ? "Asset will be shared across all selected hubs." : "Asset will be stored globally."}
+          </p>
       </div>
 
       {!activeFileState && (

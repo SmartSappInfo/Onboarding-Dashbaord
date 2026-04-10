@@ -154,15 +154,13 @@ export async function deleteContractAction(
     contractId: string,
     pdfId: string,
     submissionId: string | null,
-    identifier: { entityId?: string; entityId?: string },
+    entityId: string,
     userId: string
 ) {
     try {
         const batch = adminDb.batch();
         
-        // Support both entityId and entityId (Requirement 25.1)
-        const entityId = identifier.entityId;
-        const entityId = identifier.entityId;
+        // Use unified identifier strictly
         
         // 1. Delete primary Contract doc
         batch.delete(adminDb.collection('contracts').doc(contractId));

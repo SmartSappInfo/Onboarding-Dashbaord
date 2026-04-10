@@ -7,6 +7,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag, TagCategory } from '@/lib/types';
 import { bulkApplyTagsAction, bulkRemoveTagsAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
+import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ export function BulkTagOperations({
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace() as any;
   const { toast } = useToast();
+  const { singular, plural } = useTerminology();
 
   const [operation, setOperation] = useState<'add' | 'remove'>('add');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -146,7 +148,7 @@ export function BulkTagOperations({
         setResult({ success: true, count: res.processedCount || selectedContactIds.length, partialFailures });
         toast({
           title: 'Operation Complete',
-          description: `${operation === 'add' ? 'Applied' : 'Removed'} tags ${operation === 'add' ? 'to' : 'from'} ${res.processedCount} contacts.${partialFailures > 0 ? ` ${partialFailures} contacts could not be updated.` : ''}`,
+          description: `${operation === 'add' ? 'Applied' : 'Removed'} tags ${operation === 'add' ? 'to' : 'from'} ${res.processedCount} ${res.processedCount === 1 ? singular.toLowerCase() : plural.toLowerCase()}.${partialFailures > 0 ? ` ${partialFailures} ${partialFailures === 1 ? singular.toLowerCase() : plural.toLowerCase()} could not be updated.` : ''}`,
         });
         onComplete?.();
       } else {
@@ -178,7 +180,7 @@ export function BulkTagOperations({
           <DialogTitle className="font-black uppercase tracking-tight">Bulk Tag Operations</DialogTitle>
           <DialogDescription>
             {operation === 'add' ? 'Apply' : 'Remove'} tags {operation === 'add' ? 'to' : 'from'}{' '}
-            <span className="font-bold">{selectedContactIds.length} selected contacts</span>
+            <span className="font-bold">{selectedContactIds.length} selected {selectedContactIds.length === 1 ? singular.toLowerCase() : plural.toLowerCase()}</span>
           </DialogDescription>
         </DialogHeader>
 
@@ -191,11 +193,11 @@ export function BulkTagOperations({
                   <p className="font-black text-lg uppercase tracking-tight">Operation Complete</p>
                   <p className="text-sm text-muted-foreground font-medium mt-1">
                     {operation === 'add' ? 'Applied' : 'Removed'} {selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''}{' '}
-                    {operation === 'add' ? 'to' : 'from'} {result.count} contacts
+                    {operation === 'add' ? 'to' : 'from'} {result.count} {result.count === 1 ? singular.toLowerCase() : plural.toLowerCase()}
                   </p>
                   {(result.partialFailures ?? 0) > 0 && (
                     <p className="text-xs text-amber-600 font-medium mt-1">
-                      {result.partialFailures} contact{result.partialFailures !== 1 ? 's' : ''} could not be updated
+                      {result.partialFailures} {result.partialFailures === 1 ? singular.toLowerCase() : plural.toLowerCase()} could not be updated
                     </p>
                   )}
                 </div>
@@ -337,7 +339,7 @@ export function BulkTagOperations({
               {operation === 'add' ? 'Will add' : 'Will remove'}{' '}
               <span className="font-black text-foreground">{selectedTagIds.length} tag{selectedTagIds.length !== 1 ? 's' : ''}</span>{' '}
               {operation === 'add' ? 'to' : 'from'}{' '}
-              <span className="font-black text-foreground">{selectedContactIds.length} contact{selectedContactIds.length !== 1 ? 's' : ''}</span>
+              <span className="font-black text-foreground">{selectedContactIds.length} {selectedContactIds.length === 1 ? singular.toLowerCase() : plural.toLowerCase()}</span>
             </div>
 
             {/* Progress */}

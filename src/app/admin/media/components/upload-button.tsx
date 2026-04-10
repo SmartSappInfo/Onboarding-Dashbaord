@@ -13,7 +13,11 @@ import {
 } from '@/components/ui/sheet';
 import MediaUploader from './media-uploader';
 
-export default function UploadButton() {
+interface UploadButtonProps {
+  workspaceId?: string;
+}
+
+export default function UploadButton({ workspaceId }: UploadButtonProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const handleUploadSuccess = () => {
@@ -35,7 +39,10 @@ export default function UploadButton() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex-grow p-6 overflow-y-auto">
-            <MediaUploader onUploadSuccess={handleUploadSuccess} />
+            <MediaUploader 
+              onUploadSuccess={handleUploadSuccess} 
+              defaultWorkspaceId={workspaceId}
+            />
           </div>
         </SheetContent>
       </Sheet>

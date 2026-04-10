@@ -115,7 +115,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'entity_1' }, 'workspace_1');
+      const result = await resolveContact('entity_1', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_1');
@@ -241,7 +241,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_1' }, 'workspace_1');
+      const result = await resolveContact('school_1', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_2');
@@ -317,7 +317,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'entity_3' }, 'workspace_1');
+      const result = await resolveContact('entity_3', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.pipelineId).toBe('pipeline_3');
@@ -388,7 +388,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'entity_4' }, 'workspace_1');
+      const result = await resolveContact('entity_4', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.tags).toEqual(['ws_a', 'ws_b']);
@@ -441,7 +441,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_legacy_1' }, 'workspace_1');
+      const result = await resolveContact('school_legacy_1', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_legacy_1');
@@ -477,7 +477,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_legacy_2' }, 'workspace_1');
+      const result = await resolveContact('school_legacy_2', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.migrationStatus).toBe('legacy');
@@ -535,7 +535,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_legacy_3' }, 'workspace_1');
+      const result = await resolveContact('school_legacy_3', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_legacy_3');
@@ -577,7 +577,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_legacy_4' }, 'workspace_1');
+      const result = await resolveContact('school_legacy_4', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.entityId).toBeUndefined();
@@ -635,7 +635,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'school_orphaned' }, 'workspace_1');
+      const result = await resolveContact('school_orphaned', 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_orphaned');
@@ -667,7 +667,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'nonexistent' }, 'workspace_1');
+      const result = await resolveContact('nonexistent', 'workspace_1');
 
       expect(result).toBeNull();
     });
@@ -681,7 +681,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ entityId: 'error_school' }, 'workspace_1');
+      const result = await resolveContact('error_school', 'workspace_1');
 
       expect(result).toBeNull();
     });
@@ -904,14 +904,14 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result1 = await resolveContact({ entityId: 'entity_multi_ws' }, 'workspace_1');
+      const result1 = await resolveContact('entity_multi_ws', 'workspace_1');
       expect(result1?.workspaceEntityId).toBe('we_multi_ws1');
       expect(result1?.tags).toEqual(['ws1_tag']);
       expect(result1?.stageName).toBe('Stage 1');
 
       clearContactCache();
 
-      const result2 = await resolveContact({ entityId: 'entity_multi_ws' }, 'workspace_2');
+      const result2 = await resolveContact('entity_multi_ws', 'workspace_2');
       expect(result2?.workspaceEntityId).toBe('we_multi_ws2');
       expect(result2?.tags).toEqual(['ws2_tag']);
       expect(result2?.stageName).toBe('Stage 2');
@@ -1146,17 +1146,17 @@ describe('Contact Adapter - Unit Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       // First call - should hit Firestore
-      const result1 = await resolveContact({ entityId: 'entity_cached' }, 'workspace_1');
+      const result1 = await resolveContact('entity_cached', 'workspace_1');
       expect(result1).not.toBeNull();
       expect(firestoreCallCount).toBe(1);
 
       // Second call - should use cache
-      const result2 = await resolveContact({ entityId: 'entity_cached' }, 'workspace_1');
+      const result2 = await resolveContact('entity_cached', 'workspace_1');
       expect(result2).not.toBeNull();
       expect(firestoreCallCount).toBe(1); // No additional Firestore call
 
       // Third call - should still use cache
-      const result3 = await resolveContact({ entityId: 'entity_cached' }, 'workspace_1');
+      const result3 = await resolveContact('entity_cached', 'workspace_1');
       expect(result3).not.toBeNull();
       expect(firestoreCallCount).toBe(1); // No additional Firestore call
     });
@@ -1226,18 +1226,18 @@ describe('Contact Adapter - Unit Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       // First call
-      await resolveContact({ entityId: 'entity_clear_cache' }, 'workspace_1');
+      await resolveContact('entity_clear_cache', 'workspace_1');
       expect(firestoreCallCount).toBe(1);
 
       // Second call - uses cache
-      await resolveContact({ entityId: 'entity_clear_cache' }, 'workspace_1');
+      await resolveContact('entity_clear_cache', 'workspace_1');
       expect(firestoreCallCount).toBe(1);
 
       // Clear cache
       clearContactCache();
 
       // Third call - should hit Firestore again
-      await resolveContact({ entityId: 'entity_clear_cache' }, 'workspace_1');
+      await resolveContact('entity_clear_cache', 'workspace_1');
       expect(firestoreCallCount).toBe(2);
     });
 
@@ -1341,22 +1341,22 @@ describe('Contact Adapter - Unit Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Call for workspace_1
-      const result1 = await resolveContact({ entityId: 'entity_multi_cache' }, 'workspace_1');
+      const result1 = await resolveContact('entity_multi_cache', 'workspace_1');
       expect(result1?.tags).toEqual(['ws1']);
       expect(firestoreCallCount).toBe(1);
 
       // Call for workspace_2 - should hit Firestore (different cache key)
-      const result2 = await resolveContact({ entityId: 'entity_multi_cache' }, 'workspace_2');
+      const result2 = await resolveContact('entity_multi_cache', 'workspace_2');
       expect(result2?.tags).toEqual(['ws2']);
       expect(firestoreCallCount).toBe(2);
 
       // Call for workspace_1 again - should use cache
-      const result3 = await resolveContact({ entityId: 'entity_multi_cache' }, 'workspace_1');
+      const result3 = await resolveContact('entity_multi_cache', 'workspace_1');
       expect(result3?.tags).toEqual(['ws1']);
       expect(firestoreCallCount).toBe(2);
 
       // Call for workspace_2 again - should use cache
-      const result4 = await resolveContact({ entityId: 'entity_multi_cache' }, 'workspace_2');
+      const result4 = await resolveContact('entity_multi_cache', 'workspace_2');
       expect(result4?.tags).toEqual(['ws2']);
       expect(firestoreCallCount).toBe(2);
     });
@@ -1375,7 +1375,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ entityId: 'entity_exists' });
+        const exists = await contactExists('entity_exists');
 
         expect(exists).toBe(true);
       });
@@ -1391,7 +1391,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ entityId: 'school_exists' });
+        const exists = await contactExists('school_exists');
 
         expect(exists).toBe(true);
       });

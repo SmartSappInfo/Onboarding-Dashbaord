@@ -28,7 +28,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         // Resolution logic
         if (activityData.workspaceId) {
             if (entityId) {
-                const contact = await resolveContact({ entityId }, activityData.workspaceId);
+                const contact = await resolveContact(entityId, activityData.workspaceId);
                 if (contact) {
                     entityName = contact.name || entityName;
                     entitySlug = contact.slug || entitySlug;

@@ -3,7 +3,7 @@
  * @fileOverview An AI flow to generate an intelligent, scored survey from various content sources.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 
 // ------ Zod Schemas for the Result Structure ------
@@ -99,6 +99,9 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 const GenerateSurveyInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
+  organizationId: z.string().optional(),
+  provider: z.string().optional().default('googleai'),
+  modelId: z.string().optional().default('gemini-1.5-flash'),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
@@ -140,7 +143,7 @@ If the content suggests an assessment, quiz, or qualification flow, ENABLE SCORI
 3. **Structure Elements**:
    - Use 'section' blocks with 'renderAsPage: true' to group questions.
    - Use 'validateBeforeNext: true' on sections that are critical for logic.
-   - Provide a 'stepperTitle' for every section (e.g., "Your Profile", "Risk Assessment").
+   - Provide a 'stepperTitle' for every section (e.g., "Entity Profile", "Risk Assessment").
    - For 'heading' blocks, choose an appropriate 'variant' (h1, h2, or h3).
 4. **Logic Blocks**:
    - Use 'logic' blocks to skip irrelevant questions based on previous answers if the content allows.
@@ -172,7 +175,14 @@ const generateSurveyFlow = ai.defineFlow(
             }
         }
         
-        const { output } = await generationPrompt({ sourceText });
+        // Resolve dynamic model based on organization and user preference
+        const resolvedModel = await getModel({
+            organizationId: input.organizationId,
+            provider: input.provider || 'googleai',
+            modelId: input.modelId || 'gemini-1.5-flash',
+        });
+
+        const { output } = await generationPrompt({ sourceText }, { model: resolvedModel });
         if (!output) throw new Error("The AI model failed to generate a survey structure.");
 
         return output;

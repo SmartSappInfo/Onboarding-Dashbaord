@@ -77,6 +77,21 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
                 createdAt: timestamp
             });
 
+            // Check if organization has a default workspace. If not, set this one as default.
+            if (data.organizationId) {
+                const orgRef = adminDb.collection('organizations').doc(data.organizationId);
+                const orgSnap = await orgRef.get();
+                if (orgSnap.exists) {
+                    const orgData = orgSnap.data();
+                    if (!orgData?.defaultWorkspaceId) {
+                        await orgRef.update({
+                            defaultWorkspaceId: newId,
+                            updatedAt: timestamp
+                        });
+                    }
+                }
+            }
+
             await logActivity({
                 entityId: '',
                 organizationId: 'default',

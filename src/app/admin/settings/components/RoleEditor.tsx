@@ -9,7 +9,8 @@ import {
     addDoc, 
     doc, 
     deleteDoc, 
-    updateDoc 
+    updateDoc,
+    where
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { 
@@ -57,7 +58,7 @@ import { useTenant } from '@/context/TenantContext';
 export default function RoleEditor() {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { activeWorkspaceId } = useTenant();
+    const { activeWorkspaceId, activeOrganizationId, isSuperAdmin } = useTenant();
     
     const [isEditing, setIsEditing] = React.useState(false);
     const [activeRole, setActiveRole] = React.useState<Role | null>(null);
@@ -68,10 +69,15 @@ export default function RoleEditor() {
     const [roleColor, setRoleColor] = React.useState('#3B5FFF');
     const [selectedPermissions, setSelectedPermissions] = React.useState<AppPermissionId[]>([]);
     const [selectedWorkspaces, setSelectedWorkspaces] = React.useState<string[]>([]);
+    const [isDefault, setIsDefault] = React.useState(false);
 
     const rolesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'roles'), orderBy('createdAt', 'desc')) : null, 
-    [firestore]);
+        (firestore && activeOrganizationId) ? query(
+            collection(firestore, 'roles'), 
+            where('organizationId', '==', activeOrganizationId),
+            orderBy('createdAt', 'desc')
+        ) : null, 
+    [firestore, activeOrganizationId]);
     const { data: roles, isLoading } = useCollection<Role>(rolesQuery);
 
     const workspacesQuery = useMemoFirebase(() => 
@@ -87,12 +93,14 @@ export default function RoleEditor() {
             setRoleColor(role.color || '#3B5FFF');
             setSelectedPermissions(role.permissions || []);
             setSelectedWorkspaces(role.workspaceIds || []);
+            setIsDefault(role.isDefault || false);
         } else {
             setActiveRole(null);
             setRoleName('');
             setRoleDescription('');
             setRoleColor('#3B5FFF');
             setSelectedPermissions([]);
+            setIsDefault(false);
             // Default to the currently active workspace for new roles
             setSelectedWorkspaces(activeWorkspaceId ? [activeWorkspaceId] : []);
         }
@@ -116,6 +124,8 @@ export default function RoleEditor() {
             color: roleColor,
             permissions: selectedPermissions,
             workspaceIds: selectedWorkspaces,
+            organizationId: activeOrganizationId,
+            isDefault: isDefault,
             updatedAt: new Date().toISOString(),
         };
 
@@ -310,6 +320,21 @@ export default function RoleEditor() {
                                             />
                                         </div>
                                     </div>
+
+                                    {isSuperAdmin && (
+                                        <div className="p-6 rounded-[2rem] bg-amber-50 border border-amber-100 flex items-center justify-between shadow-sm text-left">
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Global Default Template</p>
+                                                <p className="text-[10px] text-amber-700 font-bold uppercase tracking-widest opacity-80">
+                                                    Automatically provision this role to all new organizations.
+                                                </p>
+                                            </div>
+                                            <Switch 
+                                                checked={isDefault} 
+                                                onCheckedChange={setIsDefault} 
+                                            />
+                                        </div>
+                                    )}
 
                                     <Separator className="opacity-50" />
 

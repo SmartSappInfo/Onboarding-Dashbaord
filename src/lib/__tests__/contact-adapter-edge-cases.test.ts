@@ -161,8 +161,8 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, entity);
       mockWorkspaceEntities.set(`${workspaceId}_${entityId}`, workspaceEntity);
 
-      // Resolve by entityId
-      const result = await resolveContact({ entityId }, workspaceId);
+      // Resolve by entityId string
+      const result = await resolveContact(entityId, workspaceId);
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe(entityId);
@@ -179,12 +179,12 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should resolve migrated entity by entityId when school has migrationStatus=migrated', async () => {
       // Setup: Create migrated school and entity
-      const entityId = 'school_migrated_456';
+      const legacySchoolId = 'school_migrated_456';
       const entityId = 'entity_migrated_456';
       const workspaceId = 'workspace_test_456';
 
       const school: School = {
-        id: entityId,
+        id: legacySchoolId,
         name: 'Migrated School',
         slug: 'migrated-school',
         workspaceIds: [workspaceId],
@@ -229,18 +229,18 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(entityId, school);
+      mockSchools.set(legacySchoolId, school);
       mockEntities.set(entityId, entity);
       mockWorkspaceEntities.set(`${workspaceId}_${entityId}`, workspaceEntity);
 
-      // Resolve by entityId
-      const result = await resolveContact({ entityId }, workspaceId);
+      // Resolve by legacy school ID (as entityId string)
+      const result = await resolveContact(legacySchoolId, workspaceId);
 
       // The adapter successfully finds the entity via query
       expect(result?.id).toBe(entityId);
       expect(result?.name).toBe('Migrated School');
       expect(result?.migrationStatus).toBe('migrated');
-      expect(result?.schoolData?.id).toBe(entityId);
+      expect(result?.schoolData?.id).toBe(legacySchoolId);
     });
   });
 
@@ -279,8 +279,8 @@ describe('Contact Adapter Edge Cases', () => {
 
       mockSchools.set(entityId, school);
 
-      // Resolve by entityId
-      const result = await resolveContact({ entityId }, workspaceId);
+      // Resolve by entityId string
+      const result = await resolveContact(entityId, workspaceId);
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe(entityId);
@@ -317,8 +317,8 @@ describe('Contact Adapter Edge Cases', () => {
 
       mockSchools.set(entityId, school);
 
-      // Resolve by entityId
-      const result = await resolveContact({ entityId }, workspaceId);
+      // Resolve by entityId string
+      const result = await resolveContact(entityId, workspaceId);
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe(entityId);
@@ -329,7 +329,7 @@ describe('Contact Adapter Edge Cases', () => {
   describe('Edge Case 3: Resolution with non-existent contact', () => {
     it('should return null when entityId does not exist', async () => {
       const result = await resolveContact(
-        { entityId: 'entity_nonexistent_999' },
+        'entity_nonexistent_999',
         'workspace_test_999'
       );
 
@@ -338,7 +338,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should return null when entityId does not exist', async () => {
       const result = await resolveContact(
-        { entityId: 'school_nonexistent_888' },
+        'school_nonexistent_888',
         'workspace_test_888'
       );
 
@@ -347,7 +347,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should return null when both identifiers do not exist', async () => {
       const result = await resolveContact(
-        { entityId: 'school_fake_777' },
+        'school_fake_777',
         'workspace_test_777'
       );
 
@@ -375,8 +375,8 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, entity);
       // No workspace_entity created
 
-      // Resolve by entityId
-      const result = await resolveContact({ entityId }, workspaceId);
+      // Resolve by entityId string
+      const result = await resolveContact(entityId, workspaceId);
 
       // The adapter still resolves the entity even without workspace_entity
       // It just won't have workspace-specific data
@@ -392,12 +392,6 @@ describe('Contact Adapter Edge Cases', () => {
   describe('Edge Case 4: Resolution with invalid identifiers', () => {
     it('should handle empty string entityId', async () => {
       const result = await resolveContact(
-        { entityId: '' },
-        'workspace_test_empty'
-      );
-
-      expect(result).toBeNull();
-    });
 
     it('should handle empty string entityId', async () => {
       const result = await resolveContact(
@@ -410,7 +404,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should handle null entityId', async () => {
       const result = await resolveContact(
-        { entityId: null as any },
+        null as any,
         'workspace_test_null'
       );
 
@@ -419,7 +413,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should handle undefined identifiers', async () => {
       const result = await resolveContact(
-        { entityId: undefined },
+        undefined as any,
         'workspace_test_undefined'
       );
 
@@ -488,8 +482,8 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, entity);
 
       // The adapter resolves entities even without workspace_entity
-      const result1 = await resolveContact({ entityId }, workspaceId);
-      const result2 = await resolveContact({ entityId }, workspaceId);
+      const result1 = await resolveContact(entityId, workspaceId);
+      const result2 = await resolveContact(entityId, workspaceId);
       
       // Both should return the same entity data (cached)
       expect(result1).not.toBeNull();
@@ -554,12 +548,12 @@ describe('Contact Adapter Edge Cases', () => {
       mockWorkspaceEntities.set(`${workspace2}_${entityId}`, we2);
 
       // Resolve in workspace 1
-      const result1 = await resolveContact({ entityId }, workspace1);
+      const result1 = await resolveContact(entityId, workspace1);
       expect(result1).not.toBeNull();
       expect(result1?.tags).toEqual(['workspace-1-tag']);
 
       // Resolve in workspace 2
-      const result2 = await resolveContact({ entityId }, workspace2);
+      const result2 = await resolveContact(entityId, workspace2);
       expect(result2).not.toBeNull();
       
       // Note: Due to cache key being entityId + workspaceId, the second call
@@ -597,7 +591,7 @@ describe('Contact Adapter Edge Cases', () => {
       mockSchools.set(entityId, school);
 
       // First call - populate cache
-      const result1 = await resolveContact({ entityId }, workspaceId);
+      const result1 = await resolveContact(entityId, workspaceId);
       expect(result1).not.toBeNull();
       expect(result1?.name).toBe('Clear Cache School');
 
@@ -606,14 +600,14 @@ describe('Contact Adapter Edge Cases', () => {
       mockSchools.set(entityId, school);
 
       // Second call before clear - should return cached (old) data
-      const result2 = await resolveContact({ entityId }, workspaceId);
+      const result2 = await resolveContact(entityId, workspaceId);
       expect(result2?.name).toBe('Clear Cache School'); // Old cached name
 
       // Clear cache
       await clearContactCache();
 
       // Third call after clear - should return new data from database
-      const result3 = await resolveContact({ entityId }, workspaceId);
+      const result3 = await resolveContact(entityId, workspaceId);
       expect(result3?.name).toBe('Modified Name'); // New name from database
     });
 
@@ -677,9 +671,7 @@ describe('Contact Adapter Edge Cases', () => {
     });
 
     it('should return false when neither identifier exists', async () => {
-      const exists = await contactExists({
-        entityId: 'school_not_exists_999',
-      });
+      const exists = await contactExists('school_not_exists_999');
       expect(exists).toBe(false);
     });
 
@@ -701,9 +693,7 @@ describe('Contact Adapter Edge Cases', () => {
 
       mockEntities.set(entityId, entity);
 
-      const exists = await contactExists({
-        entityId: 'school_not_exists_333',
-      });
+      const exists = await contactExists(entityId);
       expect(exists).toBe(true);
     });
   });
@@ -717,7 +707,7 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, null);
 
       const result = await resolveContact(
-        { entityId },
+        entityId,
         'workspace_error'
       );
 
@@ -737,7 +727,7 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, malformedEntity);
 
       const result = await resolveContact(
-        { entityId },
+        entityId,
         'workspace_malformed'
       );
 

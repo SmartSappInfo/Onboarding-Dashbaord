@@ -8,45 +8,26 @@ import type { Activity } from './types';
 /**
  * Query activities for a contact with fallback pattern (Requirements 4.2, 22.1, 22.3)
  * 
- * Accepts either entityId or entityId as identifier:
- * - Prefers entityId when both provided
- * - Falls back to entityId for legacy records
- * - Returns all matching activities for the contact
- * 
- * @param identifier - Contact identifier (entityId or entityId)
+ * @param entityId - Unified Entity Identifier
  * @param workspaceId - Workspace context
  * @param limit - Maximum number of activities to return (default: 50)
  * @returns Array of activities for the contact
  */
 export async function getActivitiesForContact(
-    identifier: { entityId?: string; entityId?: string },
+    entityId: string,
     workspaceId: string,
     limit: number = 50
 ): Promise<Activity[]> {
     try {
-        let activitiesQuery;
-        
-        // Prefer entityId when both provided (Requirement 4.2)
-        if (identifier.entityId) {
-            activitiesQuery = adminDb
-                .collection('activities')
-                .where('workspaceId', '==', workspaceId)
-                .where('entityId', '==', identifier.entityId)
-                .orderBy('timestamp', 'desc')
-                .limit(limit);
-        } else if (identifier.entityId) {
-            // Fallback to entityId for legacy records
-            activitiesQuery = adminDb
-                .collection('activities')
-                .where('workspaceId', '==', workspaceId)
-                .where('entityId', '==', identifier.entityId)
-                .orderBy('timestamp', 'desc')
-                .limit(limit);
-        } else {
-            return [];
-        }
-        
-        const snapshot = await activitiesQuery.get();
+        if (!entityId) return [];
+
+        const snapshot = await adminDb
+            .collection('activities')
+            .where('workspaceId', '==', workspaceId)
+            .where('entityId', '==', entityId)
+            .orderBy('timestamp', 'desc')
+            .limit(limit)
+            .get();
         
         return snapshot.docs.map(doc => ({
             id: doc.id,

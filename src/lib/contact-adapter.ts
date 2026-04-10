@@ -23,102 +23,27 @@ export type { ResolvedContact } from './types';
  */
 
 /**
- * Contact identifier that can be either entityId or entityId
- */
-export interface ContactIdentifier {
-  entityId?: string | null;
-  entityId?: string | null;
-}
-
-/**
- * Filters for querying workspace contacts
- */
-export interface ContactFilters {
-  pipelineId?: string;
-  stageId?: string;
-  status?: 'active' | 'archived';
-  tags?: string[];
-  entityType?: EntityType;
-}
-
-/**
- * Simple LRU cache with TTL support
- */
-class LRUCache<K, V> {
-  private cache = new Map<K, { value: V; expiry: number }>();
-  private maxSize: number;
-  private ttl: number;
-
-  constructor(maxSize: number = 1000, ttlMs: number = 5 * 60 * 1000) {
-    this.maxSize = maxSize;
-    this.ttl = ttlMs;
-  }
-
-  get(key: K): V | undefined {
-    const entry = this.cache.get(key);
-    if (!entry) return undefined;
-
-    // Check if expired
-    if (Date.now() > entry.expiry) {
-      this.cache.delete(key);
-      return undefined;
-    }
-
-    // Move to end (most recently used)
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-    return entry.value;
-  }
-
-  set(key: K, value: V): void {
-    // Remove oldest entry if at capacity
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
-      }
-    }
-
-    this.cache.set(key, {
-      value,
-      expiry: Date.now() + this.ttl,
-    });
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
-// Cache instance with 5-minute TTL
-const contactCache = new LRUCache<string, ResolvedContact>(1000, 5 * 60 * 1000);
-
-/**
  * Resolves a contact by checking migration status and reading from appropriate collections.
  * 
  * Logic:
- * 1. Prefer entityId when both identifiers provided
- * 2. Query entities + workspace_entities for migrated contacts
- * 3. Query schools collection for legacy contacts
- * 4. Return unified contact object with caching
+ * 1. Query entities + workspace_entities for migrated contacts
+ * 2. Query schools collection for legacy contacts
+ * 3. Return unified contact object with caching
  * 
- * @param identifier - Contact identifier (entityId or entityId)
+ * @param entityId - Unified Entity Identifier (string)
  * @param workspaceId - The workspace context for resolving workspace-specific state
  * @returns Unified contact object or null if not found
  * 
  * Requirements: 11.1, 23.1, 25.4
  */
 export async function resolveContact(
-  identifier: ContactIdentifier | string,
+  entityId: string,
   workspaceId: string
 ): Promise<ResolvedContact | null> {
-  // Support legacy signature (entityId as string)
-  const contactId: ContactIdentifier = typeof identifier === 'string' 
-    ? { entityId: identifier } 
-    : identifier;
+  if (!entityId) return null;
 
   // Check cache first
-  const cacheKey = `${contactId.entityId || contactId.entityId}_${workspaceId}`;
+  const cacheKey = `${entityId}_${workspaceId}`;
   const cached = contactCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -127,37 +52,23 @@ export async function resolveContact(
   try {
     let result: ResolvedContact | null = null;
 
-    // 1. Prefer entityId when both identifiers provided
-    if (contactId.entityId) {
-      result = await resolveFromEntity(contactId.entityId, workspaceId);
-      if (result) {
-        contactCache.set(cacheKey, result);
-        return result;
-      }
+    // 1. Try resolving from new entity model first
+    result = await resolveFromEntity(entityId, workspaceId);
+    if (result) {
+      contactCache.set(cacheKey, result);
+      return result;
     }
 
-    // 2. Try entityId if entityId not found or not provided
-    if (contactId.entityId) {
-      // Check if migration record exists for entityId
-      const schoolRef = adminDb.collection('schools').doc(contactId.entityId);
-      const schoolSnap = await schoolRef.get();
+    // 2. Fallback to legacy schools collection
+    const schoolRef = adminDb.collection('schools').doc(entityId);
+    const schoolSnap = await schoolRef.get();
 
-      if (!schoolSnap.exists) {
-        // School doesn't exist, might be a direct entity ID passed as entityId
-        result = await resolveFromEntity(contactId.entityId, workspaceId);
-        if (result) {
-          contactCache.set(cacheKey, result);
-          return result;
-        }
-        return null;
-      }
-
+    if (schoolSnap.exists) {
       const schoolData = { id: schoolSnap.id, ...schoolSnap.data() } as School;
       const migrationStatus = schoolData.migrationStatus || 'legacy';
 
-      // If migrated, read from entities + workspace_entities
+      // If already migrated but resolved as legacy, try to find the entity link
       if (migrationStatus === 'migrated') {
-        // Find the entity that was created from this school
         const entitySnap = await adminDb
           .collection('entities')
           .where('organizationId', '==', schoolData.workspaceIds?.[0] || '')
@@ -174,15 +85,14 @@ export async function resolveContact(
             return result;
           }
         }
-
-        // Fallback to legacy if entity not found
-        console.warn(`[ADAPTER] Entity not found for migrated school ${contactId.entityId}, falling back to legacy`);
+        
+        // Final fallback if entity link fails
         result = resolveFromSchool(schoolData, workspaceId, true);
         contactCache.set(cacheKey, result);
         return result;
       }
 
-      // If not migrated, read from schools collection
+      // If legacy, map school data
       result = resolveFromSchool(schoolData, workspaceId, false);
       contactCache.set(cacheKey, result);
       return result;
@@ -264,7 +174,7 @@ export async function getWorkspaceContacts(
     for (const doc of schoolSnap.docs) {
       const school = { id: doc.id, ...doc.data() } as School;
       
-      // Skip if already migrated (they are handled in the workspace_entities query above)
+      // Skip if already migrated
       if (school.migrationStatus === 'migrated') continue;
       
       // Apply tag filter if specified
@@ -292,26 +202,24 @@ export async function getWorkspaceContacts(
 /**
  * Check if a contact exists
  * 
- * @param identifier - Contact identifier (entityId or entityId)
+ * @param entityId - Unified Entity Identifier
  * @returns True if contact exists, false otherwise
  * 
  * Requirements: 11.1
  */
-export async function contactExists(identifier: ContactIdentifier): Promise<boolean> {
+export async function contactExists(entityId: string): Promise<boolean> {
+  if (!entityId) return false;
+  
   try {
-    // Check entityId first
-    if (identifier.entityId) {
-      const entityRef = adminDb.collection('entities').doc(identifier.entityId);
-      const entitySnap = await entityRef.get();
-      if (entitySnap.exists) return true;
-    }
+    // Check entity record first
+    const entityRef = adminDb.collection('entities').doc(entityId);
+    const entitySnap = await entityRef.get();
+    if (entitySnap.exists) return true;
 
-    // Check entityId
-    if (identifier.entityId) {
-      const schoolRef = adminDb.collection('schools').doc(identifier.entityId);
-      const schoolSnap = await schoolRef.get();
-      if (schoolSnap.exists) return true;
-    }
+    // Check legacy school record
+    const schoolRef = adminDb.collection('schools').doc(entityId);
+    const schoolSnap = await schoolRef.get();
+    if (schoolSnap.exists) return true;
 
     return false;
   } catch (error: any) {
@@ -346,7 +254,6 @@ export async function searchContacts(
     for (const doc of weSnap.docs) {
       const we = { id: doc.id, ...doc.data() } as WorkspaceEntity;
       
-      // Check if displayName matches search term
       if (we.displayName?.toLowerCase().includes(searchLower)) {
         const contact = await resolveFromEntity(we.entityId, workspaceId);
         if (contact) {
@@ -363,11 +270,8 @@ export async function searchContacts(
 
     for (const doc of schoolSnap.docs) {
       const school = { id: doc.id, ...doc.data() } as School;
-      
-      // Skip if already migrated (already included from workspace_entities)
       if (school.migrationStatus === 'migrated') continue;
 
-      // Check if name matches search term
       if (school.name?.toLowerCase().includes(searchLower)) {
         const contact = resolveFromSchool(school, workspaceId, false);
         contacts.push(contact);
@@ -382,7 +286,7 @@ export async function searchContacts(
 }
 
 /**
- * Clear the contact cache (useful for testing or after bulk updates)
+ * Clear the contact cache
  */
 export async function clearContactCache(): Promise<void> {
   contactCache.clear();
@@ -397,18 +301,14 @@ async function resolveFromEntity(
   legacySchoolData?: School
 ): Promise<ResolvedContact | null> {
   try {
-    // 1. Read entity document
     const entityRef = adminDb.collection('entities').doc(entityId);
     const entitySnap = await entityRef.get();
 
-    if (!entitySnap.exists) {
-      return null;
-    }
+    if (!entitySnap.exists) return null;
 
     const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
 
-    // 2. Read workspace_entities document for this workspace
-    const workspaceEntitySnap = await adminDb
+    const weSnap = await adminDb
       .collection('workspace_entities')
       .where('entityId', '==', entityId)
       .where('workspaceId', '==', workspaceId)
@@ -418,21 +318,16 @@ async function resolveFromEntity(
     let workspaceEntity: WorkspaceEntity | null = null;
     let workspaceEntityId: string | undefined;
 
-    if (!workspaceEntitySnap.empty) {
-      workspaceEntity = {
-        id: workspaceEntitySnap.docs[0].id,
-        ...workspaceEntitySnap.docs[0].data(),
-      } as WorkspaceEntity;
-      workspaceEntityId = workspaceEntitySnap.docs[0].id;
+    if (!weSnap.empty) {
+      workspaceEntity = { id: weSnap.docs[0].id, ...weSnap.docs[0].data() } as WorkspaceEntity;
+      workspaceEntityId = weSnap.docs[0].id;
     }
 
-    // 3. Build unified contact object
     const resolved: ResolvedContact = {
       id: entity.id,
       name: entity.name,
       slug: entity.slug,
       contacts: entity.contacts || [],
-      // Workspace-specific state from workspace_entities
       pipelineId: workspaceEntity?.pipelineId,
       stageId: workspaceEntity?.stageId,
       stageName: workspaceEntity?.currentStageName,
@@ -440,13 +335,10 @@ async function resolveFromEntity(
       status: workspaceEntity?.status,
       tags: workspaceEntity?.workspaceTags || [],
       globalTags: entity.globalTags || [],
-      // Entity metadata
       entityType: entity.entityType,
       entityId: entity.id,
       workspaceEntityId,
-      // Migration tracking
       migrationStatus: 'migrated',
-      // Include legacy school data if provided
       schoolData: legacySchoolData,
     };
 
@@ -461,22 +353,18 @@ async function resolveFromEntity(
  * Resolves contact data from the legacy schools collection
  */
 function resolveFromSchool(schoolData: School, workspaceId: string, forceLegacy: boolean = false): ResolvedContact {
-  // Map school data to unified contact object
   const resolved: ResolvedContact = {
     id: schoolData.id,
     name: schoolData.name,
     slug: schoolData.slug,
     contacts: schoolData.focalPersons || [],
-    // Workspace-specific state from school document
     pipelineId: schoolData.pipelineId,
     stageId: schoolData.stage?.id,
     stageName: schoolData.stage?.name,
     assignedTo: schoolData.assignedTo,
     status: schoolData.status,
     tags: schoolData.tags || [],
-    // Migration tracking - force to legacy if entity not found
     migrationStatus: forceLegacy ? 'legacy' : (schoolData.migrationStatus || 'legacy'),
-    // Include full school data for backward compatibility
     schoolData,
   };
 

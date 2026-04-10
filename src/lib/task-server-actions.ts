@@ -8,12 +8,9 @@ import { resolveContact } from './contact-adapter';
 /**
  * Server action to create a task with workspace awareness and entity support.
  * 
- * Implements dual-write pattern (Requirements 3.1, 25.3):
- * - Accepts both entityId and entityId parameters
- * - When only entityId provided: Resolves entityId from contact adapter
- * - When only entityId provided: Resolves entityId from contact adapter (if migrated)
- * - When both provided: Uses both as-is
- * - Always sets entityType based on resolved contact type
+ * Implements unified entity architecture (Requirements 3.1, 25.3):
+ * - Strictly uses entityId as the primary identifier
+ * - Resolves metadata (name, type) via the contact adapter
  * 
  * @param taskData - Task data (without id and createdAt)
  * @returns Created task document reference
@@ -21,27 +18,22 @@ import { resolveContact } from './contact-adapter';
 export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
         const timestamp = new Date().toISOString();
+        const entityId = taskData.entityId;
         
-        // Initialize fields for dual-write
+        // Initialize fields
         let entityName: string | null = taskData.entityName || null;
         let entityType: EntityType | null = taskData.entityType || null;
         
-        // Dual-write resolution logic (Requirements 3.1, 25.3)
-        if (taskData.workspaceId) {
-            // Resolving entityId logic
-            if (entityId) {
-                const contact = await resolveContact({ entityId }, taskData.workspaceId);
-                if (contact) {
-                    entityId = contact.schoolData?.id || null;
-                    entityName = contact.name;
-                    entityType = contact.entityType || null;
-                }
-            }
-            }
+        // Resolve entity information if possible
+        if (taskData.workspaceId && entityId) {
+            const contact = await resolveContact(entityId, taskData.workspaceId);
+            if (contact) {
+                entityName = contact.name;
+                entityType = contact.entityType || null;
             }
         }
         
-        // Build final task document with dual-write fields
+        // Build final task document
         const finalTaskData = {
             ...taskData,
             entityId,
@@ -141,36 +133,23 @@ export async function deleteTaskAction(taskId: string) {
 }
 
 /**
- * Query tasks for a contact with fallback pattern (Requirements 3.4, 3.5, 22.1, 22.3)
- * 
- * Accepts either entityId or entityId as identifier:
- * - Prefers entityId when both provided
- * - Falls back to entityId for legacy records
- * - Returns all matching tasks for the contact
- * 
- * @param identifier - Contact identifier (entityId or entityId)
+ * @param entityId - Unified Entity Identifier (string)
  * @param workspaceId - Workspace context
  * @returns Array of tasks for the contact
- */
+*/
 export async function getTasksForContact(
-    identifier: { entityId?: string },
+    entityId: string,
     workspaceId: string
 ): Promise<Task[]> {
     try {
-        let tasksQuery;
-        
-        // Prefer entityId when both provided (Requirement 3.4, 3.5)
-        if (identifier.entityId) {
-            tasksQuery = adminDb
-                .collection('tasks')
-                .where('workspaceId', '==', workspaceId)
-                .where('entityId', '==', identifier.entityId)
-                .orderBy('dueDate', 'asc');
-        } else {
-            return [];
-        }
-        
-        const snapshot = await tasksQuery.get();
+        if (!entityId) return [];
+
+        const snapshot = await adminDb
+            .collection('tasks')
+            .where('workspaceId', '==', workspaceId)
+            .where('entityId', '==', entityId)
+            .orderBy('dueDate', 'asc')
+            .get();
         
         return snapshot.docs.map(doc => ({
             id: doc.id,

@@ -22,8 +22,13 @@ import {
 import {
     migrateSchoolsToEntities,
     rollbackEntitiesMigration,
-    verifyEntitiesMigration
+    verifyEntitiesMigration,
+    migrateContractsToEntities,
+    rollbackContractsMigration,
+    migrateSubmissionsToEntities,
+    rollbackSubmissionsMigration
 } from '@/lib/entity-migrations';
+import { migrateGlobalSettingsToAllOrgsAction } from '@/lib/settings-migrations';
 import { MigrationCard } from '@/components/seeds/MigrationCard';
 import { createMigrationEngine } from '@/lib/migration-engine';
 import type { MigrationStatusType } from '@/lib/migration-types';
@@ -49,7 +54,8 @@ import {
     CheckSquare,
     Layers,
     Users,
-    TriangleAlert
+    TriangleAlert,
+    FileCheck
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -82,7 +88,8 @@ export default function SeedsClient() {
     migrate_entities: 'idle',
     rollback_entities: 'idle',
     verify_entities: 'idle',
-    migrate_all_features: 'idle'
+    migrate_all_features: 'idle',
+    migrate_settings: 'idle'
   });
 
   // Feature migration state
@@ -406,6 +413,59 @@ export default function SeedsClient() {
                 </Card>
             </section>
 
+            {/* FER Protocol / Institutional Sync Section */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-indigo-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-indigo-200 text-indigo-600">FER Protocol / Institutional Sync</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
+                </div>
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-100 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-indigo-900">
+                            <Zap className="h-5 w-5 text-indigo-600" />
+                            Settings Isolation & Provisioning
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-indigo-700/60">
+                            Migrate global settings to organization-specific buckets and provision mandatory defaults.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><RotateCcw size={18} /></div>
+                                    <h4 className="text-xs font-black uppercase tracking-tight">Legacy Settings Migration</h4>
+                                </div>
+                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+                                    Clones all existing global Roles, Modules, and Zones into every current organization for immediate isolation.
+                                </p>
+                                <Button 
+                                    onClick={() => handleAction('migrate_settings', migrateGlobalSettingsToAllOrgsAction)}
+                                    disabled={seedingStatus.migrate_settings === 'seeding'}
+                                    className="w-full h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+                                >
+                                    {seedingStatus.migrate_settings === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                    Initialize Isolation Protocol
+                                </Button>
+                            </div>
+
+                            <div className="p-6 rounded-3xl bg-indigo-900 text-white shadow-xl space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-800 rounded-xl"><ShieldCheck size={18} /></div>
+                                    <h4 className="text-xs font-black uppercase tracking-tight">FER Provisioning Logic</h4>
+                                </div>
+                                <p className="text-[9px] font-medium text-indigo-200 uppercase leading-relaxed">
+                                    Verifies that the new organization provisioning logic is active. Administrator, Supervisor, and Finance Officer roles will be created.
+                                </p>
+                                <div className="flex items-center gap-2 pt-2">
+                                    <Badge className="bg-indigo-800 text-indigo-300 border-none text-[8px] font-black tracking-widest px-2 py-0.5 uppercase">Status: Operational</Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
             {/* Entity Architecture Migration Section - NEW */}
             <section className="space-y-6">
                 <div className="flex items-center gap-3">
@@ -537,6 +597,89 @@ export default function SeedsClient() {
                                 failedRecords={featureMigrationStatus.survey_responses.failedRecords}
                                 {...createFeatureMigrationHandlers('survey_responses')}
                             />
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+            
+            {/* Legal & Document Sync Section - NEW */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-indigo-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-indigo-200 text-indigo-600">Legal & Document Sync</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
+                </div>
+                
+                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-200 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
+                    <CardHeader className="p-8 pb-4">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-indigo-900">
+                            <FileCheck className="h-5 w-5 text-indigo-600" />
+                            Agreement Context Alignment
+                        </CardTitle>
+                        <CardDescription className="text-[10px] font-medium text-indigo-700/60 uppercase tracking-tighter">
+                            Migrate top-level contracts and nested PDF submissions to the Unified Entity Architecture.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8 pt-0 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Agreement Migration Card */}
+                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><FileText size={18} /></div>
+                                    <h4 className="text-xs font-black uppercase tracking-tight">Agreements Migration</h4>
+                                </div>
+                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+                                    Binds all documents in the 'contracts' collection to their new unified Entity IDs.
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        onClick={() => handleAction('migrate_contracts', migrateContractsToEntities)}
+                                        disabled={seedingStatus.migrate_contracts === 'seeding'}
+                                        className="flex-1 h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+                                    >
+                                        {seedingStatus.migrate_contracts === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                        Sync Contracts
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleAction('rollback_contracts', rollbackContractsMigration)}
+                                        disabled={seedingStatus.rollback_contracts === 'seeding'}
+                                        variant="outline"
+                                        className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
+                                        title="Rollback"
+                                    >
+                                        <RotateCcw size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Submissions Migration Card */}
+                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><Layers size={18} /></div>
+                                    <h4 className="text-xs font-black uppercase tracking-tight">Submission Reference Mapping</h4>
+                                </div>
+                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+                                    Recursively updates nested 'submissions' within PDF templates to reference unified entities.
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        onClick={() => handleAction('migrate_submissions', migrateSubmissionsToEntities)}
+                                        disabled={seedingStatus.migrate_submissions === 'seeding'}
+                                        className="flex-1 h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+                                    >
+                                        {seedingStatus.migrate_submissions === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                        Sync Submissions
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleAction('rollback_submissions', rollbackSubmissionsMigration)}
+                                        disabled={seedingStatus.rollback_submissions === 'seeding'}
+                                        variant="outline"
+                                        className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
+                                        title="Rollback"
+                                    >
+                                        <RotateCcw size={16} />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

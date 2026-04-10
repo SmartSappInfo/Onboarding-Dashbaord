@@ -43,6 +43,7 @@ import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { setOrganizationDefaultWorkspaceAction } from '@/lib/organization-actions';
 
 export default function WorkspaceEditor() {
     const firestore = useFirestore();
@@ -59,6 +60,8 @@ export default function WorkspaceEditor() {
     const [color, setColor] = React.useState('#3B5FFF');
     const [statuses, setStatuses] = React.useState<WorkspaceStatus[]>([]);
     const [contactScope, setContactScope] = React.useState<'institution' | 'family' | 'person'>('institution');
+    const [singularTerm, setSingularTerm] = React.useState('');
+    const [pluralTerm, setPluralTerm] = React.useState('');
 
     // Filter workspaces by current organization
     const workspacesQuery = useMemoFirebase(() => 
@@ -80,6 +83,8 @@ export default function WorkspaceEditor() {
             setColor(w.color || '#3B5FFF');
             setStatuses(w.statuses || []);
             setContactScope(w.contactScope || 'institution');
+            setSingularTerm(w.terminology?.singular || '');
+            setPluralTerm(w.terminology?.plural || '');
         } else {
             setActiveWorkspace(null);
             setName('');
@@ -91,6 +96,8 @@ export default function WorkspaceEditor() {
                 { value: 'Churned', label: 'Churned', color: '#ef4444' }
             ]);
             setContactScope('institution');
+            setSingularTerm('');
+            setPluralTerm('');
         }
         setIsEditing(true);
     };
@@ -124,7 +131,11 @@ export default function WorkspaceEditor() {
                 statuses,
                 organizationId: activeWorkspace?.organizationId || activeOrganizationId, // Preserve or set organizationId
                 contactScope: activeWorkspace ? undefined : contactScope, // Only set on creation
-                capabilities: activeWorkspace ? undefined : getDefaultCapabilities(contactScope) // Only set on creation
+                capabilities: activeWorkspace ? undefined : getDefaultCapabilities(contactScope), // Only set on creation
+                terminology: (singularTerm.trim() && pluralTerm.trim()) ? {
+                    singular: singularTerm.trim(),
+                    plural: pluralTerm.trim()
+                } : undefined
             },
             user.uid
         );
@@ -195,6 +206,16 @@ export default function WorkspaceEditor() {
         }
     };
 
+    const handleSetDefault = async (workspaceId: string) => {
+        if (!user || !activeOrganizationId) return;
+        const result = await setOrganizationDefaultWorkspaceAction(activeOrganizationId, workspaceId, user.uid);
+        if (result.success) {
+            toast({ title: 'Default Workspace Updated' });
+        } else {
+            toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-1">
@@ -232,7 +253,7 @@ export default function WorkspaceEditor() {
                                             {w.contactScope === 'institution' && <Building2 className="h-2.5 w-2.5" />}
                                             {w.contactScope === 'family' && <Users className="h-2.5 w-2.5" />}
                                             {w.contactScope === 'person' && <User className="h-2.5 w-2.5" />}
-                                            {w.contactScope === 'institution' ? 'Schools' : w.contactScope === 'family' ? 'Families' : 'People'}
+                                            {w.terminology?.plural || (w.contactScope === 'institution' ? 'Institutions' : w.contactScope === 'family' ? 'Families' : 'People')}
                                         </Badge>
                                     )}
                                     {w.scopeLocked && (
@@ -254,10 +275,28 @@ export default function WorkspaceEditor() {
                         </CardHeader>
                         <CardContent className="p-6 pt-0 space-y-4">
                             <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 min-h-[2.5rem]">{w.description || 'No description provided.'}</p>
+                            
                             <div className="flex items-center justify-between pt-2">
-                                <Badge variant={w.status === 'active' ? 'default' : 'outline'} className="text-[8px] font-black uppercase px-2 h-5">
-                                    {w.status}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant={w.status === 'active' ? 'default' : 'outline'} className="text-[8px] font-black uppercase px-2 h-5">
+                                        {w.status}
+                                    </Badge>
+                                    {activeOrganization?.defaultWorkspaceId === w.id ? (
+                                        <Badge className="text-[8px] font-black uppercase px-2 h-5 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-sm flex items-center gap-1">
+                                            <ShieldCheck className="h-2.5 w-2.5" />
+                                            Default
+                                        </Badge>
+                                    ) : (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-5 rounded-md px-1.5 text-[8px] font-black uppercase bg-muted/50 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                            onClick={() => handleSetDefault(w.id)}
+                                        >
+                                            Set as Default
+                                        </Button>
+                                    )}
+                                </div>
                                 <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">Sync: {format(new Date(w.updatedAt), 'MMM d, HH:mm')}</span>
                             </div>
                         </CardContent>
@@ -565,10 +604,47 @@ export default function WorkspaceEditor() {
                                                     </p>
                                                 </div>
                                             </div>
-
-                                            <Separator className="opacity-50" />
                                         </>
                                     )}
+
+                                    <Separator className="opacity-50" />
+
+                                    {/* TERMINOLOGY ARCHITECT */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Palette className="h-4 w-4 text-primary" />
+                                            <h4 className="text-xs font-black uppercase tracking-widest">Terminology Architect</h4>
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4 ml-auto">Visual Logic</Badge>
+                                        </div>
+
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                            Customize how entities are identified in this workspace. Labels will appear across navigation, forms, and reports. 
+                                            Leaving these blank will use default labels (<span className="text-primary font-bold">Institution, Family, or Person</span>).
+                                        </p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Singular Label</Label>
+                                                <Input 
+                                                    value={singularTerm} 
+                                                    onChange={e => setSingularTerm(e.target.value)} 
+                                                    placeholder="e.g. Company" 
+                                                    className="h-11 rounded-xl bg-muted/10 border-none font-bold text-sm px-4" 
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Plural Label</Label>
+                                                <Input 
+                                                    value={pluralTerm} 
+                                                    onChange={e => setPluralTerm(e.target.value)} 
+                                                    placeholder="e.g. Companies" 
+                                                    className="h-11 rounded-xl bg-muted/10 border-none font-bold text-sm px-4" 
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <Separator className="opacity-50" />
 
                                     {/* STATUS ARCHITECT */}
                                     <div className="space-y-6">

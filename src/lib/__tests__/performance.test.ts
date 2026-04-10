@@ -174,7 +174,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
 
       // Measure query performance
       const startTime = performance.now();
-      const result = await resolveContact({ entityId }, workspaceId);
+      const result = await resolveContact(entityId, workspaceId);
       const endTime = performance.now();
       const executionTime = endTime - startTime;
 
@@ -214,7 +214,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
 
       // Measure query performance
       const startTime = performance.now();
-      const result = await resolveContact({ entityId }, workspaceId);
+      const result = await resolveContact(entityId, workspaceId);
       const endTime = performance.now();
       const executionTime = endTime - startTime;
 
@@ -309,7 +309,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       mockEntities.set(entityId, entity);
 
       const startTime = performance.now();
-      await resolveContact({ entityId }, workspaceId);
+      await resolveContact(entityId, workspaceId);
       const endTime = performance.now();
       const executionTime = endTime - startTime;
 
@@ -347,7 +347,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       // First call - cache miss
       queryExecutionTimes = [];
       const startTime1 = performance.now();
-      const result1 = await resolveContact({ entityId }, workspaceId);
+      const result1 = await resolveContact(entityId, workspaceId);
       const endTime1 = performance.now();
       const firstCallTime = endTime1 - startTime1;
       const firstCallQueries = queryExecutionTimes.length;
@@ -358,7 +358,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       // Second call - cache hit
       queryExecutionTimes = [];
       const startTime2 = performance.now();
-      const result2 = await resolveContact({ entityId }, workspaceId);
+      const result2 = await resolveContact(entityId, workspaceId);
       const endTime2 = performance.now();
       const secondCallTime = endTime2 - startTime2;
       const secondCallQueries = queryExecutionTimes.length;
@@ -412,7 +412,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       for (let i = 0; i < callCount; i++) {
         queryExecutionTimes = [];
         const startTime = performance.now();
-        await resolveContact({ entityId }, workspaceId);
+        await resolveContact(entityId, workspaceId);
         const endTime = performance.now();
         executionTimes.push(endTime - startTime);
       }
@@ -453,22 +453,22 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
 
       // First call - populate cache
       queryExecutionTimes = [];
-      await resolveContact({ entityId }, workspaceId);
+      await resolveContact(entityId, workspaceId);
       const firstCallQueries = queryExecutionTimes.length;
       expect(firstCallQueries).toBeGreaterThan(0);
 
       // Second call - cache hit
       queryExecutionTimes = [];
-      await resolveContact({ entityId }, workspaceId);
+      await resolveContact(entityId, workspaceId);
       const cachedCallQueries = queryExecutionTimes.length;
-      expect(cachedCallQueries).toBe(0);
+ Sands      expect(cachedCallQueries).toBe(0);
 
       // Clear cache
       await clearContactCache();
 
       // Third call - cache miss after clear
       queryExecutionTimes = [];
-      await resolveContact({ entityId }, workspaceId);
+      await resolveContact(entityId, workspaceId);
       const afterClearQueries = queryExecutionTimes.length;
       expect(afterClearQueries).toBeGreaterThan(0);
 
@@ -652,7 +652,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
 
       // Execute multiple queries
       for (let i = 0; i < entityCount; i++) {
-        await resolveContact({ entityId: `entity_monitor_${i}` }, workspaceId);
+        await resolveContact(`entity_monitor_${i}`, workspaceId);
       }
 
       // Analyze query performance
@@ -696,7 +696,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       queryExecutionTimes = [];
 
       const startTime = performance.now();
-      await resolveContact({ entityId }, workspaceId);
+      await resolveContact(entityId, workspaceId);
       const endTime = performance.now();
       const executionTime = endTime - startTime;
 
@@ -756,7 +756,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       for (let i = 0; i < iterations; i++) {
         await clearContactCache(); // Clear between iterations
         const startTime = performance.now();
-        await resolveContact({ entityId }, workspaceId);
+        await resolveContact(entityId, workspaceId);
         const endTime = performance.now();
         executionTimes.push(endTime - startTime);
       }

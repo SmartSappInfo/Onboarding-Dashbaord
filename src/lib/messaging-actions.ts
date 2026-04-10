@@ -21,12 +21,12 @@ import { getContactEmail, getContactPhone } from './migration-status-utils';
 export async function syncVariableRegistry() {
   try {
     const variablesCol = adminDb.collection('messaging_variables');
-    
+
     // 1. CLEANUP PHASE: Fetch all dynamic variables first (excluding constants)
     const existingDynamicSnap = await variablesCol
       .where('source', 'in', ['survey', 'pdf', 'static'])
       .get();
-    
+
     const existingVarIds = new Set(existingDynamicSnap.docs.map(d => d.id));
     const varsToKeep = new Set<string>();
 
@@ -40,13 +40,13 @@ export async function syncVariableRegistry() {
       { key: 'school_location', label: 'School Location', category: 'general', source: 'static', entity: 'School', path: 'location', type: 'string' },
       { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
       { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
-      
+
       // Signatory Data (General Context)
       { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'signatory.name', type: 'string' },
       { key: 'contact_position', label: 'Primary Contact Role', category: 'general', source: 'static', entity: 'School', path: 'signatory.type', type: 'string' },
       { key: 'contact_email', label: 'Primary Contact Email', category: 'general', source: 'static', entity: 'School', path: 'signatory.email', type: 'string' },
       { key: 'contact_phone', label: 'Primary Contact Phone', category: 'general', source: 'static', entity: 'School', path: 'signatory.phone', type: 'string' },
-      
+
       // Finance Hub Variables
       { key: 'agreement_url', label: 'Institutional Signing Link', category: 'finance', source: 'static', entity: 'Contract', path: 'publicUrl', type: 'string' },
       { key: 'school_package', label: 'Subscription Tier', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
@@ -67,7 +67,7 @@ export async function syncVariableRegistry() {
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
-      
+
       // Survey Results
       { key: 'survey_score', label: 'Respondent Score', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'score', type: 'number' },
       { key: 'max_score', label: 'Survey Max Points', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'maxScore', type: 'number' },
@@ -77,7 +77,7 @@ export async function syncVariableRegistry() {
 
     staticVariables.forEach(v => {
       const ref = variablesCol.doc(v.key);
-      batch.set(ref, v, { merge: true }); 
+      batch.set(ref, v, { merge: true });
       varsToKeep.add(v.key);
     });
 
@@ -86,7 +86,7 @@ export async function syncVariableRegistry() {
     surveysSnap.forEach(doc => {
       const survey = doc.data() as Survey;
       const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
-      
+
       questions.forEach(q => {
         const varId = `survey_${doc.id}_${q.id}`;
         varsToKeep.add(varId);
@@ -110,10 +110,10 @@ export async function syncVariableRegistry() {
     pdfsSnap.forEach(doc => {
       const pdf = doc.data() as PDFForm;
       const fields = pdf.fields || [];
-      
+
       fields.forEach(f => {
         if (f.type === 'signature' || f.type === 'photo') return;
-        
+
         const varId = `pdf_${doc.id}_${f.id}`;
         varsToKeep.add(varId);
         const ref = variablesCol.doc(varId);
@@ -153,137 +153,137 @@ export async function syncVariableRegistry() {
  * Upgraded to include 'scheduled' messages that should have fired by now.
  */
 export async function syncAllLogStatuses() {
-    try {
-        const logsCol = adminDb.collection('message_logs');
-        const now = new Date().toISOString();
+  try {
+    const logsCol = adminDb.collection('message_logs');
+    const now = new Date().toISOString();
 
-        // 1. Fetch 'sent' messages for final delivery confirmation
-        const sentLogsSnap = await logsCol
-            .where('status', '==', 'sent')
-            .orderBy('sentAt', 'desc')
-            .limit(30)
-            .get();
+    // 1. Fetch 'sent' messages for final delivery confirmation
+    const sentLogsSnap = await logsCol
+      .where('status', '==', 'sent')
+      .orderBy('sentAt', 'desc')
+      .limit(30)
+      .get();
 
-        // 2. Fetch 'scheduled' messages that should have been sent already
-        const overdueScheduledSnap = await logsCol
-            .where('status', '==', 'scheduled')
-            .where('sentAt', '<=', now)
-            .limit(20)
-            .get();
+    // 2. Fetch 'scheduled' messages that should have been sent already
+    const overdueScheduledSnap = await logsCol
+      .where('status', '==', 'scheduled')
+      .where('sentAt', '<=', now)
+      .limit(20)
+      .get();
 
-        const allDocs = [...sentLogsSnap.docs, ...overdueScheduledSnap.docs];
+    const allDocs = [...sentLogsSnap.docs, ...overdueScheduledSnap.docs];
 
-        if (allDocs.length === 0) return { success: true, count: 0 };
+    if (allDocs.length === 0) return { success: true, count: 0 };
 
-        let updatedCount = 0;
-        for (const logDoc of allDocs) {
-            const log = { id: logDoc.id, ...logDoc.data() } as MessageLog;
-            if (!log.providerId) continue;
+    let updatedCount = 0;
+    for (const logDoc of allDocs) {
+      const log = { id: logDoc.id, ...logDoc.data() } as MessageLog;
+      if (!log.providerId) continue;
 
-            let providerStatus = '';
-            let isDelivered = false;
-            let isSentByProvider = false;
+      let providerStatus = '';
+      let isDelivered = false;
+      let isSentByProvider = false;
 
-            try {
-                if (log.channel === 'sms') {
-                    const res = await fetchSmsStatusAction(log.providerId);
-                    if (res.success) {
-                        providerStatus = String(res.data.status);
-                        // mNotify '0' means successfully delivered to handset
-                        isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
-                        isSentByProvider = true; // If we get a status, it's out of the queue
-                    }
-                } else {
-                    const res = await fetchEmailStatusAction(log.providerId);
-                    if (res.success) {
-                        providerStatus = res.data.last_event || 'sent';
-                        isDelivered = providerStatus === 'delivered';
-                        isSentByProvider = providerStatus !== 'scheduled';
-                    }
-                }
-
-                const needsUpdate = providerStatus && providerStatus !== log.providerStatus;
-                const wasScheduled = log.status === 'scheduled' && isSentByProvider;
-
-                if (needsUpdate || wasScheduled) {
-                    const updates: any = {
-                        providerStatus,
-                        updatedAt: new Date().toISOString()
-                    };
-
-                    if (isDelivered) {
-                        updates.status = 'sent';
-                    } else if (providerStatus === 'bounced' || providerStatus === 'failed') {
-                        updates.status = 'failed';
-                    } else if (wasScheduled) {
-                        updates.status = 'sent'; // Move from scheduled to sent (confirmed dispatch)
-                    }
-
-                    await logDoc.ref.update(updates);
-                    updatedCount++;
-                }
-            } catch (e) {
-                console.error(`Status sync failed for log ${log.id}`);
-            }
+      try {
+        if (log.channel === 'sms') {
+          const res = await fetchSmsStatusAction(log.providerId);
+          if (res.success) {
+            providerStatus = String(res.data.status);
+            // mNotify '0' means successfully delivered to handset
+            isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
+            isSentByProvider = true; // If we get a status, it's out of the queue
+          }
+        } else {
+          const res = await fetchEmailStatusAction(log.providerId);
+          if (res.success) {
+            providerStatus = res.data.last_event || 'sent';
+            isDelivered = providerStatus === 'delivered';
+            isSentByProvider = providerStatus !== 'scheduled';
+          }
         }
 
-        revalidatePath('/admin/messaging/logs');
-        return { success: true, count: updatedCount };
-    } catch (e: any) {
-        console.error(">>> [MESSAGING:SYNC] Global Failure:", e.message);
-        return { success: false, error: e.message };
+        const needsUpdate = providerStatus && providerStatus !== log.providerStatus;
+        const wasScheduled = log.status === 'scheduled' && isSentByProvider;
+
+        if (needsUpdate || wasScheduled) {
+          const updates: any = {
+            providerStatus,
+            updatedAt: new Date().toISOString()
+          };
+
+          if (isDelivered) {
+            updates.status = 'sent';
+          } else if (providerStatus === 'bounced' || providerStatus === 'failed') {
+            updates.status = 'failed';
+          } else if (wasScheduled) {
+            updates.status = 'sent'; // Move from scheduled to sent (confirmed dispatch)
+          }
+
+          await logDoc.ref.update(updates);
+          updatedCount++;
+        }
+      } catch (e) {
+        console.error(`Status sync failed for log ${log.id}`);
+      }
     }
+
+    revalidatePath('/admin/messaging/logs');
+    return { success: true, count: updatedCount };
+  } catch (e: any) {
+    console.error(">>> [MESSAGING:SYNC] Global Failure:", e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 /**
  * Creates or updates a Global Constant variable.
  */
 export async function upsertConstantVariable(data: Partial<VariableDefinition>) {
-    try {
-        const id = data.id || `const_${data.key}`;
-        const finalData = {
-            ...data,
-            source: 'constant',
-            entity: 'Global',
-            category: 'general',
-            type: 'string',
-            updatedAt: new Date().toISOString()
-        };
-        await adminDb.collection('messaging_variables').doc(id).set(finalData, { merge: true });
-        revalidatePath('/admin/messaging/variables');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
+  try {
+    const id = data.id || `const_${data.key}`;
+    const finalData = {
+      ...data,
+      source: 'constant',
+      entity: 'Global',
+      category: 'general',
+      type: 'string',
+      updatedAt: new Date().toISOString()
+    };
+    await adminDb.collection('messaging_variables').doc(id).set(finalData, { merge: true });
+    revalidatePath('/admin/messaging/variables');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 /**
  * Updates the global visibility of a variable.
  */
 export async function updateVariableVisibility(id: string, hidden: boolean) {
-    try {
-        await adminDb.collection('messaging_variables').doc(id).update({ 
-            hidden,
-            updatedAt: new Date().toISOString()
-        });
-        revalidatePath('/admin/messaging/variables');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
+  try {
+    await adminDb.collection('messaging_variables').doc(id).update({
+      hidden,
+      updatedAt: new Date().toISOString()
+    });
+    revalidatePath('/admin/messaging/variables');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 /**
  * Deletes a manual constant variable.
  */
 export async function deleteVariable(id: string) {
-    try {
-        await adminDb.collection('messaging_variables').doc(id).delete();
-        revalidatePath('/admin/messaging/variables');
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
-    }
+  try {
+    await adminDb.collection('messaging_variables').doc(id).delete();
+    revalidatePath('/admin/messaging/variables');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 /**
@@ -294,51 +294,49 @@ export async function deleteVariable(id: string) {
  * Updated to use Contact Adapter for School entity (Requirement 25.4)
  */
 export async function fetchContextualData(entity: string, id: string, parentId?: string, workspaceId?: string) {
-    try {
-        let data: any = null;
-        if (entity === 'Meeting') {
-            const snap = await adminDb.collection('meetings').doc(id).get();
-            if (snap.exists) data = snap.data();
-        } else if (entity === 'SurveyResponse' && parentId) {
-            const snap = await adminDb.collection('surveys').doc(parentId).collection('responses').doc(id).get();
-            if (snap.exists) data = snap.data();
-        } else if (entity === 'Submission' && parentId) {
-            const snap = await adminDb.collection('pdfs').doc(parentId).collection('submissions').doc(id).get();
-            if (snap.exists) data = snap.data();
-        } else if (entity === 'School') {
-            // Use Contact Adapter for backward compatibility (Requirement 25.4)
-            if (workspaceId) {
-                const contact = await resolveContact(id, workspaceId);
-                if (contact) {
-                    // Return schoolData for backward compatibility with existing templates
-                    data = contact.schoolData || null;
-                }
-            } else {
-                // Fallback to direct query if no workspace context
-                const snap = await adminDb.collection('schools').doc(id).get();
-                if (snap.exists) data = snap.data();
-            }
+  try {
+    let data: any = null;
+    if (entity === 'Meeting') {
+      const snap = await adminDb.collection('meetings').doc(id).get();
+      if (snap.exists) data = snap.data();
+    } else if (entity === 'SurveyResponse' && parentId) {
+      const snap = await adminDb.collection('surveys').doc(parentId).collection('responses').doc(id).get();
+      if (snap.exists) data = snap.data();
+    } else if (entity === 'Submission' && parentId) {
+      const snap = await adminDb.collection('pdfs').doc(parentId).collection('submissions').doc(id).get();
+      if (snap.exists) data = snap.data();
+    } else if (entity === 'School') {
+      // Use Contact Adapter (Requirement 25.4)
+      if (workspaceId) {
+        const contact = await resolveContact(id, workspaceId);
+        if (contact) {
+          // Return schoolData for backward compatibility with existing templates
+          data = contact.schoolData || null;
         }
-
-        return { success: true, data };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+      } else {
+        throw new Error("Workspace context required for entity resolution");
+      }
     }
+
+    return { success: true, data };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 /**
  * Deletes all harvested variables for a specific source.
  */
 export async function clearVariablesForSource(sourceId: string) {
-    const variablesCol = adminDb.collection('messaging_variables');
-    const querySnap = await variablesCol.where('sourceId', '==', sourceId).get();
-    
-    const batch = adminDb.batch();
-    querySnap.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-    
-    revalidatePath('/admin/messaging/variables');
-    return { success: true };
+  const variablesCol = adminDb.collection('messaging_variables');
+  const querySnap = await variablesCol.where('sourceId', '==', sourceId).get();
+
+  const batch = adminDb.batch();
+  querySnap.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+
+  revalidatePath('/admin/messaging/variables');
+  return { success: true };
 }
 
 /**
@@ -370,23 +368,12 @@ export async function resolveTagVariables(
   const empty = { contact_tags: '', tag_count: 0, tag_list: '[]', has_tag: '{}' };
 
   try {
-    let tagIds: string[] = [];
-
-    // If workspaceId is provided, resolve from workspace_entities.workspaceTags (Requirement 7)
+    let tagIds: string[] = []; // If workspaceId is provided, resolve from workspace_entities.workspaceTags (Requirement 7)
     if (workspaceId) {
-      // First, try to find the entity ID from the contact
-      const collectionName = contactType === 'school' ? 'schools' : 'prospects';
-      const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
-
-      if (!contactSnap.exists) return empty;
-
-      const contactData = contactSnap.data();
-      const entityId = contactData?.entityId || contactId; // Fall back to contactId if no entityId
-
       // Query workspace_entities for workspace-scoped tags
       const weSnap = await adminDb
         .collection('workspace_entities')
-        .where('entityId', '==', entityId)
+        .where('entityId', '==', contactId)
         .where('workspaceId', '==', workspaceId)
         .limit(1)
         .get();
@@ -394,10 +381,13 @@ export async function resolveTagVariables(
       if (!weSnap.empty) {
         tagIds = weSnap.docs[0].data()?.workspaceTags || [];
       } else {
-        // Fall back to legacy tags if no workspace_entities record exists
-        tagIds = contactData?.tags || [];
+        // Fallback to direct tags if no workspace_entities record exists
+        const collectionName = contactType === 'school' ? 'schools' : 'prospects';
+        const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
+        tagIds = contactSnap.data()?.tags || [];
       }
     } else {
+
       // Legacy path: resolve from contact document (backward compatibility)
       const collectionName = contactType === 'school' ? 'schools' : 'prospects';
       const contactSnap = await adminDb.collection(collectionName).doc(contactId).get();
@@ -557,39 +547,39 @@ export async function previewCampaignAudience(params: {
  * Requirement 35.3
  */
 export async function resolveRecipientContacts(params: {
-    entityId: string;
-    workspaceId?: string;
-    contactScope: 'primary' | 'signatories' | 'all' | 'custom';
-    channel: 'email' | 'sms';
+  entityId: string;
+  workspaceId?: string;
+  contactScope: 'primary' | 'signatories' | 'all' | 'custom';
+  channel: 'email' | 'sms';
 }): Promise<string[]> {
-    const { entityId, workspaceId = 'onboarding', contactScope, channel } = params;
-    
-    try {
-        const contact = await resolveContact(entityId, workspaceId);
-        if (!contact) return [];
+  const { entityId, workspaceId = 'onboarding', contactScope, channel } = params;
 
-        let recipients: string[] = [];
+  try {
+    const contact = await resolveContact(entityId, workspaceId);
+    if (!contact) return [];
 
-        if (contactScope === 'primary') {
-            const email = getContactEmail(contact);
-            const phone = getContactPhone(contact);
-            const val = channel === 'email' ? email : phone;
-            recipients = val ? [val] : [];
-        } else if (contactScope === 'signatories') {
-            recipients = contact.contacts
-                .filter(c => c.isSignatory)
-                .map(c => channel === 'email' ? c.email : (c.phone || ''))
-                .filter(v => !!v);
-        } else if (contactScope === 'all') {
-            recipients = contact.contacts
-                .map(c => channel === 'email' ? c.email : (c.phone || ''))
-                .filter(v => !!v);
-        }
+    let recipients: string[] = [];
 
-        // Return recipients or empty array for sendMessage to handle auto-resolution
-        return recipients.length > 0 ? recipients : [''];
-    } catch (error) {
-        console.error(`[RESOLVE_CONTACTS] Error for ${entityId}:`, error);
-        return ['']; // Fallback to auto-resolution
+    if (contactScope === 'primary') {
+      const email = getContactEmail(contact);
+      const phone = getContactPhone(contact);
+      const val = channel === 'email' ? email : phone;
+      recipients = val ? [val] : [];
+    } else if (contactScope === 'signatories') {
+      recipients = contact.contacts
+        .filter(c => c.isSignatory)
+        .map(c => channel === 'email' ? c.email : (c.phone || ''))
+        .filter(v => !!v);
+    } else if (contactScope === 'all') {
+      recipients = contact.contacts
+        .map(c => channel === 'email' ? c.email : (c.phone || ''))
+        .filter(v => !!v);
     }
+
+    // Return recipients or empty array for sendMessage to handle auto-resolution
+    return recipients.length > 0 ? recipients : [''];
+  } catch (error) {
+    console.error(`[RESOLVE_CONTACTS] Error for ${entityId}:`, error);
+    return ['']; // Fallback to auto-resolution
+  }
 }

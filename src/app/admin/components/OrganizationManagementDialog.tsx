@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction, deleteOrganizationAction } from '@/lib/organization-actions';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import MediaSelectorTrigger from './MediaSelectorTrigger';
 
 interface OrganizationManagementDialogProps {
     open: boolean;
@@ -54,6 +55,12 @@ export default function OrganizationManagementDialog({
     const [email, setEmail] = React.useState('');
     const [phone, setPhone] = React.useState('');
     const [address, setAddress] = React.useState('');
+    
+    // AI Keys
+    const [geminiApiKey, setGeminiApiKey] = React.useState('');
+    const [openRouterApiKey, setOpenRouterApiKey] = React.useState('');
+    const [openaiApiKey, setOpenaiApiKey] = React.useState('');
+    const [claudeApiKey, setClaudeApiKey] = React.useState('');
 
     // Settings
     const [defaultCurrency, setDefaultCurrency] = React.useState('USD');
@@ -72,6 +79,11 @@ export default function OrganizationManagementDialog({
             setDefaultCurrency(organization.settings?.defaultCurrency || 'USD');
             setDefaultTimezone(organization.settings?.defaultTimezone || 'UTC');
             setDefaultLanguage(organization.settings?.defaultLanguage || 'en');
+            
+            setGeminiApiKey(organization.geminiApiKey || '');
+            setOpenRouterApiKey(organization.openRouterApiKey || '');
+            setOpenaiApiKey(organization.openaiApiKey || '');
+            setClaudeApiKey(organization.claudeApiKey || '');
         } else {
             // Reset for new organization
             setName('');
@@ -84,6 +96,11 @@ export default function OrganizationManagementDialog({
             setDefaultCurrency('USD');
             setDefaultTimezone('UTC');
             setDefaultLanguage('en');
+
+            setGeminiApiKey('');
+            setOpenRouterApiKey('');
+            setOpenaiApiKey('');
+            setClaudeApiKey('');
         }
     }, [organization, open]);
 
@@ -106,7 +123,11 @@ export default function OrganizationManagementDialog({
                     defaultCurrency,
                     defaultTimezone,
                     defaultLanguage,
-                }
+                },
+                geminiApiKey: geminiApiKey.trim(),
+                openRouterApiKey: openRouterApiKey.trim(),
+                openaiApiKey: openaiApiKey.trim(),
+                claudeApiKey: claudeApiKey.trim()
             },
             user.uid
         );
@@ -164,23 +185,16 @@ export default function OrganizationManagementDialog({
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="space-y-4">
                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                                                Logo URL
+                                                Organization Logo
                                             </Label>
-                                            <div className="flex gap-2">
-                                                <Input 
-                                                    value={logoUrl} 
-                                                    onChange={e => setLogoUrl(e.target.value)} 
-                                                    placeholder="https://..." 
-                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
-                                                />
-                                                {logoUrl && (
-                                                    <div className="h-12 w-12 rounded-xl border-2 border-border overflow-hidden shrink-0">
-                                                        <img src={logoUrl} alt="Logo preview" className="h-full w-full object-cover" />
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <MediaSelectorTrigger 
+                                                value={logoUrl}
+                                                onSelect={setLogoUrl}
+                                                label="Upload Organization Logo"
+                                                workspaceId="global"
+                                            />
                                         </div>
                                     </div>
 
@@ -298,6 +312,71 @@ export default function OrganizationManagementDialog({
                                                 placeholder="en" 
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* AI Configuration */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-black uppercase tracking-widest text-primary">AI Configuration</h4>
+                                        <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                                Gemini API Key
+                                            </Label>
+                                            <Input 
+                                                value={geminiApiKey} 
+                                                onChange={e => setGeminiApiKey(e.target.value)} 
+                                                placeholder="AIza..." 
+                                                type="password"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                                OpenRouter API Key
+                                            </Label>
+                                            <Input 
+                                                value={openRouterApiKey} 
+                                                onChange={e => setOpenRouterApiKey(e.target.value)} 
+                                                placeholder="sk-or-v1-..." 
+                                                type="password"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                                OpenAI API Key
+                                            </Label>
+                                            <Input 
+                                                value={openaiApiKey} 
+                                                onChange={e => setOpenaiApiKey(e.target.value)} 
+                                                placeholder="sk-..." 
+                                                type="password"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                                Claude API Key (Optional)
+                                            </Label>
+                                            <Input 
+                                                value={claudeApiKey} 
+                                                onChange={e => setClaudeApiKey(e.target.value)} 
+                                                placeholder="sk-ant-..." 
+                                                type="password"
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                            />
+                                            <p className="text-[9px] text-muted-foreground ml-1 uppercase font-bold">Recommended: Use OpenRouter for Claude</p>
                                         </div>
                                     </div>
                                 </div>

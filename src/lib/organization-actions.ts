@@ -54,6 +54,9 @@ export async function saveOrganizationAction(
                 updatedBy: userId
             });
 
+            // Provision defaults for new organization
+            await provisionOrganizationDefaults(slug, userId);
+
             return { success: true, organizationId: slug };
         }
     } catch (error: any) {
@@ -139,5 +142,123 @@ export async function archiveOrganizationAction(
     } catch (error: any) {
         console.error('Error archiving organization:', error);
         return { success: false, error: error.message || 'Failed to archive organization' };
+    }
+}
+
+/**
+ * Sets the default workspace for an organization
+ */
+export async function setOrganizationDefaultWorkspaceAction(
+    organizationId: string,
+    workspaceId: string,
+    userId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await adminDb.collection('organizations').doc(organizationId).update({
+            defaultWorkspaceId: workspaceId,
+            updatedAt: new Date().toISOString(),
+            updatedBy: userId
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error setting default workspace:', error);
+        return { success: false, error: error.message || 'Failed to set default workspace' };
+    }
+}
+
+/**
+ * Provisions default roles, modules and zones for a new organization
+ */
+async function provisionOrganizationDefaults(organizationId: string, userId: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    
+    // 1. Hardcoded Zones
+    const defaultZones = ['Zone 1', 'Zone 2', 'Zone 3'];
+    for (const zoneName of defaultZones) {
+        await adminDb.collection('zones').add({
+            name: zoneName,
+            organizationId,
+            isDefault: false // These are instances, not templates
+        });
+    }
+
+    // 2. Hardcoded Modules
+    const defaultModules = [
+        { name: 'Product 1', abbreviation: 'P1', color: '#3B5FFF', order: 0 },
+        { name: 'Product 2', abbreviation: 'P2', color: '#10B981', order: 1 },
+        { name: 'Product 3', abbreviation: 'P3', color: '#F59E0B', order: 2 }
+    ];
+    for (const mod of defaultModules) {
+        await adminDb.collection('modules').add({
+            ...mod,
+            organizationId,
+            isDefault: false
+        });
+    }
+
+    // 3. Hardcoded FER Roles
+    const ferRoles = [
+        { name: 'Administrator', description: 'Institutional Administrator with full oversight.', color: '#EF4444' },
+        { name: 'Supervisor', description: 'Operations Supervisor managing day-to-day tracks.', color: '#8B5CF6' },
+        { name: 'Finance Officer', description: 'Financial oversight and billing management.', color: '#10B981' }
+    ];
+    for (const role of ferRoles) {
+        await adminDb.collection('roles').add({
+            ...role,
+            organizationId,
+            workspaceIds: [], // To be assigned by user
+            permissions: ['users_view', 'entities_view'], // Basic default permissions
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            isDefault: false
+        });
+    }
+
+    // 4. Clone Global Default Templates
+    // Roles
+    const defaultRolesSnapshot = await adminDb.collection('roles')
+        .where('isDefault', '==', true)
+        .get();
+    
+    for (const doc of defaultRolesSnapshot.docs) {
+        const data = doc.data();
+        await adminDb.collection('roles').add({
+            ...data,
+            organizationId,
+            isDefault: false, // It's no longer a template in the new org
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Modules
+    const defaultModulesSnapshot = await adminDb.collection('modules')
+        .where('isDefault', '==', true)
+        .get();
+    
+    for (const doc of defaultModulesSnapshot.docs) {
+        const data = doc.data();
+        await adminDb.collection('modules').add({
+            ...data,
+            organizationId,
+            isDefault: false,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Zones
+    const defaultZonesSnapshot = await adminDb.collection('zones')
+        .where('isDefault', '==', true)
+        .get();
+    
+    for (const doc of defaultZonesSnapshot.docs) {
+        const data = doc.data();
+        await adminDb.collection('zones').add({
+            ...data,
+            organizationId,
+            isDefault: false
+        });
     }
 }

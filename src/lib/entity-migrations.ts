@@ -14,7 +14,8 @@ import {
     writeBatch, 
     getDocs, 
     doc, 
-    type Firestore 
+    collectionGroup,
+    type Firestore
 } from 'firebase/firestore';
 import type { School } from '@/lib/types';
 
@@ -281,4 +282,214 @@ export async function verifyEntitiesMigration(firestore: Firestore): Promise<{
     console.log(`   Workspace Entities: ${stats.workspaceEntities.total}`);
     
     return stats;
+}
+
+/**
+ * PHASE 4: Agreements (Contracts) → Unified Entity ID
+ * Aligns legal document headers with the new entity architecture.
+ */
+export async function migrateContractsToEntities(firestore: Firestore): Promise<MigrationResult> {
+    console.log('🚀 Starting agreements → entities migration...');
+    const timestamp = new Date().toISOString();
+    const result: MigrationResult = { total: 0, succeeded: 0, failed: 0, skipped: 0, errors: [] };
+    
+    try {
+        const contractsSnap = await getDocs(collection(firestore, 'contracts'));
+        result.total = contractsSnap.size;
+        
+        let batch = writeBatch(firestore);
+        let operationCount = 0;
+        
+        for (const contractDoc of contractsSnap.docs) {
+            try {
+                const contract = contractDoc.data();
+                
+                // Skip if already migrated or already starts with entity_
+                if (contract.migrationStatus === 'migrated' || contract.entityId.startsWith('entity_')) {
+                    result.skipped++;
+                    continue;
+                }
+                
+                // Backup
+                const backupRef = doc(firestore, 'backup_contracts_migration', contractDoc.id);
+                batch.set(backupRef, { ...contract, backedUpAt: timestamp });
+                operationCount++;
+                
+                // Update Entity Reference
+                const legacyId = contract.entityId;
+                const unifiedEntityId = `entity_${legacyId}`;
+                
+                batch.update(contractDoc.ref, {
+                    entityId: unifiedEntityId,
+                    migrationStatus: 'migrated',
+                    migratedAt: timestamp
+                });
+                operationCount++;
+                
+                if (operationCount >= BATCH_SIZE) {
+                    await batch.commit();
+                    batch = writeBatch(firestore);
+                    operationCount = 0;
+                }
+                
+                result.succeeded++;
+            } catch (error: any) {
+                result.failed++;
+                result.errors.push({ id: contractDoc.id, error: error.message });
+            }
+        }
+        
+        if (operationCount > 0) await batch.commit();
+        return result;
+    } catch (error: any) {
+        throw error;
+    }
+}
+
+/**
+ * ROLLBACK: Agreements Migration
+ */
+export async function rollbackContractsMigration(firestore: Firestore): Promise<MigrationResult> {
+    const result: MigrationResult = { total: 0, succeeded: 0, failed: 0, skipped: 0, errors: [] };
+    try {
+        const backupSnap = await getDocs(collection(firestore, 'backup_contracts_migration'));
+        result.total = backupSnap.size;
+        
+        let batch = writeBatch(firestore);
+        let operationCount = 0;
+        
+        for (const backupDoc of backupSnap.docs) {
+            try {
+                const { backedUpAt, ...original } = backupDoc.data();
+                batch.set(doc(firestore, 'contracts', backupDoc.id), original);
+                batch.delete(backupDoc.ref);
+                operationCount += 2;
+                
+                if (operationCount >= BATCH_SIZE) {
+                    await batch.commit();
+                    batch = writeBatch(firestore);
+                    operationCount = 0;
+                }
+                result.succeeded++;
+            } catch (e: any) {
+                result.failed++;
+                result.errors.push({ id: backupDoc.id, error: e.message });
+            }
+        }
+        if (operationCount > 0) await batch.commit();
+        return result;
+    } catch (e: any) {
+        throw e;
+    }
+}
+
+/**
+ * PHASE 5: Submissions Reference Mapping
+ * Updates nested submissions within PDF templates to reference unified entities.
+ */
+export async function migrateSubmissionsToEntities(firestore: Firestore): Promise<MigrationResult> {
+    console.log('🚀 Starting PDF submissions → entities migration...');
+    const timestamp = new Date().toISOString();
+    const result: MigrationResult = { total: 0, succeeded: 0, failed: 0, skipped: 0, errors: [] };
+    
+    try {
+        // Use collectionGroup to find all 'submissions' sub-collections
+        const submissionsSnap = await getDocs(collectionGroup(firestore, 'submissions'));
+        result.total = submissionsSnap.size;
+        
+        let batch = writeBatch(firestore);
+        let operationCount = 0;
+        
+        for (const subDoc of submissionsSnap.docs) {
+            try {
+                const sub = subDoc.data();
+                
+                // If it already has a unified entityId, skip
+                if (sub.entityId && sub.entityId.startsWith('entity_')) {
+                    result.skipped++;
+                    continue;
+                }
+                
+                // Get legacy ID from schoolId or existing entityId
+                const legacyId = sub.schoolId || sub.entityId;
+                if (!legacyId) {
+                    result.skipped++;
+                    continue;
+                }
+                
+                // Backup (use flat collection for backup with composite key)
+                const backupId = subDoc.ref.path.replace(/\//g, '_');
+                const backupRef = doc(firestore, 'backup_submissions_migration', backupId);
+                batch.set(backupRef, { 
+                    ...sub, 
+                    originalPath: subDoc.ref.path,
+                    backedUpAt: timestamp 
+                });
+                operationCount++;
+                
+                // Update
+                const unifiedEntityId = `entity_${legacyId}`;
+                batch.update(subDoc.ref, {
+                    schoolId: legacyId, // Ensure it's in schoolId too for backward compat
+                    entityId: unifiedEntityId,
+                    entityType: sub.entityType || 'institution',
+                    migrationStatus: 'migrated',
+                    migratedAt: timestamp
+                });
+                operationCount++;
+                
+                if (operationCount >= BATCH_SIZE) {
+                    await batch.commit();
+                    batch = writeBatch(firestore);
+                    operationCount = 0;
+                }
+                result.succeeded++;
+            } catch (error: any) {
+                result.failed++;
+                result.errors.push({ id: subDoc.id, error: error.message });
+            }
+        }
+        
+        if (operationCount > 0) await batch.commit();
+        return result;
+    } catch (error: any) {
+        throw error;
+    }
+}
+
+/**
+ * ROLLBACK: Submissions Migration
+ */
+export async function rollbackSubmissionsMigration(firestore: Firestore): Promise<MigrationResult> {
+    const result: MigrationResult = { total: 0, succeeded: 0, failed: 0, skipped: 0, errors: [] };
+    try {
+        const backupSnap = await getDocs(collection(firestore, 'backup_submissions_migration'));
+        result.total = backupSnap.size;
+        
+        let batch = writeBatch(firestore);
+        let operationCount = 0;
+        
+        for (const backupDoc of backupSnap.docs) {
+            try {
+                const { backedUpAt, originalPath, ...original } = backupDoc.data();
+                batch.set(doc(firestore, originalPath), original);
+                batch.delete(backupDoc.ref);
+                operationCount += 2;
+                
+                if (operationCount >= BATCH_SIZE) {
+                    await batch.commit();
+                    batch = writeBatch(firestore);
+                    operationCount = 0;
+                }
+                result.succeeded++;
+            } catch (e: any) {
+                result.failed++;
+                result.errors.push({ id: backupDoc.id, error: e.message });
+            }
+        }
+        if (operationCount > 0) await batch.commit();
+        return result;
+    } catch (e: any) {
+        throw e;
+    }
 }

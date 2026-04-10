@@ -16,6 +16,15 @@ interface InternalNotificationOptions {
   channel?: 'email' | 'sms' | 'both';
 }
 
+interface ExternalNotificationOptions {
+  entityId: string;
+  contactTypes: string[];
+  emailTemplateId?: string;
+  smsTemplateId?: string;
+  variables: Record<string, any>;
+  channel?: 'email' | 'sms' | 'both';
+}
+
 /**
  * High-performance internal notification router.
  * Resolves recipients (Manager vs Specific Users) and dispatches alerts.
@@ -108,5 +117,80 @@ export async function triggerInternalNotification(options: InternalNotificationO
 
   } catch (error: any) {
     console.error(">>> [NOTIFY] Critical Failure in Notification Engine:", error.message);
+  }
+}
+
+/**
+ * High-performance external notification router for focal persons.
+ * Resolves contacts at a specific campus/entity and dispatches alerts.
+ */
+export async function triggerExternalNotification(options: ExternalNotificationOptions) {
+  const { entityId, contactTypes, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
+
+  console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId}`);
+
+  try {
+    // 1. Resolve Entity Contacts using adapter layer
+    const contact = await resolveContact(entityId, variables.workspaceId || 'onboarding');
+    
+    if (!contact || !contact.contacts || contact.contacts.length === 0) {
+      console.warn(">>> [EXTERNAL-NOTIFY] No focal persons found for entity.");
+      return;
+    }
+
+    // 2. Filter contacts based on types configured in the survey
+    const targetContacts = contact.contacts.filter(c => 
+      contactTypes.length === 0 || contactTypes.includes(c.type)
+    );
+
+    if (targetContacts.length === 0) {
+      console.warn(">>> [EXTERNAL-NOTIFY] No focal persons matched the target criteria.");
+      return;
+    }
+
+    // 3. Dispatch Messages
+    const dispatchPromises = [];
+
+    for (const stakeholder of targetContacts) {
+      const personalVars = { 
+        ...variables, 
+        contact_name: stakeholder.name,
+        contact_role: stakeholder.type 
+      };
+
+      // Email Dispatch
+      if ((channel === 'email' || channel === 'both') && emailTemplateId && stakeholder.email) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: emailTemplateId,
+            senderProfileId: 'default',
+            recipient: stakeholder.email,
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+
+      // SMS Dispatch
+      if ((channel === 'sms' || channel === 'both') && smsTemplateId && stakeholder.phone) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: smsTemplateId,
+            senderProfileId: 'default',
+            recipient: stakeholder.phone,
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(dispatchPromises);
+    console.log(`>>> [EXTERNAL-NOTIFY] Successfully queued ${dispatchPromises.length} alerts for ${targetContacts.length} stakeholders.`);
+
+  } catch (error: any) {
+    console.error(">>> [EXTERNAL-NOTIFY] Critical Failure in External Notification Engine:", error.message);
   }
 }

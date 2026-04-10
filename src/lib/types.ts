@@ -220,6 +220,12 @@ export interface Organization {
     defaultTimezone?: string;
     defaultLanguage?: string;
   };
+  // AI Configuration (Requirement: Multi-Model Architecture)
+  geminiApiKey?: string;
+  openRouterApiKey?: string;
+  openaiApiKey?: string;
+  claudeApiKey?: string; // Optional if using OpenRouter directly
+  defaultWorkspaceId?: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -273,6 +279,11 @@ export interface Workspace {
   statuses: WorkspaceStatus[];
   contactScope?: ContactScope; // Declares the contact type this workspace manages
   capabilities?: WorkspaceCapabilities; // Feature flags for workspace modules
+  terminology?: {
+    singular: string;
+    plural: string;
+    description?: string;
+  };
   scopeLocked?: boolean; // True once first entity is linked
   createdAt: string;
   updatedAt: string;
@@ -361,6 +372,8 @@ export interface FocalPersonAttachment {
 export interface Zone {
   id: string;
   name: string;
+  organizationId?: string;
+  isDefault?: boolean;
 }
 
 export interface Pipeline {
@@ -399,11 +412,12 @@ export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];
 
 export interface Role {
   id: string;
-  organizationId: string; // Roles belong to an Org
+  organizationId: string;
+  isDefault?: boolean;
   name: string;
   description: string;
   permissions: AppPermissionId[];
-  workspaceIds: string[]; // Roles grant access to specific workspaces
+  workspaceIds: string[];
   color: string;
   createdAt: string;
   updatedAt?: string;
@@ -420,6 +434,9 @@ export interface UserProfile {
   isAuthorized: boolean;
   roles: string[];
   permissions?: AppPermissionId[];
+  // AI User Preferences
+  preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
+  preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
   createdAt: string;
 }
 
@@ -689,9 +706,7 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  entityId?: string; // Legacy field for backward compatibility
-  entityName?: string; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType | null; // Type of entity
   periodId: string;
   periodName: string;
@@ -722,10 +737,7 @@ export interface Invoice {
 
 export interface Meeting {
   id: string;
-  entityId?: string; // Legacy field for backward compatibility
-  entityName?: string; // Legacy field for backward compatibility
-  entitySlug?: string; // Legacy field for backward compatibility (used in public URLs)
-  entityId?: string; // New unified entity reference
+  entityId?: string; // Unified entity reference
   entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
   meetingTime: string;
@@ -842,6 +854,12 @@ export interface Survey {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+  externalAlertsEnabled?: boolean;
+  externalAlertChannel?: 'email' | 'sms' | 'both';
+  externalAlertContactTypes?: string[];
+  externalAlertEmailTemplateId?: string;
+  externalAlertSmsTemplateId?: string;
+  useEntityLogo?: boolean;
   entityId?: string | null; // Unified entity reference (formerly schoolId)
   entityName?: string | null;
 }
@@ -999,9 +1017,7 @@ export interface PDFForm {
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;
   logoUrl?: string;
-  entityId?: string | null; // Legacy field for backward compatibility
-  entityName?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   webhookEnabled?: boolean;
   webhookId?: string;
   showDebugProcessingModal?: boolean;
@@ -1049,8 +1065,7 @@ export interface Submission {
   submittedAt: string;
   formData: { [key: string]: any };
   status: 'submitted' | 'partial';
-  entityId?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
 }
 
@@ -1077,10 +1092,7 @@ export interface Activity {
   id: string;
   organizationId: string; // Organization tenant identifier
   workspaceId: string; // Strictly confined
-  entityId?: string; // Legacy field for backward compatibility
-  entityName?: string; // Legacy field for backward compatibility
-  entitySlug?: string; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType | null; // Type of entity
   displayName?: string; // Denormalized entity name at time of logging
   entitySlug?: string; // Denormalized slug for historical readability
@@ -1104,9 +1116,7 @@ export interface Task {
   category: TaskCategory;
   assignedTo: string;
   assignedToName?: string;
-  entityId?: string | null; // Legacy field for backward compatibility
-  entityName?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
   dueDate: string;
   startDate?: string;
@@ -1249,8 +1259,7 @@ export interface AutomationRun {
   finishedAt?: string;
   triggerData: Record<string, any>;
   error?: string;
-  entityId?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
 }
 
@@ -1379,8 +1388,7 @@ export interface MessageLog {
   variables: Record<string, any>;
   workspaceIds: string[];
   workspaceId?: string; // Primary workspace context (Requirement 11)
-  entityId: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
   displayName?: string; // Denormalized entity display name
   entityName?: string; // Legacy denormalized school name
@@ -1424,6 +1432,8 @@ export interface Module {
   color: string;
   description?: string;
   order: number;
+  organizationId?: string;
+  isDefault?: boolean;
 }
 
 export interface Perspective {

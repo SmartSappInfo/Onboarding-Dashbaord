@@ -17,28 +17,27 @@ import { logActivity } from './activity-logger';
  * Resolves entity information for a task using the contact adapter.
  * Supports dual-write for legacy schools records (Requirement 13.4, 13.5)
  * 
- * @param identifier - Contact identifier (entityId or entityId)
+ * @param entityId - Unified Entity Identifier (string)
  * @param workspaceId - Workspace context
- * @returns Object with entityId, entityName, entityId, entityType
+ * @returns Object with entityId, entityName, entityType
  */
 async function resolveTaskEntityInfo(
-    identifier: { entityId?: string | null; entityId?: string | null },
+    entityId: string | null,
     workspaceId: string
 ) {
-    if (!identifier.entityId && !identifier.entityId) {
+    if (!entityId) {
         return { entityId: null, entityType: null };
     }
 
     try {
-        // Use adapter layer to resolve contact (works with both legacy and migrated records)
+        // Use adapter layer to resolve contact
         const { resolveContact } = await import('./contact-adapter');
-        const contact = await resolveContact(identifier, workspaceId);
+        const contact = await resolveContact(entityId, workspaceId);
         
         if (contact) {
             return {
-                entityId: contact.schoolData?.id || identifier.entityId || null,
+                entityId: contact.id,
                 entityName: contact.name,
-                entityId: contact.entityId || identifier.entityId || null,
                 entityType: contact.entityType || null,
             };
         }
@@ -48,9 +47,8 @@ async function resolveTaskEntityInfo(
 
     // Fallback: use provided identifiers
     return {
-        entityId: identifier.entityId || null,
+        entityId: entityId,
         entityName: null,
-        entityId: identifier.entityId || null,
         entityType: null
     };
 }
@@ -85,9 +83,7 @@ export function getTaskInterlinkUrl(task: Task): string | null {
  * 
  * Updated for workspace awareness and dual-write pattern (Requirements 3.1, 25.3):
  * - Requires workspaceId to be set on all new tasks
- * - Supports entityId and entityType for unified entity model
- * - Maintains backward compatibility with entityId (dual-write)
- * - Resolves both identifiers when only one is provided
+ * - Uses unified entityId and entityType for the consolidated model
  */
 export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'createdAt'>) {
     const tasksCol = collection(db, 'tasks');
@@ -96,15 +92,14 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
     // Resolve entity information using dual-write pattern
     const resolveAndCreate = async () => {
         const entityInfo = await resolveTaskEntityInfo(
-            { entityId: task.entityId },
+            task.entityId || null,
             task.workspaceId
         );
-        
+ Sands        
         const taskData = {
             ...task,
             entityId: entityInfo.entityId,
             entityName: entityInfo.entityName,
-            entityId: entityInfo.entityId,
             entityType: entityInfo.entityType,
             createdAt: timestamp,
             updatedAt: timestamp,

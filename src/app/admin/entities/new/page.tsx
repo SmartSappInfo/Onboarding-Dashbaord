@@ -36,9 +36,10 @@ import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
+  name: z.string().min(2, { message: 'Required name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
   workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
@@ -89,6 +90,7 @@ export default function NewSchoolPage() {
   const { user } = useUser();
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular, plural } = useTerminology();
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
@@ -198,15 +200,15 @@ export default function NewSchoolPage() {
         toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
         router.push('/admin/entities');
       } else {
-        throw new Error(result.error || 'Failed to create school');
+        throw new Error(result.error || `Failed to create ${singular.toLowerCase()}`);
       }
     } catch (error: any) {
       toast({ 
         title: 'Save Failed', 
-        description: error.message || 'An error occurred while creating the school',
+        description: error.message || `An error occurred while creating the ${singular.toLowerCase()}`,
         variant: 'destructive'
       });
-      console.error('School creation error:', error);
+      console.error('Entity creation error:', error);
     }
   };
 
@@ -261,7 +263,7 @@ export default function NewSchoolPage() {
                   <CardContent className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField control={methods.control} name="name" render={({ field }) => (
-                        <FormItem className="md:col-span-2"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder="School name..." {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
+                        <FormItem className="md:col-span-2"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={methods.control} name="initials" render={({ field }) => (
                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" /></FormControl><FormMessage /></FormItem>
@@ -478,7 +480,11 @@ export default function NewSchoolPage() {
               </div>
               <div className="space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle></div></CardHeader><CardContent className="p-6 space-y-6"><FormField control={methods.control} name="zone" render={({ field, fieldState }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel><FormControl><ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</FormLabel><FormControl><Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="nominalRoll" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Total Roll</FormLabel><FormControl><Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
-                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95 uppercase tracking-widest" disabled={methods.formState.isSubmitting || isUsersLoading}>{methods.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize School</Button></div>
+                <div className="pt-4 sticky top-24">
+                  <Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95 uppercase tracking-widest" disabled={methods.formState.isSubmitting || isUsersLoading}>
+                    {methods.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize {singular}
+                  </Button>
+                </div>
               </div>
             </div>
           </form>

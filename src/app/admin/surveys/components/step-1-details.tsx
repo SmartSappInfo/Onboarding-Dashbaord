@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight } from 'lucide-react';
+import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 import type { WorkspaceEntity } from '@/lib/types';
 
 interface Step1DetailsProps {
@@ -36,17 +38,17 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                    <Controller
-                        name="internalName"
-                        control={control}
-                        render={({ field }) => (
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Blueprint Name</Label>
-                                <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
-                            </div>
-                        )}
-                    />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Controller
+                            name="internalName"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Blueprint Name</Label>
+                                    <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                </div>
+                            )}
+                        />
                         <Controller
                             name="title"
                             control={control}
@@ -57,6 +59,8 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 </div>
                             )}
                         />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="entityId"
                             control={control}
@@ -68,6 +72,12 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                             const institution = institutions?.find(i => i.entityId === val);
                                             field.onChange(val === 'none' ? null : val);
                                             setValue('entityName', institution ? institution.displayName : null, { shouldDirty: true });
+                                            
+                                            // Reset entity logo sync if entity changed
+                                            if (watch('useEntityLogo')) {
+                                                const logo = institution?.schoolData?.logoUrl || institution?.schoolData?.branding?.logoUrl;
+                                                if (logo) setValue('logoUrl', logo, { shouldDirty: true });
+                                            }
                                         }} 
                                         value={field.value || 'none'}
                                     >
@@ -79,6 +89,37 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                             {institutions?.map(i => <SelectItem key={i.entityId} value={i.entityId}>{i.displayName}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                            )}
+                        />
+                        <Controller
+                            name="useEntityLogo"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 opacity-0">-</Label>
+                                    <div className={cn(
+                                        "flex items-center justify-between h-11 px-4 rounded-xl border-2 transition-all duration-300",
+                                        field.value ? "border-primary/20 bg-primary/5" : "border-transparent bg-muted/20 grayscale opacity-40"
+                                    )}>
+                                        <div className="flex items-center gap-2">
+                                            <Building className="h-4 w-4 text-primary" />
+                                            <span className="text-[10px] font-black uppercase tracking-tight">Sync Entity Logo</span>
+                                        </div>
+                                        <Switch 
+                                            disabled={!watch('entityId')}
+                                            checked={field.value} 
+                                            onCheckedChange={(checked) => {
+                                                field.onChange(checked);
+                                                if (checked) {
+                                                    const entityId = watch('entityId');
+                                                    const institution = institutions?.find(i => i.entityId === entityId);
+                                                    const logo = institution?.schoolData?.logoUrl || institution?.schoolData?.branding?.logoUrl;
+                                                    if (logo) setValue('logoUrl', logo, { shouldDirty: true });
+                                                }
+                                            }} 
+                                        />
+                                    </div>
                                 </div>
                             )}
                         />
@@ -161,26 +202,50 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Controller
-                                name="videoThumbnailUrl"
+                                name="logoUrl"
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Video Poster (Frame)</Label>
-                                        <MediaSelect {...field} filterType="image" className="rounded-xl" />
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
+                                            <ImageIcon className="h-3 w-3" /> Survey Brand Logo
+                                        </Label>
+                                        <MediaSelect 
+                                            {...field} 
+                                            filterType="image" 
+                                            className="rounded-xl" 
+                                            disabled={watch('useEntityLogo')}
+                                        />
+                                        {watch('useEntityLogo') && (
+                                            <p className="text-[9px] font-bold text-primary uppercase tracking-tighter ml-1 italic">
+                                                Branding is being managed by the associated entity.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             />
-                            <Controller
-                                name="bannerImageUrl"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover Image (Fallback)</Label>
-                                        <MediaSelect {...field} filterType="image" className="rounded-xl" />
-                                    </div>
-                                )}
-                            />
+                            <div className="grid grid-cols-1 gap-6">
+                                <Controller
+                                    name="videoThumbnailUrl"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Video Poster (Frame)</Label>
+                                            <MediaSelect {...field} filterType="image" className="rounded-xl" />
+                                        </div>
+                                    )}
+                                />
+                            </div>
                         </div>
+                        <Controller
+                            name="bannerImageUrl"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover Image (Fallback)</Label>
+                                    <MediaSelect {...field} filterType="image" className="rounded-xl" />
+                                </div>
+                            )}
+                        />
                     </div>
                 </CardContent>
             </Card>

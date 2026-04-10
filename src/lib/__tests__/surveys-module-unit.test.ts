@@ -292,7 +292,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       const result = await getSurveysForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -326,7 +326,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       const result = await getSurveysForContact(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -359,24 +359,17 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       await getSurveysForContact(
-        { entityId: 'school_999' },
+        'school_999',
         'workspace_1'
       );
 
-      // Verify query used entityId (not entityId)
-      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
-      
-      // Should NOT query by entityId when entityId is present
-      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'entityId'
-      );
-      expect(entityIdCalls).toHaveLength(0);
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_999');
     });
 
     it('should return empty array when no identifier provided', async () => {
       // Edge case: no identifier provided
       const result = await getSurveysForContact(
-        {},
+        '',
         'workspace_1'
       );
 
@@ -386,10 +379,6 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
         call => call[0] === 'entityId'
       );
-      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'entityId'
-      );
-      expect(entityIdCalls).toHaveLength(0);
       expect(entityIdCalls).toHaveLength(0);
     });
 
@@ -400,7 +389,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       const result = await getSurveysForContact(
-        { entityId: 'entity_nonexistent' },
+        'entity_nonexistent',
         'workspace_1'
       );
 
@@ -426,7 +415,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       await getSurveysForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -463,7 +452,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       const result = await getSurveyResponsesForContact(
         'survey_1',
-        { entityId: 'entity_123' }
+        'entity_123'
       );
 
       expect(result).toHaveLength(2);
@@ -496,7 +485,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       const result = await getSurveyResponsesForContact(
         'survey_2',
-        { entityId: 'school_789' }
+        'school_789'
       );
 
       expect(result).toHaveLength(1);
@@ -526,17 +515,17 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       await getSurveyResponsesForContact(
         'survey_1',
-        { entityId: 'school_999' }
+        'school_999'
       );
 
       // Verify query used entityId
-      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_999');
       
-      // Should NOT query by entityId
+      // Should NOT query by duplicate entityId
       const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
         call => call[0] === 'entityId'
       );
-      expect(entityIdCalls).toHaveLength(0);
+      expect(entityIdCalls).toHaveLength(1);
     });
 
     it('should return empty array when no responses found', async () => {
@@ -547,7 +536,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       const result = await getSurveyResponsesForContact(
         'survey_1',
-        { entityId: 'entity_nonexistent' }
+        'entity_nonexistent'
       );
 
       expect(result).toHaveLength(0);
@@ -556,7 +545,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
     it('should return empty array when no identifier provided for responses', async () => {
       const result = await getSurveyResponsesForContact(
         'survey_1',
-        {}
+        ''
       );
 
       expect(result).toHaveLength(0);
@@ -711,7 +700,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       await expect(
         getSurveysForContact(
-          { entityId: 'entity_123' },
+          'entity_123',
           'workspace_1'
         )
       ).rejects.toThrow('Firestore query failed');
@@ -723,7 +712,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       await expect(
         getSurveyResponsesForContact(
           'survey_1',
-          { entityId: 'entity_123' }
+          'entity_123'
         )
       ).rejects.toThrow('Query failed');
     });

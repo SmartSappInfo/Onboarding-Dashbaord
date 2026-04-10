@@ -27,16 +27,18 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Module } from '@/lib/types';
+import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GripVertical, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Loader2, Pencil, Layers } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -151,11 +153,16 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
 export default function ModuleEditor() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { activeOrganizationId } = useTenant();
   
   const modulesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'modules'), orderBy('order', 'asc'));
-  }, [firestore]);
+    if (!firestore || !activeOrganizationId) return null;
+    return query(
+      collection(firestore, 'modules'), 
+      where('organizationId', '==', activeOrganizationId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, activeOrganizationId]);
   const { data: modules, isLoading } = useCollection<Module>(modulesQuery);
   
   const [localModules, setLocalModules] = React.useState<Module[]>([]);
@@ -206,7 +213,8 @@ export default function ModuleEditor() {
         abbreviation: newModuleName.trim().substring(0, 3).toUpperCase(),
         color: ONBOARDING_STAGE_COLORS[Math.floor(Math.random() * ONBOARDING_STAGE_COLORS.length)],
         description: '', 
-        order: maxOrder + 1 
+        order: maxOrder + 1,
+        organizationId: activeOrganizationId
     };
 
     try {
@@ -284,14 +292,19 @@ export default function ModuleEditor() {
   
   return (
     <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Module Management</CardTitle>
-                <CardDescription>
-                Manage the available SmartSapp modules. Drag to reorder, double-click to edit name.
-                </CardDescription>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                        <Layers className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Product Management</CardTitle>
+                        <CardDescription className="text-xs font-medium">Define and organize the core product modules available within your workspace environment.</CardDescription>
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-6 space-y-4 text-left">
                 {isLoading ? (
                 <div className="space-y-2">
                     <Skeleton className="h-20 w-full" />

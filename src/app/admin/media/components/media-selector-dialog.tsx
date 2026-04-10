@@ -33,13 +33,26 @@ interface MediaSelectorDialogProps {
   onOpenChange: (open: boolean) => void;
   onSelectAsset: (asset: MediaAsset) => void;
   filterType?: MediaAsset['type'];
+  workspaceId?: string; // Optional: restrict to specific workspace
+  title?: string;
+  description?: string;
 }
 
-export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset, filterType }: MediaSelectorDialogProps) {
+export default function MediaSelectorDialog({ 
+  open, 
+  onOpenChange, 
+  onSelectAsset, 
+  filterType,
+  workspaceId: forcedWorkspaceId,
+  title = "Media Library",
+  description
+}: MediaSelectorDialogProps) {
   const firestore = useFirestore();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, isSuperAdmin } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(filterType || 'image');
+  
+  const effectiveWorkspaceId = forcedWorkspaceId || activeWorkspaceId;
 
   const mediaCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -47,14 +60,22 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
   }, [firestore]);
 
   const mediaQuery = useMemoFirebase(() => {
-    if (!mediaCol || !activeWorkspaceId) return null;
-    return query(
-        mediaCol, 
-        where('workspaceIds', 'array-contains', activeWorkspaceId),
-        where('type', '==', activeTab),
-        orderBy('createdAt', 'desc')
-    );
-  }, [mediaCol, activeWorkspaceId, activeTab]);
+    if (!mediaCol) return null;
+    
+    // Base query filtered by type
+    let q = query(mediaCol, where('type', '==', activeTab), orderBy('createdAt', 'desc'));
+
+    // Apply workspace filter only if we're not in a "global" super-admin context
+    // OR if a specific workspace was requested.
+    if (effectiveWorkspaceId) {
+        q = query(mediaCol, where('workspaceIds', 'array-contains', effectiveWorkspaceId), where('type', '==', activeTab), orderBy('createdAt', 'desc'));
+    } else if (!isSuperAdmin) {
+        // If not super admin and no active workspace, they shouldn't see anything
+        return null;
+    }
+
+    return q;
+  }, [mediaCol, effectiveWorkspaceId, activeTab, isSuperAdmin]);
   
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
@@ -75,9 +96,12 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
         <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30 shrink-0">
-          <DialogTitle className="text-2xl font-black uppercase tracking-tight">Media Library</DialogTitle>
+          <DialogTitle className="text-2xl font-black uppercase tracking-tight">{title}</DialogTitle>
           <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">
-            Choose an institutional asset for the <strong>{activeWorkspaceId}</strong> workspace or upload a new one.
+            {description || (effectiveWorkspaceId 
+                ? `Choose an institutional asset for the ${effectiveWorkspaceId} workspace or upload a new one.`
+                : "Browse available assets across the platform."
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -110,7 +134,7 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                         <AddLinkButton />
-                        <UploadButton />
+                        <UploadButton workspaceId={effectiveWorkspaceId} />
                     </div>
                 </div>
             </div>

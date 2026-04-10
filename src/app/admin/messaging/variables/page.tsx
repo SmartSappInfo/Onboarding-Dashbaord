@@ -7,6 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { VariableDefinition, MessageTemplate, Survey, PDFForm } from '@/lib/types';
 import { syncVariableRegistry, upsertConstantVariable, deleteVariable, updateVariableVisibility } from '@/lib/messaging-actions';
 import { useToast } from '@/hooks/use-toast';
+import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,6 +61,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export default function VariableRegistryPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { singular, plural } = useTerminology();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [isSyncing, setIsSyncing] = React.useState(false);
     
@@ -438,7 +440,7 @@ export default function VariableRegistryPage() {
                             <div className="bg-white p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
                                 <TabsList className="bg-transparent h-10 gap-1">
                                     <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <Building className="h-3 w-3" /> Schools
+                                        <Building className="h-3 w-3" /> {plural}
                                     </TabsTrigger>
                                     <TabsTrigger value="finance" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Banknote className="h-3 w-3" /> Finance Hub
