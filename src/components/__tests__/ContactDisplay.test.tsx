@@ -46,7 +46,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
     });
 
-    it('should display contact using schoolId from legacy contact', async () => {
+    it('should display contact using entityId from legacy contact', async () => {
       const mockContact: ResolvedContact = {
         id: 'school_789',
         name: 'Legacy School',
@@ -66,7 +66,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
 
       render(
         <ContactDisplay
-          schoolId="school_789"
+          entityId="school_789"
           workspaceId={mockWorkspaceId}
           showLegacyBadge
         />
@@ -79,7 +79,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       expect(resolveContact).toHaveBeenCalledWith('school_789', mockWorkspaceId);
     });
 
-    it('should prefer entityId over schoolId when both provided', async () => {
+    it('should prefer entityId over entityId when both provided', async () => {
       const mockContact: ResolvedContact = {
         id: 'entity_456',
         name: 'Migrated Contact',
@@ -97,7 +97,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       render(
         <ContactDisplay
           entityId="entity_456"
-          schoolId="school_789"
+          entityId="school_789"
           workspaceId={mockWorkspaceId}
         />
       );
@@ -106,7 +106,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Migrated Contact')).toBeInTheDocument();
       });
 
-      // Should resolve using entityId, not schoolId
+      // Should resolve using entityId, not entityId
       expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
     });
   });
@@ -254,7 +254,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
 
       render(
         <ContactDisplay
-          schoolId="school_789"
+          entityId="school_789"
           workspaceId={mockWorkspaceId}
           showLegacyBadge
         />
@@ -331,7 +331,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       expect(screen.queryByText('legacy')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy contact with schoolId', async () => {
+    it('should handle legacy contact with entityId', async () => {
       const mockContact: ResolvedContact = {
         id: 'school_789',
         name: 'Legacy School',
@@ -351,7 +351,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
 
       render(
         <ContactDisplay
-          schoolId="school_789"
+          entityId="school_789"
           workspaceId={mockWorkspaceId}
           showType
           showLegacyBadge
@@ -380,10 +380,10 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       expect(screen.getByText('family')).toBeInTheDocument();
     });
 
-    it('should fallback to schoolName when displayName not provided', () => {
+    it('should fallback to entityName when displayName not provided', () => {
       render(
         <ContactDisplay
-          schoolName="School Name Fallback"
+          entityName="School Name Fallback"
           entityType="institution"
           workspaceId={mockWorkspaceId}
         />
@@ -513,7 +513,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
 
       render(
         <ContactDisplayInline
-          schoolId="school_789"
+          entityId="school_789"
           workspaceId={mockWorkspaceId}
           showType
           showLegacyBadge
@@ -546,11 +546,11 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should handle null entityId and schoolId', () => {
+    it('should handle null entityId and entityId', () => {
       render(
         <ContactDisplay
           entityId={null}
-          schoolId={null}
+          entityId={null}
           workspaceId={mockWorkspaceId}
         />
       );
@@ -558,7 +558,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       expect(screen.getByText('No contact')).toBeInTheDocument();
     });
 
-    it('should handle undefined entityId and schoolId', () => {
+    it('should handle undefined entityId and entityId', () => {
       render(
         <ContactDisplay
           workspaceId={mockWorkspaceId}

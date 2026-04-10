@@ -43,7 +43,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   
   const { data: meeting, isLoading: isLoadingMeeting, error: meetingError } = useDoc<Meeting>(meetingDocRef);
 
-  useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}/registrants`);
+  useSetBreadcrumb(meeting?.entityName, `/admin/meetings/${meetingId}/registrants`);
 
   // Fetch Registrants
   const registrantsColRef = useMemoFirebase(() => {
@@ -124,7 +124,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `registrants-${meeting?.schoolSlug || 'meeting'}-${format(new Date(), 'yyyyMMdd')}.csv`;
+    link.download = `registrants-${meeting?.entitySlug || 'meeting'}-${format(new Date(), 'yyyyMMdd')}.csv`;
     link.click();
   };
 
@@ -165,7 +165,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
                         {meeting?.type?.name || 'Meeting'}
                     </Badge>
                 </div>
-                <h1 className="text-3xl font-black tracking-tight uppercase leading-none">{meeting?.schoolName} Registrants</h1>
+                <h1 className="text-3xl font-black tracking-tight uppercase leading-none">{meeting?.entityName} Registrants</h1>
                 <p className="text-sm font-medium text-muted-foreground mt-2 flex items-center gap-2">
                     <Calendar className="h-4 w-4" /> {meeting?.meetingTime ? format(new Date(meeting.meetingTime), 'PPPP') : 'Date TBD'}
                 </p>

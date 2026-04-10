@@ -117,8 +117,8 @@ export async function enrichAndRestorePortals(firestore: Firestore): Promise<num
             };
 
             // Logic: If school-bound, inherit its workspace track(s)
-            if (data.schoolId) {
-                const schoolSnap = await getDoc(doc(firestore, 'schools', data.schoolId));
+            if (data.entityId) {
+                const schoolSnap = await getDoc(doc(firestore, 'schools', data.entityId));
                 if (schoolSnap.exists()) {
                     const schoolData = schoolSnap.data();
                     updates.workspaceIds = schoolData.workspaceIds || ['onboarding'];

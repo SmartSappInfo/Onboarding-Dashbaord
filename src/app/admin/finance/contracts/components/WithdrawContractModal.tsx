@@ -68,7 +68,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                 for (const pdfDoc of pdfsSnap.docs) {
                     const pdfData = pdfDoc.data();
                     const subCol = collection(firestore, `pdfs/${pdfDoc.id}/submissions`);
-                    const subQuery = query(subCol, where('schoolId', '==', school.id));
+                    const subQuery = query(subCol, where('entityId', '==', school.id));
                     const subSnap = await getDocs(subQuery);
                     
                     subSnap.forEach(subDoc => {
@@ -100,7 +100,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
         
         try {
             // High-fidelity server-side purge
-            const result = await purgeContractAction({ schoolId: school.id }, selectedSubIds, 'current-user-placeholder');
+            const result = await purgeContractAction({ entityId: school.id }, selectedSubIds, 'current-user-placeholder');
             
             if (result.success) {
                 toast({ title: 'Records Purged', description: 'Legal history has been successfully sanitized.' });

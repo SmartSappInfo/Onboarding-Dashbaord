@@ -204,7 +204,7 @@ describe('sendMessage - Workspace Tag Resolution', () => {
       senderProfileId: 'sender_1',
       recipient: 'recipient@example.com',
       variables: {},
-      schoolId: 'school_1',
+      entityId: 'school_1',
     });
 
     // Verify success
@@ -340,7 +340,7 @@ describe('sendMessage - Workspace Tag Resolution', () => {
       senderProfileId: 'sender_1',
       recipient: 'recipient@example.com',
       variables: {},
-      schoolId: 'school_1',
+      entityId: 'school_1',
     });
 
     // Verify success

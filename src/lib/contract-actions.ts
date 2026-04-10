@@ -15,8 +15,8 @@ import type { Contract, ContractStatus } from './types';
  * Initializes or updates a contract draft for a school.
  */
 export async function upsertContractAction(data: {
-    schoolId: string;
-    schoolName: string;
+    entityId: string;
+    entityName: string;
     pdfId: string;
     pdfName: string;
     status: ContractStatus;
@@ -26,7 +26,7 @@ export async function upsertContractAction(data: {
     try {
         const contractsCol = adminDb.collection('contracts');
         // Check for existing contract for this school
-        const querySnap = await contractsCol.where('schoolId', '==', data.schoolId).limit(1).get();
+        const querySnap = await contractsCol.where('entityId', '==', data.entityId).limit(1).get();
         
         const timestamp = new Date().toISOString();
         let contractId = '';
@@ -63,8 +63,8 @@ export async function upsertContractAction(data: {
  */
 export async function sendContractAction(input: {
     contractId: string;
-    schoolId: string;
-    schoolName: string;
+    entityId: string;
+    entityName: string;
     emailTemplateId?: string;
     smsTemplateId?: string;
     recipients: { name: string; email?: string; phone?: string; type: string }[];
@@ -73,14 +73,14 @@ export async function sendContractAction(input: {
     workspaceId?: string; // Workspace context (Requirement 11)
 }) {
     try {
-        const { contractId, emailTemplateId, smsTemplateId, recipients, schoolId, schoolName, userId, publicUrl, workspaceId } = input;
+        const { contractId, emailTemplateId, smsTemplateId, recipients, entityId, entityName, userId, publicUrl, workspaceId } = input;
 
         // 1. Prepare Dispatches
         const dispatchPromises: Promise<any>[] = [];
 
         recipients.forEach(recipient => {
             const baseVars = {
-                school_name: schoolName,
+                school_name: entityName,
                 contact_name: recipient.name,
                 agreement_url: publicUrl,
                 contract_link: publicUrl,
@@ -95,7 +95,7 @@ export async function sendContractAction(input: {
                     senderProfileId: 'default', // Fallback to default sender
                     recipient: recipient.email,
                     variables: baseVars,
-                    schoolId,
+                    entityId,
                     workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
                 }));
             }
@@ -107,7 +107,7 @@ export async function sendContractAction(input: {
                     senderProfileId: 'default',
                     recipient: recipient.phone,
                     variables: baseVars,
-                    schoolId,
+                    entityId,
                     workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
                 }));
             }
@@ -127,13 +127,13 @@ export async function sendContractAction(input: {
 
         // 3. Log to Timeline
         await logActivity({
-            schoolId,
+            entityId,
             organizationId: 'default',
             userId,
             workspaceId: "onboarding",
             type: 'notification_sent',
             source: 'user_action',
-            description: `dispatched legal agreements via dual-channel to ${recipients.length} recipients for "${schoolName}"`
+            description: `dispatched legal agreements via dual-channel to ${recipients.length} recipients for "${entityName}"`
         });
 
         revalidatePath('/admin/finance/contracts');
@@ -154,14 +154,14 @@ export async function deleteContractAction(
     contractId: string,
     pdfId: string,
     submissionId: string | null,
-    identifier: { schoolId?: string; entityId?: string },
+    identifier: { entityId?: string; entityId?: string },
     userId: string
 ) {
     try {
         const batch = adminDb.batch();
         
-        // Support both schoolId and entityId (Requirement 25.1)
-        const schoolId = identifier.schoolId;
+        // Support both entityId and entityId (Requirement 25.1)
+        const entityId = identifier.entityId;
         const entityId = identifier.entityId;
         
         // 1. Delete primary Contract doc
@@ -176,7 +176,6 @@ export async function deleteContractAction(
 
         // 3. Log activity for audit trail with both identifiers (Requirement 25.2)
         await logActivity({
-            schoolId: schoolId || undefined,
             entityId: entityId || undefined,
             organizationId: 'default',
             userId,

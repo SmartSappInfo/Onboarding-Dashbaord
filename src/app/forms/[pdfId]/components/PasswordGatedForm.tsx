@@ -66,7 +66,7 @@ export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedForm
               </div>
               <DialogTitle className="text-center font-black uppercase tracking-tight">{pdfForm.publicTitle || pdfForm.name}</DialogTitle>
               <DialogDescription className="text-center text-xs font-medium uppercase tracking-widest">
-                This document from <strong>{school?.name || pdfForm.schoolName || 'SmartSapp'}</strong> is password protected.
+                This document from <strong>{school?.name || pdfForm.entityName || 'SmartSapp'}</strong> is password protected.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>

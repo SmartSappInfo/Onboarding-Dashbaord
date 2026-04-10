@@ -51,7 +51,7 @@ import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
-import SchoolBillingTab from '../components/SchoolBillingTab';
+import EntityBillingTab from '../components/EntityBillingTab';
 import { MediaSelect } from '../components/media-select';
 import { getPrimaryWorkspaceId, isProspect as checkIsProspect } from '@/lib/workspace-helpers';
 import {
@@ -88,7 +88,7 @@ export default function SchoolDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
-    const schoolId = params.id as string;
+    const entityId = params.id as string;
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
     const { activeWorkspaceId } = useWorkspace();
@@ -102,9 +102,9 @@ export default function SchoolDetailPage() {
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
-        if (!firestore || !schoolId) return null;
-        return doc(firestore, 'schools', schoolId);
-    }, [firestore, schoolId]);
+        if (!firestore || !entityId) return null;
+        return doc(firestore, 'schools', entityId);
+    }, [firestore, entityId]);
 
     const { data: school, isLoading } = useDoc<School>(schoolDocRef);
 
@@ -114,13 +114,13 @@ export default function SchoolDetailPage() {
 
     React.useEffect(() => {
         async function loadContactData() {
-            if (!schoolId || !activeWorkspaceId) return;
+            if (!entityId || !activeWorkspaceId) return;
             
             setIsResolvingContact(true);
             try {
-                // Try to resolve by entityId first, fallback to schoolId
+                // Try to resolve by entityId first, fallback to entityId
                 const contact = await resolveContact(
-                    { schoolId, entityId: school?.entityId },
+                    { entityId },
                     activeWorkspaceId
                 );
                 setResolvedContact(contact);
@@ -135,19 +135,20 @@ export default function SchoolDetailPage() {
         if (school) {
             loadContactData();
         }
-    }, [school, schoolId, activeWorkspaceId]);
+    }, [school, entityId, activeWorkspaceId]);
 
     // Tasks Subscription for this school
     const tasksQuery = useMemoFirebase(() => {
-        if (!firestore || !schoolId) return null;
+        if (!firestore || !entityId || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'tasks'),
-            where('schoolId', '==', schoolId),
+            where('workspaceId', '==', activeWorkspaceId),
+            where('entityId', '==', entityId),
             where('status', '!=', 'done'),
             orderBy('status'),
             orderBy('dueDate', 'asc')
         );
-    }, [firestore, schoolId]);
+    }, [firestore, entityId, activeWorkspaceId]);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
     // Tags subscription
@@ -163,20 +164,20 @@ export default function SchoolDetailPage() {
 
     // Tag audit log for this school
     const tagAuditQuery = useMemoFirebase(() => {
-        if (!firestore || !schoolId) return null;
+        if (!firestore || !entityId) return null;
         return query(
             collection(firestore, 'tag_audit_logs'),
-            where('contactId', '==', schoolId),
+            where('contactId', '==', entityId),
             orderBy('timestamp', 'desc')
         );
-    }, [firestore, schoolId]);
+    }, [firestore, entityId]);
     const { data: tagAuditLogs } = useCollection<TagAuditLog>(tagAuditQuery);
 
     // Navigation Entity Resolution
     useSetBreadcrumb(resolvedContact?.name || school?.name);
 
     if (isLoading || isResolvingContact) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
-    if (!school || !resolvedContact) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/schools')}>Back to List</Button></div>;
+    if (!school || !resolvedContact) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {
@@ -256,7 +257,7 @@ export default function SchoolDetailPage() {
                             <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
                             Log Interaction
                         </Button>
-                        <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                        <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/entities/${school.id}/edit`)}>
                             <PenSquare className="mr-2 h-4 w-4" /> 
                             Edit Profile
                         </Button>
@@ -415,7 +416,7 @@ export default function SchoolDetailPage() {
                         <div className="flex justify-between items-center mb-2 px-2">
                             <h3 className="text-xl font-black uppercase tracking-tight">Active Tasks</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
-                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${getPrimaryWorkspaceId(school)}`}>
+                                <Link href={`/admin/tasks?entityId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}&track=${getPrimaryWorkspaceId(school)}`}>
                                     <Plus className="h-4 w-4" /> Create Task
                                 </Link>
                             </Button>
@@ -451,7 +452,7 @@ export default function SchoolDetailPage() {
 
                     {!isProspect && (
                         <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                            <SchoolBillingTab school={school} />
+                            <EntityBillingTab school={school} />
                         </TabsContent>
                     )}
 
@@ -464,7 +465,7 @@ export default function SchoolDetailPage() {
                                 </div>
                                 <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                             </div>
-                            <ActivityTimeline schoolId={school.id} limit={20} />
+                            <ActivityTimeline entityId={school.id} limit={20} />
                         </div>
                     </TabsContent>
                 </Tabs>

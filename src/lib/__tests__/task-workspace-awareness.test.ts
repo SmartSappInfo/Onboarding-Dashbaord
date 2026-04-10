@@ -8,7 +8,7 @@
  * - 13.2: Task creation requires workspaceId
  * - 13.3: Task list view filters by workspaceId
  * - 13.4: Dual-write for legacy schools records
- * - 13.5: Both schoolId (legacy) and entityId (new) populated
+ * - 13.5: Both entityId (legacy) and entityId (new) populated
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -108,7 +108,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
   });
 
   describe('13.4 & 13.5: Dual-write for legacy schools records', () => {
-    it('should populate both schoolId and entityId when creating task for migrated school', async () => {
+    it('should populate both entityId and entityId when creating task for migrated school', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'task_123' });
       (adminDb.collection as any).mockReturnValue({ add: mockAdd });
@@ -135,7 +135,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
         assignedTo: 'user_1',
-        schoolId: 'school_123', // Legacy field
+        entityId: 'school_123', // Legacy field
         dueDate: new Date().toISOString(),
         reminders: [],
         reminderSent: false,
@@ -146,11 +146,11 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
 
-      // Verify both schoolId and entityId are populated (dual-write)
+      // Verify both entityId and entityId are populated (dual-write)
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123', // Legacy field maintained
-          schoolName: 'Test Institution',
+          entityId: 'school_123', // Legacy field maintained
+          entityName: 'Test Institution',
           entityId: 'entity_456', // New field populated
           entityType: 'institution',
         })
@@ -183,7 +183,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
         assignedTo: 'user_1',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         dueDate: new Date().toISOString(),
         reminders: [],
         reminderSent: false,
@@ -191,11 +191,11 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
 
       await createTaskAction(taskData);
 
-      // Verify schoolId is maintained, entityId is null for legacy records
+      // Verify entityId is maintained, entityId is null for legacy records
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123',
-          schoolName: 'Legacy School',
+          entityId: 'school_123',
+          entityName: 'Legacy School',
           entityId: null, // No entity for legacy records
           entityType: null,
         })
@@ -226,15 +226,15 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
       // Verify no contact fields are set
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolName: null,
+          entityName: null,
           entityId: null,
           entityType: null,
         })
       );
       
-      // Verify schoolId is not in the object (or is undefined/null)
+      // Verify entityId is not in the object (or is undefined/null)
       const callArgs = mockAdd.mock.calls[0][0];
-      expect(callArgs.schoolId).toBeUndefined();
+      expect(callArgs.entityId).toBeUndefined();
     });
   });
 

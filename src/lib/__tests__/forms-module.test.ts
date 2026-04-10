@@ -1,7 +1,7 @@
 /**
  * Unit Tests for Forms Module Migration (Task 15)
  * 
- * Tests the migration of the Forms/Surveys module from schoolId to entityId.
+ * Tests the migration of the Forms/Surveys module from entityId to entityId.
  * Covers survey creation, submission, and query functions with dual-write pattern.
  * 
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 22.1, 22.3, 23.1
@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('Forms Module Migration - Survey Creation', () => {
-  it('should create survey with both schoolId and entityId (dual-write)', () => {
+  it('should create survey with both entityId and entityId (dual-write)', () => {
     // Requirement 7.1: Survey creation uses entityId
     // Requirement 7.2: Survey submission populates both identifiers
     const survey = {
@@ -25,14 +25,14 @@ describe('Forms Module Migration - Survey Creation', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       // Dual-write fields
-      schoolId: 'school_123',
-      schoolName: 'Test School',
+      entityId: 'school_123',
+      entityName: 'Test School',
       entityId: 'entity_123',
     };
 
-    expect(survey.schoolId).toBe('school_123');
+    expect(survey.entityId).toBe('school_123');
     expect(survey.entityId).toBe('entity_123');
-    expect(survey.schoolName).toBe('Test School');
+    expect(survey.entityName).toBe('Test School');
   });
 
   it('should create survey with entityId only (new entity)', () => {
@@ -48,18 +48,18 @@ describe('Forms Module Migration - Survey Creation', () => {
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // Only entityId (no legacy schoolId)
-      schoolId: null,
-      schoolName: null,
+      // Only entityId (no legacy entityId)
+      entityId: null,
+      entityName: null,
       entityId: 'entity_456',
     };
 
     expect(survey.entityId).toBe('entity_456');
-    expect(survey.schoolId).toBeNull();
+    expect(survey.entityId).toBeNull();
   });
 
-  it('should create survey with schoolId only (legacy)', () => {
-    // Backward compatibility: legacy surveys with only schoolId
+  it('should create survey with entityId only (legacy)', () => {
+    // Backward compatibility: legacy surveys with only entityId
     const survey = {
       id: 'survey_3',
       workspaceIds: ['workspace_1'],
@@ -71,13 +71,13 @@ describe('Forms Module Migration - Survey Creation', () => {
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // Only schoolId (legacy)
-      schoolId: 'school_789',
-      schoolName: 'Legacy School',
+      // Only entityId (legacy)
+      entityId: 'school_789',
+      entityName: 'Legacy School',
       entityId: null,
     };
 
-    expect(survey.schoolId).toBe('school_789');
+    expect(survey.entityId).toBe('school_789');
     expect(survey.entityId).toBeNull();
   });
 
@@ -95,18 +95,18 @@ describe('Forms Module Migration - Survey Creation', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       // No contact association
-      schoolId: null,
-      schoolName: null,
+      entityId: null,
+      entityName: null,
       entityId: null,
     };
 
-    expect(survey.schoolId).toBeNull();
+    expect(survey.entityId).toBeNull();
     expect(survey.entityId).toBeNull();
   });
 });
 
 describe('Forms Module Migration - Survey Response Submission', () => {
-  it('should submit response with both schoolId and entityId (dual-write)', () => {
+  it('should submit response with both entityId and entityId (dual-write)', () => {
     // Requirement 7.2: Survey submission populates both identifiers
     const response = {
       id: 'response_1',
@@ -118,12 +118,11 @@ describe('Forms Module Migration - Survey Response Submission', () => {
         { questionId: 'q2', value: 'Excellent' },
       ],
       // Dual-write fields
-      schoolId: 'school_123',
       entityId: 'entity_123',
       entityType: 'institution' as const,
     };
 
-    expect(response.schoolId).toBe('school_123');
+    expect(response.entityId).toBe('school_123');
     expect(response.entityId).toBe('entity_123');
     expect(response.entityType).toBe('institution');
   });
@@ -139,17 +138,16 @@ describe('Forms Module Migration - Survey Response Submission', () => {
         { questionId: 'q1', value: 'No' },
       ],
       // Only entityId
-      schoolId: null,
       entityId: 'entity_456',
       entityType: 'family' as const,
     };
 
     expect(response.entityId).toBe('entity_456');
     expect(response.entityType).toBe('family');
-    expect(response.schoolId).toBeNull();
+    expect(response.entityId).toBeNull();
   });
 
-  it('should submit response with schoolId only (legacy)', () => {
+  it('should submit response with entityId only (legacy)', () => {
     // Backward compatibility: legacy responses
     const response = {
       id: 'response_3',
@@ -159,13 +157,12 @@ describe('Forms Module Migration - Survey Response Submission', () => {
       answers: [
         { questionId: 'q1', value: 'Maybe' },
       ],
-      // Only schoolId (legacy)
-      schoolId: 'school_789',
+      // Only entityId (legacy)
       entityId: null,
       entityType: undefined,
     };
 
-    expect(response.schoolId).toBe('school_789');
+    expect(response.entityId).toBe('school_789');
     expect(response.entityId).toBeNull();
   });
 
@@ -180,12 +177,11 @@ describe('Forms Module Migration - Survey Response Submission', () => {
         { questionId: 'q1', value: 'Good' },
       ],
       // No contact association
-      schoolId: null,
       entityId: null,
       entityType: undefined,
     };
 
-    expect(response.schoolId).toBeNull();
+    expect(response.entityId).toBeNull();
     expect(response.entityId).toBeNull();
   });
 });
@@ -197,20 +193,17 @@ describe('Forms Module Migration - Query Functions', () => {
     const surveys = [
       {
         id: 'survey_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         title: 'Survey 1',
       },
       {
         id: 'survey_2',
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
         title: 'Survey 2',
       },
       {
         id: 'survey_3',
-        entityId: null,
-        schoolId: 'school_789',
+        entityId: 'school_789',
         title: 'Survey 3',
       },
     ];
@@ -221,57 +214,52 @@ describe('Forms Module Migration - Query Functions', () => {
     expect(entitySurveys[0].id).toBe('survey_1');
   });
 
-  it('should query surveys by schoolId (fallback)', () => {
-    // Requirement 7.5: Query by schoolId for backward compatibility
-    // Requirement 22.1: Support schoolId fallback
+  it('should query surveys by entityId (fallback)', () => {
+    // Requirement 7.5: Query by entityId for backward compatibility
+    // Requirement 22.1: Support entityId fallback
     const surveys = [
       {
         id: 'survey_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         title: 'Survey 1',
       },
       {
         id: 'survey_2',
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
         title: 'Survey 2',
       },
       {
         id: 'survey_3',
-        entityId: null,
-        schoolId: 'school_789',
+        entityId: 'school_789',
         title: 'Survey 3',
       },
     ];
 
-    // Query by schoolId (fallback for legacy)
-    const schoolSurveys = surveys.filter(s => s.schoolId === 'school_789');
+    // Query by entityId (fallback for legacy)
+    const schoolSurveys = surveys.filter(s => s.entityId === 'school_789');
     expect(schoolSurveys).toHaveLength(1);
     expect(schoolSurveys[0].id).toBe('survey_3');
   });
 
   it('should prefer entityId when both identifiers provided', () => {
-    // Requirement 22.1: Prefer entityId over schoolId
+    // Requirement 22.1: Prefer entityId over entityId
     const surveys = [
       {
         id: 'survey_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         title: 'Survey 1',
       },
       {
         id: 'survey_2',
-        entityId: 'entity_456',
-        schoolId: 'school_456',
+        entityId: 'school_456',
         title: 'Survey 2',
       },
     ];
 
     // Query with both identifiers - should prefer entityId
-    const contactId = { entityId: 'entity_123', schoolId: 'school_999' };
+    const contactId = { entityId: 'school_999' };
     const result = surveys.filter(s => 
-      contactId.entityId ? s.entityId === contactId.entityId : s.schoolId === contactId.schoolId
+      contactId.entityId ? s.entityId === contactId.entityId : s.entityId === contactId.entityId
     );
 
     expect(result).toHaveLength(1);
@@ -284,20 +272,17 @@ describe('Forms Module Migration - Query Functions', () => {
       {
         id: 'response_1',
         surveyId: 'survey_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
       },
       {
         id: 'response_2',
         surveyId: 'survey_1',
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
       },
       {
         id: 'response_3',
         surveyId: 'survey_2',
-        entityId: null,
-        schoolId: 'school_789',
+        entityId: 'school_789',
       },
     ];
 
@@ -307,31 +292,28 @@ describe('Forms Module Migration - Query Functions', () => {
     expect(entityResponses[0].id).toBe('response_1');
   });
 
-  it('should query survey responses by schoolId (fallback)', () => {
-    // Requirement 7.5: Query responses by schoolId for backward compatibility
+  it('should query survey responses by entityId (fallback)', () => {
+    // Requirement 7.5: Query responses by entityId for backward compatibility
     const responses = [
       {
         id: 'response_1',
         surveyId: 'survey_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
       },
       {
         id: 'response_2',
         surveyId: 'survey_1',
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
       },
       {
         id: 'response_3',
         surveyId: 'survey_2',
-        entityId: null,
-        schoolId: 'school_789',
+        entityId: 'school_789',
       },
     ];
 
-    // Query responses by schoolId (fallback)
-    const schoolResponses = responses.filter(r => r.schoolId === 'school_789');
+    // Query responses by entityId (fallback)
+    const schoolResponses = responses.filter(r => r.entityId === 'school_789');
     expect(schoolResponses).toHaveLength(1);
     expect(schoolResponses[0].id).toBe('response_3');
   });
@@ -366,12 +348,12 @@ describe('Forms Module Migration - Data Integrity', () => {
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      schoolId: null,
-      schoolName: null,
+      entityId: null,
+      entityName: null,
       entityId: null,
     };
 
-    expect(survey.schoolId).toBeNull();
+    expect(survey.entityId).toBeNull();
     expect(survey.entityId).toBeNull();
   });
 
@@ -379,7 +361,6 @@ describe('Forms Module Migration - Data Integrity', () => {
     // Requirement 3.2: Preserve identifiers during updates
     const originalSurvey = {
       id: 'survey_1',
-      schoolId: 'school_123',
       entityId: 'entity_123',
       title: 'Original Title',
     };
@@ -390,7 +371,7 @@ describe('Forms Module Migration - Data Integrity', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    expect(updatedSurvey.schoolId).toBe(originalSurvey.schoolId);
+    expect(updatedSurvey.entityId).toBe(originalSurvey.entityId);
     expect(updatedSurvey.entityId).toBe(originalSurvey.entityId);
     expect(updatedSurvey.title).toBe('Updated Title');
   });
@@ -409,8 +390,7 @@ describe('Forms Module Migration - Edge Cases', () => {
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      entityId: 'entity_123',
-      schoolId: null,
+      entityId: null,
     };
 
     expect(survey.elements).toHaveLength(0);
@@ -423,8 +403,7 @@ describe('Forms Module Migration - Edge Cases', () => {
       surveyId: 'survey_1',
       submittedAt: new Date().toISOString(),
       answers: [],
-      entityId: 'entity_123',
-      schoolId: null,
+      entityId: null,
     };
 
     expect(response.answers).toHaveLength(0);
@@ -443,8 +422,7 @@ describe('Forms Module Migration - Edge Cases', () => {
       elements: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      entityId: 'entity_123',
-      schoolId: 'school_123',
+      entityId: 'school_123',
     };
 
     expect(survey.workspaceIds).toHaveLength(3);
@@ -460,8 +438,7 @@ describe('Forms Module Migration - Contact Adapter Integration', () => {
     // Requirement 23.1: UI components use Contact Adapter
     const survey = {
       id: 'survey_1',
-      entityId: 'entity_123',
-      schoolId: 'school_123',
+      entityId: 'school_123',
       title: 'Customer Feedback',
     };
 
@@ -486,9 +463,8 @@ describe('Forms Module Migration - Contact Adapter Integration', () => {
     // Requirement 23.1: Adapter handles legacy surveys
     const survey = {
       id: 'survey_2',
-      entityId: null,
-      schoolId: 'school_789',
-      schoolName: 'Legacy School',
+      entityId: 'school_789',
+      entityName: 'Legacy School',
       title: 'Old Survey',
     };
 
@@ -506,7 +482,7 @@ describe('Forms Module Migration - Contact Adapter Integration', () => {
       },
     };
 
-    expect(resolvedContact.id).toBe(survey.schoolId);
+    expect(resolvedContact.id).toBe(survey.entityId);
     expect(resolvedContact.migrationStatus).toBe('legacy');
   });
 });

@@ -3,7 +3,7 @@
  * 
  * Tests the verify operation implementation without mocks to ensure it correctly:
  * - Counts records with entityId (migrated)
- * - Counts records with schoolId but no entityId (unmigrated)
+ * - Counts records with entityId but no entityId (unmigrated)
  * - Checks for orphaned records (entityId doesn't exist in entities collection)
  * - Validates all migrated records have valid entityId and entityType
  * - Returns detailed verification report
@@ -77,19 +77,19 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        schoolId: 'school1',
+        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
         entityId: 'entity_test_2',
         entityType: 'family',
-        schoolId: 'school2',
+        entityId: 'school2',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task3'), {
         title: 'Task 3',
-        schoolId: 'school3', // Unmigrated
+        entityId: 'school3', // Unmigrated
       });
 
       // Create corresponding entities
@@ -115,29 +115,29 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
     });
   });
 
-  describe('Requirement 20.2: Count records with schoolId but no entityId (unmigrated)', () => {
+  describe('Requirement 20.2: Count records with entityId but no entityId (unmigrated)', () => {
     it('should correctly count unmigrated records', async () => {
       // Setup: Create mix of migrated and unmigrated records
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        schoolId: 'school1',
+        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
-        schoolId: 'school2', // Unmigrated
+        entityId: 'school2', // Unmigrated
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task3'), {
         title: 'Task 3',
-        schoolId: 'school3', // Unmigrated
+        entityId: 'school3', // Unmigrated
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task4'), {
         title: 'Task 4',
-        schoolId: 'school4', // Unmigrated
+        entityId: 'school4', // Unmigrated
       });
 
       // Create entity for migrated record
@@ -165,14 +165,14 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_orphaned',
         entityType: 'institution',
-        schoolId: 'school1',
+        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
         entityId: 'entity_test_2',
         entityType: 'family',
-        schoolId: 'school2',
+        entityId: 'school2',
       });
 
       // Create entity only for task2
@@ -366,13 +366,13 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        schoolId: 'school1',
+        entityId: 'school1',
       });
 
       // 2. Unmigrated record
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
-        schoolId: 'school2',
+        entityId: 'school2',
       });
 
       // 3. Orphaned record
@@ -418,7 +418,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         collection: testCollectionName,
         totalRecords: 5,
         migratedRecords: 4, // task1, task3, task4, task5 have entityId
-        unmigratedRecords: 1, // task2 only has schoolId
+        unmigratedRecords: 1, // task2 only has entityId
         orphanedRecords: 1, // task3 has non-existent entity
       });
 
@@ -501,7 +501,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       });
     });
 
-    it('should handle records with neither schoolId nor entityId', async () => {
+    it('should handle records with neither entityId nor entityId', async () => {
       // Setup: Create record without identifiers
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',

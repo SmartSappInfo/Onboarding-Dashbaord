@@ -146,9 +146,9 @@ export async function ingestSchoolRowAction(
         const docRef = await adminDb.collection('schools').add(schoolData);
 
         await logActivity({
-            schoolId: docRef.id,
-            schoolName: schoolData.name,
-            schoolSlug: schoolData.slug,
+            entityId: docRef.id,
+            entityName: schoolData.name,
+            entitySlug: schoolData.slug,
             organizationId: 'default',
             userId,
             workspaceId: 'onboarding',
@@ -157,10 +157,10 @@ export async function ingestSchoolRowAction(
             description: `Ingested school record from "${filename}"`
         });
 
-        revalidatePath('/admin/schools');
+        revalidatePath('/admin/entities');
         revalidatePath('/admin/pipeline');
         
-        return { success: true, id: docRef.id, schoolName: schoolData.name };
+        return { success: true, id: docRef.id, entityName: schoolData.name };
 
     } catch (error: any) {
         console.error(">>> [BULK:INGEST] Logical Error:", error.message);

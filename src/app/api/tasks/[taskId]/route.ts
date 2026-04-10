@@ -21,7 +21,7 @@ export async function PATCH(
     const updates = await request.json();
 
     // Remove identifier fields from updates to preserve them (Requirement 3.2)
-    const { entityId, schoolId, entityType, id, createdAt, ...allowedUpdates } = updates;
+    const { entityId, entityType, id, createdAt, ...allowedUpdates } = updates;
 
     // Update task using server action
     const result = await updateTaskAction(taskId, allowedUpdates);

@@ -2,7 +2,7 @@
  * Unit Tests: Automations Module
  * 
  * Tests automation triggers with entityId, task creation with dual-write,
- * contact updates using entityId, and backward compatibility with schoolId.
+ * contact updates using entityId, and backward compatibility with entityId.
  * 
  * Requirements: 26.2
  */
@@ -223,16 +223,16 @@ describe('Automations Module - Unit Tests', () => {
       expect(true).toBe(true);
     });
 
-    it('should trigger automation with schoolId payload (backward compatibility)', async () => {
-      const schoolId = 'school_test_123';
+    it('should trigger automation with entityId payload (backward compatibility)', async () => {
+      const entityId = 'school_test_123';
       const workspaceId = 'workspace_1';
       
       const school = {
-        id: schoolId,
+        id: entityId,
         name: 'Test School',
         focalPersons: [{ email: 'test@example.com', name: 'Test Contact', type: 'primary' }],
       };
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
       
       const automation = {
         id: 'auto_2',
@@ -247,7 +247,7 @@ describe('Automations Module - Unit Tests', () => {
       
       const { triggerAutomationProtocols } = await import('../automation-processor');
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId,
+        entityId,
         workspaceId,
         organizationId: 'org_1',
       });
@@ -257,9 +257,9 @@ describe('Automations Module - Unit Tests', () => {
   });
 
   describe('Automation Task Creation with Dual-Write', () => {
-    it('should create task with both entityId and schoolId', async () => {
+    it('should create task with both entityId and entityId', async () => {
       const entityId = 'entity_task_123';
-      const schoolId = 'school_task_123';
+      const entityId = 'school_task_123';
       const workspaceId = 'workspace_1';
       
       const { adminDb } = await import('../firebase-admin');
@@ -270,8 +270,8 @@ describe('Automations Module - Unit Tests', () => {
         status: 'todo',
         category: 'general',
         workspaceId,
-        schoolId,
-        schoolName: 'Test Entity',
+        entityId,
+        entityName: 'Test Entity',
         entityId,
         entityType: 'institution',
         assignedTo: 'user_123',
@@ -289,7 +289,7 @@ describe('Automations Module - Unit Tests', () => {
       
       expect(task.entityId).toBe(entityId);
       expect(task.entityType).toBe('institution');
-      expect(task.schoolId).toBe(schoolId);
+      expect(task.entityId).toBe(entityId);
       expect(task.source).toBe('automation');
       expect(task.automationId).toBe('auto_1');
     });
@@ -342,17 +342,17 @@ describe('Automations Module - Unit Tests', () => {
     });
   });
 
-  describe('Backward Compatibility with schoolId Triggers', () => {
-    it('should support legacy schoolId triggers without entityId', async () => {
-      const schoolId = 'school_legacy_123';
+  describe('Backward Compatibility with entityId Triggers', () => {
+    it('should support legacy entityId triggers without entityId', async () => {
+      const entityId = 'school_legacy_123';
       const workspaceId = 'workspace_1';
       
       const school = {
-        id: schoolId,
+        id: entityId,
         name: 'Legacy School',
         focalPersons: [{ email: 'legacy@example.com', name: 'Legacy Contact', type: 'primary' }],
       };
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
       
       const automation = {
         id: 'auto_legacy',
@@ -367,10 +367,10 @@ describe('Automations Module - Unit Tests', () => {
       
       const { triggerAutomationProtocols } = await import('../automation-processor');
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId,
+        entityId,
         workspaceId,
         organizationId: 'org_1',
-        schoolName: school.name,
+        entityName: school.name,
       });
       
       expect(true).toBe(true);

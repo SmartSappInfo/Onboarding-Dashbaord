@@ -5,13 +5,13 @@
  * **Validates: Requirements 2.5, 3.1**
  * 
  * For any new task created with a contact identifier, the system should populate
- * both schoolId (if available from legacy data) and entityId fields.
+ * both entityId (if available from legacy data) and entityId fields.
  * 
  * **Property 2: Query Fallback Pattern**
  * **Validates: Requirements 3.4, 3.5**
  * 
  * For any task query that filters by contact, the system should accept either
- * entityId or schoolId as the identifier parameter, preferring entityId when
+ * entityId or entityId as the identifier parameter, preferring entityId when
  * both are provided, and successfully return matching records.
  */
 
@@ -38,7 +38,7 @@ const workspaceEntities = new Map<string, any>();
 // Mock contact adapter
 vi.mock('../contact-adapter', () => ({
   resolveContact: vi.fn().mockImplementation(async (
-    identifier: { schoolId?: string; entityId?: string },
+    identifier: { entityId?: string; entityId?: string },
     workspaceId: string
   ): Promise<ResolvedContact | null> => {
     // Try to resolve by entityId first
@@ -56,15 +56,15 @@ vi.mock('../contact-adapter', () => ({
           entityType: entity.entityType,
           entityId: entity.id,
           migrationStatus: 'migrated',
-          schoolData: identifier.schoolId ? schools.get(identifier.schoolId) : undefined,
+          schoolData: identifier.entityId ? schools.get(identifier.entityId) : undefined,
           tags: workspaceEntity?.workspaceTags || [],
         };
       }
     }
     
-    // Fallback to schoolId
-    if (identifier.schoolId) {
-      const school = schools.get(identifier.schoolId);
+    // Fallback to entityId
+    if (identifier.entityId) {
+      const school = schools.get(identifier.entityId);
       if (school) {
         // Check if school is migrated
         if (school.migrationStatus === 'migrated' && school.entityId) {
@@ -230,7 +230,7 @@ describe('Property 1: Dual-Write Consistency', () => {
     vi.clearAllMocks();
   });
 
-  it('should populate both schoolId and entityId when creating task with entityId for migrated contact', async () => {
+  it('should populate both entityId and entityId when creating task with entityId for migrated contact', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityArbitrary,
@@ -259,8 +259,7 @@ describe('Property 1: Dual-Write Consistency', () => {
           // Create task with only entityId
           const result = await createTaskAction({
             ...taskData,
-            entityId: entity.id,
-            schoolId: school.id, // Provide schoolId to simulate dual-write scenario
+            entityId: school.id, // Provide entityId to simulate dual-write scenario
             reminders: [],
             reminderSent: false,
           });
@@ -274,16 +273,16 @@ describe('Property 1: Dual-Write Consistency', () => {
 
           expect(createdTask).toBeDefined();
           expect(createdTask.entityId).toBe(entity.id);
-          expect(createdTask.schoolId).toBe(school.id);
+          expect(createdTask.entityId).toBe(school.id);
           expect(createdTask.entityType).toBe(entity.entityType);
-          expect(createdTask.schoolName).toBe(entity.name);
+          expect(createdTask.entityName).toBe(entity.name);
         }
       ),
       { numRuns: 30 }
     );
   });
 
-  it('should populate entityId when creating task with only schoolId for migrated contact', async () => {
+  it('should populate entityId when creating task with only entityId for migrated contact', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityArbitrary,
@@ -309,10 +308,10 @@ describe('Property 1: Dual-Write Consistency', () => {
             }
           );
 
-          // Create task with only schoolId
+          // Create task with only entityId
           const result = await createTaskAction({
             ...taskData,
-            schoolId: school.id,
+            entityId: school.id,
             reminders: [],
             reminderSent: false,
           });
@@ -325,7 +324,7 @@ describe('Property 1: Dual-Write Consistency', () => {
           );
 
           expect(createdTask).toBeDefined();
-          expect(createdTask.schoolId).toBe(school.id);
+          expect(createdTask.entityId).toBe(school.id);
           expect(createdTask.entityId).toBe(entity.id);
           expect(createdTask.entityType).toBe(entity.entityType);
         }
@@ -334,7 +333,7 @@ describe('Property 1: Dual-Write Consistency', () => {
     );
   });
 
-  it('should maintain schoolId only for legacy (non-migrated) contacts', async () => {
+  it('should maintain entityId only for legacy (non-migrated) contacts', async () => {
     await fc.assert(
       fc.asyncProperty(
         taskDataArbitrary,
@@ -349,23 +348,23 @@ describe('Property 1: Dual-Write Consistency', () => {
           
           __testStorage.schools.set(school.id, legacySchool);
 
-          // Create task with only schoolId
+          // Create task with only entityId
           const result = await createTaskAction({
             ...taskData,
-            schoolId: school.id,
+            entityId: school.id,
             reminders: [],
             reminderSent: false,
           });
 
           expect(result.success).toBe(true);
 
-          // Verify task was created with schoolId but no entityId
+          // Verify task was created with entityId but no entityId
           const createdTask = Array.from(__testStorage.tasks.values()).find(
             (t: any) => t.id === result.id
           );
 
           expect(createdTask).toBeDefined();
-          expect(createdTask.schoolId).toBe(school.id);
+          expect(createdTask.entityId).toBe(school.id);
           expect(createdTask.entityId).toBeNull();
         }
       ),
@@ -405,8 +404,7 @@ describe('Property 2: Query Fallback Pattern', () => {
             const task = {
               ...taskData,
               id: `task_${entity.id}_${i}`,
-              entityId: entity.id,
-              schoolId: null,
+              entityId: null,
               title: `${taskData.title} ${i}`,
             };
             __testStorage.tasks.set(task.id, task);
@@ -429,7 +427,7 @@ describe('Property 2: Query Fallback Pattern', () => {
     );
   });
 
-  it('should query tasks by schoolId and return matching records', async () => {
+  it('should query tasks by entityId and return matching records', async () => {
     await fc.assert(
       fc.asyncProperty(
         schoolArbitrary,
@@ -449,7 +447,6 @@ describe('Property 2: Query Fallback Pattern', () => {
             const task = {
               ...taskData,
               id: `task_${school.id}_${i}`,
-              schoolId: school.id,
               entityId: null,
               title: `${taskData.title} ${i}`,
             };
@@ -457,15 +454,15 @@ describe('Property 2: Query Fallback Pattern', () => {
             createdTaskIds.push(task.id);
           }
 
-          // Query by schoolId
+          // Query by entityId
           const results = await getTasksForContact(
-            { schoolId: school.id },
+            { entityId: school.id },
             taskData.workspaceId
           );
 
           // Verify all tasks returned
           expect(results.length).toBe(taskCount);
-          expect(results.every((t: Task) => t.schoolId === school.id)).toBe(true);
+          expect(results.every((t: Task) => t.entityId === school.id)).toBe(true);
           expect(results.every((t: Task) => t.workspaceId === taskData.workspaceId)).toBe(true);
         }
       ),
@@ -473,7 +470,7 @@ describe('Property 2: Query Fallback Pattern', () => {
     );
   });
 
-  it('should prefer entityId when both entityId and schoolId are provided', async () => {
+  it('should prefer entityId when both entityId and entityId are provided', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityArbitrary,
@@ -503,17 +500,15 @@ describe('Property 2: Query Fallback Pattern', () => {
           const taskWithEntity = {
             ...taskData,
             id: `task_entity_${entity.id}`,
-            entityId: entity.id,
-            schoolId: school.id,
+            entityId: school.id,
             title: 'Task with entity',
           };
           __testStorage.tasks.set(taskWithEntity.id, taskWithEntity);
 
-          // Create task with only schoolId (different task)
+          // Create task with only entityId (different task)
           const taskWithSchoolOnly = {
             ...taskData,
             id: `task_school_${school.id}`,
-            schoolId: school.id,
             entityId: null,
             title: 'Task with school only',
           };
@@ -521,7 +516,7 @@ describe('Property 2: Query Fallback Pattern', () => {
 
           // Query with both identifiers - should prefer entityId
           const results = await getTasksForContact(
-            { entityId: entity.id, schoolId: school.id },
+            { entityId: school.id },
             taskData.workspaceId
           );
 
@@ -529,7 +524,7 @@ describe('Property 2: Query Fallback Pattern', () => {
           expect(results.length).toBeGreaterThan(0);
           expect(results.every((t: Task) => t.entityId === entity.id)).toBe(true);
           
-          // Verify task with only schoolId is NOT returned
+          // Verify task with only entityId is NOT returned
           expect(results.find((t: Task) => t.id === taskWithSchoolOnly.id)).toBeUndefined();
         }
       ),

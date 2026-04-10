@@ -1,4 +1,4 @@
-import AiSchoolGenerator from '../../components/ai-school-generator';
+import AiSchoolGenerator from '../../components/ai-entity-generator';
 import { Metadata } from 'next';
 
 /**

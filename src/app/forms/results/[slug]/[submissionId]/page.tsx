@@ -27,7 +27,7 @@ async function getAuditData(slug: string, submissionId: string) {
 
         // 3. Resolve Institutional Context
         let school: School | undefined = undefined;
-        const targetSchoolId = submission.schoolId || pdfForm.schoolId;
+        const targetSchoolId = submission.entityId || pdfForm.entityId;
         
         if (targetSchoolId) {
             const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();

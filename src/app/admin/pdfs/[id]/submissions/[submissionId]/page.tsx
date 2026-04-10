@@ -47,9 +47,9 @@ export default function SubmissionDetailPage() {
 
   // Fetch school data for variable resolution (as backup)
   const schoolDocRef = useMemoFirebase(() => {
-    if (!firestore || !pdfForm?.schoolId) return null;
-    return doc(firestore, 'schools', pdfForm.schoolId);
-  }, [firestore, pdfForm?.schoolId]);
+    if (!firestore || !pdfForm?.entityId) return null;
+    return doc(firestore, 'schools', pdfForm.entityId);
+  }, [firestore, pdfForm?.entityId]);
   const { data: school } = useDoc<School>(schoolDocRef);
 
   // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name

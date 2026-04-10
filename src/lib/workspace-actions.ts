@@ -78,7 +78,7 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
             });
 
             await logActivity({
-                schoolId: '',
+                entityId: '',
                 organizationId: 'default',
                 userId,
                 workspaceId: 'system',
@@ -203,7 +203,7 @@ export async function updateWorkspaceScopeAction(
         });
 
         await logActivity({
-            schoolId: '',
+            entityId: '',
             organizationId: 'default',
             userId,
             workspaceId,

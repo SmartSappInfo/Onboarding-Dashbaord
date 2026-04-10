@@ -241,7 +241,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_1' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_1' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('entity_2');
@@ -441,7 +441,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_legacy_1' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_legacy_1' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_legacy_1');
@@ -477,7 +477,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_legacy_2' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_legacy_2' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.migrationStatus).toBe('legacy');
@@ -535,7 +535,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_legacy_3' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_legacy_3' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_legacy_3');
@@ -577,7 +577,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_legacy_4' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_legacy_4' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.entityId).toBeUndefined();
@@ -635,7 +635,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'school_orphaned' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'school_orphaned' }, 'workspace_1');
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe('school_orphaned');
@@ -667,7 +667,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'nonexistent' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'nonexistent' }, 'workspace_1');
 
       expect(result).toBeNull();
     });
@@ -681,7 +681,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const result = await resolveContact({ schoolId: 'error_school' }, 'workspace_1');
+      const result = await resolveContact({ entityId: 'error_school' }, 'workspace_1');
 
       expect(result).toBeNull();
     });
@@ -1391,7 +1391,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ schoolId: 'school_exists' });
+        const exists = await contactExists({ entityId: 'school_exists' });
 
         expect(exists).toBe(true);
       });
@@ -1407,7 +1407,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ entityId: 'nonexistent', schoolId: 'nonexistent' });
+        const exists = await contactExists({ entityId: 'nonexistent' });
 
         expect(exists).toBe(false);
       });

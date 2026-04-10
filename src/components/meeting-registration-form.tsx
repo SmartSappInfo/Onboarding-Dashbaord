@@ -21,7 +21,7 @@ import { generateRegistrantToken, buildPersonalizedMeetingUrl } from '@/lib/meet
 
 interface MeetingRegistrationFormProps {
   meeting: Meeting;
-  schoolId: string;
+  entityId: string;
   onRegistered: (token: string) => void;
 }
 
@@ -29,7 +29,7 @@ interface MeetingRegistrationFormProps {
  * Public-facing registration form that renders dynamic fields
  * from meeting.registrationFields.
  */
-export default function MeetingRegistrationForm({ meeting, schoolId, onRegistered }: MeetingRegistrationFormProps) {
+export default function MeetingRegistrationForm({ meeting, entityId, onRegistered }: MeetingRegistrationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const firestore = useFirestore();
@@ -102,7 +102,7 @@ export default function MeetingRegistrationForm({ meeting, schoolId, onRegistere
       const personalizedUrl = buildPersonalizedMeetingUrl(
         origin,
         meeting.type?.slug || 'parent-engagement',
-        meeting.schoolSlug || '',
+        meeting.entitySlug || '',
         token,
       );
 

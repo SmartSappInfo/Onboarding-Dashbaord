@@ -28,7 +28,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         executionOrder.push(`start-${entityId}`);
         
         // Simulate async work
@@ -73,7 +73,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       
       let callIndex = 0;
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         const currentCallIndex = callIndex++;
         
         executionOrder.push(`start-${entityId}`);
@@ -123,7 +123,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       
       let callIndex = 0;
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         const currentCallIndex = callIndex++;
         
         executionOrder.push(`start-${entityId}`);
@@ -173,7 +173,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       
       let callIndex = 0;
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         const currentCallIndex = callIndex++;
         
         executionOrder.push(`start-${entityId}`);
@@ -221,7 +221,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         executionOrder.push(entityId);
         await new Promise(resolve => setTimeout(resolve, 5));
         return { success: true, logId: `log-${entityId}` };
@@ -255,7 +255,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         
         // Track active executions
         activeExecutions.add(entityId);
@@ -297,7 +297,7 @@ describe('Sequential_Scheduler Property Tests - Execution Order', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       mockSendMessage.mockImplementation(async (input) => {
-        const entityId = input.schoolId || 'unknown';
+        const entityId = input.entityId || 'unknown';
         executionOrder.push(`start-${entityId}`);
         await new Promise(resolve => setTimeout(resolve, 5));
         executionOrder.push(`end-${entityId}`);

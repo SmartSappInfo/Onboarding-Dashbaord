@@ -82,9 +82,8 @@ const formSchema = z.object({
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
-  schoolId: z.string().optional().nullable(),
-  schoolName: z.string().optional().nullable(),
   entityId: z.string().optional().nullable(),
+  entityName: z.string().optional().nullable(),
   workspaceIds: z.array(z.string()).min(1, 'At least one workspace required.'),
 });
 

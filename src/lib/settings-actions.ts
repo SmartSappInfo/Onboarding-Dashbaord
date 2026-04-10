@@ -7,7 +7,7 @@ import { adminDb } from './firebase-admin';
  * 
  * Handles entity-specific settings with dual-write pattern:
  * - Primary: Query and update using entityId
- * - Fallback: Support legacy schoolId for backward compatibility
+ * - Fallback: Support legacy entityId for backward compatibility
  * 
  * Requirements: 12.1, 12.2, 12.4
  */
@@ -16,7 +16,7 @@ interface EntitySettings {
   id: string;
   organizationId?: string; // Organization identifier
   entityId?: string | null;
-  schoolId?: string | null;
+  entityId?: string | null;
   entityType?: 'institution' | 'family' | 'person' | null;
   workspaceId: string;
   
@@ -56,7 +56,7 @@ interface EntitySettings {
  * @returns Settings or null if not found
  */
 export async function loadSettings(
-  identifier: { entityId?: string; schoolId?: string },
+  identifier: { entityId?: string; entityId?: string },
   workspaceId: string
 ): Promise<{ success: boolean; settings?: EntitySettings; error?: string }> {
   try {
@@ -64,13 +64,13 @@ export async function loadSettings(
       .collection('settings')
       .where('workspaceId', '==', workspaceId);
     
-    // Prefer entityId, fallback to schoolId
+    // Prefer entityId, fallback to entityId
     if (identifier.entityId) {
       query = query.where('entityId', '==', identifier.entityId);
-    } else if (identifier.schoolId) {
-      query = query.where('schoolId', '==', identifier.schoolId);
+    } else if (identifier.entityId) {
+      query = query.where('entityId', '==', identifier.entityId);
     } else {
-      return { success: false, error: 'Either entityId or schoolId must be provided' };
+      return { success: false, error: 'Either entityId or entityId must be provided' };
     }
     
     const snapshot = await query.limit(1).get();
@@ -113,7 +113,6 @@ export async function updateSettings(
     const updateData = {
       ...updates,
       entityId: existingSettings.entityId,
-      schoolId: existingSettings.schoolId,
       entityType: existingSettings.entityType,
       updatedAt: new Date().toISOString()
     };
@@ -136,7 +135,7 @@ export async function updateSettings(
 export async function createSettings(
   input: {
     entityId?: string;
-    schoolId?: string;
+    entityId?: string;
     entityType?: 'institution' | 'family' | 'person';
     workspaceId: string;
     notificationsEnabled?: boolean;
@@ -149,7 +148,6 @@ export async function createSettings(
     
     const settings: Omit<EntitySettings, 'id'> = {
       entityId: input.entityId || null,
-      schoolId: input.schoolId || null,
       entityType: input.entityType || null,
       workspaceId: input.workspaceId,
       notificationsEnabled: input.notificationsEnabled ?? true,

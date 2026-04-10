@@ -38,6 +38,8 @@ import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { resolveContact } from '@/lib/contact-adapter';
+import { updateEntityAction } from '@/lib/entity-actions';
 
 const schoolEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -85,10 +87,10 @@ const schoolEditSchema = z.object({
 type SchoolEditValues = z.infer<typeof schoolEditSchema>;
 
 interface EditFormProps {
-  schoolId: string;
+  entityId: string;
 }
 
-function EditSchoolForm({ schoolId }: EditFormProps) {
+function EditSchoolForm({ entityId }: EditFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -98,19 +100,41 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const { activeOrganizationId } = useTenant();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [unifiedData, setUnifiedData] = React.useState<any>(null);
+  const [isSchoolLoading, setIsSchoolLoading] = React.useState(true);
 
-  const schoolDocRef = useMemoFirebase(() => {
-    if (!firestore || !schoolId) return null;
-    return doc(firestore, 'schools', schoolId);
-  }, [firestore, schoolId]);
+  React.useEffect(() => {
+    async function loadData() {
+        if (!entityId || !activeWorkspaceId) return;
+        setIsSchoolLoading(true);
+        try {
+            const contact = await resolveContact({ entityId }, activeWorkspaceId);
+            
+            // If contact is found, build a unified object merging legacy schoolData and new fields
+            if (contact) {
+                const merged = {
+                    ...contact.schoolData,
+                    name: contact.name,
+                    status: contact.status || 'Active',
+                    focalPersons: contact.contacts?.length > 0 ? contact.contacts : contact.schoolData?.focalPersons,
+                    assignedTo: contact.assignedTo || contact.schoolData?.assignedTo,
+                    workspaceIds: contact.schoolData?.workspaceIds || [activeWorkspaceId],
+                };
+                setUnifiedData(merged);
+            }
+        } catch (error) {
+            console.error('Error loading entity data:', error);
+        } finally {
+            setIsSchoolLoading(false);
+        }
+    }
+    loadData();
+  }, [entityId, activeWorkspaceId]);
 
-  const { data: school, isLoading: isSchoolLoading } = useDoc<School>(schoolDocRef);
-
-  useSetBreadcrumb(school?.name, pathname.replace('/edit', ''));
+  useSetBreadcrumb(unifiedData?.name, pathname.replace('/edit', ''));
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
-    // SCOPED TO ORG: Ensure security rules are satisfied
     return query(
         collection(firestore, 'users'), 
         where('organizationId', '==', activeOrganizationId),
@@ -146,39 +170,39 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   React.useEffect(() => {
-    if (school && !hasInitialized) {
+    if (unifiedData && !hasInitialized) {
       // Normalize status to capitalized form for form schema
-      const normalizedStatus = school.status === 'archived' ? 'Archived' : school.status || 'Active';
+      const normalizedStatus = unifiedData.status === 'archived' ? 'Archived' : unifiedData.status || 'Active';
       
       methods.reset({
-        name: school.name || '',
-        initials: school.initials || '',
-        slogan: school.slogan || '',
-        workspaceIds: school.workspaceIds || [school.track || 'onboarding'],
+        name: unifiedData.name || '',
+        initials: unifiedData.initials || '',
+        slogan: unifiedData.slogan || '',
+        workspaceIds: unifiedData.workspaceIds || ['onboarding'],
         status: normalizedStatus as 'Active' | 'Inactive' | 'Archived',
-        schoolStatus: school.schoolStatus || 'Onboarding',
-        logoUrl: school.logoUrl || '',
-        heroImageUrl: school.heroImageUrl || '',
-        zone: school.zone || undefined,
-        location: school.location || '',
-        nominalRoll: school.nominalRoll || 0,
-        focalPersons: (school.focalPersons as any) || [],
-        modules: school.modules || [],
-        implementationDate: school.implementationDate ? new Date(school.implementationDate) : null,
-        referee: school.referee || '',
-        includeDroneFootage: school.includeDroneFootage || false,
-        assignedToId: school.assignedTo?.userId || 'unassigned',
-        billingAddress: school.billingAddress || '',
-        currency: school.currency || 'GHS',
-        subscriptionPackageId: school.subscriptionPackageId || 'none',
-        subscriptionRate: school.subscriptionRate || 0,
-        discountPercentage: school.discountPercentage || 0,
-        arrearsBalance: school.arrearsBalance || 0,
-        creditBalance: school.creditBalance || 0,
+        schoolStatus: unifiedData.schoolStatus || 'Onboarding',
+        logoUrl: unifiedData.logoUrl || '',
+        heroImageUrl: unifiedData.heroImageUrl || '',
+        zone: unifiedData.zone || undefined,
+        location: unifiedData.location || '',
+        nominalRoll: unifiedData.nominalRoll || 0,
+        focalPersons: (unifiedData.focalPersons as any) || [],
+        modules: unifiedData.modules || [],
+        implementationDate: unifiedData.implementationDate ? new Date(unifiedData.implementationDate) : null,
+        referee: unifiedData.referee || '',
+        includeDroneFootage: unifiedData.includeDroneFootage || false,
+        assignedToId: unifiedData.assignedTo?.userId || 'unassigned',
+        billingAddress: unifiedData.billingAddress || '',
+        currency: unifiedData.currency || 'GHS',
+        subscriptionPackageId: unifiedData.subscriptionPackageId || 'none',
+        subscriptionRate: unifiedData.subscriptionRate || 0,
+        discountPercentage: unifiedData.discountPercentage || 0,
+        arrearsBalance: unifiedData.arrearsBalance || 0,
+        creditBalance: unifiedData.creditBalance || 0,
       });
       setHasInitialized(true);
     }
-  }, [school, methods, hasInitialized]);
+  }, [unifiedData, methods, hasInitialized]);
 
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
@@ -194,7 +218,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     methods.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
   };
 
-  const handleFormSubmit = (data: SchoolEditValues) => {
+  const handleFormSubmit = async (data: SchoolEditValues) => {
     if (!firestore || !user || !users) return;
 
     const selectedManager = users.find(u => u.id === data.assignedToId);
@@ -214,32 +238,29 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         updatedAt: new Date().toISOString()
     };
 
-    // TODO: Route updates to correct collections (Requirement 11.4, 11.5)
-    // - Identity fields (name, focalPersons) should update entities collection
-    // - Operational fields (assignedTo, pipelineId, stageId) should update workspace_entities collection
-    // - For now, updating schools collection for backward compatibility
-    // - Use updateProfile() from profile-actions.ts when entity migration is complete
+    try {
+        const result = await updateEntityAction(
+            entityId, 
+            updateData, 
+            user.uid, 
+            activeWorkspaceId, 
+            activeOrganizationId || 'smartsapp-hq'
+        );
 
-    const docRef = doc(firestore, 'schools', schoolId);
-    updateDoc(docRef, updateData).then(() => {
-        toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });
-        logActivity({ 
-            organizationId: activeOrganizationId,
-            schoolId, 
-            userId: user.uid,
-            workspaceId: activeWorkspaceId,
-            type: 'school_updated', 
-            source: 'user_action', 
-            description: `updated school profile for "${data.name}" across ${data.workspaceIds.length} hubs` 
+        if (result.success) {
+            toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });
+            router.push('/admin/entities');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error: any) {
+        toast({ 
+            title: 'Save Failed', 
+            description: error.message || 'An error occurred while updating the profile.',
+            variant: 'destructive'
         });
-        router.push('/admin/schools');
-    }).catch((error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ 
-            path: docRef.path, 
-            operation: 'update', 
-            requestResourceData: updateData 
-        }));
-    });
+        console.error('Profile update error:', error);
+    }
   };
 
   const isGlobalLoading = isSchoolLoading || isUsersLoading || !hasInitialized;
@@ -668,12 +689,12 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
 export default function EditSchoolPage() {
   const params = useParams();
-  const schoolId = params.id as string;
+  const entityId = params.id as string;
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8">
-        {schoolId ? <EditSchoolForm schoolId={schoolId} /> : <p className="text-center py-20 text-muted-foreground font-medium">School context not found.</p>}
+        {entityId ? <EditSchoolForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">School context not found.</p>}
       </div>
     </div>
   );

@@ -72,7 +72,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
       });
       logActivity({
         organizationId: activeOrganizationId,
-        schoolId: school.id,
+        entityId: school.id,
         userId: currentUser.uid,
         type: 'school_assigned',
         workspaceId: school.workspaceIds[0] || 'onboarding',

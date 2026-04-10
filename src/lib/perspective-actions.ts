@@ -45,7 +45,7 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
             });
 
             await logActivity({
-                schoolId: '',
+                entityId: '',
                 organizationId: 'default',
                 userId,
                 workspaceId: 'system',

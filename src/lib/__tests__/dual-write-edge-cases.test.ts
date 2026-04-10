@@ -5,7 +5,7 @@
  * 
  * Tests record creation with various identifier combinations:
  * - entityId only
- * - schoolId only
+ * - entityId only
  * - both identifiers
  * - neither identifier (error case)
  * 
@@ -36,7 +36,7 @@ const workspaceEntities = new Map<string, any>();
 // Mock contact adapter
 vi.mock('../contact-adapter', () => ({
   resolveContact: vi.fn().mockImplementation(async (
-    identifier: { schoolId?: string; entityId?: string },
+    identifier: { entityId?: string; entityId?: string },
     workspaceId: string
   ) => {
     // Try to resolve by entityId first
@@ -54,15 +54,15 @@ vi.mock('../contact-adapter', () => ({
           entityType: entity.entityType,
           entityId: entity.id,
           migrationStatus: 'migrated',
-          schoolData: identifier.schoolId ? schools.get(identifier.schoolId) : undefined,
+          schoolData: identifier.entityId ? schools.get(identifier.entityId) : undefined,
           tags: workspaceEntity?.workspaceTags || [],
         };
       }
     }
     
-    // Fallback to schoolId
-    if (identifier.schoolId) {
-      const school = schools.get(identifier.schoolId);
+    // Fallback to entityId
+    if (identifier.entityId) {
+      const school = schools.get(identifier.entityId);
       if (school) {
         // Check if school is migrated
         if (school.migrationStatus === 'migrated' && school.entityId) {
@@ -207,9 +207,9 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       expect(createdTask).toBeDefined();
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('institution');
-      expect(createdTask.schoolId).toBeNull();
-      // schoolName may be populated from entity name during resolution
-      expect(createdTask.schoolName).toBeDefined();
+      expect(createdTask.entityId).toBeNull();
+      // entityName may be populated from entity name during resolution
+      expect(createdTask.entityName).toBeDefined();
     });
 
     it('should create task with entityId for family entity type', async () => {
@@ -261,7 +261,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       expect(createdTask).toBeDefined();
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('family');
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
     });
 
     it('should create task with entityId for person entity type', async () => {
@@ -313,12 +313,12 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       expect(createdTask).toBeDefined();
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('person');
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
     });
   });
 
-  describe('Edge Case 2: Record creation with schoolId only', () => {
-    it('should create task with schoolId only for legacy (non-migrated) school', async () => {
+  describe('Edge Case 2: Record creation with entityId only', () => {
+    it('should create task with entityId only for legacy (non-migrated) school', async () => {
       // Setup: Create legacy school (not migrated)
       const school = {
         id: 'school_legacy_123',
@@ -335,7 +335,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       
       __testStorage.schools.set(school.id, school);
 
-      // Create task with only schoolId
+      // Create task with only entityId
       const result = await createTaskAction({
         workspaceId,
         title: 'Legacy Task',
@@ -345,27 +345,27 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'visit',
         assignedTo: 'user_legacy',
         dueDate: '2024-09-01T00:00:00.000Z',
-        schoolId: school.id,
+        entityId: school.id,
         reminders: [],
         reminderSent: false,
       });
 
       expect(result.success).toBe(true);
 
-      // Verify task was created with schoolId but no entityId
+      // Verify task was created with entityId but no entityId
       const createdTask = Array.from(__testStorage.tasks.values()).find(
         (t: any) => t.id === result.id
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBe(school.id);
-      expect(createdTask.schoolName).toBe(school.name);
+      expect(createdTask.entityId).toBe(school.id);
+      expect(createdTask.entityName).toBe(school.name);
       expect(createdTask.entityId).toBeNull();
       // entityType should be null (not undefined) when no entity
       expect(createdTask.entityType).toBeNull();
     });
 
-    it('should create task with both identifiers when schoolId is for migrated school', async () => {
+    it('should create task with both identifiers when entityId is for migrated school', async () => {
       // Setup: Create migrated school with entity
       const entity = {
         id: 'entity_migrated_456',
@@ -399,7 +399,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         }
       );
 
-      // Create task with only schoolId (but school is migrated)
+      // Create task with only entityId (but school is migrated)
       const result = await createTaskAction({
         workspaceId,
         title: 'Migrated School Task',
@@ -409,7 +409,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'document',
         assignedTo: 'user_migrated',
         dueDate: '2024-10-01T00:00:00.000Z',
-        schoolId: school.id,
+        entityId: school.id,
         reminders: [],
         reminderSent: false,
       });
@@ -422,14 +422,14 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBe(school.id);
+      expect(createdTask.entityId).toBe(school.id);
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('institution');
     });
   });
 
   describe('Edge Case 3: Record creation with both identifiers', () => {
-    it('should create task with both schoolId and entityId when both provided', async () => {
+    it('should create task with both entityId and entityId when both provided', async () => {
       // Setup: Create entity and school
       const entity = {
         id: 'entity_both_789',
@@ -473,7 +473,6 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'training',
         assignedTo: 'user_both',
         dueDate: '2024-11-01T00:00:00.000Z',
-        schoolId: school.id,
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
@@ -487,10 +486,10 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBe(school.id);
+      expect(createdTask.entityId).toBe(school.id);
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('institution');
-      expect(createdTask.schoolName).toBe(entity.name);
+      expect(createdTask.entityName).toBe(entity.name);
     });
 
     it('should handle mismatched identifiers gracefully', async () => {
@@ -536,7 +535,6 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'general',
         assignedTo: 'user_mismatch',
         dueDate: '2024-12-01T00:00:00.000Z',
-        schoolId: school.id,
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
@@ -552,14 +550,14 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       expect(createdTask).toBeDefined();
       expect(createdTask.entityId).toBe(entity.id);
       expect(createdTask.entityType).toBe('institution');
-      // schoolId should still be preserved even if mismatched
-      expect(createdTask.schoolId).toBe(school.id);
+      // entityId should still be preserved even if mismatched
+      expect(createdTask.entityId).toBe(school.id);
     });
   });
 
   describe('Edge Case 4: Record creation with neither identifier (error case)', () => {
     it('should handle task creation without any contact identifier', async () => {
-      // Create task without schoolId or entityId
+      // Create task without entityId or entityId
       const result = await createTaskAction({
         workspaceId: 'workspace_no_contact',
         title: 'No Contact Task',
@@ -581,7 +579,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
       expect(createdTask.entityId).toBeNull();
       // entityType should be null (not undefined) when no identifiers
       expect(createdTask.entityType).toBeNull();
@@ -612,21 +610,21 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
 
       expect(createdTask).toBeDefined();
       expect(createdTask.entityId).toBe('entity_nonexistent_999');
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
     });
 
-    it('should handle task creation with invalid schoolId', async () => {
-      // Create task with non-existent schoolId
+    it('should handle task creation with invalid entityId', async () => {
+      // Create task with non-existent entityId
       const result = await createTaskAction({
         workspaceId: 'workspace_invalid_school',
         title: 'Invalid School Task',
-        description: 'Task with invalid schoolId',
+        description: 'Task with invalid entityId',
         priority: 'high',
         status: 'todo',
         category: 'visit',
         assignedTo: 'user_invalid_school',
         dueDate: '2025-03-01T00:00:00.000Z',
-        schoolId: 'school_nonexistent_888',
+        entityId: 'school_nonexistent_888',
         reminders: [],
         reminderSent: false,
       });
@@ -639,7 +637,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBe('school_nonexistent_888');
+      expect(createdTask.entityId).toBe('school_nonexistent_888');
       expect(createdTask.entityId).toBeNull();
     });
   });
@@ -655,7 +653,6 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'general',
         assignedTo: 'user_null',
         dueDate: '2025-04-01T00:00:00.000Z',
-        schoolId: null,
         entityId: null,
         reminders: [],
         reminderSent: false,
@@ -668,7 +665,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
       );
 
       expect(createdTask).toBeDefined();
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
       expect(createdTask.entityId).toBeNull();
     });
 
@@ -682,7 +679,6 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'document',
         assignedTo: 'user_undefined',
         dueDate: '2025-05-01T00:00:00.000Z',
-        schoolId: undefined,
         entityId: undefined,
         reminders: [],
         reminderSent: false,
@@ -696,7 +692,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
 
       expect(createdTask).toBeDefined();
       // Undefined should be converted to null in storage
-      expect(createdTask.schoolId).toBeNull();
+      expect(createdTask.entityId).toBeNull();
       expect(createdTask.entityId).toBeNull();
     });
   });
@@ -712,7 +708,6 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         category: 'general',
         assignedTo: 'user_empty',
         dueDate: '2025-06-01T00:00:00.000Z',
-        schoolId: '',
         entityId: '',
         reminders: [],
         reminderSent: false,
@@ -726,7 +721,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
 
       expect(createdTask).toBeDefined();
       // Empty strings should be treated as null or invalid
-      expect(createdTask.schoolId === '' || createdTask.schoolId === null).toBe(true);
+      expect(createdTask.entityId === '' || createdTask.entityId === null).toBe(true);
       expect(createdTask.entityId === '' || createdTask.entityId === null).toBe(true);
     });
   });
@@ -746,7 +741,7 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       description: 'Test activity',
       entityId: 'entity_123',
       entityType: 'institution' as EntityType,
-      schoolId: null,
+      entityId: null,
       userId: 'user_123',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -757,17 +752,17 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
     const stored = __testStorage.activities.get(activity.id);
     expect(stored.entityId).toBe('entity_123');
     expect(stored.entityType).toBe('institution');
-    expect(stored.schoolId).toBeNull();
+    expect(stored.entityId).toBeNull();
   });
 
-  it('should log activity with schoolId only', () => {
+  it('should log activity with entityId only', () => {
     const activity = {
       id: 'activity_school_only',
       workspaceId: 'workspace_456',
       type: 'call' as const,
       description: 'Test call',
-      schoolId: 'school_456',
-      schoolName: 'Test School',
+      entityId: 'school_456',
+      entityName: 'Test School',
       entityId: null,
       userId: 'user_456',
       timestamp: new Date().toISOString(),
@@ -777,8 +772,8 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
     __testStorage.activities.set(activity.id, activity);
 
     const stored = __testStorage.activities.get(activity.id);
-    expect(stored.schoolId).toBe('school_456');
-    expect(stored.schoolName).toBe('Test School');
+    expect(stored.entityId).toBe('school_456');
+    expect(stored.entityName).toBe('Test School');
     expect(stored.entityId).toBeNull();
   });
 
@@ -788,8 +783,8 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       workspaceId: 'workspace_789',
       type: 'meeting' as const,
       description: 'Test meeting',
-      schoolId: 'school_789',
-      schoolName: 'Test School',
+      entityId: 'school_789',
+      entityName: 'Test School',
       entityId: 'entity_789',
       entityType: 'institution' as EntityType,
       userId: 'user_789',
@@ -800,7 +795,7 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
     __testStorage.activities.set(activity.id, activity);
 
     const stored = __testStorage.activities.get(activity.id);
-    expect(stored.schoolId).toBe('school_789');
+    expect(stored.entityId).toBe('school_789');
     expect(stored.entityId).toBe('entity_789');
     expect(stored.entityType).toBe('institution');
   });
@@ -811,7 +806,6 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       workspaceId: 'workspace_000',
       type: 'note' as const,
       description: 'General note',
-      schoolId: null,
       entityId: null,
       userId: 'user_000',
       timestamp: new Date().toISOString(),
@@ -821,7 +815,7 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
     __testStorage.activities.set(activity.id, activity);
 
     const stored = __testStorage.activities.get(activity.id);
-    expect(stored.schoolId).toBeNull();
+    expect(stored.entityId).toBeNull();
     expect(stored.entityId).toBeNull();
   });
 });
@@ -843,7 +837,7 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
       status: 'sent' as const,
       entityId: 'entity_msg_123',
       entityType: 'institution' as EntityType,
-      schoolId: null,
+      entityId: null,
       createdAt: new Date().toISOString(),
     };
 
@@ -852,10 +846,10 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
     const stored = __testStorage.messageLogs.get(messageLog.id);
     expect(stored.entityId).toBe('entity_msg_123');
     expect(stored.entityType).toBe('institution');
-    expect(stored.schoolId).toBeNull();
+    expect(stored.entityId).toBeNull();
   });
 
-  it('should create message log with schoolId only', () => {
+  it('should create message log with entityId only', () => {
     const messageLog = {
       id: 'msg_school_only',
       workspaceId: 'workspace_msg_456',
@@ -863,7 +857,6 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
       recipient: '+1234567890',
       body: 'Test SMS',
       status: 'sent' as const,
-      schoolId: 'school_msg_456',
       entityId: null,
       createdAt: new Date().toISOString(),
     };
@@ -871,7 +864,7 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
     __testStorage.messageLogs.set(messageLog.id, messageLog);
 
     const stored = __testStorage.messageLogs.get(messageLog.id);
-    expect(stored.schoolId).toBe('school_msg_456');
+    expect(stored.entityId).toBe('school_msg_456');
     expect(stored.entityId).toBeNull();
   });
 
@@ -883,7 +876,6 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
       recipient: '+9876543210',
       body: 'Test WhatsApp',
       status: 'delivered' as const,
-      schoolId: 'school_msg_789',
       entityId: 'entity_msg_789',
       entityType: 'family' as EntityType,
       createdAt: new Date().toISOString(),
@@ -892,7 +884,7 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
     __testStorage.messageLogs.set(messageLog.id, messageLog);
 
     const stored = __testStorage.messageLogs.get(messageLog.id);
-    expect(stored.schoolId).toBe('school_msg_789');
+    expect(stored.entityId).toBe('school_msg_789');
     expect(stored.entityId).toBe('entity_msg_789');
     expect(stored.entityType).toBe('family');
   });
@@ -906,7 +898,6 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
       subject: 'General Email',
       body: 'General body',
       status: 'pending' as const,
-      schoolId: null,
       entityId: null,
       createdAt: new Date().toISOString(),
     };
@@ -914,7 +905,7 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
     __testStorage.messageLogs.set(messageLog.id, messageLog);
 
     const stored = __testStorage.messageLogs.get(messageLog.id);
-    expect(stored.schoolId).toBeNull();
+    expect(stored.entityId).toBeNull();
     expect(stored.entityId).toBeNull();
   });
 });
@@ -936,7 +927,7 @@ describe('Dual-Write Edge Cases - Type Safety', () => {
         dueDate: '2025-07-01T00:00:00.000Z',
         entityId: `entity_${type}`,
         entityType: type,
-        schoolId: null,
+        entityId: null,
         reminders: [],
         reminderSent: false,
         createdAt: new Date().toISOString(),
@@ -962,7 +953,7 @@ describe('Dual-Write Edge Cases - Type Safety', () => {
       dueDate: '2025-08-01T00:00:00.000Z',
       entityId: 'entity_missing_type',
       // entityType is missing
-      schoolId: null,
+      entityId: null,
       reminders: [],
       reminderSent: false,
       createdAt: new Date().toISOString(),

@@ -78,7 +78,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
       });
 
       logActivity({
-          schoolId: school.id,
+          entityId: school.id,
           userId: user.uid,
           organizationId: activeOrganizationId,
           workspaceId: school.workspaceIds[0] || 'onboarding',

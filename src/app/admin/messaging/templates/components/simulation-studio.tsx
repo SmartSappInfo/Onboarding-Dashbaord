@@ -88,7 +88,7 @@ export function SimulationStudio({
                                 <SelectContent className="rounded-xl">
                                     <SelectItem value="none">Select Instance...</SelectItem>
                                     {simEntity === 'School' && schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                    {simEntity === 'Meeting' && meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
+                                    {simEntity === 'Meeting' && meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.entityName} - {m.type.name}</SelectItem>)}
                                     {simEntity === 'Survey' && surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
                                     {simEntity === 'Submission' && pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                 </SelectContent>

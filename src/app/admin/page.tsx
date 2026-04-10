@@ -104,7 +104,7 @@ export default function AdminDashboardPage() {
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1 opacity-40">Direct Entry:</h3>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-white border-primary/10 hover:border-primary/30 transition-all">
-                                <Link href="/admin/schools/new">
+                                <Link href="/admin/entities/new">
                                     <PlusCircle className="h-4 w-4 mr-2 text-primary" /> 
                                     {isProspectTrack ? 'Add Lead' : 'Add School'}
                                 </Link>

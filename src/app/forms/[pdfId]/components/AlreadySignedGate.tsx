@@ -11,13 +11,13 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface AlreadySignedGateProps {
-    schoolName?: string | null;
+    entityName?: string | null;
     logoUrl?: string;
     pdfName: string;
     onView: () => void;
 }
 
-export default function AlreadySignedGate({ schoolName, logoUrl, pdfName, onView }: AlreadySignedGateProps) {
+export default function AlreadySignedGate({ entityName, logoUrl, pdfName, onView }: AlreadySignedGateProps) {
     return (
         <div className="flex flex-col items-center justify-center p-4 text-left">
             <Card className="max-w-md w-full rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
@@ -50,7 +50,7 @@ export default function AlreadySignedGate({ schoolName, logoUrl, pdfName, onView
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Institutional Hub</p>
-                            <p className="font-black text-foreground uppercase truncate tracking-tight">{schoolName || 'SmartSapp Academy'}</p>
+                            <p className="font-black text-foreground uppercase truncate tracking-tight">{entityName || 'SmartSapp Academy'}</p>
                         </div>
                     </div>
 

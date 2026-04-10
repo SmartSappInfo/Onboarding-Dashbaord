@@ -46,8 +46,8 @@ describe('Property 17: Rollback Cleanup', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
-            schoolName: fc.string({ minLength: 1, maxLength: 30 }),
+            entityId: fc.uuid(),
+            entityName: fc.string({ minLength: 1, maxLength: 30 }),
           }),
           { minLength: 1, maxLength: 10 }
         ),
@@ -111,7 +111,7 @@ describe('Property 17: Rollback Cleanup', () => {
             // Make the first record invalid (missing critical fields)
             const backupData = i === 0
               ? { id: record.id, backedUpAt: new Date().toISOString() } // Invalid
-              : { ...record, schoolId: `school_${i}`, backedUpAt: new Date().toISOString() };
+              : { ...record, entityId: `school_${i}`, backedUpAt: new Date().toISOString() };
             
             await setDoc(doc(firestore, backupCollectionName, record.id), backupData);
           }
@@ -158,7 +158,7 @@ describe('Property 17: Rollback Cleanup', () => {
               id: `record_${i}`,
               workspaceId: `workspace_${i % 5}`,
               title: `Title ${i}`,
-              schoolId: `school_${i}`,
+              entityId: `school_${i}`,
               backedUpAt: new Date().toISOString(),
             };
             records.push(record);

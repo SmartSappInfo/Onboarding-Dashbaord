@@ -40,7 +40,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { getWorkspaceContacts } from '@/lib/contact-adapter';
 import StageColumn from './StageColumn';
-import SchoolCard from './SchoolCard';
+import EntityCard from './EntityCard';
 
 interface KanbanBoardProps {
     pipelineId: string;
@@ -322,8 +322,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
             // Log activity with entityId as primary identifier
             logActivity({
                 organizationId: activeOrganizationId,
-                schoolId: entityId, // Legacy field for backward compatibility
-                entityId: entityId, // Primary identifier
+                entityId: entityId,
                 userId: user.uid,
                 type: 'pipeline_stage_changed',
                 source: 'user_action',
@@ -334,7 +333,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
 
             if (newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('training')) {
                 triggerInternalNotification({
-                    schoolId: entityId,
+                    entityId: entityId,
                     notifyManager: true,
                     channel: 'both',
                     variables: { school_name: school.name, new_stage: newStage.name, event_type: 'Workflow Progression' }
@@ -411,7 +410,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
             />
           ) : (
             <div className="w-72 pointer-events-none">
-              <SchoolCard school={activeElement as School} isOverlay />
+              <EntityCard school={activeElement as School} isOverlay />
             </div>
           )
         ) : null}

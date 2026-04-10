@@ -2,8 +2,8 @@
  * Unit tests for Activity module dual-write and query functionality
  * 
  * Tests Requirements:
- * - 4.1: Activity logging with dual-write (schoolId + entityId)
- * - 4.2: Activity queries with entityId/schoolId fallback
+ * - 4.1: Activity logging with dual-write (entityId + entityId)
+ * - 4.2: Activity queries with entityId/entityId fallback
  * - 4.3: Activity UI displays entity information
  * - 26.2: Integration tests for activity module
  */
@@ -42,7 +42,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
   });
 
   describe('logActivity - Dual-Write Pattern', () => {
-    it('should populate both schoolId and entityId when only entityId provided', async () => {
+    it('should populate both entityId and entityId when only entityId provided', async () => {
       // Mock contact resolution
       const mockContact: ResolvedContact = {
         id: 'entity_123',
@@ -84,10 +84,9 @@ describe('Activity Module - Dual-Write and Queries', () => {
       // Verify activity was created with both identifiers
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_123',
-          schoolId: 'school_123',
-          schoolName: 'Test School',
-          schoolSlug: 'test-school',
+          entityId: 'school_123',
+          entityName: 'Test School',
+          entitySlug: 'test-school',
           displayName: 'Test School',
           entitySlug: 'test-school',
           entityType: 'institution',
@@ -95,7 +94,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       );
     });
 
-    it('should populate both schoolId and entityId when only schoolId provided (migrated contact)', async () => {
+    it('should populate both entityId and entityId when only entityId provided (migrated contact)', async () => {
       // Mock migrated contact resolution
       const mockContact: ResolvedContact = {
         id: 'school_456',
@@ -121,26 +120,25 @@ describe('Activity Module - Dual-Write and Queries', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_456',
+        entityId: 'school_456',
         userId: 'user_1',
         type: 'call',
         source: 'manual',
         description: 'Test call',
       });
 
-      // Verify resolveContact was called with schoolId
+      // Verify resolveContact was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { schoolId: 'school_456' },
+        { entityId: 'school_456' },
         'workspace_1'
       );
 
       // Verify activity was created with both identifiers
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_456',
           entityId: 'entity_456',
-          schoolName: 'Migrated School',
-          schoolSlug: 'migrated-school',
+          entityName: 'Migrated School',
+          entitySlug: 'migrated-school',
           displayName: 'Migrated School',
           entitySlug: 'migrated-school',
           entityType: 'institution',
@@ -148,7 +146,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       );
     });
 
-    it('should only populate schoolId when schoolId provided (legacy contact)', async () => {
+    it('should only populate entityId when entityId provided (legacy contact)', async () => {
       // Mock legacy contact resolution
       const mockContact: ResolvedContact = {
         id: 'school_789',
@@ -172,19 +170,19 @@ describe('Activity Module - Dual-Write and Queries', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_789',
+        entityId: 'school_789',
         userId: 'user_1',
         type: 'email',
         source: 'manual',
         description: 'Test email',
       });
 
-      // Verify activity was created with only schoolId (no entityId for legacy)
+      // Verify activity was created with only entityId (no entityId for legacy)
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
-          schoolName: 'Legacy School',
-          schoolSlug: 'legacy-school',
+          entityId: 'school_789',
+          entityName: 'Legacy School',
+          entitySlug: 'legacy-school',
           displayName: 'Legacy School',
           entitySlug: 'legacy-school',
           // entityId should be undefined for legacy contacts
@@ -265,11 +263,11 @@ describe('Activity Module - Dual-Write and Queries', () => {
       expect(result[0].id).toBe('activity_1');
     });
 
-    it('should query by schoolId when only schoolId provided', async () => {
+    it('should query by entityId when only entityId provided', async () => {
       const mockActivities = [
         {
           id: 'activity_2',
-          schoolId: 'school_456',
+          entityId: 'school_456',
           workspaceId: 'workspace_1',
           type: 'call',
           description: 'Test call',
@@ -288,13 +286,13 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { schoolId: 'school_456' },
+        { entityId: 'school_456' },
         'workspace_1'
       );
 
-      // Verify query used schoolId
+      // Verify query used entityId
       expect(mockWhere1).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
-      expect(mockWhere2).toHaveBeenCalledWith('schoolId', '==', 'school_456');
+      expect(mockWhere2).toHaveBeenCalledWith('entityId', '==', 'school_456');
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('activity_2');
     });
@@ -303,8 +301,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       const mockActivities = [
         {
           id: 'activity_3',
-          entityId: 'entity_789',
-          schoolId: 'school_789',
+          entityId: 'school_789',
           workspaceId: 'workspace_1',
           type: 'email',
           description: 'Test email',
@@ -323,13 +320,13 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'entity_789', schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       // Verify query used entityId (preferred)
       expect(mockWhere2).toHaveBeenCalledWith('entityId', '==', 'entity_789');
-      expect(mockWhere2).not.toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      expect(mockWhere2).not.toHaveBeenCalledWith('entityId', '==', 'school_789');
       expect(result).toHaveLength(1);
     });
 
@@ -394,7 +391,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       // Verify activity has entityId but no resolved fields
       const activityData = mockAdd.mock.calls[0][0];
       expect(activityData.entityId).toBe('entity_nonexistent');
-      expect(activityData.schoolId).toBeUndefined();
+      expect(activityData.entityId).toBeUndefined();
       expect(activityData.displayName).toBeUndefined();
     });
 
@@ -465,8 +462,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        entityId: 'entity_both',
-        schoolId: 'school_both',
+        entityId: 'school_both',
         userId: 'user_1',
         type: 'note',
         source: 'manual',
@@ -475,15 +471,14 @@ describe('Activity Module - Dual-Write and Queries', () => {
 
       // Verify resolveContact was called with both identifiers
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'entity_both', schoolId: 'school_both' },
+        { entityId: 'school_both' },
         'workspace_1'
       );
 
       // Verify both identifiers are preserved
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_both',
-          schoolId: 'school_both',
+          entityId: 'school_both',
           entityType: 'institution',
         })
       );

@@ -381,7 +381,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
           <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
               <AlreadySignedGate 
-                schoolName={school?.name} 
+                entityName={school?.name} 
                 logoUrl={school?.logoUrl} 
                 pdfName={pdfForm.name} 
                 onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${activeSubmissionId}`)} 

@@ -44,9 +44,9 @@ describe('Sequential_Scheduler Property Tests', () => {
 
     test.prop([
       fc.array(fc.string(), { minLength: 1, maxLength: 100 })
-    ])('should call sendMessage with correct schoolId for each entity', async (entityIds) => {
+    ])('should call sendMessage with correct entityId for each entity', async (entityIds) => {
       // Feature: multi-contact-messaging
-      // Property 7 (extended): Each sendMessage call should receive the correct schoolId
+      // Property 7 (extended): Each sendMessage call should receive the correct entityId
       // Validates: Requirements 3.1, 3.3
 
       // Arrange
@@ -65,12 +65,12 @@ describe('Sequential_Scheduler Property Tests', () => {
       await scheduleMultiEntityMessages(input);
 
       // Assert
-      // Verify each entity was passed as schoolId parameter
+      // Verify each entity was passed as entityId parameter
       entityIds.forEach((entityId, index) => {
         expect(mockSendMessage).toHaveBeenNthCalledWith(
           index + 1,
           expect.objectContaining({
-            schoolId: entityId
+            entityId: entityId
           })
         );
       });

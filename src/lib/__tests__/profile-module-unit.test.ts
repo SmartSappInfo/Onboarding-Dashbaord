@@ -704,7 +704,6 @@ describe('Profile Module Unit Tests - Task 19.4', () => {
       
       // Update with mixed fields
       const result = await updateProfile({
-        schoolId: 'school_123',
         entityId: 'entity_test_123',
         workspaceId: 'workspace_1',
         updates: {

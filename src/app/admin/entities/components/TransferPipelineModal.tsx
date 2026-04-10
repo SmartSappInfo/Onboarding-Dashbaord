@@ -97,7 +97,7 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
         });
 
         logActivity({
-            schoolId: school.id,
+            entityId: school.id,
             userId: user.uid,
             organizationId: activeOrganizationId,
             type: 'pipeline_stage_changed',

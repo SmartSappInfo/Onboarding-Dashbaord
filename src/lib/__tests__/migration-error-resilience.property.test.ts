@@ -131,7 +131,7 @@ const enrichedRecordArbitrary = fc.record({
   original: fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
     workspaceId: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
+    entityId: fc.string({ minLength: 10, maxLength: 20 }),
     title: fc.string({ minLength: 5, maxLength: 50 }),
     description: fc.string({ minLength: 10, maxLength: 100 }),
     status: fc.constantFrom('todo', 'in_progress', 'done'),

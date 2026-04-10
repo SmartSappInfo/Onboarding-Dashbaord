@@ -31,7 +31,7 @@ type MockSchoolData = {
 
 type MockRecordData = {
   id: string;
-  schoolId: string;
+  entityId: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
@@ -201,9 +201,8 @@ describe('Property 10: Migration Backup Creation', () => {
     name: fc.string({ minLength: 5, maxLength: 50 }).filter(s => s.trim().length > 0),
   });
 
-  const unmigratedRecordArbitrary = (schoolId: string, recordId: string) => fc.record({
+  const unmigratedRecordArbitrary = (entityId: string, recordId: string) => fc.record({
     id: fc.constant(recordId),
-    schoolId: fc.constant(schoolId),
     entityId: fc.option(fc.uuid(), { nil: undefined }),
     entityType: fc.option(fc.constantFrom('institution' as const, 'family' as const, 'person' as const), { nil: undefined }),
     title: fc.string({ minLength: 5, maxLength: 50 }).filter(s => s.trim().length > 0),
@@ -276,7 +275,7 @@ describe('Property 10: Migration Backup Creation', () => {
               const backup = backupCollection!.get(record.id);
               expect(backup).toBeDefined();
               expect(backup!.id).toBe(record.id);
-              expect(backup!.schoolId).toBe(record.schoolId);
+              expect(backup!.entityId).toBe(record.entityId);
               expect(backup!.title).toBe(record.title);
               expect(backup!.backedUpAt).toBeDefined();
               
@@ -628,7 +627,7 @@ describe('Property 10: Migration Backup Creation', () => {
             if (!record.entityId) {
               const backup = backupCollection!.get(record.id);
               expect(backup).toBeDefined();
-              expect(backup!.schoolId).toBe(record.schoolId);
+              expect(backup!.entityId).toBe(record.entityId);
               expect(backup!.backedUpAt).toBeDefined();
             }
           });

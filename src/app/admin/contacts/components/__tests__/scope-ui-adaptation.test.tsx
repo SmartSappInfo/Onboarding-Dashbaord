@@ -25,7 +25,7 @@ import { ContactDetailPage } from '../ContactDetailPage';
 import type { Entity, WorkspaceEntity, ContactScope } from '@/lib/types';
 
 // Mock dependencies
-vi.mock('@/app/admin/schools/components/FocalPersonManager', () => ({
+vi.mock('@/app/admin/entities/components/FocalPersonManager', () => ({
   FocalPersonManager: ({ value, onChange }: any) => (
     <div data-testid="focal-person-manager">
       Focal Person Manager: {value?.length || 0} persons
@@ -34,8 +34,8 @@ vi.mock('@/app/admin/schools/components/FocalPersonManager', () => ({
 }));
 
 vi.mock('@/app/admin/components/NotesSection', () => ({
-  default: ({ schoolId }: any) => (
-    <div data-testid="notes-section">Notes for {schoolId}</div>
+  default: ({ entityId }: any) => (
+    <div data-testid="notes-section">Notes for {entityId}</div>
   ),
 }));
 

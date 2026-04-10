@@ -111,7 +111,7 @@ describe('Contact Adapter New Methods', () => {
       expect(result?.migrationStatus).toBe('migrated');
     });
 
-    it('should prefer entityId over schoolId when both provided', async () => {
+    it('should prefer entityId over entityId when both provided', async () => {
       const mockEntity: Entity = {
         id: 'entity_1',
         organizationId: 'org_1',
@@ -150,8 +150,7 @@ describe('Contact Adapter New Methods', () => {
       (adminDb.collection as any) = mockCollection;
 
       const identifier: ContactIdentifier = {
-        entityId: 'entity_1',
-        schoolId: 'school_1',
+        entityId: 'school_1',
       };
       const result = await resolveContact(identifier, 'workspace_1');
 
@@ -200,7 +199,7 @@ describe('Contact Adapter New Methods', () => {
 
       (adminDb.collection as any) = mockCollection;
 
-      const identifier: ContactIdentifier = { schoolId: 'school_1' };
+      const identifier: ContactIdentifier = { entityId: 'school_1' };
       const result = await contactExists(identifier);
 
       expect(result).toBe(true);
@@ -232,7 +231,6 @@ describe('Contact Adapter New Methods', () => {
 
       const identifier: ContactIdentifier = {
         entityId: 'nonexistent',
-        schoolId: 'nonexistent',
       };
       const result = await contactExists(identifier);
 

@@ -37,7 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { cn } from '@/lib/utils';
@@ -52,8 +52,8 @@ import { MultiSelect } from '@/components/ui/multi-select';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
   publicTitle: z.string().min(2, { message: 'Public title must be at least 2 characters.' }),
-  schoolId: z.string().optional().nullable(),
-  schoolName: z.string().optional().nullable(),
+  entityId: z.string().optional().nullable(),
+  entityName: z.string().optional().nullable(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   backgroundColor: z.string().optional(),
   backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
@@ -133,13 +133,13 @@ export default function EditPdfPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-        name: '', publicTitle: '', schoolId: null, schoolName: null, status: 'draft', slug: '', logoUrl: '', backgroundColor: '#F1F5F9', backgroundPattern: 'none', patternColor: '#3B5FFF', webhookEnabled: false, webhookId: '', passwordProtected: false, password: '', isContractDocument: false, confirmationMessagingEnabled: false, confirmationTemplateId: '', confirmationSenderProfileId: '', adminAlertsEnabled: false, adminAlertChannel: 'both', adminAlertNotifyManager: false, adminAlertSpecificUserIds: [], workspaceIds: [activeWorkspaceId]
+        name: '', publicTitle: '', entityId: null, entityName: null, status: 'draft', slug: '', logoUrl: '', backgroundColor: '#F1F5F9', backgroundPattern: 'none', patternColor: '#3B5FFF', webhookEnabled: false, webhookId: '', passwordProtected: false, password: '', isContractDocument: false, confirmationMessagingEnabled: false, confirmationTemplateId: '', confirmationSenderProfileId: '', adminAlertsEnabled: false, adminAlertChannel: 'both', adminAlertNotifyManager: false, adminAlertSpecificUserIds: [], workspaceIds: [activeWorkspaceId]
     }
   });
 
   const { reset, watch, setValue, getValues, trigger } = form;
-  const watchedSchoolId = watch('schoolId');
-  const watchedSchoolName = watch('schoolName');
+  const watchedSchoolId = watch('entityId');
+  const watchedSchoolName = watch('entityName');
 
   const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc')) : null, [firestore, activeWorkspaceId]);
   const { data: schools } = useCollection<School>(schoolsQuery);
@@ -275,8 +275,8 @@ export default function EditPdfPage() {
                                                 <Controller name="publicTitle" control={form.control} render={({ field }) => (
                                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-lg" /></div>
                                                 )} />
-                                                <Controller name="schoolId" control={form.control} render={({ field }) => (
-                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Associated Organization</Label><Select onValueChange={(val) => { const school = schools?.find(s => s.id === val); field.onChange(val === 'none' ? null : val); setValue('schoolName', school ? school.name : 'SmartSapp'); }} value={field.value || 'none'}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue placeholder="Select a school..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Independent (No School)</SelectItem>{schools?.map(school => (<SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>))}</SelectContent></Select></div>
+                                                <Controller name="entityId" control={form.control} render={({ field }) => (
+                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Associated Organization</Label><Select onValueChange={(val) => { const school = schools?.find(s => s.id === val); field.onChange(val === 'none' ? null : val); setValue('entityName', school ? school.name : 'SmartSapp'); }} value={field.value || 'none'}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue placeholder="Select a school..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Independent (No School)</SelectItem>{schools?.map(school => (<SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>))}</SelectContent></Select></div>
                                                 )} />
                                             </CardContent>
                                         </Card>

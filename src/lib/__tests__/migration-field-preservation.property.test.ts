@@ -4,15 +4,15 @@
  * **Property 11: Migration Field Preservation**
  * **Validates: Requirements 19.6**
  * 
- * For any record updated during migration, the original schoolId field should
+ * For any record updated during migration, the original entityId field should
  * remain unchanged while new entityId and entityType fields are added.
  * 
  * This property ensures that:
- * 1. The schoolId field is never modified during migration
- * 2. The schoolId value remains exactly the same before and after migration
+ * 1. The entityId field is never modified during migration
+ * 2. The entityId value remains exactly the same before and after migration
  * 3. New fields (entityId, entityType) are added without affecting existing fields
  * 4. All other original fields are preserved unchanged
- * 5. Dual-write pattern is correctly implemented (both schoolId and entityId present)
+ * 5. Dual-write pattern is correctly implemented (both entityId and entityId present)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -32,8 +32,8 @@ type MockSchoolData = {
 
 type MockRecordData = {
   id: string;
-  schoolId: string;
-  schoolName?: string;
+  entityId: string;
+  entityName?: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
@@ -181,10 +181,10 @@ describe('Property 11: Migration Field Preservation', () => {
     name: fc.string({ minLength: 5, maxLength: 50 }).filter(s => s.trim().length > 0),
   });
 
-  const unmigratedRecordArbitrary = (schoolId: string, recordId: string) => fc.record({
+  const unmigratedRecordArbitrary = (entityId: string, recordId: string) => fc.record({
     id: fc.constant(recordId),
-    schoolId: fc.constant(schoolId),
-    schoolName: fc.option(fc.string({ minLength: 5, maxLength: 50 }), { nil: undefined }),
+    entityId: fc.constant(entityId),
+    entityName: fc.option(fc.string({ minLength: 5, maxLength: 50 }), { nil: undefined }),
     title: fc.string({ minLength: 5, maxLength: 50 }).filter(s => s.trim().length > 0),
     description: fc.option(fc.string({ minLength: 10, maxLength: 100 }), { nil: undefined }),
     status: fc.option(fc.constantFrom('todo', 'in_progress', 'done', 'archived'), { nil: undefined }),
@@ -211,7 +211,7 @@ describe('Property 11: Migration Field Preservation', () => {
     ),
   });
 
-  it('should preserve schoolId field unchanged during migration', async () => {
+  it('should preserve entityId field unchanged during migration', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(migratedSchoolArbitrary, { minLength: 1, maxLength: 20 }).map(schools => {
@@ -238,7 +238,7 @@ describe('Property 11: Migration Field Preservation', () => {
             })
           );
 
-          // Store original schoolId values before migration
+          // Store original entityId values before migration
           records.forEach(record => {
             collectionData.set(record.id, record);
             recordsBeforeMigration.set(record.id, { ...record });
@@ -265,7 +265,7 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolId field is unchanged for all migrated records
+          // Verify: entityId field is unchanged for all migrated records
           const migratedCollection = mockCollections.get(collectionName);
           expect(migratedCollection).toBeDefined();
 
@@ -276,9 +276,9 @@ describe('Property 11: Migration Field Preservation', () => {
             expect(migratedRecord).toBeDefined();
             expect(originalRecord).toBeDefined();
 
-            // Critical assertion: schoolId must be exactly the same
-            expect(migratedRecord!.schoolId).toBe(originalRecord!.schoolId);
-            expect(migratedRecord!.schoolId).toBe(record.schoolId);
+            // Critical assertion: entityId must be exactly the same
+            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
+            expect(migratedRecord!.entityId).toBe(record.entityId);
           });
         }
       ),
@@ -286,7 +286,7 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should preserve schoolName field unchanged during migration', async () => {
+  it('should preserve entityName field unchanged during migration', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(migratedSchoolArbitrary, { minLength: 1, maxLength: 20 }).map(schools => {
@@ -337,15 +337,15 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolName field is unchanged (if it existed)
+          // Verify: entityName field is unchanged (if it existed)
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const migratedRecord = migratedCollection!.get(record.id);
 
-            if (originalRecord!.schoolName !== undefined) {
-              expect(migratedRecord!.schoolName).toBe(originalRecord!.schoolName);
+            if (originalRecord!.entityName !== undefined) {
+              expect(migratedRecord!.entityName).toBe(originalRecord!.entityName);
             }
           });
         }
@@ -354,7 +354,7 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should add entityId and entityType without modifying schoolId', async () => {
+  it('should add entityId and entityType without modifying entityId', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(migratedSchoolArbitrary, { minLength: 1, maxLength: 20 }).map(schools => {
@@ -405,22 +405,22 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: Dual-write pattern (both schoolId and entityId present)
+          // Verify: Dual-write pattern (both entityId and entityId present)
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach((record, idx) => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const migratedRecord = migratedCollection!.get(record.id);
 
-            // schoolId preserved
-            expect(migratedRecord!.schoolId).toBe(originalRecord!.schoolId);
+            // entityId preserved
+            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
 
             // entityId and entityType added
             expect(migratedRecord!.entityId).toBe(schools[idx].entityId);
             expect(migratedRecord!.entityType).toBe(schools[idx].entityType);
 
             // Both identifiers present (dual-write)
-            expect(migratedRecord!.schoolId).toBeDefined();
+            expect(migratedRecord!.entityId).toBeDefined();
             expect(migratedRecord!.entityId).toBeDefined();
           });
         }
@@ -489,7 +489,7 @@ describe('Property 11: Migration Field Preservation', () => {
 
             // Check all original fields (except entityId and entityType which are new)
             const fieldsToCheck = [
-              'id', 'schoolId', 'schoolName', 'title', 'description',
+              'id', 'entityId', 'entityName', 'title', 'description',
               'status', 'priority', 'assignedTo', 'dueDate', 'createdAt', 'metadata'
             ];
 
@@ -505,14 +505,14 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should preserve schoolId across multiple field types and values', async () => {
+  it('should preserve entityId across multiple field types and values', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(
           fc.record({
             school: migratedSchoolArbitrary,
-            // Generate various schoolId formats
-            schoolIdFormat: fc.constantFrom(
+            // Generate various entityId formats
+            entityIdFormat: fc.constantFrom(
               'numeric',
               'uuid',
               'alphanumeric',
@@ -522,46 +522,46 @@ describe('Property 11: Migration Field Preservation', () => {
           }),
           { minLength: 1, maxLength: 20 }
         ).map(items => {
-          // Generate unique schoolIds based on format
+          // Generate unique entityIds based on format
           return items.map((item, idx) => {
-            let schoolId: string;
-            switch (item.schoolIdFormat) {
+            let entityId: string;
+            switch (item.entityIdFormat) {
               case 'numeric':
-                schoolId = `${100000 + idx}`;
+                entityId = `${100000 + idx}`;
                 break;
               case 'uuid':
-                schoolId = `${item.school.id}`;
+                entityId = `${item.school.id}`;
                 break;
               case 'alphanumeric':
-                schoolId = `school${idx}abc`;
+                entityId = `school${idx}abc`;
                 break;
               case 'with-dashes':
-                schoolId = `school-${idx}-test`;
+                entityId = `school-${idx}-test`;
                 break;
               case 'with-underscores':
-                schoolId = `school_${idx}_test`;
+                entityId = `school_${idx}_test`;
                 break;
               default:
-                schoolId = `school_${idx}`;
+                entityId = `school_${idx}`;
             }
             return {
-              school: { ...item.school, id: schoolId },
-              schoolId,
+              school: { ...item.school, id: entityId },
+              entityId,
             };
           });
         }),
         async (items) => {
           // Setup: Create schools
-          items.forEach(item => mockSchools.set(item.schoolId, item.school));
+          items.forEach(item => mockSchools.set(item.entityId, item.school));
 
           const collectionName = 'tasks';
           const collectionData = new Map<string, MockRecordData>();
 
-          // Create records with various schoolId formats
+          // Create records with various entityId formats
           const records = await Promise.all(
             items.map(async (item, idx) => {
               const recordId = `record_${idx}`;
-              const recordGen = await fc.sample(unmigratedRecordArbitrary(item.schoolId, recordId), 1);
+              const recordGen = await fc.sample(unmigratedRecordArbitrary(item.entityId, recordId), 1);
               return recordGen[0];
             })
           );
@@ -592,17 +592,17 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolId preserved regardless of format
+          // Verify: entityId preserved regardless of format
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const migratedRecord = migratedCollection!.get(record.id);
 
-            // schoolId must be exactly the same, regardless of format
-            expect(migratedRecord!.schoolId).toBe(originalRecord!.schoolId);
-            expect(typeof migratedRecord!.schoolId).toBe('string');
-            expect(migratedRecord!.schoolId.length).toBeGreaterThan(0);
+            // entityId must be exactly the same, regardless of format
+            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
+            expect(typeof migratedRecord!.entityId).toBe('string');
+            expect(migratedRecord!.entityId.length).toBeGreaterThan(0);
           });
         }
       ),
@@ -610,7 +610,7 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should preserve schoolId in batch processing', async () => {
+  it('should preserve entityId in batch processing', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(migratedSchoolArbitrary, { minLength: 10, maxLength: 50 }).map(schools => {
@@ -661,14 +661,14 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolId preserved for all records in batch
+          // Verify: entityId preserved for all records in batch
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const migratedRecord = migratedCollection!.get(record.id);
 
-            expect(migratedRecord!.schoolId).toBe(originalRecord!.schoolId);
+            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
           });
         }
       ),
@@ -676,7 +676,7 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should preserve schoolId across different collections', async () => {
+  it('should preserve entityId across different collections', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.constantFrom('tasks', 'activities', 'forms', 'invoices', 'meetings'),
@@ -727,14 +727,14 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolId preserved regardless of collection
+          // Verify: entityId preserved regardless of collection
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const migratedRecord = migratedCollection!.get(record.id);
 
-            expect(migratedRecord!.schoolId).toBe(originalRecord!.schoolId);
+            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
           });
         }
       ),
@@ -742,7 +742,7 @@ describe('Property 11: Migration Field Preservation', () => {
     );
   });
 
-  it('should not modify schoolId even when enrichment fails for some records', async () => {
+  it('should not modify entityId even when enrichment fails for some records', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
@@ -789,15 +789,15 @@ describe('Property 11: Migration Field Preservation', () => {
           const migrationEngine = createMigrationEngine({} as Firestore);
           await migrationEngine.restore(enrichedBatch);
 
-          // Verify: schoolId unchanged for all records (even if some failed)
+          // Verify: entityId unchanged for all records (even if some failed)
           const migratedCollection = mockCollections.get(collectionName);
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
             const currentRecord = migratedCollection!.get(record.id);
 
-            // schoolId should never change, regardless of migration success/failure
-            expect(currentRecord!.schoolId).toBe(originalRecord!.schoolId);
+            // entityId should never change, regardless of migration success/failure
+            expect(currentRecord!.entityId).toBe(originalRecord!.entityId);
           });
         }
       ),

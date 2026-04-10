@@ -105,11 +105,11 @@ describe('MigrationCard Integration Tests', () => {
         totalRecords: 100,
         recordsToMigrate: 75,
         sampleRecords: [
-          { id: 'task1', schoolId: 'school1', title: 'Test Task 1' },
-          { id: 'task2', schoolId: 'school2', title: 'Test Task 2' }
+          { id: 'task1', entityId: 'school1', title: 'Test Task 1' },
+          { id: 'task2', entityId: 'school2', title: 'Test Task 2' }
         ],
         invalidRecords: [
-          { id: 'task3', reason: 'Missing schoolId' }
+          { id: 'task3', reason: 'Missing entityId' }
         ]
       };
       
@@ -137,7 +137,7 @@ describe('MigrationCard Integration Tests', () => {
       
       // Verify error log shows invalid records
       expect(screen.getByText(/error log/i)).toBeInTheDocument();
-      expect(screen.getByText(/task3: Missing schoolId/i)).toBeInTheDocument();
+      expect(screen.getByText(/task3: Missing entityId/i)).toBeInTheDocument();
     });
 
     it('should trigger enrich and restore operation with progress tracking', async () => {
@@ -335,8 +335,8 @@ describe('MigrationCard Integration Tests', () => {
         recordsToMigrate: 95,
         sampleRecords: [],
         invalidRecords: [
-          { id: 'task1', reason: 'Missing schoolId' },
-          { id: 'task2', reason: 'Null schoolId value' },
+          { id: 'task1', reason: 'Missing entityId' },
+          { id: 'task2', reason: 'Null entityId value' },
           { id: 'task3', reason: 'Invalid format' }
         ]
       };
@@ -353,8 +353,8 @@ describe('MigrationCard Integration Tests', () => {
         expect(errorLog).toBeInTheDocument();
         
         // Verify all errors are displayed
-        expect(screen.getByText(/task1: Missing schoolId/i)).toBeInTheDocument();
-        expect(screen.getByText(/task2: Null schoolId value/i)).toBeInTheDocument();
+        expect(screen.getByText(/task1: Missing entityId/i)).toBeInTheDocument();
+        expect(screen.getByText(/task2: Null entityId value/i)).toBeInTheDocument();
         expect(screen.getByText(/task3: Invalid format/i)).toBeInTheDocument();
       });
     });

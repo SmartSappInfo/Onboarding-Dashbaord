@@ -50,8 +50,8 @@ describe('Property 16: Rollback Restoration', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
-            schoolName: fc.string({ minLength: 1, maxLength: 30 }),
+            entityId: fc.uuid(),
+            entityName: fc.string({ minLength: 1, maxLength: 30 }),
             status: fc.constantFrom('active', 'completed', 'pending'),
             createdAt: fc.date().map(d => d.toISOString()),
           }),
@@ -61,7 +61,7 @@ describe('Property 16: Rollback Restoration', () => {
           // Setup: Create migrated records (with entityId and entityType)
           const migratedRecords = originalRecords.map(record => ({
             ...record,
-            entityId: `entity_${record.schoolId}`,
+            entityId: `entity_${record.entityId}`,
             entityType: 'institution' as const,
             updatedAt: new Date().toISOString(),
           }));
@@ -102,8 +102,8 @@ describe('Property 16: Rollback Restoration', () => {
             expect(restoredRecord.entityType).toBeUndefined();
 
             // Should have original fields
-            expect(restoredRecord.schoolId).toBe(originalRecord!.schoolId);
-            expect(restoredRecord.schoolName).toBe(originalRecord!.schoolName);
+            expect(restoredRecord.entityId).toBe(originalRecord!.entityId);
+            expect(restoredRecord.entityName).toBe(originalRecord!.entityName);
             expect(restoredRecord.title).toBe(originalRecord!.title);
             expect(restoredRecord.status).toBe(originalRecord!.status);
           }
@@ -127,7 +127,7 @@ describe('Property 16: Rollback Restoration', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
+            entityId: fc.uuid(),
           }),
           { minLength: 5, maxLength: 10 }
         ),
@@ -179,8 +179,8 @@ describe('Property 16: Rollback Restoration', () => {
           workspaceId: fc.uuid(),
           title: fc.string({ minLength: 1, maxLength: 50 }),
           description: fc.string({ minLength: 0, maxLength: 200 }),
-          schoolId: fc.uuid(),
-          schoolName: fc.string({ minLength: 1, maxLength: 30 }),
+          entityId: fc.uuid(),
+          entityName: fc.string({ minLength: 1, maxLength: 30 }),
           status: fc.constantFrom('active', 'completed'),
           priority: fc.constantFrom('low', 'medium', 'high'),
           assignedTo: fc.uuid(),
@@ -193,7 +193,7 @@ describe('Property 16: Rollback Restoration', () => {
           // Setup: Create migrated record
           const migratedRecord = {
             ...originalRecord,
-            entityId: `entity_${originalRecord.schoolId}`,
+            entityId: `entity_${originalRecord.entityId}`,
             entityType: 'institution' as const,
           };
           await setDoc(doc(firestore, collectionName, originalRecord.id), migratedRecord);
@@ -221,8 +221,8 @@ describe('Property 16: Rollback Restoration', () => {
           expect(restoredRecord.workspaceId).toBe(originalRecord.workspaceId);
           expect(restoredRecord.title).toBe(originalRecord.title);
           expect(restoredRecord.description).toBe(originalRecord.description);
-          expect(restoredRecord.schoolId).toBe(originalRecord.schoolId);
-          expect(restoredRecord.schoolName).toBe(originalRecord.schoolName);
+          expect(restoredRecord.entityId).toBe(originalRecord.entityId);
+          expect(restoredRecord.entityName).toBe(originalRecord.entityName);
           expect(restoredRecord.status).toBe(originalRecord.status);
           expect(restoredRecord.priority).toBe(originalRecord.priority);
           expect(restoredRecord.assignedTo).toBe(originalRecord.assignedTo);

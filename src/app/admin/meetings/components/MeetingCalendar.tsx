@@ -143,7 +143,7 @@ export default function MeetingCalendar({ meetings, onMeetingClick }: MeetingCal
                                                 <span className="text-[8px] font-black uppercase tabular-nums">{format(new Date(meeting.meetingTime), 'p')}</span>
                                             </div>
                                             <p className="text-[10px] font-black uppercase tracking-tight truncate leading-none mb-0.5">
-                                                {meeting.schoolName}
+                                                {meeting.entityName}
                                             </p>
                                             <div className="flex items-center justify-between gap-2 mt-1">
                                                 <Badge variant="outline" className="h-4 border-none p-0 text-[7px] font-bold uppercase opacity-60 truncate">

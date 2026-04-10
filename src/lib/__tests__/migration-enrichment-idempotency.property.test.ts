@@ -6,7 +6,7 @@
  * 
  * For any record fetched for migration, if the associated school has
  * migrationStatus === 'migrated', the system should use the school's entityId field;
- * otherwise, it should generate a new entityId using the format entity_<schoolId>.
+ * otherwise, it should generate a new entityId using the format entity_<entityId>.
  * 
  * **Property 13: Migration Idempotency**
  * **Validates: Requirements 19.10**
@@ -33,7 +33,7 @@ type MockSchoolData = {
 
 type MockRecordData = {
   id: string;
-  schoolId: string;
+  entityId: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
@@ -165,9 +165,9 @@ describe('Property 9: Migration Enrichment Correctness', () => {
     name: fc.string({ minLength: 5, maxLength: 50 }),
   });
 
-  const unmigratedRecordArbitrary = (schoolId: string) => fc.record({
+  const unmigratedRecordArbitrary = (entityId: string) => fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.constant(schoolId),
+    entityId: fc.constant(entityId),
     title: fc.string({ minLength: 5, maxLength: 50 }),
   });
 
@@ -184,7 +184,7 @@ describe('Property 9: Migration Enrichment Correctness', () => {
           // Create unmigrated records for these schools
           const records = schools.map((school, idx) => ({
             id: `record_${idx}`,
-            schoolId: school.id,
+            entityId: school.id,
             title: `Task ${idx}`,
           }));
 
@@ -227,7 +227,7 @@ describe('Property 9: Migration Enrichment Correctness', () => {
           // Create unmigrated records for these schools
           const records = schools.map((school, idx) => ({
             id: `record_${idx}`,
-            schoolId: school.id,
+            entityId: school.id,
             title: `Task ${idx}`,
           }));
 
@@ -274,7 +274,7 @@ describe('Property 9: Migration Enrichment Correctness', () => {
           const allSchools = [...migrated, ...nonMigrated];
           const records = allSchools.map((school, idx) => ({
             id: `record_${idx}`,
-            schoolId: school.id,
+            entityId: school.id,
             title: `Task ${idx}`,
           }));
 
@@ -324,13 +324,13 @@ describe('Property 9: Migration Enrichment Correctness', () => {
           // Create records: some with valid schools, some with missing schools
           const validRecords = validSchools.map((school, idx) => ({
             id: `valid_${idx}`,
-            schoolId: school.id,
+            entityId: school.id,
             title: `Valid Task ${idx}`,
           }));
 
-          const invalidRecords = missingSchoolIds.map((schoolId, idx) => ({
+          const invalidRecords = missingSchoolIds.map((entityId, idx) => ({
             id: `invalid_${idx}`,
-            schoolId,
+            entityId,
             title: `Invalid Task ${idx}`,
           }));
 
@@ -353,7 +353,7 @@ describe('Property 9: Migration Enrichment Correctness', () => {
           
           // All enriched records should be from valid schools
           enrichedBatch.records.forEach(enrichedRecord => {
-            const matchingSchool = validSchools.find(s => s.id === enrichedRecord.original.schoolId);
+            const matchingSchool = validSchools.find(s => s.id === enrichedRecord.original.entityId);
             expect(matchingSchool).toBeDefined();
           });
         }
@@ -393,7 +393,6 @@ describe('Property 13: Migration Idempotency', () => {
           // Create records that are already migrated
           const records = schools.map((school, idx) => ({
             id: `record_${idx}`,
-            schoolId: school.id,
             entityId: school.entityId, // Already has entityId
             entityType: school.entityType,
             title: `Task ${idx}`,
@@ -446,7 +445,7 @@ describe('Property 13: Migration Idempotency', () => {
           const createUnmigratedRecords = () => {
             const records = schools.map((school, idx) => ({
               id: `record_${idx}`,
-              schoolId: school.id,
+              entityId: school.id,
               title: `Task ${idx}`,
             }));
             return records;
@@ -531,7 +530,7 @@ describe('Property 13: Migration Idempotency', () => {
           const records = schools.map((school, idx) => {
             const record: MockRecordData = {
               id: `record_${idx}`,
-              schoolId: school.id,
+              entityId: school.id,
               title: `Task ${idx}`,
             };
 
@@ -602,7 +601,7 @@ describe('Property 13: Migration Idempotency', () => {
 
           const records = schools.map((school, idx) => ({
             id: `record_${idx}`,
-            schoolId: school.id,
+            entityId: school.id,
             title: `Task ${idx}`,
           }));
 
@@ -660,7 +659,7 @@ describe('Property 13: Migration Idempotency', () => {
             finalCollection.forEach((record, id) => {
               expect(record.entityId).toBeDefined();
               expect(record.entityType).toBeDefined();
-              expect(record.schoolId).toBeDefined(); // Preserved
+              expect(record.entityId).toBeDefined(); // Preserved
             });
           }
         }

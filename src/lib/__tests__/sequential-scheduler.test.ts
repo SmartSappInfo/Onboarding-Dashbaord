@@ -45,7 +45,7 @@ describe('Sequential_Scheduler', () => {
         recipient: '',
         variables: { test: 'value' },
         attachments: undefined,
-        schoolId: 'entity-1',
+        entityId: 'entity-1',
         workspaceId: undefined,
         scheduledAt: undefined
       });
@@ -307,7 +307,7 @@ describe('Sequential_Scheduler', () => {
       // Assert
       expect(mockSendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          recipient: '' // Empty string - sendMessage resolves from schoolId
+          recipient: '' // Empty string - sendMessage resolves from entityId
         })
       );
     });

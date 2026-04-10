@@ -35,7 +35,7 @@ export async function cloneTemplate(templateId: string, userId: string) {
     const newTemplateRef = await adminDb.collection('message_templates').add(newTemplateData);
 
     await logActivity({
-      schoolId: '', 
+      entityId: '', 
       organizationId: 'default',
       userId,
       workspaceId: 'onboarding',

@@ -57,7 +57,7 @@ import InternalNotificationConfig from '@/app/admin/components/internal-notifica
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { format } from 'date-fns';
-import { MediaSelect } from '../../../schools/components/media-select';
+import { MediaSelect } from '../../../entities/components/media-select';
 import { getMeetingHeroDefaults } from '@/lib/meeting-hero-defaults';
 import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../../components/registration-field-builder';
@@ -66,7 +66,7 @@ import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
-  schoolSlug: z.string()
+  entitySlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
     .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   meetingTime: z.date({
@@ -132,7 +132,7 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
-  useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
+  useSetBreadcrumb(meeting?.entityName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -145,7 +145,7 @@ export default function EditMeetingPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       school: undefined,
-      schoolSlug: '',
+      entitySlug: '',
       meetingTime: undefined,
       type: undefined,
       meetingLink: '',
@@ -174,12 +174,12 @@ export default function EditMeetingPage() {
 
   const { setValue } = form;
   const watchedType = form.watch('type');
-  const watchedSlug = form.watch('schoolSlug');
+  const watchedSlug = form.watch('entitySlug');
   const registrationEnabled = form.watch('registrationEnabled');
 
   React.useEffect(() => {
     if (meeting && schools && !hasInitialized) {
-      const selectedSchool = schools.find(s => s.id === meeting.schoolId);
+      const selectedSchool = schools.find(s => s.id === meeting.entityId);
       const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || 
                           MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
                           MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
@@ -188,7 +188,7 @@ export default function EditMeetingPage() {
       if (selectedSchool) {
           form.reset({
             school: selectedSchool,
-            schoolSlug: meeting.schoolSlug || selectedSchool.slug,
+            entitySlug: meeting.entitySlug || selectedSchool.slug,
             meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
             type: selectedType,
             meetingLink: meeting.meetingLink || '',
@@ -223,22 +223,22 @@ export default function EditMeetingPage() {
     
     try {
         const meetingsRef = collection(firestore, 'meetings');
-        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
+        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('entitySlug', '==', data.entitySlug));
         const querySnapshot = await getDocs(q);
         
         const isDuplicate = querySnapshot.docs.some(doc => doc.id !== meetingId);
         
         if (isDuplicate) {
-            form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+            form.setError('entitySlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
             toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
             setCurrentStep(0);
             return;
         }
 
         const meetingData = {
-            schoolId: data.school.id,
-            schoolName: data.school.name,
-            schoolSlug: data.schoolSlug,
+            entityId: data.school.id,
+            entityName: data.school.name,
+            entitySlug: data.entitySlug,
             entityId: meeting?.entityId || null,
             entityType: meeting?.entityType || null,
             workspaceIds: data.school.workspaceIds || [activeWorkspaceId],
@@ -280,7 +280,6 @@ export default function EditMeetingPage() {
         
         logActivity({
             organizationId: activeOrganizationId,
-            schoolId: data.school.id,
             entityId: meeting?.entityId || null,
             entityType: meeting?.entityType || null,
             userId: user.uid,
@@ -293,7 +292,7 @@ export default function EditMeetingPage() {
 
         if (data.adminAlertsEnabled && !meeting?.adminAlertsEnabled) {
              triggerInternalNotification({
-                schoolId: data.school.id,
+                entityId: data.school.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
                 emailTemplateId: data.adminAlertEmailTemplateId,
@@ -322,7 +321,7 @@ export default function EditMeetingPage() {
     let isValid = false;
     
     if (currentStep === 0) {
-      isValid = await form.trigger(['school', 'schoolSlug', 'meetingTime', 'type', 'meetingLink']);
+      isValid = await form.trigger(['school', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
     } else if (currentStep === 1) {
       isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
     } else if (currentStep === 2) {
@@ -451,11 +450,11 @@ export default function EditMeetingPage() {
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context School</FormLabel>
                                         <Select
-                                            onValueChange={(schoolId: string) => {
-                                                const school = schools?.find((s) => s.id === schoolId);
+                                            onValueChange={(entityId: string) => {
+                                                const school = schools?.find((s) => s.id === entityId);
                                                 field.onChange(school);
-                                                if (school && !form.getValues('schoolSlug')) {
-                                                    form.setValue('schoolSlug', school.slug, { shouldValidate: true });
+                                                if (school && !form.getValues('entitySlug')) {
+                                                    form.setValue('entitySlug', school.slug, { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
@@ -541,7 +540,7 @@ export default function EditMeetingPage() {
 
                             <FormField
                                 control={form.control}
-                                name="schoolSlug"
+                                name="entitySlug"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">URL Path Context</FormLabel>

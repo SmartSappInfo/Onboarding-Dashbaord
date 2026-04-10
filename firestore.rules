@@ -1,3 +1,4 @@
+// Deployment fix for organizations list permission
 rules_version = '2';
 
 service cloud.firestore {
@@ -13,30 +14,20 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      // Prioritize the master admin email for bootstrapping and emergency access
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
-        return true;
-      }
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
       return data != null && data.get('isAuthorized', false) == true;
     }
 
     function isSystemAdmin() {
-      // Prioritize email check to bypass get() call overhead and bootstrapping issues
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
-        return true;
-      }
-      
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
       return data != null && data.get('isAuthorized', false) == true && 
              data.get('permissions', []).hasAny(['system_admin']);
     }
 
     function isOrgMatch(orgId) {
-      // Master admin bypass
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') {
-        return true;
-      }
+      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
       return data != null && data.get('organizationId', '') == orgId;
     }
@@ -50,10 +41,8 @@ service cloud.firestore {
     function canAccessWorkspace(targetWorkspaceIds) {
       if (isSystemAdmin()) return true;
       let data = getUserData();
-      if (data == null || data.isAuthorized != true) return false;
-      
-      let userWorkspaces = data.get('workspaceIds', []);
-      return userWorkspaces.hasAny(targetWorkspaceIds);
+      let userWorkspaces = data != null ? data.get('workspaceIds', []) : [];
+      return data != null && data.get('isAuthorized', false) == true && userWorkspaces.hasAny(targetWorkspaceIds);
     }
 
     // --- Base Deny-All ---
@@ -63,7 +52,7 @@ service cloud.firestore {
 
     // --- Governance Layer (Org Bound) ---
     match /organizations/{orgId} {
-      allow get: if isSignedIn() && (isSystemAdmin() || isOrgMatch(orgId));
+      allow read: if isSignedIn() && (isSystemAdmin() || isOrgMatch(orgId));
       allow write: if isSystemAdmin();
     }
 
@@ -205,14 +194,14 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow read, write: if isAuthorized() && (
         isSystemAdmin() || 
-        resource.data.workspaceId in getUserData().workspaceIds
+        (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
       );
     }
 
     match /activities/{activityId} {
       allow read, list: if isAuthorized() && (
         isSystemAdmin() || 
-        resource.data.workspaceId in getUserData().workspaceIds
+        (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
       );
       allow create: if isAuthorized() || isSignedIn();
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
@@ -343,24 +332,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // --- Unified Entity System (Requirement 9) ---
-    
-    /**
-     * Helper function to check if user has access to any workspace that contains this entity
-     * Used for entities collection read access
-     */
-    function hasEntityAccess(entityId) {
-      // System admin has access to all entities
-      if (isSystemAdmin()) return true;
-      
-      // Check if user has access to any workspace that contains this entity
-      // This requires querying workspace_entities, which is done at the application level
-      // For security rules, we allow read if user is authorized and belongs to the same org
-      let data = getUserData();
-      return data != null && 
-             data.get('isAuthorized', false) == true &&
-             data.get('organizationId', '') == resource.data.organizationId;
-    }
+
 
     match /entities/{entityId} {
       // Allow read if user has workspace access to any workspace the entity belongs to

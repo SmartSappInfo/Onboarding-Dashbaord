@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight } from 'lucide-react';
-import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import type { WorkspaceEntity } from '@/lib/types';
 
 interface Step1DetailsProps {
@@ -67,9 +67,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                         onValueChange={(val) => {
                                             const institution = institutions?.find(i => i.entityId === val);
                                             field.onChange(val === 'none' ? null : val);
-                                            setValue('schoolName', institution ? institution.displayName : null, { shouldDirty: true });
-                                            // Ensure schoolId gets wiped when binding to entityId
-                                            setValue('schoolId', null, { shouldDirty: true });
+                                            setValue('entityName', institution ? institution.displayName : null, { shouldDirty: true });
                                         }} 
                                         value={field.value || 'none'}
                                     >

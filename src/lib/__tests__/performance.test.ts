@@ -188,13 +188,13 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       console.log(`Query execution time: ${executionTime.toFixed(2)}ms (threshold: ${QUERY_PERFORMANCE_THRESHOLD_MS}ms)`);
     });
 
-    it('should resolve contact by schoolId within 1000ms', async () => {
+    it('should resolve contact by entityId within 1000ms', async () => {
       // Setup: Create legacy school
-      const schoolId = 'school_perf_test_002';
+      const entityId = 'school_perf_test_002';
       const workspaceId = 'workspace_perf_002';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'Performance Test School',
         slug: 'perf-test-school',
         workspaceIds: [workspaceId],
@@ -210,17 +210,17 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         updatedAt: '2023-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
       // Measure query performance
       const startTime = performance.now();
-      const result = await resolveContact({ schoolId }, workspaceId);
+      const result = await resolveContact({ entityId }, workspaceId);
       const endTime = performance.now();
       const executionTime = endTime - startTime;
 
       // Verify result
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(schoolId);
+      expect(result?.id).toBe(entityId);
 
       // Verify performance requirement (Requirement 28.1)
       expect(executionTime).toBeLessThan(QUERY_PERFORMANCE_THRESHOLD_MS);
@@ -537,7 +537,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       // Create mock records
       const records = Array.from({ length: totalRecords }, (_, i) => ({
         id: `record_${i}`,
-        schoolId: `school_${i}`,
+        entityId: `school_${i}`,
         name: `Record ${i}`,
       }));
 

@@ -30,7 +30,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: { school_name: 'Test School' },
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 scheduledAt: undefined,
             });
 
@@ -40,7 +40,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: { school_name: 'Test School' },
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 scheduledAt: undefined,
             });
         });
@@ -56,7 +56,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
             });
 
             expect(result).toHaveProperty('success');
@@ -76,7 +76,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: '',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
             });
 
             expect(result.success).toBe(false);
@@ -95,7 +95,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
             };
 
             const mockSendMessage = vi.fn().mockResolvedValue({
@@ -114,7 +114,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                         senderProfileId: formData.senderProfileId,
                         recipient: target,
                         variables: formData.variables,
-                        schoolId: formData.schoolId,
+                        entityId: formData.entityId,
                     });
                 }
             }
@@ -137,7 +137,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
             };
 
             const mockSendMessage = vi.fn().mockResolvedValue({
@@ -155,7 +155,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                         senderProfileId: formData.senderProfileId,
                         recipient: target,
                         variables: formData.variables,
-                        schoolId: formData.schoolId,
+                        entityId: formData.entityId,
                     });
                 }
             }
@@ -173,7 +173,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
             };
 
             const mockSendMessage = vi.fn().mockResolvedValue({
@@ -191,7 +191,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                         senderProfileId: formData.senderProfileId,
                         recipient: target,
                         variables: formData.variables,
-                        schoolId: formData.schoolId,
+                        entityId: formData.entityId,
                     });
                 }
             }
@@ -338,7 +338,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 scheduledAt: scheduledDate.toISOString(),
             });
 
@@ -386,7 +386,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 scheduledAt: undefined,
             });
 
@@ -423,7 +423,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 attachments,
             });
 
@@ -483,7 +483,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 attachments,
             });
 
@@ -508,7 +508,7 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 attachments: undefined,
             });
 
@@ -651,26 +651,26 @@ describe('ComposerWizard - Backward Compatibility (Task 9.1)', () => {
         it('should switch from single-recipient to multi-entity mode', () => {
             let useMultiEntity = false;
             let recipient = 'test@example.com';
-            let schoolId = 'school-1';
+            let entityId = 'school-1';
             let selectedEntityIds: string[] = [];
 
             // Switch to multi-entity mode
             useMultiEntity = true;
             if (useMultiEntity) {
                 recipient = '';
-                schoolId = '';
+                entityId = '';
             }
 
             expect(useMultiEntity).toBe(true);
             expect(recipient).toBe('');
-            expect(schoolId).toBe('');
+            expect(entityId).toBe('');
             expect(selectedEntityIds).toEqual([]);
         });
 
         it('should switch from multi-entity to single-recipient mode', () => {
             let useMultiEntity = true;
             let recipient = '';
-            let schoolId = '';
+            let entityId = '';
             let selectedEntityIds = ['entity-1', 'entity-2'];
 
             // Switch to single-recipient mode

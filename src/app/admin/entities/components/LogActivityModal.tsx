@@ -90,9 +90,9 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
 
     try {
         await logActivity({
-            schoolId: school.id,
-            schoolName: school.name,
-            schoolSlug: school.slug,
+            entityId: school.id,
+            entityName: school.name,
+            entitySlug: school.slug,
             organizationId: activeOrganizationId,
             workspaceId: school.workspaceIds[0] || 'onboarding',
             userId: user.uid,

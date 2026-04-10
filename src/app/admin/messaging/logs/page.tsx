@@ -62,7 +62,7 @@ export default function MessageLogsPage() {
     const [isGlobalSyncing, setIsGlobalSyncing] = React.useState(false);
 
     // Filtered by active workspace array-contains
-    // Support querying by entityId with schoolId fallback (Requirement 15.5, 22.1)
+    // Support querying by entityId with entityId fallback (Requirement 15.5, 22.1)
     const logsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(

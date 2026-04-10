@@ -62,7 +62,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../entities/components/media-select';
 import { useTenant } from '@/context/TenantContext';
 
 const taskSchema = z.object({
@@ -72,7 +72,6 @@ const taskSchema = z.object({
     category: z.enum(['call', 'visit', 'document', 'training', 'follow_up', 'general']),
     status: z.enum(['todo', 'in_progress', 'waiting', 'review', 'done']),
     assignedTo: z.string().min(1, 'Please assign an owner.'),
-    schoolId: z.string().optional(),
     entityId: z.string().optional(),
     entityType: z.enum(['institution', 'family', 'person']).optional(),
     startDate: z.date().optional(),
@@ -153,7 +152,6 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             category: 'general',
             status: 'todo',
             assignedTo: '',
-            schoolId: '',
             entityId: '',
             entityType: undefined,
             dueDate: new Date(),
@@ -199,7 +197,6 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     category: task.category,
                     status: task.status,
                     assignedTo: task.assignedTo,
-                    schoolId: task.schoolId || '',
                     entityId: task.entityId || '',
                     entityType: task.entityType || undefined,
                     startDate: task.startDate ? new Date(task.startDate) : undefined,
@@ -213,7 +210,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                 });
             } else {
                 reset({
-                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: '', schoolId: '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                    title: '', description: '', priority: 'medium', category: 'general', status: 'todo', assignedTo: '', entityId: '', entityType: undefined, dueDate: new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
                 });
             }
         }
@@ -297,7 +294,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2"><Building className="h-3 w-3" /> Binding Hub</Label>
-                                        <Controller name="schoolId" control={control} render={({ field }) => (<Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold"><SelectValue placeholder="Global" /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Global / Generic</SelectItem>{schools?.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}</SelectContent></Select>)} />
+                                        <Controller name="entityId" control={control} render={({ field }) => (<Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold"><SelectValue placeholder="Global" /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Global / Generic</SelectItem>{schools?.map(s => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}</SelectContent></Select>)} />
                                     </div>
                                 </div>
 

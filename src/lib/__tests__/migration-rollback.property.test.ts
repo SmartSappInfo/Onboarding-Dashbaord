@@ -30,7 +30,7 @@ import type { Firestore } from 'firebase/firestore';
 // Mock types
 type MockRecordData = {
   id: string;
-  schoolId: string;
+  entityId: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
@@ -209,7 +209,6 @@ describe('Property 16: Rollback Restoration', () => {
   // Arbitraries for generating test data
   const migratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution' as const, 'family' as const, 'person' as const),
     title: fc.string({ minLength: 5, maxLength: 50 }),
@@ -263,7 +262,7 @@ describe('Property 16: Rollback Restoration', () => {
           records.forEach(record => {
             const restoredRecord = restoredCollection!.get(record.id);
             expect(restoredRecord).toBeDefined();
-            expect(restoredRecord!.schoolId).toBe(record.schoolId);
+            expect(restoredRecord!.entityId).toBe(record.entityId);
             expect(restoredRecord!.title).toBe(record.title);
             expect(restoredRecord!.entityId).toBeUndefined();
             expect(restoredRecord!.entityType).toBeUndefined();
@@ -325,7 +324,7 @@ describe('Property 16: Rollback Restoration', () => {
           records.forEach(record => {
             const restoredRecord = restoredCollection!.get(record.id);
             expect(restoredRecord!.title).toBe(record.title); // Original, not "Modified ..."
-            expect(restoredRecord!.schoolId).toBe(record.schoolId);
+            expect(restoredRecord!.entityId).toBe(record.entityId);
             expect(restoredRecord!.description).toBe(record.description);
           });
         }
@@ -436,7 +435,6 @@ describe('Property 17: Rollback Cleanup', () => {
 
   const migratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution' as const, 'family' as const, 'person' as const),
     title: fc.string({ minLength: 5, maxLength: 50 }),
@@ -523,7 +521,7 @@ describe('Property 17: Rollback Cleanup', () => {
             
             // Make the first record invalid (missing required field)
             if (idx === 0) {
-              const { schoolId, ...invalidData } = originalData;
+              const { entityId, ...invalidData } = originalData;
               backupData.set(record.id, {
                 ...invalidData,
                 backedUpAt: new Date().toISOString(),
@@ -547,7 +545,7 @@ describe('Property 17: Rollback Cleanup', () => {
               set: (ref: any, data: any) => {
                 operations.push({ type: 'set', ref, data });
                 // Check if this is the problematic record
-                if (!data.schoolId && operations.length === 1) {
+                if (!data.entityId && operations.length === 1) {
                   shouldFail = true;
                 }
                 return batch;
@@ -611,7 +609,6 @@ describe('Property 18: Rollback Idempotency', () => {
 
   const migratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }).filter(id => !['constructor', 'prototype', '__proto__'].includes(id)),
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution' as const, 'family' as const, 'person' as const),
     title: fc.string({ minLength: 5, maxLength: 50 }),
@@ -675,7 +672,7 @@ describe('Property 18: Rollback Idempotency', () => {
           const finalCollection = mockCollections.get(collectionName);
           records.forEach(record => {
             const finalRecord = finalCollection!.get(record.id);
-            expect(finalRecord!.schoolId).toBe(record.schoolId);
+            expect(finalRecord!.entityId).toBe(record.entityId);
             expect(finalRecord!.title).toBe(record.title);
             expect(finalRecord!.entityId).toBeUndefined();
             expect(finalRecord!.entityType).toBeUndefined();
@@ -732,7 +729,7 @@ describe('Property 18: Rollback Idempotency', () => {
           const finalCollection = mockCollections.get(collectionName);
           records.forEach(record => {
             const finalRecord = finalCollection!.get(record.id);
-            expect(finalRecord!.schoolId).toBe(record.schoolId);
+            expect(finalRecord!.entityId).toBe(record.entityId);
             expect(finalRecord!.entityId).toBeUndefined();
             expect(finalRecord!.entityType).toBeUndefined();
           });
@@ -794,7 +791,7 @@ describe('Property 18: Rollback Idempotency', () => {
             const rolledBackCollection = mockCollections.get(collectionName);
             records.forEach(record => {
               const rolledBackRecord = rolledBackCollection!.get(record.id);
-              expect(rolledBackRecord!.schoolId).toBe(record.schoolId);
+              expect(rolledBackRecord!.entityId).toBe(record.entityId);
               expect(rolledBackRecord!.title).toBe(record.title);
               expect(rolledBackRecord!.entityId).toBeUndefined();
               expect(rolledBackRecord!.entityType).toBeUndefined();
@@ -805,7 +802,7 @@ describe('Property 18: Rollback Idempotency', () => {
           const finalCollection = mockCollections.get(collectionName);
           records.forEach(record => {
             const finalRecord = finalCollection!.get(record.id);
-            expect(finalRecord!.schoolId).toBe(record.schoolId);
+            expect(finalRecord!.entityId).toBe(record.entityId);
             expect(finalRecord!.title).toBe(record.title);
             expect(finalRecord!.description).toBe(record.description);
             expect(finalRecord!.entityId).toBeUndefined();
@@ -874,7 +871,7 @@ describe('Property 18: Rollback Idempotency', () => {
           const finalCollection = mockCollections.get(collectionName);
           records.forEach(record => {
             const finalRecord = finalCollection!.get(record.id);
-            expect(finalRecord!.schoolId).toBe(record.schoolId);
+            expect(finalRecord!.entityId).toBe(record.entityId);
             expect(finalRecord!.entityId).toBeUndefined();
             expect(finalRecord!.entityType).toBeUndefined();
           });

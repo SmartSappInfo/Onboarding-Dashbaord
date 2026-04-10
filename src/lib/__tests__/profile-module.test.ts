@@ -186,7 +186,7 @@ describe('Profile Module Migration - Task 19', () => {
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
       const result = await resolveContact(
-        { schoolId: 'school_456' },
+        { entityId: 'school_456' },
         'workspace_1'
       );
 
@@ -248,7 +248,6 @@ describe('Profile Module Migration - Task 19', () => {
 
     it('should handle mixed updates by routing to correct collections', async () => {
       const input = {
-        schoolId: 'school_123',
         entityId: 'entity_123',
         workspaceId: 'workspace_1',
         updates: {
@@ -285,7 +284,6 @@ describe('Profile Module Migration - Task 19', () => {
 
     it('should preserve entityId as primary identifier during updates', async () => {
       const input = {
-        schoolId: 'school_123',
         entityId: 'entity_123',
         workspaceId: 'workspace_1',
         updates: {
@@ -300,12 +298,12 @@ describe('Profile Module Migration - Task 19', () => {
 
       expect(result.success).toBe(true);
       // Verify that entityId is used as the primary identifier
-      // and schoolId is maintained for backward compatibility
+      // and entityId is maintained for backward compatibility
     });
 
     it('should handle updates for legacy schools without entityId', async () => {
       const input = {
-        schoolId: 'school_legacy',
+        entityId: 'school_legacy',
         workspaceId: 'workspace_1',
         updates: {
           name: 'Updated Legacy School',
@@ -360,7 +358,7 @@ describe('Profile Module Migration - Task 19', () => {
   });
 
   describe('Profile Page URL Parameter Support', () => {
-    it('should accept schoolId as URL parameter (legacy)', async () => {
+    it('should accept entityId as URL parameter (legacy)', async () => {
       const mockContact: ResolvedContact = {
         id: 'school_123',
         name: 'Test School',
@@ -388,9 +386,9 @@ describe('Profile Module Migration - Task 19', () => {
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      // Simulate URL: /admin/schools/school_123
+      // Simulate URL: /admin/entities/school_123
       const result = await resolveContact(
-        { schoolId: 'school_123' },
+        { entityId: 'school_123' },
         'workspace_1'
       );
 
@@ -418,7 +416,7 @@ describe('Profile Module Migration - Task 19', () => {
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      // Simulate URL: /admin/schools/entity_123 or /admin/contacts/entity_123
+      // Simulate URL: /admin/entities/entity_123 or /admin/contacts/entity_123
       const result = await resolveContact(
         { entityId: 'entity_123' },
         'workspace_1'

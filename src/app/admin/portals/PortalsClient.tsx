@@ -79,18 +79,18 @@ export default function PortalsClient() {
 
     const filteredSurveys = React.useMemo(() => surveys?.filter(s => 
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        s.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.internalName?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [], [surveys, searchTerm]);
 
     const filteredPdfs = React.useMemo(() => pdfs?.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.schoolName?.toLowerCase().includes(searchTerm.toLowerCase())
+        p.entityName?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [], [pdfs, searchTerm]);
 
     const filteredMeetings = React.useMemo(() => meetings?.filter(m => 
-        m.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        m.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         m.type?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || [], [meetings, searchTerm]);
 
@@ -230,7 +230,7 @@ export default function PortalsClient() {
                                         <PortalCard 
                                             key={s.id} 
                                             title={s.title} 
-                                            school={s.schoolName || 'SmartSapp'} 
+                                            school={s.entityName || 'SmartSapp'} 
                                             path={`/surveys/${s.slug}`} 
                                             icon={ClipboardList} 
                                             color="bg-blue-50" 
@@ -248,7 +248,7 @@ export default function PortalsClient() {
                                         <PortalCard 
                                             key={p.id} 
                                             title={p.publicTitle || p.name} 
-                                            school={p.schoolName || 'SmartSapp'} 
+                                            school={p.entityName || 'SmartSapp'} 
                                             path={`/forms/${p.slug || p.id}`} 
                                             icon={FileText} 
                                             color="bg-orange-50" 
@@ -268,8 +268,8 @@ export default function PortalsClient() {
                                             <PortalCard 
                                                 key={m.id} 
                                                 title={m.type?.name || 'Session'} 
-                                                school={m.schoolName} 
-                                                path={`/meetings/${typeSlug}/${m.schoolSlug}`} 
+                                                school={m.entityName} 
+                                                path={`/meetings/${typeSlug}/${m.entitySlug}`} 
                                                 icon={Calendar} 
                                                 color="bg-purple-50" 
                                             />

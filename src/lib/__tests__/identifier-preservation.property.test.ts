@@ -4,7 +4,7 @@
  * **Property 3: Identifier Preservation Invariant**
  * **Validates: Requirements 3.2**
  * 
- * For any record update operation on tasks, invoices, or meetings, the schoolId,
+ * For any record update operation on tasks, invoices, or meetings, the entityId,
  * entityId, and entityType fields should remain unchanged unless explicitly being migrated.
  */
 
@@ -84,7 +84,6 @@ const taskArbitrary = fc.record({
   assignedTo: fc.string({ minLength: 10, maxLength: 20 }),
   dueDate: fc.integer({ min: new Date('2024-01-01').getTime(), max: new Date('2026-12-31').getTime() })
     .map(timestamp => new Date(timestamp).toISOString()),
-  schoolId: fc.option(fc.string({ minLength: 10, maxLength: 20 }).map(s => `school_${s}`), { nil: null }),
   entityId: fc.option(fc.string({ minLength: 10, maxLength: 20 }).map(s => `entity_${s}`), { nil: null }),
   entityType: fc.option(entityTypeArbitrary, { nil: null }),
   createdAt: fc.constant(new Date('2024-01-01').toISOString()),
@@ -114,7 +113,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
     vi.clearAllMocks();
   });
 
-  it('should preserve schoolId, entityId, and entityType when updating other task fields', async () => {
+  it('should preserve entityId, and entityType when updating other task fields', async () => {
     await fc.assert(
       fc.asyncProperty(
         taskArbitrary,
@@ -124,7 +123,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
           const originalEntityId = task.entityId;
           const originalEntityType = task.entityType;
 
@@ -137,7 +136,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Identifiers remain unchanged
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBe(originalSchoolId);
+          expect(updatedTask.entityId).toBe(originalSchoolId);
           expect(updatedTask.entityId).toBe(originalEntityId);
           expect(updatedTask.entityType).toBe(originalEntityType);
 
@@ -170,7 +169,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
           const originalEntityId = task.entityId;
           const originalEntityType = task.entityType;
 
@@ -183,7 +182,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Identifiers remain unchanged after all updates
           const finalTask = __testStorage.tasks.get(task.id);
           expect(finalTask).toBeDefined();
-          expect(finalTask.schoolId).toBe(originalSchoolId);
+          expect(finalTask.entityId).toBe(originalSchoolId);
           expect(finalTask.entityId).toBe(originalEntityId);
           expect(finalTask.entityType).toBe(originalEntityType);
         }
@@ -195,7 +194,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
   it('should preserve null identifiers when updating tasks without contact association', async () => {
     await fc.assert(
       fc.asyncProperty(
-        taskArbitrary.map(task => ({ ...task, schoolId: null, entityId: null, entityType: null })),
+        taskArbitrary.map(task => ({ ...task, entityId: null, entityType: null })),
         taskUpdatesArbitrary,
         async (task, updates) => {
           // Setup: Create task with null identifiers
@@ -210,7 +209,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Identifiers remain null
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBeNull();
+          expect(updatedTask.entityId).toBeNull();
           expect(updatedTask.entityId).toBeNull();
           expect(updatedTask.entityType).toBeNull();
         }
@@ -228,7 +227,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
           const originalEntityId = task.entityId;
           const originalEntityType = task.entityType;
 
@@ -245,7 +244,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Identifiers remain unchanged
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBe(originalSchoolId);
+          expect(updatedTask.entityId).toBe(originalSchoolId);
           expect(updatedTask.entityId).toBe(originalEntityId);
           expect(updatedTask.entityType).toBe(originalEntityType);
 
@@ -258,22 +257,21 @@ describe('Property 3: Identifier Preservation Invariant', () => {
     );
   });
 
-  it('should preserve identifiers for tasks with only schoolId (legacy)', async () => {
+  it('should preserve identifiers for tasks with only entityId (legacy)', async () => {
     await fc.assert(
       fc.asyncProperty(
         taskArbitrary.map(task => ({
           ...task,
-          schoolId: `school_${Math.random().toString(36).substring(7)}`,
           entityId: null,
           entityType: null,
         })),
         taskUpdatesArbitrary,
         async (task, updates) => {
-          // Setup: Create legacy task with only schoolId
+          // Setup: Create legacy task with only entityId
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
 
           // Execute: Update task
           const result = await updateTaskAction(task.id, updates);
@@ -281,10 +279,10 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Update succeeded
           expect(result.success).toBe(true);
 
-          // Verify: schoolId preserved, entityId and entityType remain null
+          // Verify: entityId preserved, entityId and entityType remain null
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBe(originalSchoolId);
+          expect(updatedTask.entityId).toBe(originalSchoolId);
           expect(updatedTask.entityId).toBeNull();
           expect(updatedTask.entityType).toBeNull();
         }
@@ -298,7 +296,6 @@ describe('Property 3: Identifier Preservation Invariant', () => {
       fc.asyncProperty(
         taskArbitrary.map(task => ({
           ...task,
-          schoolId: null,
           entityId: `entity_${Math.random().toString(36).substring(7)}`,
           entityType: 'institution' as EntityType,
         })),
@@ -317,10 +314,10 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Update succeeded
           expect(result.success).toBe(true);
 
-          // Verify: entityId and entityType preserved, schoolId remains null
+          // Verify: entityId and entityType preserved, entityId remains null
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBeNull();
+          expect(updatedTask.entityId).toBeNull();
           expect(updatedTask.entityId).toBe(originalEntityId);
           expect(updatedTask.entityType).toBe(originalEntityType);
         }
@@ -329,17 +326,17 @@ describe('Property 3: Identifier Preservation Invariant', () => {
     );
   });
 
-  it('should preserve identifiers for tasks with both schoolId and entityId (dual-write)', async () => {
+  it('should preserve identifiers for tasks with both entityId and entityId (dual-write)', async () => {
     await fc.assert(
       fc.asyncProperty(
-        taskArbitrary.filter(task => task.schoolId !== null && task.entityId !== null),
+        taskArbitrary.filter(task => task.entityId !== null && task.entityId !== null),
         taskUpdatesArbitrary,
         async (task, updates) => {
           // Setup: Create task with both identifiers
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
           const originalEntityId = task.entityId;
           const originalEntityType = task.entityType;
 
@@ -352,7 +349,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Both identifiers preserved
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBe(originalSchoolId);
+          expect(updatedTask.entityId).toBe(originalSchoolId);
           expect(updatedTask.entityId).toBe(originalEntityId);
           expect(updatedTask.entityType).toBe(originalEntityType);
         }
@@ -370,7 +367,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Capture original identifier values
-          const originalSchoolId = task.schoolId;
+          const originalSchoolId = task.entityId;
           const originalEntityId = task.entityId;
           const originalEntityType = task.entityType;
 
@@ -393,7 +390,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           // Verify: Identifiers remain unchanged
           const updatedTask = __testStorage.tasks.get(task.id);
           expect(updatedTask).toBeDefined();
-          expect(updatedTask.schoolId).toBe(originalSchoolId);
+          expect(updatedTask.entityId).toBe(originalSchoolId);
           expect(updatedTask.entityId).toBe(originalEntityId);
           expect(updatedTask.entityType).toBe(originalEntityType);
 

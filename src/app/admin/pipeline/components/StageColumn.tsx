@@ -12,7 +12,7 @@ import { GripVertical, ShieldCheck as ShieldIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
-import SchoolCard from './SchoolCard';
+import EntityCard from './EntityCard';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -102,7 +102,7 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                             <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">
                                 {schools.map(school => (
                                     <div key={school.id} className="w-full min-w-0">
-                                        <SchoolCard school={school} />
+                                        <EntityCard school={school} />
                                     </div>
                                 ))}
                             </div>

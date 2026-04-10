@@ -63,7 +63,7 @@ const createMeetingAction = async (
     // Resolve contact information
     const contactIdentifier = meetingData.entityId 
       ? { entityId: meetingData.entityId }
-      : { schoolId: meetingData.schoolId };
+      : { entityId: meetingData.entityId };
     
     const contact = await resolveContact(contactIdentifier, workspaceId);
     
@@ -73,9 +73,9 @@ const createMeetingAction = async (
 
     const meeting: Meeting = {
       id: `meeting_${Date.now()}`,
-      schoolId: contact.schoolData?.id || undefined,
-      schoolName: contact.schoolData?.name || undefined,
-      schoolSlug: contact.slug || undefined,
+      entityId: contact.schoolData?.id || undefined,
+      entityName: contact.schoolData?.name || undefined,
+      entitySlug: contact.slug || undefined,
       entityId: contact.entityId || undefined,
       entityType: contact.entityType || undefined,
       workspaceIds: [workspaceId],
@@ -95,7 +95,6 @@ const createMeetingAction = async (
       organizationId: 'org_1',
       workspaceId,
       entityId: meeting.entityId,
-      schoolId: meeting.schoolId,
       userId,
       type: 'meeting_created' as any,
       source: 'user_action',
@@ -128,8 +127,8 @@ const updateMeetingAction = async (
     const updatedMeeting: Meeting = {
       ...existingMeeting,
       ...updates,
-      schoolId: existingMeeting.schoolId,
-      schoolSlug: existingMeeting.schoolSlug,
+      entityId: existingMeeting.entityId,
+      entitySlug: existingMeeting.entitySlug,
       entityId: existingMeeting.entityId,
       entityType: existingMeeting.entityType,
     };
@@ -144,12 +143,12 @@ const updateMeetingAction = async (
 };
 
 const getMeetingsForContactAction = async (
-  identifier: { entityId?: string; schoolSlug?: string },
+  identifier: { entityId?: string; entitySlug?: string },
   workspaceId?: string
 ): Promise<{ success: boolean; meetings?: Meeting[]; error?: string }> => {
   try {
-    if (!identifier.entityId && !identifier.schoolSlug) {
-      return { success: false, error: 'Either entityId or schoolSlug must be provided' };
+    if (!identifier.entityId && !identifier.entitySlug) {
+      return { success: false, error: 'Either entityId or entitySlug must be provided' };
     }
 
     // This simulates the actual query logic
@@ -180,7 +179,7 @@ describe('Meeting Module Migration', () => {
   });
 
   describe('Meeting Creation with entityId (Requirement 9.1)', () => {
-    it('should create meeting with both schoolSlug and entityId when entity is migrated', async () => {
+    it('should create meeting with both entitySlug and entityId when entity is migrated', async () => {
       // Arrange
       const mockContact = {
         id: 'entity_123',
@@ -222,14 +221,14 @@ describe('Meeting Module Migration', () => {
       expect(mockAdd).toHaveBeenCalled();
 
       const meetingData = mockAdd.mock.calls[0][0];
-      expect(meetingData.schoolId).toBe('school_123');
-      expect(meetingData.schoolSlug).toBe('test-school');
+      expect(meetingData.entityId).toBe('school_123');
+      expect(meetingData.entitySlug).toBe('test-school');
       expect(meetingData.entityId).toBe('entity_123');
       expect(meetingData.entityType).toBe('institution');
-      expect(meetingData.schoolName).toBe('Test School');
+      expect(meetingData.entityName).toBe('Test School');
     });
 
-    it('should create meeting with schoolSlug only when entity is not migrated', async () => {
+    it('should create meeting with entitySlug only when entity is not migrated', async () => {
       // Arrange
       const mockContact = {
         id: 'school_456',
@@ -257,7 +256,7 @@ describe('Meeting Module Migration', () => {
       // Act
       const result = await createMeetingAction(
         {
-          schoolId: 'school_456',
+          entityId: 'school_456',
           meetingTime: '2024-06-01T14:00:00Z',
           meetingLink: 'https://meet.example.com/legacy',
           type: MEETING_TYPES[2], // training
@@ -271,8 +270,8 @@ describe('Meeting Module Migration', () => {
       expect(mockAdd).toHaveBeenCalled();
 
       const meetingData = mockAdd.mock.calls[0][0];
-      expect(meetingData.schoolId).toBe('school_456');
-      expect(meetingData.schoolSlug).toBe('legacy-school');
+      expect(meetingData.entityId).toBe('school_456');
+      expect(meetingData.entitySlug).toBe('legacy-school');
       expect(meetingData.entityId).toBeUndefined();
       expect(meetingData.entityType).toBeUndefined();
     });
@@ -283,9 +282,9 @@ describe('Meeting Module Migration', () => {
       // Arrange
       const existingMeeting: Meeting = {
         id: 'meeting_123',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
-        schoolSlug: 'test-school',
+        entityId: 'school_123',
+        entityName: 'Test School',
+        entitySlug: 'test-school',
         entityId: 'entity_123',
         entityType: 'institution',
         workspaceIds: ['workspace_1'],
@@ -320,8 +319,8 @@ describe('Meeting Module Migration', () => {
       expect(mockUpdate).toHaveBeenCalled();
 
       const updateData = mockUpdate.mock.calls[0][0];
-      expect(updateData.schoolId).toBe('school_123');
-      expect(updateData.schoolSlug).toBe('test-school');
+      expect(updateData.entityId).toBe('school_123');
+      expect(updateData.entitySlug).toBe('test-school');
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
       expect(updateData.recordingUrl).toBe('https://recordings.example.com/meeting_123.mp4');
@@ -331,9 +330,9 @@ describe('Meeting Module Migration', () => {
       // Arrange
       const existingMeeting: Meeting = {
         id: 'meeting_123',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
-        schoolSlug: 'test-school',
+        entityId: 'school_123',
+        entityName: 'Test School',
+        entitySlug: 'test-school',
         entityId: 'entity_123',
         entityType: 'institution',
         workspaceIds: ['workspace_1'],
@@ -371,8 +370,8 @@ describe('Meeting Module Migration', () => {
       // entityId should be preserved from existing meeting
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
-      expect(updateData.schoolId).toBe('school_123');
-      expect(updateData.schoolSlug).toBe('test-school');
+      expect(updateData.entityId).toBe('school_123');
+      expect(updateData.entitySlug).toBe('test-school');
     });
   });
 
@@ -398,38 +397,38 @@ describe('Meeting Module Migration', () => {
       expect(result.meetings).toBeDefined();
     });
 
-    it('should fallback to schoolSlug when entityId is not provided', async () => {
+    it('should fallback to entitySlug when entityId is not provided', async () => {
       // This test validates the fallback query pattern
       
-      const identifier: { entityId?: string; schoolSlug?: string } = { schoolSlug: 'legacy-school' };
+      const identifier: { entityId?: string; entitySlug?: string } = { entitySlug: 'legacy-school' };
 
-      // Verify query logic uses schoolSlug when entityId is not available
-      expect(identifier.schoolSlug).toBeDefined();
+      // Verify query logic uses entitySlug when entityId is not available
+      expect(identifier.entitySlug).toBeDefined();
       expect(identifier.entityId).toBeUndefined();
       
       // In real implementation, this would query:
-      // collection('meetings').where('schoolSlug', '==', 'legacy-school')
+      // collection('meetings').where('entitySlug', '==', 'legacy-school')
       
       const result = await getMeetingsForContactAction(identifier);
       
-      // Verify function accepts schoolSlug parameter
+      // Verify function accepts entitySlug parameter
       expect(result.success).toBe(true);
       expect(result.meetings).toBeDefined();
     });
 
-    it('should prefer entityId when both entityId and schoolSlug are provided', async () => {
+    it('should prefer entityId when both entityId and entitySlug are provided', async () => {
       // This test validates the preference logic
       
       const identifier = {
         entityId: 'entity_123',
-        schoolSlug: 'test-school',
+        entitySlug: 'test-school',
       };
 
       // Verify entityId takes precedence
       expect(identifier.entityId).toBeDefined();
-      expect(identifier.schoolSlug).toBeDefined();
+      expect(identifier.entitySlug).toBeDefined();
       
-      // In real implementation, query should use entityId, not schoolSlug
+      // In real implementation, query should use entityId, not entitySlug
       // collection('meetings').where('entityId', '==', 'entity_123')
       
       const result = await getMeetingsForContactAction(identifier);
@@ -439,24 +438,24 @@ describe('Meeting Module Migration', () => {
       expect(result.meetings).toBeDefined();
     });
 
-    it('should throw error when neither entityId nor schoolSlug is provided', async () => {
+    it('should throw error when neither entityId nor entitySlug is provided', async () => {
       // Act
       const result = await getMeetingsForContactAction({});
 
       // Assert
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Either entityId or schoolSlug must be provided');
+      expect(result.error).toContain('Either entityId or entitySlug must be provided');
     });
   });
 
   describe('Public Meeting Page Resolution (Requirement 9.5)', () => {
-    it('should resolve meeting by schoolSlug for public access', async () => {
+    it('should resolve meeting by entitySlug for public access', async () => {
       // This test validates the public meeting page resolution logic
       
       const slug = 'test-school';
       
       // In real implementation, this would:
-      // 1. Query meetings collection by schoolSlug
+      // 1. Query meetings collection by entitySlug
       // 2. Resolve contact information via Contact Adapter
       // 3. Return meeting data with contact details for public display
       
@@ -478,9 +477,9 @@ describe('Meeting Module Migration', () => {
       
       const mockMeeting: Meeting = {
         id: 'meeting_migrated',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
-        schoolSlug: 'test-school',
+        entityId: 'school_123',
+        entityName: 'Test School',
+        entitySlug: 'test-school',
         entityId: 'entity_123',
         entityType: 'institution',
         workspaceIds: ['workspace_1'],
@@ -497,19 +496,19 @@ describe('Meeting Module Migration', () => {
       
       const contactIdentifier = mockMeeting.entityId
         ? { entityId: mockMeeting.entityId }
-        : { schoolId: mockMeeting.schoolId };
+        : { entityId: mockMeeting.entityId };
       
       expect(contactIdentifier.entityId).toBe('entity_123');
     });
 
     it('should resolve legacy school information for non-migrated meetings', async () => {
-      // This test validates that legacy meetings use schoolId for resolution
+      // This test validates that legacy meetings use entityId for resolution
       
       const mockMeeting: Meeting = {
         id: 'meeting_legacy',
-        schoolId: 'school_456',
-        schoolName: 'Legacy School',
-        schoolSlug: 'legacy-school',
+        entityId: 'school_456',
+        entityName: 'Legacy School',
+        entitySlug: 'legacy-school',
         entityId: undefined,
         entityType: undefined,
         workspaceIds: ['workspace_1'],
@@ -518,18 +517,18 @@ describe('Meeting Module Migration', () => {
         type: MEETING_TYPES[1], // kickoff
       };
 
-      // Verify meeting uses schoolId when entityId is not available
+      // Verify meeting uses entityId when entityId is not available
       expect(mockMeeting.entityId).toBeUndefined();
-      expect(mockMeeting.schoolId).toBe('school_456');
+      expect(mockMeeting.entityId).toBe('school_456');
       
       // In real implementation, Contact Adapter would be called with:
-      // resolveContact({ schoolId: 'school_456' }, 'workspace_1')
+      // resolveContact({ entityId: 'school_456' }, 'workspace_1')
       
       const contactIdentifier = mockMeeting.entityId
         ? { entityId: mockMeeting.entityId }
-        : { schoolId: mockMeeting.schoolId };
+        : { entityId: mockMeeting.entityId };
       
-      expect(contactIdentifier.schoolId).toBe('school_456');
+      expect(contactIdentifier.entityId).toBe('school_456');
     });
 
     it('should return error when meeting slug is not found', async () => {
@@ -587,7 +586,7 @@ describe('Meeting Module Migration', () => {
       );
     });
 
-    it('should log activity with both schoolId and entityId', async () => {
+    it('should log activity with both entityId and entityId', async () => {
       // Arrange
       const mockContact = {
         id: 'entity_123',
@@ -629,7 +628,6 @@ describe('Meeting Module Migration', () => {
         expect.objectContaining({
           organizationId: 'org_1',
           workspaceId: 'workspace_1',
-          schoolId: 'school_123',
           entityId: 'entity_123',
           userId: 'user_1',
         })

@@ -23,10 +23,10 @@ export type { ResolvedContact } from './types';
  */
 
 /**
- * Contact identifier that can be either schoolId or entityId
+ * Contact identifier that can be either entityId or entityId
  */
 export interface ContactIdentifier {
-  schoolId?: string | null;
+  entityId?: string | null;
   entityId?: string | null;
 }
 
@@ -102,7 +102,7 @@ const contactCache = new LRUCache<string, ResolvedContact>(1000, 5 * 60 * 1000);
  * 3. Query schools collection for legacy contacts
  * 4. Return unified contact object with caching
  * 
- * @param identifier - Contact identifier (schoolId or entityId)
+ * @param identifier - Contact identifier (entityId or entityId)
  * @param workspaceId - The workspace context for resolving workspace-specific state
  * @returns Unified contact object or null if not found
  * 
@@ -112,13 +112,13 @@ export async function resolveContact(
   identifier: ContactIdentifier | string,
   workspaceId: string
 ): Promise<ResolvedContact | null> {
-  // Support legacy signature (schoolId as string)
+  // Support legacy signature (entityId as string)
   const contactId: ContactIdentifier = typeof identifier === 'string' 
-    ? { schoolId: identifier } 
+    ? { entityId: identifier } 
     : identifier;
 
   // Check cache first
-  const cacheKey = `${contactId.entityId || contactId.schoolId}_${workspaceId}`;
+  const cacheKey = `${contactId.entityId || contactId.entityId}_${workspaceId}`;
   const cached = contactCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -136,15 +136,15 @@ export async function resolveContact(
       }
     }
 
-    // 2. Try schoolId if entityId not found or not provided
-    if (contactId.schoolId) {
-      // Check if migration record exists for schoolId
-      const schoolRef = adminDb.collection('schools').doc(contactId.schoolId);
+    // 2. Try entityId if entityId not found or not provided
+    if (contactId.entityId) {
+      // Check if migration record exists for entityId
+      const schoolRef = adminDb.collection('schools').doc(contactId.entityId);
       const schoolSnap = await schoolRef.get();
 
       if (!schoolSnap.exists) {
-        // School doesn't exist, might be a direct entity ID passed as schoolId
-        result = await resolveFromEntity(contactId.schoolId, workspaceId);
+        // School doesn't exist, might be a direct entity ID passed as entityId
+        result = await resolveFromEntity(contactId.entityId, workspaceId);
         if (result) {
           contactCache.set(cacheKey, result);
           return result;
@@ -176,7 +176,7 @@ export async function resolveContact(
         }
 
         // Fallback to legacy if entity not found
-        console.warn(`[ADAPTER] Entity not found for migrated school ${contactId.schoolId}, falling back to legacy`);
+        console.warn(`[ADAPTER] Entity not found for migrated school ${contactId.entityId}, falling back to legacy`);
         result = resolveFromSchool(schoolData, workspaceId, true);
         contactCache.set(cacheKey, result);
         return result;
@@ -292,7 +292,7 @@ export async function getWorkspaceContacts(
 /**
  * Check if a contact exists
  * 
- * @param identifier - Contact identifier (schoolId or entityId)
+ * @param identifier - Contact identifier (entityId or entityId)
  * @returns True if contact exists, false otherwise
  * 
  * Requirements: 11.1
@@ -306,9 +306,9 @@ export async function contactExists(identifier: ContactIdentifier): Promise<bool
       if (entitySnap.exists) return true;
     }
 
-    // Check schoolId
-    if (identifier.schoolId) {
-      const schoolRef = adminDb.collection('schools').doc(identifier.schoolId);
+    // Check entityId
+    if (identifier.entityId) {
+      const schoolRef = adminDb.collection('schools').doc(identifier.entityId);
       const schoolSnap = await schoolRef.get();
       if (schoolSnap.exists) return true;
     }

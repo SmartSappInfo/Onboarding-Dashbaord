@@ -5,7 +5,7 @@
  * **Validates: Requirements 18.1, 19.1**
  * 
  * For any feature collection, the fetch operation should return exactly those
- * records that have a schoolId field but no entityId field, identifying them
+ * records that have a entityId field but no entityId field, identifying them
  * as unmigrated.
  * 
  * This test uses fast-check to generate random collection states with various
@@ -22,7 +22,7 @@ import type { Firestore } from 'firebase/firestore';
 // Mock Firestore types
 type MockDocumentData = {
   id: string;
-  schoolId?: string;
+  entityId?: string;
   entityId?: string;
   [key: string]: any;
 };
@@ -70,22 +70,21 @@ describe('Property 8: Migration Fetch Accuracy', () => {
   });
 
   /**
-   * Arbitrary for generating a record with schoolId but no entityId (unmigrated)
+   * Arbitrary for generating a record with entityId but no entityId (unmigrated)
    */
   const unmigratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
+    entityId: fc.string({ minLength: 10, maxLength: 20 }),
     // entityId is intentionally omitted
     title: fc.string(),
     status: fc.constantFrom('active', 'archived', 'pending'),
   });
 
   /**
-   * Arbitrary for generating a record with both schoolId and entityId (migrated)
+   * Arbitrary for generating a record with both entityId and entityId (migrated)
    */
   const migratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution', 'family', 'person'),
     title: fc.string(),
@@ -93,11 +92,11 @@ describe('Property 8: Migration Fetch Accuracy', () => {
   });
 
   /**
-   * Arbitrary for generating a record with neither schoolId nor entityId (invalid)
+   * Arbitrary for generating a record with neither entityId nor entityId (invalid)
    */
   const invalidRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    // Both schoolId and entityId are intentionally omitted
+    // Both entityId and entityId are intentionally omitted
     title: fc.string(),
     status: fc.constantFrom('active', 'archived', 'pending'),
   });
@@ -113,7 +112,7 @@ describe('Property 8: Migration Fetch Accuracy', () => {
     status: fc.constantFrom('active', 'archived', 'pending'),
   });
 
-  it('should return exactly records with schoolId but no entityId', async () => {
+  it('should return exactly records with entityId but no entityId', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
@@ -166,7 +165,7 @@ describe('Property 8: Migration Fetch Accuracy', () => {
           // Sample should only contain unmigrated records
           result.sampleRecords.forEach((record: any) => {
             expect(unmigratedIds.has(record.id)).toBe(true);
-            expect(record.schoolId).toBeDefined();
+            expect(record.entityId).toBeDefined();
             expect(record.entityId).toBeUndefined();
           });
 
@@ -174,7 +173,7 @@ describe('Property 8: Migration Fetch Accuracy', () => {
           const invalidIds = new Set(invalid.map((r) => r.id));
           result.invalidRecords.forEach((invalidRecord) => {
             expect(invalidIds.has(invalidRecord.id)).toBe(true);
-            expect(invalidRecord.reason).toBe('Missing both schoolId and entityId');
+            expect(invalidRecord.reason).toBe('Missing both entityId and entityId');
           });
         }
       ),
@@ -316,7 +315,7 @@ describe('Property 8: Migration Fetch Accuracy', () => {
           for (let i = 0; i < numUnmigrated; i++) {
             const record: MockDocumentData = {
               id: `unmigrated_${i}`,
-              schoolId: `school_${i}`,
+              entityId: `school_${i}`,
               title: `Task ${i}`,
               status: 'active',
             };
@@ -327,7 +326,6 @@ describe('Property 8: Migration Fetch Accuracy', () => {
           for (let i = 0; i < numMigrated; i++) {
             const record: MockDocumentData = {
               id: `migrated_${i}`,
-              schoolId: `school_${i}`,
               entityId: `entity_${i}`,
               entityType: 'institution',
               title: `Task ${i}`,

@@ -6,14 +6,14 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 
 export default function FindSchoolForm() {
-  const [schoolName, setSchoolName] = useState("");
+  const [entityName, setSchoolName] = useState("");
   const router = useRouter();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!schoolName.trim()) return;
+    if (!entityName.trim()) return;
 
-    const slug = schoolName
+    const slug = entityName
       .trim()
       .toLowerCase()
       .replace(/\s+/g, "-")
@@ -26,7 +26,7 @@ export default function FindSchoolForm() {
     <form onSubmit={handleSubmit} className="mx-auto flex max-w-xl gap-2">
       <Input
         type="text"
-        value={schoolName}
+        value={entityName}
         onChange={(e) => setSchoolName(e.target.value)}
         placeholder="Enter your school's name"
         className="h-12 text-lg"

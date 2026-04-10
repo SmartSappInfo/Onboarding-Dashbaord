@@ -49,11 +49,11 @@ function resolvePdfVariables(text: string, school?: School): string {
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     let school: School | undefined = undefined;
-    if (pdfForm.schoolId) {
+    if (pdfForm.entityId) {
         // Use adapter to resolve contact from either schools or entities + workspace_entities
         // Use first workspaceId from the array, fallback to 'onboarding'
         const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
-        const contact = await resolveContact(pdfForm.schoolId, workspaceId);
+        const contact = await resolveContact(pdfForm.entityId, workspaceId);
         if (contact && contact.schoolData) {
             school = contact.schoolData;
         }
@@ -190,7 +190,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
  */
 export async function saveAgreementProgressAction(
     pdfId: string, 
-    schoolId: string, 
+    entityId: string, 
     formData: any,
     entityId?: string | null,
     entityType?: 'institution' | 'family' | 'person'
@@ -201,7 +201,7 @@ export async function saveAgreementProgressAction(
         const contractsCol = adminDb.collection('contracts');
         
         const contractQuery = await contractsCol
-            .where('schoolId', '==', schoolId)
+            .where('entityId', '==', entityId)
             .limit(1)
             .get();
         
@@ -209,8 +209,8 @@ export async function saveAgreementProgressAction(
         if (contractQuery.empty) {
             const pdfSnap = await pdfRef.get();
             contractDoc = await contractsCol.add({
-                schoolId,
-                schoolName: (formData.school_name || 'School'),
+                entityId,
+                entityName: (formData.school_name || 'School'),
                 pdfId,
                 pdfName: pdfSnap.data()?.name || 'Agreement',
                 status: 'partially_signed',
@@ -227,10 +227,9 @@ export async function saveAgreementProgressAction(
         let submissionId = contractData?.submissionId;
         
         if (!submissionId) {
-            // Dual-write: populate both schoolId and entityId (Requirement 16.5)
+            // Dual-write: populate both entityId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
-                schoolId,
                 entityId: entityId || null,
                 entityType: entityType || null,
                 formData,
@@ -260,7 +259,7 @@ export async function saveAgreementProgressAction(
  */
 export async function finalizeAgreementAction(
     pdfId: string, 
-    schoolId: string, 
+    entityId: string, 
     formData: any,
     entityId?: string | null,
     entityType?: 'institution' | 'family' | 'person'
@@ -273,15 +272,15 @@ export async function finalizeAgreementAction(
         const pdfData = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
 
         const contractsCol = adminDb.collection('contracts');
-        const contractQuery = await contractsCol.where('schoolId', '==', schoolId).limit(1).get();
+        const contractQuery = await contractsCol.where('entityId', '==', entityId).limit(1).get();
         
         let contractRef;
         let submissionId;
 
         if (contractQuery.empty) {
             const newContract = await contractsCol.add({
-                schoolId,
-                schoolName: (formData.school_name || pdfData.schoolName || 'School'),
+                entityId,
+                entityName: (formData.school_name || pdfData.entityName || 'School'),
                 pdfId,
                 pdfName: pdfData.name || 'Agreement',
                 status: 'signed',
@@ -297,10 +296,9 @@ export async function finalizeAgreementAction(
         }
 
         if (!submissionId) {
-            // Dual-write: populate both schoolId and entityId (Requirement 16.5)
+            // Dual-write: populate both entityId and entityId (Requirement 16.5)
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
-                schoolId,
                 entityId: entityId || null,
                 entityType: entityType || null,
                 formData,
@@ -360,7 +358,6 @@ export async function finalizeAgreementAction(
                         download_url: result_url
                     },
                     attachments: attachments.length > 0 ? attachments : undefined,
-                    schoolId,
                     entityId, // Pass entityId for dual-write (Requirement 16.5)
                     workspaceId // Pass workspace context (Requirement 11)
                 });
@@ -370,7 +367,7 @@ export async function finalizeAgreementAction(
         if (pdfData.adminAlertsEnabled) {
             const contractData = (await contractRef.get()).data();
             await triggerInternalNotification({
-                schoolId,
+                entityId,
                 notifyManager: pdfData.adminAlertNotifyManager,
                 specificUserIds: pdfData.adminAlertSpecificUserIds,
                 emailTemplateId: pdfData.adminAlertEmailTemplateId,
@@ -378,7 +375,7 @@ export async function finalizeAgreementAction(
                 variables: { 
                     ...formData, 
                     event_type: 'Agreement Executed', 
-                    school_name: contractData?.schoolName || 'Institution',
+                    school_name: contractData?.entityName || 'Institution',
                     submission_id: submissionId
                 },
                 channel: pdfData.adminAlertChannel
@@ -387,7 +384,6 @@ export async function finalizeAgreementAction(
 
         // Use entityId for activity logging if available (Requirement 16.1)
         await logActivity({
-            schoolId,
             entityId: entityId || null,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
@@ -441,7 +437,7 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
   }
   
   await logActivity({
-      schoolId: '', 
+      entityId: '', 
       organizationId: 'default',
       userId,
       workspaceId: workspaceIds[0],
@@ -525,7 +521,7 @@ export async function deleteSubmissions(pdfId: string, submissionIds: string[], 
  * Updated to support entityId (Requirements 25.1, 25.2, 16.4)
  */
 export async function purgeContractAction(
-    identifier: { schoolId?: string; entityId?: string },
+    identifier: { entityId?: string; entityId?: string },
     submissionIds: string[],
     userId: string
 ) {
@@ -534,21 +530,21 @@ export async function purgeContractAction(
         const batch = db.batch();
         const timestamp = new Date().toISOString();
 
-        // Support both schoolId and entityId (Requirement 25.1)
-        const schoolId = identifier.schoolId;
+        // Support both entityId and entityId (Requirement 25.1)
+        const entityId = identifier.entityId;
         const entityId = identifier.entityId;
 
-        if (!schoolId && !entityId) {
-            return { success: false, error: 'Either schoolId or entityId must be provided' };
+        if (!entityId && !entityId) {
+            return { success: false, error: 'Either entityId or entityId must be provided' };
         }
 
         // 1. Locate the contract for this contact
-        // Prefer entityId, fallback to schoolId (Requirement 25.2)
+        // Prefer entityId, fallback to entityId (Requirement 25.2)
         let contractQuery;
         if (entityId) {
             contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
-        } else if (schoolId) {
-            contractQuery = await db.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+        } else if (entityId) {
+            contractQuery = await db.collection('contracts').where('entityId', '==', entityId).limit(1).get();
         }
 
         let currentSubmissionId = null;
@@ -590,7 +586,6 @@ export async function purgeContractAction(
         await batch.commit();
 
         await logActivity({
-            schoolId: schoolId || undefined,
             entityId: entityId || undefined,
             organizationId: 'default',
             userId,

@@ -15,10 +15,10 @@ import NoteItem from './NoteItem';
 import { useTenant } from '@/context/TenantContext';
 
 interface NotesSectionProps {
-  schoolId: string;
+  entityId: string;
 }
 
-export default function NotesSection({ schoolId }: NotesSectionProps) {
+export default function NotesSection({ entityId }: NotesSectionProps) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -32,11 +32,11 @@ export default function NotesSection({ schoolId }: NotesSectionProps) {
         if (!firestore) return null;
         return query(
             collection(firestore, 'activities'),
-            where('schoolId', '==', schoolId),
+            where('entityId', '==', entityId),
             where('type', '==', 'note'),
             orderBy('timestamp', 'desc')
         );
-    }, [firestore, schoolId]);
+    }, [firestore, entityId]);
     const { data: notes, isLoading: isLoadingNotes } = useCollection<Activity>(notesQuery);
     
     // Fetch all users within the organization to map user IDs to profiles
@@ -63,7 +63,7 @@ export default function NotesSection({ schoolId }: NotesSectionProps) {
         try {
             await logActivity({
                 organizationId: activeOrganizationId,
-                schoolId: schoolId,
+                entityId: entityId,
                 userId: user.uid,
                 type: 'note',
                 workspaceId: activeOrganizationId,

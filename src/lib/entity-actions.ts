@@ -3,444 +3,375 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import { syncDenormalizedFieldsToWorkspaceEntities, extractDenormalizedFields } from './denormalization-sync';
-import { logEntityCreated, logEntityUpdated, logEntityDeleted } from './entity-audit';
-import type { Entity, EntityType, InstitutionData, FamilyData, PersonData } from './types';
+import type { School, OnboardingStage, EntityType } from './types';
+import crypto from 'crypto';
 
 /**
- * @fileOverview Server actions for unified entity management.
- * Handles create, update, and delete operations for entities (institutions, families, persons).
+ * @fileOverview Server actions for entity lifecycle management.
+ * Handles polymorphic creation and track transitions.
  */
 
-/**
- * Generates a URL-safe slug from a name
- */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+export async function convertToOnboardingAction(
+    entityId: string, 
+    targetPipelineId: string, 
+    userId: string
+) {
+    try {
+        const timestamp = new Date().toISOString();
+        
+        // This is a bridge function. Depending on the migration state, it targets entity records.
+        // For now, looking up via workspace_entities.
+        const weSnap = await adminDb.collection('workspace_entities')
+            .where('entityId', '==', entityId)
+            .limit(1)
+            .get();
+
+        if (weSnap.empty) {
+            // Check legacy school
+            const schoolRef = adminDb.collection('schools').doc(entityId);
+            const schoolSnap = await schoolRef.get();
+            if (!schoolSnap.exists) throw new Error("Entity record not found.");
+            
+            const school = schoolSnap.data() as School;
+            // Legacy conversion
+            const stagesSnap = await adminDb.collection('onboardingStages')
+                .where('pipelineId', '==', targetPipelineId)
+                .orderBy('order', 'asc')
+                .limit(1)
+                .get();
+
+            if (stagesSnap.empty) throw new Error("Target pipeline has no defined stages.");
+            const firstStage = { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage;
+
+            await schoolRef.update({
+                track: 'onboarding',
+                pipelineId: targetPipelineId,
+                stage: {
+                    id: firstStage.id,
+                    name: firstStage.name,
+                    order: firstStage.order,
+                    color: firstStage.color
+                },
+                updatedAt: timestamp
+            });
+
+            await logActivity({
+                entityId: entityId, // Legacy mapping
+                entityName: school.name,
+                entitySlug: school.slug,
+                organizationId: school.organizationId || 'default',
+                userId,
+                workspaceId: school.workspaceIds[0],
+                type: 'pipeline_stage_changed',
+                source: 'user_action',
+                description: `successfully converted "${school.name}" from Prospect to Onboarding.`,
+                metadata: { 
+                    conversionDate: timestamp, 
+                    targetPipeline: targetPipelineId,
+                    previousTrack: 'prospect'
+                }
+            });
+
+            revalidatePath('/admin/entities');
+            revalidatePath('/admin/entities');
+            revalidatePath('/admin/pipeline');
+            return { success: true };
+        }
+
+        const we = weSnap.docs[0];
+        const weData = we.data();
+
+        // 1. Resolve target pipeline's initial stage
+        const stagesSnap = await adminDb.collection('onboardingStages')
+            .where('pipelineId', '==', targetPipelineId)
+            .orderBy('order', 'asc')
+            .limit(1)
+            .get();
+
+        if (stagesSnap.empty) throw new Error("Target pipeline has no defined stages.");
+        const firstStage = stagesSnap.docs[0].data();
+
+        // 2. Execute Track Transition
+        await we.ref.update({
+            pipelineId: targetPipelineId,
+            stageId: stagesSnap.docs[0].id,
+            currentStageName: firstStage.name,
+            updatedAt: timestamp
+        });
+
+        // 3. Log Conversion Success
+        await logActivity({
+            entityId: entityId,
+            entityType: weData.entityType as EntityType,
+            displayName: weData.displayName,
+            organizationId: weData.organizationId || 'default',
+            userId,
+            workspaceId: weData.workspaceId,
+            type: 'pipeline_stage_changed',
+            source: 'user_action',
+            description: `successfully converted "${weData.displayName}" to a new pipeline.`,
+            metadata: { 
+                conversionDate: timestamp, 
+                targetPipeline: targetPipelineId,
+            }
+        });
+
+        revalidatePath('/admin/entities');
+        revalidatePath('/admin/pipeline');
+        revalidatePath(`/admin/entities/${entityId}`);
+
+        return { success: true };
+    } catch (e: any) {
+        console.error(">>> [ENTITY:CONVERT] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
 }
 
 /**
- * Validates entity type is one of the allowed values
+ * Creates a new Entity record across 'entities' and 'workspace_entities'.
+ * Uses server-side Firebase Admin SDK to bypass client-side security rules.
  */
-function validateEntityType(entityType: string): entityType is EntityType {
-  return ['institution', 'family', 'person'].includes(entityType);
-}
-
-/**
- * Validates that entity data matches the entity type
- */
-function validateEntityData(
-  entityType: EntityType,
-  institutionData?: InstitutionData,
-  familyData?: FamilyData,
-  personData?: PersonData
-): { valid: boolean; error?: string } {
-  if (entityType === 'institution') {
-    if (!institutionData) {
-      return { valid: false, error: 'Institution entities require institutionData' };
-    }
-    if (institutionData.nominalRoll !== undefined && institutionData.nominalRoll < 0) {
-      return { valid: false, error: 'nominalRoll must be a positive integer' };
-    }
-  }
-
-  if (entityType === 'family') {
-    if (!familyData) {
-      return { valid: false, error: 'Family entities require familyData' };
-    }
-    if (!familyData.guardians || familyData.guardians.length === 0) {
-      return { valid: false, error: 'Family entities require at least one guardian' };
-    }
-  }
-
-  if (entityType === 'person') {
-    if (!personData) {
-      return { valid: false, error: 'Person entities require personData' };
-    }
-    if (!personData.firstName || !personData.lastName) {
-      return { valid: false, error: 'Person entities require firstName and lastName' };
-    }
-  }
-
-  return { valid: true };
-}
-
-interface CreateEntityInput {
-  organizationId: string;
-  entityType: EntityType;
-  name: string;
-  slug?: string; // Optional slug for institutions
-  globalTags?: string[]; // Optional global identity tags
-  contacts?: Array<{
-    name: string;
-    phone: string;
-    email: string;
-    type: string;
-    isSignatory: boolean;
-  }>;
-  institutionData?: InstitutionData;
-  familyData?: FamilyData;
-  personData?: PersonData;
-  userId: string;
-  userName?: string;
-  userEmail?: string;
-  workspaceId: string;
-}
-
-/**
- * Creates a new entity in the entities collection.
- * Validates entity type and data, generates slug for institutions,
- * and logs activity.
- * 
- * Requirements: 2, 15, 16, 17, 26
- */
-export async function createEntityAction(input: CreateEntityInput) {
+export async function createEntityAction(
+    data: any, 
+    userId: string, 
+    workspaceId: string, 
+    entityType: EntityType,
+    organizationId: string = 'smartsapp-hq'
+) {
   try {
     const timestamp = new Date().toISOString();
-
-    // 1. Validate entity type
-    if (!validateEntityType(input.entityType)) {
-      return {
-        success: false,
-        error: `Invalid entity type. Must be one of: institution, family, person`,
-      };
+    const entityId = `entity_${crypto.randomUUID()}`;
+    
+    let displayName = data.name || '';
+    if (entityType === 'person' && data.personData) {
+        displayName = `${data.personData.firstName} ${data.personData.lastName}`.trim();
     }
+    
+    const slug = displayName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-    // 2. Validate entity data matches entity type
-    const validation = validateEntityData(
-      input.entityType,
-      input.institutionData,
-      input.familyData,
-      input.personData
-    );
+    let initialPipelineId = 'default_pipeline';
+    let defaultStage = { 
+      id: 'stg_default_0', 
+      name: 'Welcome', 
+      order: 1, 
+    };
 
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.error,
-      };
-    }
+    // Try to get the actual pipeline for the workspace
+    const pipelinesSnap = await adminDb.collection('pipelines')
+      .where('workspaceId', '==', workspaceId)
+      .limit(1)
+      .get();
 
-    // 3. Compute name for person entities
-    let entityName = input.name;
-    if (input.entityType === 'person' && input.personData) {
-      entityName = `${input.personData.firstName} ${input.personData.lastName}`;
-    }
+    if (!pipelinesSnap.empty) {
+      initialPipelineId = pipelinesSnap.docs[0].id;
 
-    // 4. Generate slug for institution entities
-    let slug: string | undefined;
-    if (input.entityType === 'institution') {
-      slug = generateSlug(entityName);
-      
-      // Check for slug uniqueness within organization
-      const existingSlugSnap = await adminDb
-        .collection('entities')
-        .where('organizationId', '==', input.organizationId)
-        .where('slug', '==', slug)
+      // Get the first stage of this pipeline
+      const stagesSnap = await adminDb.collection('onboardingStages')
+        .where('pipelineId', '==', initialPipelineId)
+        .orderBy('order', 'asc')
         .limit(1)
         .get();
 
-      if (!existingSlugSnap.empty) {
-        // Append timestamp to make unique
-        slug = `${slug}-${Date.now()}`;
+      if (!stagesSnap.empty) {
+        const stageData = stagesSnap.docs[0].data();
+        defaultStage = {
+          id: stagesSnap.docs[0].id,
+          name: stageData.name,
+          order: stageData.order,
+        };
       }
     }
 
-    // 5. Create entity document
-    const entityData: Omit<Entity, 'id'> = {
-      organizationId: input.organizationId,
-      entityType: input.entityType,
-      name: entityName,
-      slug,
-      contacts: input.contacts || [],
-      globalTags: [],
+    // Prepare Base Entity Document
+    const entityData: any = {
+      id: entityId,
+      organizationId,
+      entityType,
+      name: displayName,
+      slug: slug,
+      contacts: data.contacts || [],
+      globalTags: data.globalTags || [],
+      status: 'active',
       createdAt: timestamp,
       updatedAt: timestamp,
-      institutionData: input.institutionData,
-      familyData: input.familyData,
-      personData: input.personData,
-      relatedEntityIds: [],
     };
 
-    const entityRef = await adminDb.collection('entities').add(entityData);
+    // Append Polymorphic Data
+    if (entityType === 'institution' && data.institutionData) {
+        entityData.institutionData = data.institutionData;
+    } else if (entityType === 'family' && data.familyData) {
+        entityData.familyData = data.familyData;
+    } else if (entityType === 'person' && data.personData) {
+        entityData.personData = data.personData;
+    }
 
-    // 6. Log audit trail (Requirement 29.4)
-    await logEntityCreated({
-      organizationId: input.organizationId,
-      entityId: entityRef.id,
-      entityType: input.entityType,
-      userId: input.userId,
-      userName: input.userName || 'Unknown User',
-      userEmail: input.userEmail || '',
-      newValue: { ...entityData, id: entityRef.id },
-      operationContext: 'manual_edit',
-    });
+    // Save to Universal Identity Collection
+    await adminDb.collection('entities').doc(entityId).set(entityData);
 
-    // 7. Log activity
+    // Prepare Workspace Entity Document
+    const workspaceEntityId = `${workspaceId}_${entityId}`;
+    const workspaceEntityData = {
+        id: workspaceEntityId,
+        organizationId,
+        workspaceId,
+        entityId,
+        entityType,
+        pipelineId: initialPipelineId,
+        stageId: defaultStage.id,
+        currentStageName: defaultStage.name,
+        assignedTo: data.assignedTo || null,
+        status: 'active',
+        workspaceTags: data.workspaceTags || [],
+        addedAt: timestamp,
+        updatedAt: timestamp,
+        displayName: displayName,
+        primaryEmail: data.primaryEmail || '',
+        primaryPhone: data.primaryPhone || '',
+    };
+
+    // Save to Operational Workspace Collection
+    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData);
+
+    // Log Activity
     await logActivity({
-      organizationId: input.organizationId,
-      workspaceId: input.workspaceId,
-      entityId: entityRef.id,
-      entityType: input.entityType,
-      displayName: entityName,
+      entityId,
+      entityType,
+      displayName,
       entitySlug: slug,
-      userId: input.userId,
+      organizationId,
+      userId,
+      workspaceId,
       type: 'entity_created',
       source: 'user_action',
-      description: `created ${input.entityType} entity "${entityName}"`,
-      metadata: {
-        entityType: input.entityType,
-        createdAt: timestamp,
-      },
+      description: `registered new ${entityType}: "${displayName}" in workspace`,
     });
 
-    revalidatePath('/admin/contacts');
-    revalidatePath(`/admin/contacts/${entityRef.id}`);
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/pipeline');
 
-    return {
-      success: true,
-      entityId: entityRef.id,
-    };
+    return { success: true, id: entityId };
   } catch (e: any) {
-    console.error('>>> [ENTITY:CREATE] Failed:', e.message);
-    return {
-      success: false,
-      error: e.message,
-    };
+    console.error(">>> [ENTITY:CREATE] Failed:", e.message);
+    return { success: false, error: e.message };
   }
 }
 
-
-interface UpdateEntityInput {
-  entityId: string;
-  name?: string;
-  contacts?: Array<{
-    name: string;
-    phone: string;
-    email: string;
-    type: string;
-    isSignatory: boolean;
-  }>;
-  institutionData?: Partial<InstitutionData>;
-  familyData?: Partial<FamilyData>;
-  personData?: Partial<PersonData>;
-  userId: string;
-  userName?: string;
-  userEmail?: string;
-  workspaceId: string;
-}
-
 /**
- * Updates an existing entity.
- * Validates entity exists, updates fields, triggers denormalization sync,
- * and logs activity.
- * 
- * Requirements: 2, 22
+ * Updates an existing Entity record across 'entities', 'workspace_entities',
+ * and the legacy 'schools' collection (Dual Write).
  */
-export async function updateEntityAction(input: UpdateEntityInput) {
+export async function updateEntityAction(
+    entityId: string,
+    data: any,
+    userId: string,
+    workspaceId: string,
+    organizationId: string
+) {
   try {
     const timestamp = new Date().toISOString();
-
-    // 1. Validate entity exists
-    const entityRef = adminDb.collection('entities').doc(input.entityId);
+    
+    // 1. Resolve Entity reference
+    const entityRef = adminDb.collection('entities').doc(entityId);
     const entitySnap = await entityRef.get();
-
-    if (!entitySnap.exists) {
-      return {
-        success: false,
-        error: 'Entity not found',
-      };
+    
+    let entityType: EntityType = 'institution'; // default
+    let displayName = data.name || '';
+    
+    if (entitySnap.exists) {
+        entityType = entitySnap.data()?.entityType || 'institution';
     }
 
-    const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
+    if (entityType === 'person' && data.personData) {
+        displayName = `${data.personData.firstName} ${data.personData.lastName}`.trim();
+    }
 
-    // 2. Build update object
-    const updates: any = {
+    // 2. Prepare Base Entity Update (Identity)
+    const entityUpdate: any = {
+      name: displayName,
       updatedAt: timestamp,
     };
-
-    if (input.name !== undefined) {
-      updates.name = input.name;
-    }
-
-    if (input.contacts !== undefined) {
-      updates.contacts = input.contacts;
-    }
-
-    // Update scope-specific data
-    if (entity.entityType === 'institution' && input.institutionData) {
-      updates.institutionData = {
-        ...entity.institutionData,
-        ...input.institutionData,
-      };
-    }
-
-    if (entity.entityType === 'family' && input.familyData) {
-      updates.familyData = {
-        ...entity.familyData,
-        ...input.familyData,
-      };
-    }
-
-    if (entity.entityType === 'person' && input.personData) {
-      updates.personData = {
-        ...entity.personData,
-        ...input.personData,
-      };
-      
-      // Recompute name for person entities
-      const updatedPersonData = { ...entity.personData, ...input.personData };
-      if (updatedPersonData.firstName && updatedPersonData.lastName) {
-        updates.name = `${updatedPersonData.firstName} ${updatedPersonData.lastName}`;
-      }
-    }
-
-    // 3. Update entity document
-    await entityRef.update(updates);
-
-    // 4. Log audit trail (Requirement 29.4)
-    const updatedEntity = { ...entity, ...updates };
-    await logEntityUpdated({
-      organizationId: entity.organizationId,
-      entityId: input.entityId,
-      entityType: entity.entityType,
-      userId: input.userId,
-      userName: input.userName || 'Unknown User',
-      userEmail: input.userEmail || '',
-      oldValue: entity,
-      newValue: updatedEntity,
-      changedFields: Object.keys(updates),
-      operationContext: 'manual_edit',
-    });
-
-    // 5. Trigger denormalization sync to workspace_entities
-    // Check if fields that need denormalization have changed
-    const needsDenormSync = updates.name !== undefined || updates.contacts !== undefined;
     
-    if (needsDenormSync) {
-      const denormalizedFields = await extractDenormalizedFields(updatedEntity as Entity);
-      
-      await syncDenormalizedFieldsToWorkspaceEntities(
-        input.entityId,
-        denormalizedFields
-      );
+    if (data.contacts) entityUpdate.contacts = data.contacts;
+    if (data.globalTags) entityUpdate.globalTags = data.globalTags;
+    if (data.status) entityUpdate.status = data.status.toLowerCase();
+
+    if (entityType === 'institution' && data.institutionData) {
+        entityUpdate.institutionData = data.institutionData;
+    } else if (entityType === 'family' && data.familyData) {
+        entityUpdate.familyData = data.familyData;
+    } else if (entityType === 'person' && data.personData) {
+        entityUpdate.personData = data.personData;
     }
 
-    // 6. Log activity
+    // 3. Update Universal Identity Collection
+    if (entitySnap.exists) {
+        await entityRef.update(entityUpdate);
+    } else {
+        // Just in case it doesn't exist, though it should. We won't create it here.
+        console.warn(`Entity ${entityId} not found in entities collection during update.`);
+    }
+
+    // 4. Update Workspace Entity (Operational)
+    const workspaceEntityId = `${workspaceId}_${entityId}`;
+    const weRef = adminDb.collection('workspace_entities').doc(workspaceEntityId);
+    const weSnap = await weRef.get();
+    
+    if (weSnap.exists) {
+        const weUpdate: any = {
+            displayName: displayName,
+            updatedAt: timestamp,
+        };
+        
+        if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
+        if (data.status) weUpdate.status = data.status.toLowerCase();
+        if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
+        if (data.primaryEmail !== undefined) weUpdate.primaryEmail = data.primaryEmail;
+        if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
+        // DO NOT update pipelineId/stageId directly from regular edit form unless explicitly passed
+        
+        await weRef.update(weUpdate);
+    } else {
+        console.warn(`Workspace entity ${workspaceEntityId} not found during update.`);
+    }
+
+    // 5. Dual Write to Legacy Schools Collection
+    const schoolRef = adminDb.collection('schools').doc(entityId);
+    const schoolSnap = await schoolRef.get();
+    
+    if (schoolSnap.exists) {
+        // Strip out purely nested fields if passing them
+        const legacyUpdate = {
+            ...data,
+            name: displayName,
+            updatedAt: timestamp
+        };
+        // Remove nested objects meant for new architecture
+        delete legacyUpdate.institutionData;
+        delete legacyUpdate.familyData;
+        delete legacyUpdate.personData;
+        
+        await schoolRef.update(legacyUpdate);
+    }
+
+    // 6. Log Activity
     await logActivity({
-      organizationId: entity.organizationId,
-      workspaceId: input.workspaceId,
-      entityId: input.entityId,
-      entityType: entity.entityType,
-      displayName: updates.name || entity.name,
-      entitySlug: entity.slug,
-      userId: input.userId,
+      entityId,
+      entityType,
+      displayName,
+      organizationId,
+      userId,
+      workspaceId,
       type: 'entity_updated',
       source: 'user_action',
-      description: `updated ${entity.entityType} entity "${updates.name || entity.name}"`,
-      metadata: {
-        updatedFields: Object.keys(updates),
-        updatedAt: timestamp,
-      },
+      description: `updated profile for "${displayName}"`,
     });
 
-    revalidatePath('/admin/contacts');
-    revalidatePath(`/admin/contacts/${input.entityId}`);
+    revalidatePath('/admin/entities');
+    revalidatePath(`/admin/entities/${entityId}`);
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (e: any) {
-    console.error('>>> [ENTITY:UPDATE] Failed:', e.message);
-    return {
-      success: false,
-      error: e.message,
-    };
-  }
-}
-
-interface DeleteEntityInput {
-  entityId: string;
-  userId: string;
-  userName?: string;
-  userEmail?: string;
-  workspaceId: string;
-}
-
-/**
- * Soft deletes an entity by marking it as archived.
- * Does not delete workspace_entities records to preserve history.
- * 
- * Requirements: 2
- */
-export async function deleteEntityAction(input: DeleteEntityInput) {
-  try {
-    const timestamp = new Date().toISOString();
-
-    // 1. Validate entity exists
-    const entityRef = adminDb.collection('entities').doc(input.entityId);
-    const entitySnap = await entityRef.get();
-
-    if (!entitySnap.exists) {
-      return {
-        success: false,
-        error: 'Entity not found',
-      };
-    }
-
-    const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
-
-    // 2. Mark entity as archived (soft delete)
-    await entityRef.update({
-      status: 'archived',
-      updatedAt: timestamp,
-    });
-
-    // 3. Log audit trail (Requirement 29.4)
-    await logEntityDeleted({
-      organizationId: entity.organizationId,
-      entityId: input.entityId,
-      entityType: entity.entityType,
-      userId: input.userId,
-      userName: input.userName || 'Unknown User',
-      userEmail: input.userEmail || '',
-      oldValue: entity,
-      operationContext: 'manual_edit',
-    });
-
-    // Note: We do NOT delete workspace_entities records to preserve history
-
-    // 4. Log activity
-    await logActivity({
-      organizationId: entity.organizationId,
-      workspaceId: input.workspaceId,
-      entityId: input.entityId,
-      entityType: entity.entityType,
-      displayName: entity.name,
-      entitySlug: entity.slug,
-      userId: input.userId,
-      type: 'entity_archived',
-      source: 'user_action',
-      description: `archived ${entity.entityType} entity "${entity.name}"`,
-      metadata: {
-        archivedAt: timestamp,
-      },
-    });
-
-    revalidatePath('/admin/contacts');
-    revalidatePath(`/admin/contacts/${input.entityId}`);
-
-    return {
-      success: true,
-    };
-  } catch (e: any) {
-    console.error('>>> [ENTITY:DELETE] Failed:', e.message);
-    return {
-      success: false,
-      error: e.message,
-    };
+    console.error(">>> [ENTITY:UPDATE] Failed:", e.message);
+    return { success: false, error: e.message };
   }
 }

@@ -319,7 +319,7 @@ describe('Task 18: Signup Module Migration', () => {
       );
     });
 
-    it('should NOT log activity with schoolId', async () => {
+    it('should NOT log activity with entityId', async () => {
       // Arrange
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
@@ -357,7 +357,7 @@ describe('Task 18: Signup Module Migration', () => {
 
       // Assert
       const activityCall = vi.mocked(logActivity).mock.calls[0][0];
-      expect(activityCall.schoolId).toBeUndefined();
+      expect(activityCall.entityId).toBeUndefined();
       expect(activityCall.entityId).toBe('entity_mock_random_id_123');
     });
   });

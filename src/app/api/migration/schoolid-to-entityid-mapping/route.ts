@@ -8,7 +8,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * GET /api/migration/schoolid-to-entityid-mapping
- * Get mapping of schoolId to entityId for an organization
+ * Get mapping of entityId to entityId for an organization
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
     const mappings = schoolsSnapshot.docs.map(doc => {
       const school = doc.data();
       return {
-        schoolId: doc.id,
         entityId: school.entityId,
         entityType: school.entityType || 'institution',
         name: school.name,

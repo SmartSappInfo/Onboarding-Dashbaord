@@ -27,7 +27,7 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
         
         // 2. Resolve associated School
         let school: School | undefined = undefined;
-        const targetSchoolId = querySchoolId || pdfForm.schoolId;
+        const targetSchoolId = querySchoolId || pdfForm.entityId;
         if (targetSchoolId) {
             const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();
             if (schoolSnap.exists) school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
@@ -40,7 +40,7 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
 
         if (pdfForm.isContractDocument && targetSchoolId) {
             const contractQuery = await adminDb.collection('contracts')
-                .where('schoolId', '==', targetSchoolId)
+                .where('entityId', '==', targetSchoolId)
                 .limit(1)
                 .get();
             
@@ -66,10 +66,10 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
     }
 }
 
-export async function generateMetadata({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ schoolId?: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }): Promise<Metadata> {
     const { pdfId } = await params;
     const sParams = await searchParams;
-    const data = await getPdfFormData(pdfId, sParams.schoolId);
+    const data = await getPdfFormData(pdfId, sParams.entityId);
 
     if (!data) return { title: 'Form Not Found' };
 
@@ -83,10 +83,10 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     };
 }
 
-export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ schoolId?: string }> }) {
+export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }) {
     const { pdfId } = await params;
     const sParams = await searchParams;
-    const data = await getPdfFormData(pdfId, sParams.schoolId);
+    const data = await getPdfFormData(pdfId, sParams.entityId);
 
     if (!data) notFound();
     

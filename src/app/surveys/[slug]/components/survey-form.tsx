@@ -38,6 +38,9 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { logActivity } from '@/lib/activity-logger';
 import SurveyLoader from '../../components/survey-loader';
 import VideoHero from '@/components/video-hero';
+import { submitPublicSurveyResponse, triggerSurveyWebhook } from '@/lib/survey-actions';
+
+
 
 interface SurveyFormProps {
     survey: Survey;
@@ -972,8 +975,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
-            schoolId: survey.schoolId || '',
-            schoolName: survey.schoolName || 'SmartSapp'
+            entityId: survey.entityId || '',
+            entityName: survey.entityName || 'SmartSapp'
         };
 
         survey.elements.filter(isQuestion).forEach(q => {
@@ -1003,22 +1006,25 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
-        // Dual-write: populate both schoolId and entityId fields
+        // Build response document with unified entity reference
         const responseData = { 
             surveyId: survey.id, 
             submittedAt: new Date().toISOString(), 
             answers, 
             score,
-            schoolId: survey.schoolId || null,
             entityId: survey.entityId || null,
-            entityType: survey.entityId ? 'institution' as const : undefined
+            entityName: survey.entityName || null,
+            entityType: survey.entityId ? 'institution' as const : undefined,
+            workspaceId: survey.workspaceIds?.[0] || null,
         };
-        const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
         setIsSubmitting(true);
 
         try {
-            const docRef = await addDoc(responsesCollection, responseData);
-            const submissionId = docRef.id;
+            const res = await submitPublicSurveyResponse(survey.id, responseData, sessionId);
+            
+            if (!res.success) throw new Error(res.error || "Submission failed");
+            
+            const submissionId = res.id!;
             setLastSubmissionId(submissionId);
             variables.submission_id = submissionId;
             
@@ -1028,33 +1034,21 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             
             updateAutomationStatus('db', 'success');
 
-            if (sessionId) {
-                updateDoc(doc(firestore, 'survey_sessions', sessionId), {
-                    isSubmitted: true,
-                    updatedAt: new Date().toISOString()
-                }).catch(console.warn);
-            }
 
             const automationPromises = [];
 
             if (survey.webhookEnabled && survey.webhookId) {
                 const webhookTask = async () => {
                     try {
-                        const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId!));
-                        if (!webhookDoc.exists()) throw new Error("Endpoint missing");
-                        const webhook = webhookDoc.data() as Webhook;
-                        const res = await fetch(webhook.url, { 
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify({ 
-                                ...variables, 
-                                answers: cleanedData, 
-                                raw_score: score,
-                                survey_id: survey.id,
-                                school_id: survey.schoolId
-                            }) 
-                        });
-                        if (!res.ok) throw new Error(`Status ${res.status}`);
+                        const payload = { 
+                            ...variables, 
+                            answers: cleanedData, 
+                            raw_score: score,
+                            survey_id: survey.id,
+                            school_id: survey.entityId
+                        };
+                        const res = await triggerSurveyWebhook(survey.webhookId!, payload);
+                        if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('webhook', 'success');
                     } catch (e: any) {
                         updateAutomationStatus('webhook', 'failed', e.message);
@@ -1075,7 +1069,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             senderProfileId: outcome.emailSenderProfileId || 'default', 
                             recipient: String(respondentEmail), 
                             variables,
-                            schoolId: survey.schoolId || undefined
+                            entityId: survey.entityId || undefined
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('email_ack', 'success');
@@ -1098,7 +1092,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             senderProfileId: outcome.smsSenderProfileId || 'default', 
                             recipient: String(respondentPhone), 
                             variables,
-                            schoolId: survey.schoolId || undefined
+                            entityId: survey.entityId || undefined
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('sms_ack', 'success');
@@ -1113,7 +1107,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 const adminTask = async () => {
                     try {
                         await triggerInternalNotification({
-                            schoolId: survey.schoolId || '',
+                            entityId: survey.entityId || '',
                             notifyManager: survey.adminAlertNotifyManager,
                             specificUserIds: survey.adminAlertSpecificUserIds,
                             emailTemplateId: survey.adminAlertEmailTemplateId,
@@ -1130,14 +1124,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             }
 
             logActivity({
-                schoolId: survey.schoolId || '',
+                entityId: survey.entityId || '',
                 organizationId: 'default',
                 userId: null, 
                 workspaceId: 'onboarding',
                 type: 'form_submission',
                 source: 'public',
                 description: `Respondent completed survey: "${survey.title}"`,
-                metadata: { surveyId: survey.id, submissionId: docRef.id, score, outcome: outcome?.label }
+                metadata: { surveyId: survey.id, submissionId, score, outcome: outcome?.label }
             });
 
             await Promise.allSettled(automationPromises);
@@ -1156,7 +1150,23 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         } catch (error: any) {
             updateAutomationStatus('db', 'failed', error.message);
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: responsesCollection.path, operation: 'create', requestResourceData: responseData }));
+            console.error("Submission failed:", error);
+            
+            // Emit permission error only if it's likely a real permission issue, 
+            // otherwise emit a generic submission error.
+            if (error.message?.includes('permission') || error.message?.includes('denied')) {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({ 
+                    path: `surveys/${survey.id}/responses`, 
+                    operation: 'create', 
+                    requestResourceData: responseData 
+                }));
+            } else {
+                toast({
+                    title: "Submission Error",
+                    description: error.message || "Something went wrong while saving your response. Please try again.",
+                    variant: "destructive"
+                });
+            }
             setIsSubmitting(false);
         } finally { 
             setIsSubmitting(false);

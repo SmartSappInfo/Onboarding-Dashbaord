@@ -659,7 +659,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
       // If no workspace_entities, should fall back to updating schools collection
       if (!workspaceEntitiesFound) {
         const legacyUpdate = {
-          schoolId: legacySchoolId,
+          entityId: legacySchoolId,
           stage: {
             id: newStageId,
             name: 'New Stage',
@@ -667,7 +667,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           },
         };
 
-        expect(legacyUpdate.schoolId).toBe(legacySchoolId);
+        expect(legacyUpdate.entityId).toBe(legacySchoolId);
         expect(legacyUpdate.stage.id).toBe(newStageId);
       }
     });
@@ -903,8 +903,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
       const activityLog = {
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        entityId: 'entity_123',
-        schoolId: 'school_123', // Legacy field for backward compatibility
+        entityId: 'school_123', // Legacy field for backward compatibility
         userId: 'user_1',
         type: 'pipeline_stage_changed' as const,
         source: 'user_action' as const,
@@ -925,15 +924,14 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
 
     it('should use entityId as primary identifier in activity log', () => {
       const activityLog = {
-        entityId: 'entity_456',
-        schoolId: 'school_456', // Dual-write for backward compatibility
+        entityId: 'school_456', // Dual-write for backward compatibility
         type: 'pipeline_stage_changed' as const,
         description: 'Stage changed',
       };
 
       // Verify entityId is present
       expect(activityLog.entityId).toBe('entity_456');
-      expect(activityLog.schoolId).toBe('school_456');
+      expect(activityLog.entityId).toBe('school_456');
     });
   });
 

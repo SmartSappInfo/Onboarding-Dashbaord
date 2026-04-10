@@ -347,7 +347,7 @@ export async function deleteTagAction(
     });
     
     revalidatePath('/admin/contacts/tags');
-    revalidatePath('/admin/schools');
+    revalidatePath('/admin/entities');
     revalidatePath('/admin/prospects');
     return { success: true, affectedCount: processedCount };
   } catch (error: any) {
@@ -506,7 +506,7 @@ export async function mergeTagsAction(
     });
     
     revalidatePath('/admin/contacts/tags');
-    revalidatePath('/admin/schools');
+    revalidatePath('/admin/entities');
     revalidatePath('/admin/prospects');
     return { success: true, affectedCount: contactsToUpdate.size };
   } catch (error: any) {

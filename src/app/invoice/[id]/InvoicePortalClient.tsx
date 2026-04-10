@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 /**
  * InvoicePortalClient - Public Invoice Display & PDF Generation
  * 
- * Entity Resolution: Contact information (schoolName, entityId, entityType) is resolved
+ * Entity Resolution: Contact information (entityName, entityId, entityType) is resolved
  * server-side via the Contact Adapter during invoice generation. The PDF includes
  * the pre-resolved entity information from the invoice record.
  * 
@@ -159,7 +159,7 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                                     <p className="text-[9px] font-black uppercase text-primary tracking-[0.2em]">Billed To</p>
                                     <div className="flex items-center sm:justify-end gap-2">
                                         <Building className="h-4 w-4 text-primary/40" />
-                                        <h2 className="text-xl font-black uppercase tracking-tight text-foreground">{invoice.schoolName}</h2>
+                                        <h2 className="text-xl font-black uppercase tracking-tight text-foreground">{invoice.entityName}</h2>
                                     </div>
                                     <p className="text-sm font-medium text-muted-foreground max-w-xs sm:ml-auto leading-relaxed whitespace-pre-wrap">{invoice.paymentInstructions?.split('\n')[0]}</p>
                                 </div>

@@ -53,7 +53,7 @@ import { Separator } from '@/components/ui/separator';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { format } from 'date-fns';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../entities/components/media-select';
 import { getMeetingHeroDefaults } from '@/lib/meeting-hero-defaults';
 import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../components/registration-field-builder';
@@ -62,7 +62,7 @@ import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
-  schoolSlug: z.string()
+  entitySlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
     .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   meetingTime: z.date({
@@ -133,7 +133,7 @@ export default function NewMeetingPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       school: undefined,
-      schoolSlug: '',
+      entitySlug: '',
       meetingTime: new Date(new Date().setHours(10, 0, 0, 0)),
       type: undefined,
       meetingLink: '',
@@ -163,18 +163,18 @@ export default function NewMeetingPage() {
   const { setValue, reset } = form;
   const watchedType = form.watch('type');
   const watchedSchool = form.watch('school');
-  const watchedSlug = form.watch('schoolSlug');
+  const watchedSlug = form.watch('entitySlug');
   const registrationEnabled = form.watch('registrationEnabled');
 
   React.useEffect(() => {
-    const schoolIdFromUrl = searchParams.get('schoolId');
-    if (schoolIdFromUrl && schools && !hasInitialized) {
-      const selectedSchool = schools.find(s => s.id === schoolIdFromUrl);
+    const entityIdFromUrl = searchParams.get('entityId');
+    if (entityIdFromUrl && schools && !hasInitialized) {
+      const selectedSchool = schools.find(s => s.id === entityIdFromUrl);
       if (selectedSchool) {
         reset({
             ...form.getValues(),
             school: selectedSchool,
-            schoolSlug: selectedSchool.slug,
+            entitySlug: selectedSchool.slug,
             type: MEETING_TYPES[0],
         });
         setHasInitialized(true);
@@ -194,14 +194,14 @@ export default function NewMeetingPage() {
   React.useEffect(() => {
     if (watchedType) {
       const defaults = getMeetingHeroDefaults(watchedType.id);
-      const schoolName = watchedSchool?.name || '{{school}}';
+      const entityName = watchedSchool?.name || '{{school}}';
       const currentTitle = form.getValues('heroTitle');
       const currentDesc = form.getValues('heroDescription');
       if (!currentTitle) {
-        setValue('heroTitle', defaults.title.replace(/\{\{school\}\}/g, schoolName));
+        setValue('heroTitle', defaults.title.replace(/\{\{school\}\}/g, entityName));
       }
       if (!currentDesc) {
-        setValue('heroDescription', defaults.description.replace(/\{\{school\}\}/g, schoolName));
+        setValue('heroDescription', defaults.description.replace(/\{\{school\}\}/g, entityName));
       }
     }
   }, [watchedType?.id]);
@@ -211,20 +211,20 @@ export default function NewMeetingPage() {
 
     try {
         const meetingsRef = collection(firestore, 'meetings');
-        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
+        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('entitySlug', '==', data.entitySlug));
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
-            form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+            form.setError('entitySlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
             toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
             setCurrentStep(0);
             return;
         }
         
         const meetingData = {
-            schoolId: data.school.id,
-            schoolName: data.school.name,
-            schoolSlug: data.schoolSlug,
+            entityId: data.school.id,
+            entityName: data.school.name,
+            entitySlug: data.entitySlug,
             entityId: data.school.entityId || null,
             entityType: (data.school.entityId ? 'institution' : null) as 'institution' | null,
             workspaceIds: data.school.workspaceIds || [activeWorkspaceId], 
@@ -265,7 +265,6 @@ export default function NewMeetingPage() {
         
         logActivity({
             organizationId: activeOrganizationId,
-            schoolId: data.school.id,
             entityId: data.school.entityId || null,
             entityType: data.school.entityId ? 'institution' : null,
             userId: user.uid,
@@ -278,7 +277,7 @@ export default function NewMeetingPage() {
 
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
-                schoolId: data.school.id,
+                entityId: data.school.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
                 emailTemplateId: data.adminAlertEmailTemplateId,
@@ -308,7 +307,7 @@ export default function NewMeetingPage() {
     
     // Validate current step before proceeding
     if (currentStep === 0) {
-      isValid = await form.trigger(['school', 'schoolSlug', 'meetingTime', 'type', 'meetingLink']);
+      isValid = await form.trigger(['school', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
     } else if (currentStep === 1) {
       isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
     } else if (currentStep === 2) {
@@ -430,11 +429,11 @@ export default function NewMeetingPage() {
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context School</FormLabel>
                                         <Select
-                                            onValueChange={(schoolId: string) => {
-                                                const school = schools?.find((s) => s.id === schoolId);
+                                            onValueChange={(entityId: string) => {
+                                                const school = schools?.find((s) => s.id === entityId);
                                                 field.onChange(school);
-                                                if (school && !form.getValues('schoolSlug')) {
-                                                    form.setValue('schoolSlug', school.slug, { shouldValidate: true });
+                                                if (school && !form.getValues('entitySlug')) {
+                                                    form.setValue('entitySlug', school.slug, { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
@@ -520,7 +519,7 @@ export default function NewMeetingPage() {
 
                             <FormField
                                 control={form.control}
-                                name="schoolSlug"
+                                name="entitySlug"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">URL Path Context</FormLabel>

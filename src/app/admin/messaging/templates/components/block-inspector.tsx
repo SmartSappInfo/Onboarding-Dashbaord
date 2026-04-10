@@ -23,7 +23,7 @@ import {
     FileText
 } from 'lucide-react';
 import type { MessageBlock, VariableDefinition, MessageTemplate } from '@/lib/types';
-import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { cn } from '@/lib/utils';
 
 interface BlockInspectorProps {

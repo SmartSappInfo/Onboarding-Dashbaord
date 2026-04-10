@@ -87,7 +87,7 @@ describe('Extended Adapter Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await triggerInternalNotification({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         notifyManager: true,
         emailTemplateId: 'template_1',
         variables: { workspaceId: 'workspace_1' },
@@ -205,7 +205,7 @@ describe('Extended Adapter Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await triggerInternalNotification({
-        schoolId: 'school_2',
+        entityId: 'school_2',
         notifyManager: true,
         emailTemplateId: 'template_1',
         variables: { workspaceId: 'workspace_1' },
@@ -243,7 +243,7 @@ describe('Extended Adapter Integration Tests', () => {
       const mockPdfForm = {
         id: 'form_1',
         name: 'Test Form',
-        schoolId: 'school_3',
+        entityId: 'school_3',
         workspaceId: 'workspace_1',
         storagePath: 'templates/test.pdf',
         fields: [],

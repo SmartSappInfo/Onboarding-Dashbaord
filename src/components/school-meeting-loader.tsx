@@ -27,7 +27,7 @@ const ActivityTimeline = dynamic(() => import('../app/admin/components/ActivityT
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
 });
 
-const LogActivityModal = dynamic(() => import('../app/admin/schools/components/LogActivityModal'), { ssr: false });
+const LogActivityModal = dynamic(() => import('../app/admin/entities/components/LogActivityModal'), { ssr: false });
 
 function MeetingPageSkeleton() {
   return (
@@ -117,11 +117,11 @@ const WebinarLayout = ({ school, meeting }: { school: School, meeting: Meeting }
 }
 
 interface SchoolMeetingLoaderProps {
-    schoolSlug: string;
+    entitySlug: string;
     typeSlug: string;
 }
 
-export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeetingLoaderProps) {
+export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeetingLoaderProps) {
     const firestore = useFirestore();
     const [school, setSchool] = useState<School | null>(null);
     const [meeting, setMeeting] = useState<Meeting | null>(null);
@@ -129,7 +129,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!firestore || !schoolSlug || !typeSlug) {
+        if (!firestore || !entitySlug || !typeSlug) {
             return;
         };
 
@@ -141,15 +141,15 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
 
           try {
             const meetingsCol = collection(firestore, 'meetings');
-            // Query by schoolSlug (supports both legacy and new meetings)
+            // Query by entitySlug (supports both legacy and new meetings)
             const meetingQuery = query(
                 meetingsCol, 
-                where('schoolSlug', '==', schoolSlug.toLowerCase())
+                where('entitySlug', '==', entitySlug.toLowerCase())
             );
             const meetingSnapshot = await getDocs(meetingQuery);
 
             if (meetingSnapshot.empty) {
-                setError(`Meeting not found for slug: ${schoolSlug}`);
+                setError(`Meeting not found for slug: ${entitySlug}`);
                 setIsLoading(false);
                 return;
             }
@@ -180,8 +180,8 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const bestMeeting = sorted[0];
             setMeeting(bestMeeting);
 
-            // Resolve school using entityId first (if available), then fallback to schoolId
-            // Requirement 9.5: Support both entityId and schoolSlug for resolution
+            // Resolve school using entityId first (if available), then fallback to entityId
+            // Requirement 9.5: Support both entityId and entitySlug for resolution
             if (bestMeeting.entityId) {
                 // Try to resolve from entities collection first (migrated contacts)
                 const entityRef = doc(firestore, 'entities', bestMeeting.entityId);
@@ -192,16 +192,16 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                     const entityData = entitySnap.data();
                     // For backward compatibility, create a School-like object from entity
                     setSchool({
-                        id: bestMeeting.schoolId || bestMeeting.entityId,
+                        id: bestMeeting.entityId || bestMeeting.entityId,
                         name: entityData.name,
-                        slug: entityData.slug || schoolSlug,
+                        slug: entityData.slug || entitySlug,
                         logoUrl: entityData.institutionData?.logoUrl,
                         entityId: bestMeeting.entityId,
                         migrationStatus: 'migrated',
                     } as School);
-                } else if (bestMeeting.schoolId) {
+                } else if (bestMeeting.entityId) {
                     // Entity not found, fallback to school
-                    const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
+                    const schoolRef = doc(firestore, 'schools', bestMeeting.entityId);
                     const schoolSnap = await getDoc(schoolRef);
                     if (schoolSnap.exists()) {
                         setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
@@ -209,18 +209,18 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                         setError("Contact document could not be resolved.");
                     }
                 }
-            } else if (bestMeeting.schoolId) {
-                // Legacy meeting - use schoolId
-                const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
+            } else if (bestMeeting.entityId) {
+                // Legacy meeting - use entityId
+                const schoolRef = doc(firestore, 'schools', bestMeeting.entityId);
                 const schoolSnap = await getDoc(schoolRef);
 
                 if (schoolSnap.exists()) {
                     setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
                 }
             } else {
-                // No entityId or schoolId - fallback to slug lookup
+                // No entityId or entityId - fallback to slug lookup
                 const schoolsCol = collection(firestore, 'schools');
-                const schoolQuery = query(schoolsCol, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
+                const schoolQuery = query(schoolsCol, where('slug', '==', entitySlug.toLowerCase()), limit(1));
                 const schoolSnapshot = await getDocs(schoolQuery);
                 if (!schoolSnapshot.empty) {
                     setSchool({ id: schoolSnapshot.docs[0].id, ...schoolSnapshot.docs[0].data() } as School);
@@ -238,7 +238,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
         };
 
         fetchData();
-    }, [firestore, schoolSlug, typeSlug]);
+    }, [firestore, entitySlug, typeSlug]);
       
     if (isLoading) {
         return (

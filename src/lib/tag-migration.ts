@@ -103,7 +103,7 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
     for (const schoolDoc of schoolsSnap.docs) {
       try {
         const school = schoolDoc.data();
-        const schoolId = schoolDoc.id;
+        const entityId = schoolDoc.id;
         const tags: string[] = school.tags || [];
         const workspaceIds: string[] = school.workspaceIds || [];
 
@@ -124,7 +124,7 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
           .get();
 
         if (entitySnap.empty) {
-          result.errors.push(`No entity found for school ${schoolId} (${school.name})`);
+          result.errors.push(`No entity found for school ${entityId} (${school.name})`);
           continue;
         }
 
@@ -198,7 +198,7 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
           }
         }
 
-        console.log(`  Processed school ${schoolId}: ${globalTags.size} global, ${workspaceTagsByWorkspace.size} workspace contexts\n`);
+        console.log(`  Processed school ${entityId}: ${globalTags.size} global, ${workspaceTagsByWorkspace.size} workspace contexts\n`);
       } catch (error: any) {
         result.errors.push(`Error processing school ${schoolDoc.id}: ${error.message}`);
         console.error(`  ❌ Error processing school ${schoolDoc.id}:`, error);

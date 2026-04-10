@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { SurveyResultPage, SurveyResultBlock } from '@/lib/types';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../entities/components/media-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SmartSappLogo } from '@/components/icons';

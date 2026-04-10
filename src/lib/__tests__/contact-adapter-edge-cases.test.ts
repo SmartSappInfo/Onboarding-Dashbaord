@@ -177,14 +177,14 @@ describe('Contact Adapter Edge Cases', () => {
       expect(result?.assignedTo?.userId).toBe('user_123');
     });
 
-    it('should resolve migrated entity by schoolId when school has migrationStatus=migrated', async () => {
+    it('should resolve migrated entity by entityId when school has migrationStatus=migrated', async () => {
       // Setup: Create migrated school and entity
-      const schoolId = 'school_migrated_456';
+      const entityId = 'school_migrated_456';
       const entityId = 'entity_migrated_456';
       const workspaceId = 'workspace_test_456';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'Migrated School',
         slug: 'migrated-school',
         workspaceIds: [workspaceId],
@@ -229,29 +229,29 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
       mockEntities.set(entityId, entity);
       mockWorkspaceEntities.set(`${workspaceId}_${entityId}`, workspaceEntity);
 
-      // Resolve by schoolId
-      const result = await resolveContact({ schoolId }, workspaceId);
+      // Resolve by entityId
+      const result = await resolveContact({ entityId }, workspaceId);
 
       // The adapter successfully finds the entity via query
       expect(result?.id).toBe(entityId);
       expect(result?.name).toBe('Migrated School');
       expect(result?.migrationStatus).toBe('migrated');
-      expect(result?.schoolData?.id).toBe(schoolId);
+      expect(result?.schoolData?.id).toBe(entityId);
     });
   });
 
   describe('Edge Case 2: Resolution with legacy school', () => {
     it('should resolve contact from schools collection for legacy (non-migrated) school', async () => {
       // Setup: Create legacy school
-      const schoolId = 'school_legacy_789';
+      const entityId = 'school_legacy_789';
       const workspaceId = 'workspace_test_789';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'Legacy School',
         slug: 'legacy-school',
         workspaceIds: [workspaceId],
@@ -277,13 +277,13 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2022-06-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
-      // Resolve by schoolId
-      const result = await resolveContact({ schoolId }, workspaceId);
+      // Resolve by entityId
+      const result = await resolveContact({ entityId }, workspaceId);
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(schoolId);
+      expect(result?.id).toBe(entityId);
       expect(result?.name).toBe('Legacy School');
       // migrationStatus in result reflects the school's status
       expect(['legacy', 'not_started']).toContain(result?.migrationStatus);
@@ -291,17 +291,17 @@ describe('Contact Adapter Edge Cases', () => {
       expect(result?.stageId).toBe('stage_legacy');
       expect(result?.stageName).toBe('Prospecting');
       expect(result?.tags).toEqual(['old-system', 'needs-migration']);
-      expect(result?.schoolData?.id).toBe(schoolId);
+      expect(result?.schoolData?.id).toBe(entityId);
       expect(result?.entityId).toBeUndefined();
     });
 
     it('should resolve legacy school when migrationStatus is null', async () => {
       // Setup: Create school without migrationStatus field
-      const schoolId = 'school_no_status_111';
+      const entityId = 'school_no_status_111';
       const workspaceId = 'workspace_test_111';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'School Without Status',
         slug: 'no-status-school',
         workspaceIds: [workspaceId],
@@ -315,13 +315,13 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2021-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
-      // Resolve by schoolId
-      const result = await resolveContact({ schoolId }, workspaceId);
+      // Resolve by entityId
+      const result = await resolveContact({ entityId }, workspaceId);
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(schoolId);
+      expect(result?.id).toBe(entityId);
       expect(result?.migrationStatus).toBe('legacy');
     });
   });
@@ -336,9 +336,9 @@ describe('Contact Adapter Edge Cases', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null when schoolId does not exist', async () => {
+    it('should return null when entityId does not exist', async () => {
       const result = await resolveContact(
-        { schoolId: 'school_nonexistent_888' },
+        { entityId: 'school_nonexistent_888' },
         'workspace_test_888'
       );
 
@@ -347,7 +347,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should return null when both identifiers do not exist', async () => {
       const result = await resolveContact(
-        { entityId: 'entity_fake_777', schoolId: 'school_fake_777' },
+        { entityId: 'school_fake_777' },
         'workspace_test_777'
       );
 
@@ -399,9 +399,9 @@ describe('Contact Adapter Edge Cases', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle empty string schoolId', async () => {
+    it('should handle empty string entityId', async () => {
       const result = await resolveContact(
-        { schoolId: '' },
+        { entityId: '' },
         'workspace_test_empty'
       );
 
@@ -419,7 +419,7 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should handle undefined identifiers', async () => {
       const result = await resolveContact(
-        { entityId: undefined, schoolId: undefined },
+        { entityId: undefined },
         'workspace_test_undefined'
       );
 
@@ -435,13 +435,13 @@ describe('Contact Adapter Edge Cases', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle legacy string signature (schoolId as string)', async () => {
+    it('should handle legacy string signature (entityId as string)', async () => {
       // Setup: Create legacy school
-      const schoolId = 'school_string_sig_555';
+      const entityId = 'school_string_sig_555';
       const workspaceId = 'workspace_test_555';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'String Signature School',
         slug: 'string-sig-school',
         workspaceIds: [workspaceId],
@@ -455,13 +455,13 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2023-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
       // Resolve using legacy string signature
-      const result = await resolveContact(schoolId, workspaceId);
+      const result = await resolveContact(entityId, workspaceId);
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBe(schoolId);
+      expect(result?.id).toBe(entityId);
       expect(result?.name).toBe('String Signature School');
     });
   });
@@ -576,11 +576,11 @@ describe('Contact Adapter Edge Cases', () => {
 
     it('should clear cache when clearContactCache is called', async () => {
       // Setup: Create legacy school for simpler testing
-      const schoolId = 'school_clear_cache_222';
+      const entityId = 'school_clear_cache_222';
       const workspaceId = 'workspace_clear_222';
 
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'Clear Cache School',
         slug: 'clear-cache',
         workspaceIds: [workspaceId],
@@ -594,26 +594,26 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
       // First call - populate cache
-      const result1 = await resolveContact({ schoolId }, workspaceId);
+      const result1 = await resolveContact({ entityId }, workspaceId);
       expect(result1).not.toBeNull();
       expect(result1?.name).toBe('Clear Cache School');
 
       // Modify the school in storage
       school.name = 'Modified Name';
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
       // Second call before clear - should return cached (old) data
-      const result2 = await resolveContact({ schoolId }, workspaceId);
+      const result2 = await resolveContact({ entityId }, workspaceId);
       expect(result2?.name).toBe('Clear Cache School'); // Old cached name
 
       // Clear cache
       await clearContactCache();
 
       // Third call after clear - should return new data from database
-      const result3 = await resolveContact({ schoolId }, workspaceId);
+      const result3 = await resolveContact({ entityId }, workspaceId);
       expect(result3?.name).toBe('Modified Name'); // New name from database
     });
 
@@ -653,10 +653,10 @@ describe('Contact Adapter Edge Cases', () => {
     });
 
     it('should return true when school exists', async () => {
-      const schoolId = 'school_exists_222';
+      const entityId = 'school_exists_222';
       
       const school: School = {
-        id: schoolId,
+        id: entityId,
         name: 'Exists School',
         slug: 'exists-school',
         workspaceIds: ['workspace_222'],
@@ -670,16 +670,15 @@ describe('Contact Adapter Edge Cases', () => {
         updatedAt: '2023-01-01T00:00:00.000Z',
       };
 
-      mockSchools.set(schoolId, school);
+      mockSchools.set(entityId, school);
 
-      const exists = await contactExists({ schoolId });
+      const exists = await contactExists({ entityId });
       expect(exists).toBe(true);
     });
 
     it('should return false when neither identifier exists', async () => {
       const exists = await contactExists({
-        entityId: 'entity_not_exists_999',
-        schoolId: 'school_not_exists_999',
+        entityId: 'school_not_exists_999',
       });
       expect(exists).toBe(false);
     });
@@ -703,8 +702,7 @@ describe('Contact Adapter Edge Cases', () => {
       mockEntities.set(entityId, entity);
 
       const exists = await contactExists({
-        entityId,
-        schoolId: 'school_not_exists_333',
+        entityId: 'school_not_exists_333',
       });
       expect(exists).toBe(true);
     });

@@ -30,7 +30,7 @@ import { FocalPersonManager } from '../components/FocalPersonManager';
 import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
 import { MediaSelect } from '../components/media-select';
-import { createSchoolAction } from '@/lib/school-actions';
+import { createEntityAction } from '@/lib/entity-actions';
 import { type UserProfile, type SubscriptionPackage, type OnboardingStage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -192,11 +192,11 @@ export default function NewSchoolPage() {
     };
 
     try {
-      const result = await createSchoolAction(schoolData, user.uid);
+      const result = await createEntityAction(schoolData, user.uid, activeWorkspaceId, 'institution', activeOrganizationId || 'smartsapp-hq');
       
       if (result.success) {
         toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
-        router.push('/admin/schools');
+        router.push('/admin/entities');
       } else {
         throw new Error(result.error || 'Failed to create school');
       }

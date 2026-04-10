@@ -6,7 +6,7 @@
  * Validates:
  * - Survey creation with entityId
  * - Survey response with dual-write
- * - Survey queries by entityId and schoolId
+ * - Survey queries by entityId and entityId
  * - Contact Adapter integration
  * 
  * Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 22.1, 22.3, 23.1, 26.2
@@ -68,7 +68,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
   describe('Survey Creation with entityId (Requirement 13.1)', () => {
     it('should create survey with entityId for new entity', () => {
-      // Requirement 13.1: Survey creation uses entityId instead of schoolId
+      // Requirement 13.1: Survey creation uses entityId instead of entityId
       const survey = {
         id: 'survey_1',
         workspaceIds: ['workspace_1'],
@@ -81,17 +81,16 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // New entity - only entityId
-        entityId: 'entity_456',
-        schoolId: null,
-        schoolName: null,
+        entityId: null,
+        entityName: null,
       };
 
       expect(survey.entityId).toBe('entity_456');
-      expect(survey.schoolId).toBeNull();
-      expect(survey.schoolName).toBeNull();
+      expect(survey.entityId).toBeNull();
+      expect(survey.entityName).toBeNull();
     });
 
-    it('should create survey with both entityId and schoolId (dual-write)', () => {
+    it('should create survey with both entityId and entityId (dual-write)', () => {
       // Requirement 13.2: Survey submission populates both identifiers
       const survey = {
         id: 'survey_2',
@@ -105,17 +104,16 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // Dual-write: both identifiers
-        entityId: 'entity_123',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
+        entityId: 'school_123',
+        entityName: 'Test School',
       };
 
       expect(survey.entityId).toBe('entity_123');
-      expect(survey.schoolId).toBe('school_123');
-      expect(survey.schoolName).toBe('Test School');
+      expect(survey.entityId).toBe('school_123');
+      expect(survey.entityName).toBe('Test School');
     });
 
-    it('should create survey with schoolId only (legacy compatibility)', () => {
+    it('should create survey with entityId only (legacy compatibility)', () => {
       // Backward compatibility for legacy surveys
       const survey = {
         id: 'survey_3',
@@ -128,13 +126,12 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         elements: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        // Legacy - only schoolId
-        entityId: null,
-        schoolId: 'school_789',
-        schoolName: 'Legacy School',
+        // Legacy - only entityId
+        entityId: 'school_789',
+        entityName: 'Legacy School',
       };
 
-      expect(survey.schoolId).toBe('school_789');
+      expect(survey.entityId).toBe('school_789');
       expect(survey.entityId).toBeNull();
     });
 
@@ -154,18 +151,17 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         updatedAt: new Date().toISOString(),
         // No contact association
         entityId: null,
-        schoolId: null,
-        schoolName: null,
+        entityName: null,
       };
 
       expect(survey.entityId).toBeNull();
-      expect(survey.schoolId).toBeNull();
+      expect(survey.entityId).toBeNull();
       expect(survey.workspaceIds).toHaveLength(2);
     });
   });
 
   describe('Survey Response with Dual-Write (Requirement 13.2)', () => {
-    it('should submit response with both entityId and schoolId', () => {
+    it('should submit response with both entityId and entityId', () => {
       // Requirement 13.2: Survey response submission populates both identifiers
       const response = {
         id: 'response_1',
@@ -177,13 +173,12 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
           { questionId: 'q2', value: 5 },
         ],
         // Dual-write fields
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         entityType: 'institution' as const,
       };
 
       expect(response.entityId).toBe('entity_123');
-      expect(response.schoolId).toBe('school_123');
+      expect(response.entityId).toBe('school_123');
       expect(response.entityType).toBe('institution');
     });
 
@@ -198,17 +193,16 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
           { questionId: 'q1', value: 'Excellent' },
         ],
         // Only entityId
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
         entityType: 'family' as const,
       };
 
       expect(response.entityId).toBe('entity_456');
-      expect(response.schoolId).toBeNull();
+      expect(response.entityId).toBeNull();
       expect(response.entityType).toBe('family');
     });
 
-    it('should submit response with schoolId only (legacy)', () => {
+    it('should submit response with entityId only (legacy)', () => {
       // Backward compatibility for legacy responses
       const response = {
         id: 'response_3',
@@ -218,13 +212,12 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         answers: [
           { questionId: 'q1', value: 'Good' },
         ],
-        // Legacy - only schoolId
-        entityId: null,
-        schoolId: 'school_789',
+        // Legacy - only entityId
+        entityId: 'school_789',
         entityType: undefined,
       };
 
-      expect(response.schoolId).toBe('school_789');
+      expect(response.entityId).toBe('school_789');
       expect(response.entityId).toBeNull();
     });
 
@@ -241,12 +234,11 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         ],
         // No contact association
         entityId: null,
-        schoolId: null,
         entityType: undefined,
       };
 
       expect(response.entityId).toBeNull();
-      expect(response.schoolId).toBeNull();
+      expect(response.entityId).toBeNull();
     });
 
     it('should validate entityType values', () => {
@@ -263,8 +255,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
           surveyId: 'survey_1',
           submittedAt: new Date().toISOString(),
           answers: [],
-          entityId: 'entity_123',
-          schoolId: null,
+          entityId: null,
           entityType: type,
         };
 
@@ -282,15 +273,13 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
           id: 'survey_1',
           workspaceIds: ['workspace_1'],
           title: 'Survey 1',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
         },
         {
           id: 'survey_2',
           workspaceIds: ['workspace_1'],
           title: 'Survey 2',
-          entityId: 'entity_123',
-          schoolId: null,
+          entityId: null,
         },
       ];
 
@@ -316,16 +305,15 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
     });
 
-    it('should query surveys by schoolId (fallback)', async () => {
-      // Requirement 13.5: Query surveys by schoolId for backward compatibility
-      // Requirement 22.1: Support schoolId fallback
+    it('should query surveys by entityId (fallback)', async () => {
+      // Requirement 13.5: Query surveys by entityId for backward compatibility
+      // Requirement 22.1: Support entityId fallback
       const mockSurveys = [
         {
           id: 'survey_3',
           workspaceIds: ['workspace_1'],
           title: 'Legacy Survey',
-          entityId: null,
-          schoolId: 'school_789',
+          entityId: 'school_789',
         },
       ];
 
@@ -338,28 +326,27 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       const result = await getSurveysForContact(
-        { schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].schoolId).toBe('school_789');
+      expect(result[0].entityId).toBe('school_789');
       
-      // Verify query was built with schoolId
+      // Verify query was built with entityId
       expect(mockWhere).toHaveBeenCalledWith('workspaceIds', 'array-contains', 'workspace_1');
-      expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_789');
     });
 
 
     it('should prefer entityId when both identifiers provided', async () => {
-      // Requirement 22.1: Prefer entityId over schoolId
+      // Requirement 22.1: Prefer entityId over entityId
       const mockSurveys = [
         {
           id: 'survey_1',
           workspaceIds: ['workspace_1'],
           title: 'Survey 1',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
         },
       ];
 
@@ -372,18 +359,18 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       });
 
       await getSurveysForContact(
-        { entityId: 'entity_123', schoolId: 'school_999' },
+        { entityId: 'school_999' },
         'workspace_1'
       );
 
-      // Verify query used entityId (not schoolId)
+      // Verify query used entityId (not entityId)
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
       
-      // Should NOT query by schoolId when entityId is present
-      const schoolIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'schoolId'
+      // Should NOT query by entityId when entityId is present
+      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
+        call => call[0] === 'entityId'
       );
-      expect(schoolIdCalls).toHaveLength(0);
+      expect(entityIdCalls).toHaveLength(0);
     });
 
     it('should return empty array when no identifier provided', async () => {
@@ -399,11 +386,11 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
         call => call[0] === 'entityId'
       );
-      const schoolIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'schoolId'
+      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
+        call => call[0] === 'entityId'
       );
       expect(entityIdCalls).toHaveLength(0);
-      expect(schoolIdCalls).toHaveLength(0);
+      expect(entityIdCalls).toHaveLength(0);
     });
 
     it('should return empty array when no surveys found', async () => {
@@ -455,15 +442,13 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         {
           id: 'response_1',
           surveyId: 'survey_1',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           submittedAt: '2024-01-01T00:00:00Z',
         },
         {
           id: 'response_2',
           surveyId: 'survey_1',
-          entityId: 'entity_123',
-          schoolId: null,
+          entityId: null,
           submittedAt: '2024-01-02T00:00:00Z',
         },
       ];
@@ -490,14 +475,13 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
     });
 
 
-    it('should query survey responses by schoolId (fallback)', async () => {
-      // Requirement 13.5: Query responses by schoolId for backward compatibility
+    it('should query survey responses by entityId (fallback)', async () => {
+      // Requirement 13.5: Query responses by entityId for backward compatibility
       const mockResponses = [
         {
           id: 'response_3',
           surveyId: 'survey_2',
-          entityId: null,
-          schoolId: 'school_789',
+          entityId: 'school_789',
           submittedAt: '2024-01-03T00:00:00Z',
         },
       ];
@@ -512,24 +496,23 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       const result = await getSurveyResponsesForContact(
         'survey_2',
-        { schoolId: 'school_789' }
+        { entityId: 'school_789' }
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].schoolId).toBe('school_789');
+      expect(result[0].entityId).toBe('school_789');
       
-      // Verify query was built with schoolId
-      expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      // Verify query was built with entityId
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_789');
     });
 
-    it('should prefer entityId over schoolId for responses', async () => {
+    it('should prefer entityId over entityId for responses', async () => {
       // Requirement 22.1: Prefer entityId
       const mockResponses = [
         {
           id: 'response_1',
           surveyId: 'survey_1',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
         },
       ];
 
@@ -543,17 +526,17 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       await getSurveyResponsesForContact(
         'survey_1',
-        { entityId: 'entity_123', schoolId: 'school_999' }
+        { entityId: 'school_999' }
       );
 
       // Verify query used entityId
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
       
-      // Should NOT query by schoolId
-      const schoolIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'schoolId'
+      // Should NOT query by entityId
+      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
+        call => call[0] === 'entityId'
       );
-      expect(schoolIdCalls).toHaveLength(0);
+      expect(entityIdCalls).toHaveLength(0);
     });
 
     it('should return empty array when no responses found', async () => {
@@ -588,8 +571,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         id: 'survey_1',
         workspaceIds: ['workspace_1'],
         title: 'Customer Feedback',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
       };
 
       // Mock resolved contact from adapter
@@ -619,9 +601,8 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         id: 'survey_2',
         workspaceIds: ['workspace_1'],
         title: 'Legacy Survey',
-        entityId: null,
-        schoolId: 'school_789',
-        schoolName: 'Legacy School',
+        entityId: 'school_789',
+        entityName: 'Legacy School',
       };
 
       // Mock resolved contact from adapter (legacy)
@@ -638,8 +619,8 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         },
       };
 
-      expect(resolvedContact.id).toBe(survey.schoolId);
-      expect(resolvedContact.name).toBe(survey.schoolName);
+      expect(resolvedContact.id).toBe(survey.entityId);
+      expect(resolvedContact.name).toBe(survey.entityName);
       expect(resolvedContact.migrationStatus).toBe('legacy');
     });
 
@@ -697,9 +678,8 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         id: 'survey_3',
         workspaceIds: ['workspace_1'],
         title: 'Dual-Write Survey',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
+        entityId: 'school_123',
+        entityName: 'Test School',
       };
 
       // Mock resolved contact (should prefer entity data)
@@ -721,7 +701,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
       // Adapter should prefer entity data when both exist
       expect(resolvedContact.entityId).toBe(survey.entityId);
       expect(resolvedContact.migrationStatus).toBe('migrated');
-      expect(resolvedContact.schoolData?.id).toBe(survey.schoolId);
+      expect(resolvedContact.schoolData?.id).toBe(survey.entityId);
     });
   });
 
@@ -757,8 +737,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         id: 'survey_1',
         workspaceIds: ['workspace_1'],
         title: 'Original Title',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -772,7 +751,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
 
       // Identifiers should remain unchanged
       expect(updatedSurvey.entityId).toBe(originalSurvey.entityId);
-      expect(updatedSurvey.schoolId).toBe(originalSurvey.schoolId);
+      expect(updatedSurvey.entityId).toBe(originalSurvey.entityId);
       expect(updatedSurvey.title).toBe('Updated Title');
     });
 
@@ -803,13 +782,12 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         workspaceIds: ['workspace_1'],
         title: 'Test Survey',
         entityId: null,
-        schoolId: null,
-        schoolName: null,
+        entityName: null,
       };
 
       expect(survey.entityId).toBeNull();
-      expect(survey.schoolId).toBeNull();
-      expect(survey.schoolName).toBeNull();
+      expect(survey.entityId).toBeNull();
+      expect(survey.entityName).toBeNull();
     });
 
     it('should preserve both identifiers in responses', () => {
@@ -818,14 +796,13 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         surveyId: 'survey_1',
         submittedAt: '2024-01-01T00:00:00Z',
         answers: [],
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         entityType: 'institution' as const,
       };
 
       // Both identifiers should be present
       expect(response.entityId).toBe('entity_123');
-      expect(response.schoolId).toBe('school_123');
+      expect(response.entityId).toBe('school_123');
       expect(response.entityType).toBe('institution');
     });
   });
@@ -841,8 +818,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         slug: 'empty-survey',
         status: 'draft' as const,
         elements: [],
-        entityId: 'entity_123',
-        schoolId: null,
+        entityId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -857,8 +833,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         surveyId: 'survey_1',
         submittedAt: new Date().toISOString(),
         answers: [],
-        entityId: 'entity_123',
-        schoolId: null,
+        entityId: null,
       };
 
       expect(response.answers).toHaveLength(0);
@@ -870,8 +845,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         id: 'survey_1',
         workspaceIds: ['workspace_1', 'workspace_2', 'workspace_3'],
         title: 'Multi-Workspace Survey',
-        entityId: 'entity_123',
-        schoolId: 'school_123',
+        entityId: 'school_123',
       };
 
       expect(survey.workspaceIds).toHaveLength(3);

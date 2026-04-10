@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
  * 
  * Entity Resolution: Contact information is resolved server-side via the Contact Adapter
  * during invoice generation. The UI displays and preserves the entity information
- * (schoolName, entityId, entityType) from the invoice record.
+ * (entityName, entityId, entityType) from the invoice record.
  * 
  * Requirements: 8.2, 8.3, 23.1
  */
@@ -137,7 +137,7 @@ export default function InvoiceStudioClient() {
                                 <Receipt className="h-8 w-8 text-primary" />
                                 Invoice Studio
                             </h1>
-                            <p className="text-muted-foreground font-medium mt-1">Reviewing {invoice.invoiceNumber} for {invoice.schoolName}</p>
+                            <p className="text-muted-foreground font-medium mt-1">Reviewing {invoice.invoiceNumber} for {invoice.entityName}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">

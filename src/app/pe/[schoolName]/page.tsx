@@ -22,9 +22,9 @@ async function getSchoolBySlug(slug: string): Promise<School | null> {
     }
 }
 
-export default async function SchoolOnboardingPage({ params }: { params: Promise<{ schoolName: string }> }) {
-  const { schoolName } = await params;
-  const school = await getSchoolBySlug(schoolName);
+export default async function SchoolOnboardingPage({ params }: { params: Promise<{ entityName: string }> }) {
+  const { entityName } = await params;
+  const school = await getSchoolBySlug(entityName);
 
   if (!school) {
     notFound();
@@ -62,7 +62,7 @@ export default async function SchoolOnboardingPage({ params }: { params: Promise
             
             <div className="my-10 max-w-2xl mx-auto">
                 <p className="text-sm uppercase font-bold tracking-widest mb-4 opacity-60">Join us for parent engagement</p>
-                <JoinMeetingButton schoolSlug={school.slug} />
+                <JoinMeetingButton entitySlug={school.slug} />
             </div>
           </div>
         </section>

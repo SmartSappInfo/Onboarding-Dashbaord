@@ -30,11 +30,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface SchoolBillingTabProps {
+interface EntityBillingTabProps {
     school: School;
 }
 
-export default function SchoolBillingTab({ school }: SchoolBillingTabProps) {
+export default function EntityBillingTab({ school }: EntityBillingTabProps) {
     const firestore = useFirestore();
 
     // 1. Fetch Invoices for this school
@@ -42,7 +42,7 @@ export default function SchoolBillingTab({ school }: SchoolBillingTabProps) {
         if (!firestore) return null;
         return query(
             collection(firestore, 'invoices'),
-            where('schoolId', '==', school.id),
+            where('entityId', '==', school.id),
             orderBy('createdAt', 'desc')
         );
     }, [firestore, school.id]);
@@ -192,7 +192,7 @@ export default function SchoolBillingTab({ school }: SchoolBillingTabProps) {
                                         <p className="text-[9px] font-bold text-orange-700/60 uppercase leading-relaxed mt-1">Please update the school profile to enable automated billing.</p>
                                     </div>
                                     <Button variant="outline" asChild className="rounded-xl font-bold h-9 border-orange-200 text-orange-700 hover:bg-orange-50 transition-all text-[10px] uppercase tracking-widest">
-                                        <Link href={`/admin/schools/${school.id}/edit`}>Configure Billing Profile</Link>
+                                        <Link href={`/admin/entities/${school.id}/edit`}>Configure Billing Profile</Link>
                                     </Button>
                                 </div>
                             )}

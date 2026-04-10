@@ -92,7 +92,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await logActivity({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         userId: 'user_1',
         workspaceId: 'workspace_1',
         type: 'school_created',
@@ -215,7 +215,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       const result = await createTaskAction({
         title: 'Follow up',
         description: 'Call school',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
         assignedTo: 'user_1',
@@ -263,7 +263,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       const result = await createTaskAction({
         title: 'Follow up',
         description: 'Call entity',
-        schoolId: 'entity_1',
+        entityId: 'entity_1',
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
         assignedTo: 'user_1',
@@ -430,7 +430,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         senderProfileId: 'sender_1',
         recipient: 'john@school.com',
         variables: {},
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
       });
 
@@ -576,7 +576,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         senderProfileId: 'sender_1',
         recipient: 'jane@school.com',
         variables: {},
-        schoolId: 'entity_1',
+        entityId: 'entity_1',
         workspaceId: 'workspace_1',
       });
 
@@ -702,7 +702,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
       });
@@ -815,7 +815,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId: 'entity_1',
+        entityId: 'entity_1',
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
       });
@@ -862,7 +862,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       const mockPdfForm = {
         id: 'pdf_1',
         name: 'Contract',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceIds: ['workspace_1'],
         fields: [],
         templateUrl: 'https://example.com/template.pdf',
@@ -941,7 +941,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
   describe('6. Surveys with Adapter Layer', () => {
     it('should handle survey submission for legacy school', async () => {
       // Surveys use the same adapter pattern as PDF forms
-      // They reference schoolId and resolve via adapter
+      // They reference entityId and resolve via adapter
       const mockSchool: School = {
         id: 'school_1',
         name: 'Legacy School',
@@ -965,7 +965,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      // Survey submission would log activity with schoolId
+      // Survey submission would log activity with entityId
       const mockCollection = vi.fn((collectionName: string) => {
         if (collectionName === 'activities') {
           return {
@@ -978,7 +978,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
       (adminDb.collection as any) = mockCollection;
 
       await logActivity({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         userId: 'user_1',
         workspaceId: 'workspace_1',
         type: 'form_submission',
@@ -1030,7 +1030,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
 
   describe('7. Meetings with Adapter Layer', () => {
     it('should resolve meeting slug for legacy school', async () => {
-      // Meetings use schoolSlug for public URLs
+      // Meetings use entitySlug for public URLs
       // The adapter resolves slug from either schools or entities
       const mockSchool: School = {
         id: 'school_1',
@@ -1139,7 +1139,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
 
       // Step 1: Log activity (uses adapter)
       await logActivity({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         userId: 'user_1',
         workspaceId: 'workspace_1',
         type: 'school_created',

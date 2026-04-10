@@ -28,7 +28,7 @@ describe('ComposerWizard - Multi-Entity Integration', () => {
                 'selectedEntityIds',
                 'useMultiEntity',
                 'variables',
-                'schoolId',
+                'entityId',
                 'isScheduled',
                 'scheduledAt',
             ];
@@ -47,7 +47,7 @@ describe('ComposerWizard - Multi-Entity Integration', () => {
                 selectedEntityIds: [],
                 useMultiEntity: false,
                 variables: {},
-                schoolId: '',
+                entityId: '',
                 isScheduled: false,
             };
             
@@ -165,18 +165,18 @@ describe('ComposerWizard - Multi-Entity Integration', () => {
         it('should clear selections when toggling modes', () => {
             // Simulate toggle behavior
             let recipient = 'test@example.com';
-            let schoolId = 'school-1';
+            let entityId = 'school-1';
             let selectedEntityIds = ['entity-1'];
             
             // Toggle to multi-entity mode
             let useMultiEntity = true;
             if (useMultiEntity) {
                 recipient = '';
-                schoolId = '';
+                entityId = '';
             }
             
             expect(recipient).toBe('');
-            expect(schoolId).toBe('');
+            expect(entityId).toBe('');
             
             // Toggle back to single mode
             useMultiEntity = false;

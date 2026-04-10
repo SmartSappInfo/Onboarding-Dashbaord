@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     return {
         title: `Invoice ${result.invoice.invoiceNumber} — SmartSapp`,
-        description: `Institutional bill for ${result.invoice.schoolName}.`,
+        description: `Institutional bill for ${result.invoice.entityName}.`,
     };
 }
 

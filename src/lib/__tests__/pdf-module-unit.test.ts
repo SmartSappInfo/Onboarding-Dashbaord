@@ -4,7 +4,7 @@
  * Tests the PDF module's support for entityId migration including:
  * - PDF creation with entityId
  * - PDF generation includes entity information
- * - PDF queries by entityId and schoolId
+ * - PDF queries by entityId and entityId
  * - PDF templates support entity variables
  * 
  * Requirements:
@@ -12,7 +12,7 @@
  * - Requirement 16.2: PDF generation resolves entity information
  * - Requirement 16.3: PDF templates support entity variables
  * - Requirement 16.4: PDF queries support both identifiers
- * - Requirement 16.5: Dual-write pattern (schoolId + entityId)
+ * - Requirement 16.5: Dual-write pattern (entityId + entityId)
  * - Requirement 22.1: Query fallback pattern
  * - Requirement 23.1: Contact Adapter integration
  * - Requirement 26.2: Unit tests for PDF module
@@ -72,7 +72,7 @@ describe('PDF Module - EntityId Migration', () => {
   });
 
   describe('PDF Creation with EntityId (Requirement 16.1)', () => {
-    it('should create PDF with entityId instead of schoolId', async () => {
+    it('should create PDF with entityId instead of entityId', async () => {
       const mockPdfData: Partial<PDFForm> = {
         name: 'Test Agreement',
         publicTitle: 'Test Agreement',
@@ -82,8 +82,7 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'draft',
         fields: [],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_123',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -96,10 +95,10 @@ describe('PDF Module - EntityId Migration', () => {
 
       // Verify the PDF data structure includes entityId
       expect(mockPdfData.entityId).toBe('entity_123');
-      expect(mockPdfData.schoolId).toBeNull();
+      expect(mockPdfData.entityId).toBeNull();
     });
 
-    it('should create PDF with both schoolId and entityId for migrated contact', async () => {
+    it('should create PDF with both entityId and entityId for migrated contact', async () => {
       const mockPdfData: Partial<PDFForm> = {
         name: 'Migrated Agreement',
         publicTitle: 'Migrated Agreement',
@@ -109,17 +108,16 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'draft',
         fields: [],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_456',
-        schoolId: 'school_1',
-        schoolName: 'Test School',
+        entityId: 'school_1',
+        entityName: 'Test School',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
       // Verify dual-write: both identifiers present
       expect(mockPdfData.entityId).toBe('entity_456');
-      expect(mockPdfData.schoolId).toBe('school_1');
-      expect(mockPdfData.schoolName).toBe('Test School');
+      expect(mockPdfData.entityId).toBe('school_1');
+      expect(mockPdfData.entityName).toBe('Test School');
     });
   });
 
@@ -145,8 +143,7 @@ describe('PDF Module - EntityId Migration', () => {
           },
         ],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_123',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -237,8 +234,7 @@ describe('PDF Module - EntityId Migration', () => {
           },
         ],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_789',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -292,7 +288,7 @@ describe('PDF Module - EntityId Migration', () => {
       expect(contact?.schoolData?.focalPersons[0].phone).toBe('+9876543210');
     });
 
-    it('should fallback to schoolId when entityId is not available', async () => {
+    it('should fallback to entityId when entityId is not available', async () => {
       const mockPdfForm: PDFForm = {
         id: 'pdf_3',
         name: 'Legacy Agreement',
@@ -303,7 +299,6 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'published',
         fields: [],
         workspaceIds: ['workspace_1'],
-        schoolId: 'school_1',
         entityId: null,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -335,11 +330,11 @@ describe('PDF Module - EntityId Migration', () => {
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      // Verify fallback to schoolId
-      expect(mockPdfForm.schoolId).toBe('school_1');
+      // Verify fallback to entityId
+      expect(mockPdfForm.entityId).toBe('school_1');
       expect(mockPdfForm.entityId).toBeNull();
 
-      // Verify Contact Adapter would be called with schoolId
+      // Verify Contact Adapter would be called with entityId
       const contact = await resolveContact('school_1', 'workspace_1');
       expect(contact).toBe(mockContact);
       expect(contact?.schoolData?.name).toBe('Legacy School');
@@ -347,7 +342,7 @@ describe('PDF Module - EntityId Migration', () => {
   });
 
   describe('PDF Submission with Dual-Write (Requirement 16.5)', () => {
-    it('should save agreement progress with both schoolId and entityId', async () => {
+    it('should save agreement progress with both entityId and entityId', async () => {
       let capturedSubmissionData: any = null;
       const mockSubmissionRef = { id: 'submission_1' };
 
@@ -421,15 +416,15 @@ describe('PDF Module - EntityId Migration', () => {
       expect(result.success).toBe(true);
       expect(result.submissionId).toBe('submission_1');
 
-      // Verify dual-write: both schoolId and entityId populated
+      // Verify dual-write: both entityId and entityId populated
       expect(capturedSubmissionData).toBeDefined();
-      expect(capturedSubmissionData.schoolId).toBe('school_1');
+      expect(capturedSubmissionData.entityId).toBe('school_1');
       expect(capturedSubmissionData.entityId).toBe('entity_123');
       expect(capturedSubmissionData.entityType).toBe('institution');
       expect(capturedSubmissionData.status).toBe('partial');
     });
 
-    it('should finalize agreement with both schoolId and entityId', async () => {
+    it('should finalize agreement with both entityId and entityId', async () => {
       let capturedSubmissionData: any = null;
       const mockSubmissionRef = { id: 'submission_2' };
 
@@ -450,7 +445,7 @@ describe('PDF Module - EntityId Migration', () => {
         exists: true,
         data: () => ({
           submissionId: null,
-          schoolName: 'Test School',
+          entityName: 'Test School',
         }),
         ref: {
           update: vi.fn(),
@@ -505,9 +500,9 @@ describe('PDF Module - EntityId Migration', () => {
       expect(result.success).toBe(true);
       expect(result.submissionId).toBe('submission_2');
 
-      // Verify dual-write: both schoolId and entityId populated
+      // Verify dual-write: both entityId and entityId populated
       expect(capturedSubmissionData).toBeDefined();
-      expect(capturedSubmissionData.schoolId).toBe('school_1');
+      expect(capturedSubmissionData.entityId).toBe('school_1');
       expect(capturedSubmissionData.entityId).toBe('entity_456');
       expect(capturedSubmissionData.entityType).toBe('family');
       expect(capturedSubmissionData.status).toBe('submitted');
@@ -559,16 +554,16 @@ describe('PDF Module - EntityId Migration', () => {
         };
       });
 
-      // Save with entityId only (no legacy schoolId)
+      // Save with entityId only (no legacy entityId)
       const result = await saveAgreementProgressAction(
         'pdf_1',
-        '', // Empty schoolId
+        '', // Empty entityId
         { field1: 'value1' },
         'entity_789',
         'person'
       );
 
-      // Verify success (may fail due to empty schoolId, but entityId should be captured)
+      // Verify success (may fail due to empty entityId, but entityId should be captured)
       if (capturedSubmissionData) {
         expect(capturedSubmissionData.entityId).toBe('entity_789');
         expect(capturedSubmissionData.entityType).toBe('person');
@@ -589,8 +584,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          entityId: 'entity_123',
-          schoolId: null,
+          entityId: null,
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
         },
@@ -604,8 +598,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          entityId: 'entity_123',
-          schoolId: null,
+          entityId: null,
           createdAt: '2024-01-02T00:00:00Z',
           updatedAt: '2024-01-02T00:00:00Z',
         },
@@ -639,7 +632,7 @@ describe('PDF Module - EntityId Migration', () => {
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_123');
     });
 
-    it('should query PDFs by schoolId (fallback)', async () => {
+    it('should query PDFs by entityId (fallback)', async () => {
       const mockPdfs: PDFForm[] = [
         {
           id: 'pdf_3',
@@ -651,7 +644,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          schoolId: 'school_1',
           entityId: null,
           createdAt: '2024-01-03T00:00:00Z',
           updatedAt: '2024-01-03T00:00:00Z',
@@ -670,22 +662,22 @@ describe('PDF Module - EntityId Migration', () => {
         get: vi.fn().mockResolvedValue(mockSnapshot),
       });
 
-      // Query by schoolId (fallback)
+      // Query by entityId (fallback)
       const pdfs = await getPdfsByContact({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
       });
 
       // Verify results
       expect(pdfs).toHaveLength(1);
-      expect(pdfs[0].schoolId).toBe('school_1');
+      expect(pdfs[0].entityId).toBe('school_1');
 
-      // Verify query used schoolId
+      // Verify query used entityId
       const mockCollection = (adminDb.collection as any)();
-      expect(mockCollection.where).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+      expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'school_1');
     });
 
-    it('should prefer entityId when both entityId and schoolId are provided', async () => {
+    it('should prefer entityId when both entityId and entityId are provided', async () => {
       const mockPdfs: PDFForm[] = [
         {
           id: 'pdf_4',
@@ -697,7 +689,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          schoolId: 'school_1',
           entityId: 'entity_123',
           createdAt: '2024-01-04T00:00:00Z',
           updatedAt: '2024-01-04T00:00:00Z',
@@ -718,26 +709,25 @@ describe('PDF Module - EntityId Migration', () => {
 
       // Query with both identifiers
       const pdfs = await getPdfsByContact({
-        entityId: 'entity_123',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
       });
 
       // Verify results
       expect(pdfs).toHaveLength(1);
 
-      // Verify query preferred entityId over schoolId
+      // Verify query preferred entityId over entityId
       const mockCollection = (adminDb.collection as any)();
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_123');
     });
 
-    it('should throw error when neither entityId nor schoolId is provided', async () => {
+    it('should throw error when neither entityId nor entityId is provided', async () => {
       // Attempt to query without identifiers
       await expect(
         getPdfsByContact({
           workspaceId: 'workspace_1',
         })
-      ).rejects.toThrow('Either entityId or schoolId must be provided');
+      ).rejects.toThrow('Either entityId or entityId must be provided');
     });
   });
 
@@ -752,7 +742,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'submitted',
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: null,
+          entityId: null,
         },
         {
           id: 'sub_2',
@@ -762,7 +752,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'partial',
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: null,
+          entityId: null,
         },
       ];
 
@@ -794,7 +784,7 @@ describe('PDF Module - EntityId Migration', () => {
       expect(submissions[1].entityId).toBe('entity_123');
     });
 
-    it('should query submissions by schoolId (fallback)', async () => {
+    it('should query submissions by entityId (fallback)', async () => {
       const mockSubmissions: Submission[] = [
         {
           id: 'sub_3',
@@ -802,7 +792,6 @@ describe('PDF Module - EntityId Migration', () => {
           submittedAt: '2024-01-03T00:00:00Z',
           formData: { field1: 'value3' },
           status: 'submitted',
-          schoolId: 'school_1',
           entityId: null,
         },
       ];
@@ -823,15 +812,15 @@ describe('PDF Module - EntityId Migration', () => {
         }),
       });
 
-      // Query submissions by schoolId
+      // Query submissions by entityId
       const submissions = await getSubmissionsByContact({
         pdfId: 'pdf_2',
-        schoolId: 'school_1',
+        entityId: 'school_1',
       });
 
       // Verify results
       expect(submissions).toHaveLength(1);
-      expect(submissions[0].schoolId).toBe('school_1');
+      expect(submissions[0].entityId).toBe('school_1');
     });
 
     it('should filter submissions by status', async () => {
@@ -844,7 +833,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'submitted',
           entityId: 'entity_456',
           entityType: 'family',
-          schoolId: null,
+          entityId: null,
         },
       ];
 
@@ -890,8 +879,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          entityId: 'entity_789',
-          schoolId: null,
+          entityId: null,
           createdAt: '2024-01-05T00:00:00Z',
           updatedAt: '2024-01-05T00:00:00Z',
         },
@@ -928,7 +916,7 @@ describe('PDF Module - EntityId Migration', () => {
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_789');
     });
 
-    it('should get PDFs for workspace with schoolId filter', async () => {
+    it('should get PDFs for workspace with entityId filter', async () => {
       const mockPdfs: PDFForm[] = [
         {
           id: 'pdf_6',
@@ -940,7 +928,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'published',
           fields: [],
           workspaceIds: ['workspace_1'],
-          schoolId: 'school_2',
           entityId: null,
           createdAt: '2024-01-06T00:00:00Z',
           updatedAt: '2024-01-06T00:00:00Z',
@@ -961,21 +948,21 @@ describe('PDF Module - EntityId Migration', () => {
         get: vi.fn().mockResolvedValue(mockSnapshot),
       });
 
-      // Get PDFs for workspace with schoolId filter
+      // Get PDFs for workspace with entityId filter
       const pdfs = await getPdfsForWorkspace({
         workspaceId: 'workspace_1',
-        schoolId: 'school_2',
+        entityId: 'school_2',
         limit: 50,
       });
 
       // Verify results
       expect(pdfs).toHaveLength(1);
-      expect(pdfs[0].schoolId).toBe('school_2');
+      expect(pdfs[0].entityId).toBe('school_2');
 
       // Verify query filters
       const mockCollection = (adminDb.collection as any)();
       expect(mockCollection.where).toHaveBeenCalledWith('workspaceIds', 'array-contains', 'workspace_1');
-      expect(mockCollection.where).toHaveBeenCalledWith('schoolId', '==', 'school_2');
+      expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'school_2');
     });
 
     it('should filter PDFs by status', async () => {
@@ -990,8 +977,7 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'draft',
           fields: [],
           workspaceIds: ['workspace_1'],
-          entityId: 'entity_999',
-          schoolId: null,
+          entityId: null,
           createdAt: '2024-01-07T00:00:00Z',
           updatedAt: '2024-01-07T00:00:00Z',
         },
@@ -1036,8 +1022,7 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'published',
         fields: [],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_111',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-08T00:00:00Z',
         updatedAt: '2024-01-08T00:00:00Z',
       };
@@ -1090,7 +1075,7 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'submitted',
         entityId: 'entity_222',
         entityType: 'person',
-        schoolId: null,
+        entityId: null,
       };
 
       const mockDoc = {
@@ -1153,8 +1138,7 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'published',
         fields: [],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_333',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-10T00:00:00Z',
         updatedAt: '2024-01-10T00:00:00Z',
       };
@@ -1213,8 +1197,7 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'published',
         fields: [],
         workspaceIds: ['workspace_1'],
-        entityId: 'entity_nonexistent',
-        schoolId: null,
+        entityId: null,
         createdAt: '2024-01-11T00:00:00Z',
         updatedAt: '2024-01-11T00:00:00Z',
       };

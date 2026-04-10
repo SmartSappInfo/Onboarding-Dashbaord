@@ -97,7 +97,7 @@ const formSchema = z.object({
     selectedEntityIds: z.array(z.string()).default([]),
     contactScope: z.enum(['primary', 'signatories', 'all']).default('primary'),
     variables: z.record(z.any()).default({}),
-    schoolId: z.string().optional(), // Legacy field for backward compatibility
+    entityId: z.string().optional(), // Legacy field for backward compatibility
     entityId: z.string().optional(), // New unified entity reference (Requirement 15.3)
     entityType: z.enum(['institution', 'family', 'person']).optional(), // Entity type (Requirement 15.3)
     isScheduled: z.boolean().default(false),
@@ -171,7 +171,6 @@ export default function ComposerWizard() {
             selectedContacts: [],
             selectedEntityIds: [],
             contactScope: 'primary',
-            schoolId: '',
             entityId: '',
             isScheduled: false,
         }
@@ -758,9 +757,9 @@ export default function ComposerWizard() {
                                                     onSelectionChange={(ids) => {
                                                         setValue('selectedEntityIds', ids, { shouldValidate: true });
                                                         if (ids.length === 1) {
-                                                            setValue('schoolId', ids[0]);
+                                                            setValue('entityId', ids[0]);
                                                         } else {
-                                                            setValue('schoolId', '');
+                                                            setValue('entityId', '');
                                                         }
                                                     }}
                                                 />
@@ -837,7 +836,7 @@ export default function ComposerWizard() {
                                                                 </SelectTrigger>
                                                                 <SelectContent className="rounded-xl">
                                                                     <SelectItem value="none">No Binding</SelectItem>
-                                                                    {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
+                                                                    {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.entityName} - {m.type.name}</SelectItem>)}
                                                                 </SelectContent>
                                                             </Select>
                                                         )}
@@ -1296,7 +1295,7 @@ export default function ComposerWizard() {
                 templateId={watchedTemplateId}
                 variables={getValues('variables')}
                 senderProfileId={getValues('senderProfileId')}
-                schoolId={getValues('schoolId')}
+                entityId={getValues('entityId')}
             />
 
             {/* Summary Report Dialog (Task 6.2) */}

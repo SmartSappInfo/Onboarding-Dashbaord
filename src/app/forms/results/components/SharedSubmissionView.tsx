@@ -214,7 +214,7 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
     );
   }
 
-  const institutionName = school?.name || pdfForm.schoolName || 'Institutional Hub';
+  const institutionName = school?.name || pdfForm.entityName || 'Institutional Hub';
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/20 text-left">

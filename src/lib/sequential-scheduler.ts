@@ -9,7 +9,7 @@ import type { EmailAttachment } from './resend-service';
 export interface ScheduleMessageInput {
   templateId: string;
   senderProfileId: string;
-  entityIds: string[]; // Array of schoolIds
+  entityIds: string[]; // Array of entityIds
   variables: Record<string, any>;
   attachments?: EmailAttachment[];
   workspaceId?: string;
@@ -143,7 +143,7 @@ export async function scheduleMultiEntityMessages(
           recipient, // Specific contact or empty for auto-resolution
           variables,
           attachments,
-          schoolId: entityId,
+          entityId: entityId,
           workspaceId,
           scheduledAt
         });

@@ -20,14 +20,14 @@ const TEST_WORKSPACE_1 = 'test-workspace-prod-1';
 const TEST_WORKSPACE_2 = 'test-workspace-prod-2';
 
 interface MigrationTestData {
-  schoolIds: string[];
+  entityIds: string[];
   entityIds: string[];
   workspaceEntityIds: string[];
 }
 
 describe('Task 41.5: Migration Script on Production-Like Data', () => {
   const testData: MigrationTestData = {
-    schoolIds: [],
+    entityIds: [],
     entityIds: [],
     workspaceEntityIds: [],
   };
@@ -86,7 +86,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
    */
   async function createProductionLikeData(): Promise<string[]> {
     const timestamp = new Date().toISOString();
-    const schoolIds: string[] = [];
+    const entityIds: string[] = [];
 
     // School 1: Complete data with all fields populated
     const school1: Omit<School, 'id'> = {
@@ -268,20 +268,20 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
 
     for (const school of schools) {
       const ref = await adminDb.collection('schools').add(school);
-      schoolIds.push(ref.id);
+      entityIds.push(ref.id);
     }
 
-    return schoolIds;
+    return entityIds;
   }
 
   /**
    * Migrate a single school (simulating the migration script logic)
    */
-  async function migrateSchool(schoolId: string): Promise<void> {
-    const schoolDoc = await adminDb.collection('schools').doc(schoolId).get();
+  async function migrateSchool(entityId: string): Promise<void> {
+    const schoolDoc = await adminDb.collection('schools').doc(entityId).get();
     
     if (!schoolDoc.exists) {
-      throw new Error(`School ${schoolId} not found`);
+      throw new Error(`School ${entityId} not found`);
     }
     
     const school = { id: schoolDoc.id, ...schoolDoc.data() } as School;
@@ -383,7 +383,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
     }
     
     // Mark as migrated
-    batch.update(adminDb.collection('schools').doc(schoolId), {
+    batch.update(adminDb.collection('schools').doc(entityId), {
       migrationStatus: 'migrated',
       updatedAt: timestamp,
     });
@@ -403,10 +403,10 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
   }, 60000); // 60 second timeout for cleanup
 
   it('should create production-like schools data', async () => {
-    const schoolIds = await createProductionLikeData();
-    testData.schoolIds = schoolIds;
+    const entityIds = await createProductionLikeData();
+    testData.entityIds = entityIds;
 
-    expect(schoolIds).toHaveLength(5);
+    expect(entityIds).toHaveLength(5);
 
     // Verify schools were created
     const schoolsSnap = await adminDb
@@ -444,8 +444,8 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
 
   it('should migrate all schools to entities and workspace_entities', async () => {
     // Run migration on all schools
-    for (const schoolId of testData.schoolIds) {
-      await migrateSchool(schoolId);
+    for (const entityId of testData.entityIds) {
+      await migrateSchool(entityId);
     }
 
     // Verify entities created
@@ -497,7 +497,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
 
   it('should preserve all data fields correctly', async () => {
     // Get the first school (most complete data)
-    const schoolDoc = await adminDb.collection('schools').doc(testData.schoolIds[0]).get();
+    const schoolDoc = await adminDb.collection('schools').doc(testData.entityIds[0]).get();
     const school = { id: schoolDoc.id, ...schoolDoc.data() } as School;
 
     // Find corresponding entity
@@ -614,8 +614,8 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
     const weCountBefore = weBeforeSnap.size;
 
     // Run migration again on all schools
-    for (const schoolId of testData.schoolIds) {
-      await migrateSchool(schoolId);
+    for (const entityId of testData.entityIds) {
+      await migrateSchool(entityId);
     }
 
     // Count after second run
@@ -818,7 +818,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
 
   it('should verify adapter layer can resolve migrated records', async () => {
     // Get a migrated school
-    const schoolDoc = await adminDb.collection('schools').doc(testData.schoolIds[0]).get();
+    const schoolDoc = await adminDb.collection('schools').doc(testData.entityIds[0]).get();
     const school = { id: schoolDoc.id, ...schoolDoc.data() } as School;
 
     expect(school.migrationStatus).toBe('migrated');
@@ -871,7 +871,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
 
   it('should generate migration summary report', () => {
     const summary = {
-      totalSchools: testData.schoolIds.length,
+      totalSchools: testData.entityIds.length,
       entitiesCreated: testData.entityIds.length,
       workspaceEntitiesCreated: testData.workspaceEntityIds.length,
       edgeCasesTested: [

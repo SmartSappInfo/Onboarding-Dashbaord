@@ -52,7 +52,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
       });
       logActivity({
           organizationId: activeOrganizationId,
-          schoolId: school.id,
+          entityId: school.id,
           userId: user.uid,
           workspaceId: school.workspaceIds[0] || 'onboarding',
           type: 'pipeline_stage_changed',

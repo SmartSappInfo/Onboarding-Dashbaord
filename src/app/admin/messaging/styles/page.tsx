@@ -32,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateVisualStyle } from '@/ai/flows/generate-visual-style-flow';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../entities/components/media-select';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';

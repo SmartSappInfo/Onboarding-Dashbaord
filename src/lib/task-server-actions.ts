@@ -9,9 +9,9 @@ import { resolveContact } from './contact-adapter';
  * Server action to create a task with workspace awareness and entity support.
  * 
  * Implements dual-write pattern (Requirements 3.1, 25.3):
- * - Accepts both schoolId and entityId parameters
- * - When only entityId provided: Resolves schoolId from contact adapter
- * - When only schoolId provided: Resolves entityId from contact adapter (if migrated)
+ * - Accepts both entityId and entityId parameters
+ * - When only entityId provided: Resolves entityId from contact adapter
+ * - When only entityId provided: Resolves entityId from contact adapter (if migrated)
  * - When both provided: Uses both as-is
  * - Always sets entityType based on resolved contact type
  * 
@@ -23,47 +23,29 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
         const timestamp = new Date().toISOString();
         
         // Initialize fields for dual-write
-        let schoolId: string | null = taskData.schoolId || null;
-        let schoolName: string | null = taskData.schoolName || null;
-        let entityId: string | null = taskData.entityId || null;
+        let entityName: string | null = taskData.entityName || null;
         let entityType: EntityType | null = taskData.entityType || null;
         
         // Dual-write resolution logic (Requirements 3.1, 25.3)
         if (taskData.workspaceId) {
-            // Case 1: Only entityId provided - resolve schoolId for backward compatibility
-            if (entityId && !schoolId) {
+            // Resolving entityId logic
+            if (entityId) {
                 const contact = await resolveContact({ entityId }, taskData.workspaceId);
                 if (contact) {
-                    schoolId = contact.schoolData?.id || null;
-                    schoolName = contact.name;
+                    entityId = contact.schoolData?.id || null;
+                    entityName = contact.name;
                     entityType = contact.entityType || null;
                 }
             }
-            // Case 2: Only schoolId provided - resolve entityId if migrated
-            else if (schoolId && !entityId) {
-                const contact = await resolveContact({ schoolId }, taskData.workspaceId);
-                if (contact) {
-                    schoolName = contact.name;
-                    entityId = contact.entityId || null;
-                    entityType = contact.entityType || null;
-                }
             }
-            // Case 3: Both provided - use as-is but ensure entityType is set
-            else if (schoolId && entityId) {
-                const contact = await resolveContact({ entityId, schoolId }, taskData.workspaceId);
-                if (contact) {
-                    schoolName = contact.name;
-                    entityType = contact.entityType || entityType;
-                }
             }
         }
         
         // Build final task document with dual-write fields
         const finalTaskData = {
             ...taskData,
-            schoolId,
-            schoolName,
             entityId,
+            entityName,
             entityType,
             createdAt: timestamp,
             updatedAt: timestamp,
@@ -79,7 +61,6 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
         await logActivity({
             organizationId: taskData.organizationId || '',
             workspaceId: taskData.workspaceId,
-            schoolId: schoolId || undefined,
             entityId: entityId || undefined,
             entityType: entityType || undefined,
             userId: null,
@@ -126,7 +107,6 @@ export async function updateTaskAction(taskId: string, updates: Partial<Task>) {
             await logActivity({
                 organizationId: updates.organizationId || '',
                 workspaceId: updates.workspaceId || '',
-                schoolId: updates.schoolId || undefined,
                 entityId: updates.entityId || undefined,
                 entityType: updates.entityType || undefined,
                 userId: null,
@@ -163,17 +143,17 @@ export async function deleteTaskAction(taskId: string) {
 /**
  * Query tasks for a contact with fallback pattern (Requirements 3.4, 3.5, 22.1, 22.3)
  * 
- * Accepts either entityId or schoolId as identifier:
+ * Accepts either entityId or entityId as identifier:
  * - Prefers entityId when both provided
- * - Falls back to schoolId for legacy records
+ * - Falls back to entityId for legacy records
  * - Returns all matching tasks for the contact
  * 
- * @param identifier - Contact identifier (entityId or schoolId)
+ * @param identifier - Contact identifier (entityId or entityId)
  * @param workspaceId - Workspace context
  * @returns Array of tasks for the contact
  */
 export async function getTasksForContact(
-    identifier: { entityId?: string; schoolId?: string },
+    identifier: { entityId?: string },
     workspaceId: string
 ): Promise<Task[]> {
     try {
@@ -185,13 +165,6 @@ export async function getTasksForContact(
                 .collection('tasks')
                 .where('workspaceId', '==', workspaceId)
                 .where('entityId', '==', identifier.entityId)
-                .orderBy('dueDate', 'asc');
-        } else if (identifier.schoolId) {
-            // Fallback to schoolId for legacy records
-            tasksQuery = adminDb
-                .collection('tasks')
-                .where('workspaceId', '==', workspaceId)
-                .where('schoolId', '==', identifier.schoolId)
                 .orderBy('dueDate', 'asc');
         } else {
             return [];

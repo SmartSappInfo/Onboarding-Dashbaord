@@ -135,9 +135,9 @@ export default function AiSchoolGenerator() {
 
         await logActivity({
             organizationId: activeOrganizationId,
-            schoolId: docRef.id,
-            schoolName: result.name,
-            schoolSlug: slug,
+            entityId: docRef.id,
+            entityName: result.name,
+            entitySlug: slug,
             userId: user.uid,
             workspaceId: data.track,
             type: 'school_created',
@@ -147,7 +147,7 @@ export default function AiSchoolGenerator() {
         });
 
         toast({ title: 'Institutional Hub Created', description: `AI has successfully architected ${result.name}.` });
-        router.push(`/admin/schools/${docRef.id}/edit`);
+        router.push(`/admin/entities/${docRef.id}/edit`);
 
     } catch (error: any) {
         console.error(error);
@@ -236,7 +236,7 @@ export default function AiSchoolGenerator() {
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => router.push('/admin/schools')}
+                          onClick={() => router.push('/admin/entities')}
                           disabled={isGenerating}
                           className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl"
                         >

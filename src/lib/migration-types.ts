@@ -2,7 +2,7 @@
  * Migration Types for SchoolId to EntityId Migration
  * 
  * This file defines all TypeScript interfaces and types used by the migration engine
- * to migrate feature collections from schoolId to entityId references.
+ * to migrate feature collections from entityId to entityId references.
  * 
  * Requirements: 17.3, 17.5
  */
@@ -145,9 +145,9 @@ export type ProgressCallback = (progress: MigrationProgress) => void;
 export type EntityType = 'institution' | 'family' | 'person';
 
 /**
- * Contact identifier that can use either legacy schoolId or new entityId
+ * Contact identifier that can use either legacy entityId or new entityId
  */
 export interface ContactIdentifier {
-  schoolId?: string | null;
+  entityId?: string | null;
   entityId?: string | null;
 }

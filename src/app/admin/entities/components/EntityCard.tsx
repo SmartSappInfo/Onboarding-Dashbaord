@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -37,11 +36,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
-import ChangeStatusModal from '../../schools/components/ChangeStatusModal';
-import TransferPipelineModal from '../../schools/components/TransferPipelineModal';
+import ChangeStatusModal from '../../entities/components/ChangeStatusModal';
+import TransferPipelineModal from '../../entities/components/TransferPipelineModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
-interface SchoolCardProps {
+interface EntityCardProps {
     school: School;
     isOverlay?: boolean;
 }
@@ -50,7 +49,7 @@ interface SchoolCardProps {
  * @fileOverview High-fidelity Institutional Card for Kanban boards.
  * Updated to use dynamic School Status labels and independent workspace lifecycles.
  */
-export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
+export default function EntityCard({ school, isOverlay }: EntityCardProps) {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [transferModalOpen, setTransferModalOpen] = React.useState(false);
   const { activeWorkspace } = useWorkspace();
@@ -99,7 +98,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                         "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105",
                         school.logoUrl ? "rounded-xl" : "rounded-full"
                     )}>
-                        <AvatarImage src={school.logoUrl} alt={school.name} className="object-contain p-1.5" />
+                        <AvatarImage src={school.logoUrl || undefined} alt={school.name} className="object-contain p-1.5" />
                         <AvatarFallback className="text-[10px] font-black bg-primary/5 text-primary">
                             {school.initials || school.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
@@ -134,7 +133,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                     <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1.5">Record Logic</DropdownMenuLabel>
                     
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
-                        <Link href={`/admin/schools/${school.id}`}>
+                        <Link href={`/admin/entities/${school.id}`}>
                             <Eye className="h-3.5 w-3.5 text-primary" />
                             <span className="font-bold text-xs uppercase">Full Console</span>
                         </Link>
@@ -152,7 +151,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
 
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
-                        <Link href={`/admin/schools/${school.id}/edit`}>
+                        <Link href={`/admin/entities/${school.id}/edit`}>
                             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="font-bold text-xs uppercase">Edit Profile</span>
                         </Link>
@@ -197,7 +196,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/tasks?entityId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
                                 <PlusCircle className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -208,7 +207,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/messaging/composer?entityId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`} onPointerDown={e => e.stopPropagation()}>
                                 <Send className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -219,7 +218,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/meetings/new?schoolId=${school.id}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/meetings/new?entityId=${school.id}`} onPointerDown={e => e.stopPropagation()}>
                                 <CalendarPlus className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -230,7 +229,7 @@ export default function SchoolCard({ school, isOverlay }: SchoolCardProps) {
                 <div className="flex-1" />
 
                 <Button variant="ghost" size="sm" asChild className="h-7 px-2 rounded-lg text-primary hover:bg-primary/5 font-black uppercase text-[8px] tracking-widest gap-1 group/btn min-w-0 truncate" onPointerDown={e => e.stopPropagation()}>
-                    <Link href={`/admin/schools/${school.id}`} className="truncate">
+                    <Link href={`/admin/entities/${school.id}`} className="truncate">
                         <span className="truncate">Open Console</span> <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/btn:translate-x-0.5 shrink-0" />
                     </Link>
                 </Button>

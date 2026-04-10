@@ -113,7 +113,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.setAttribute("download", `Attendance_${meeting?.schoolName || 'Session'}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+            link.setAttribute("download", `Attendance_${meeting?.entityName || 'Session'}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -172,7 +172,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-2.5 h-5">{meeting.type.name}</Badge>
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40">Session Intelligence</span>
                             </div>
-                            <h1 className="text-3xl font-black uppercase tracking-tight text-foreground leading-none">{meeting.schoolName}</h1>
+                            <h1 className="text-3xl font-black uppercase tracking-tight text-foreground leading-none">{meeting.entityName}</h1>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
                             <DetailRow label="Scheduled Implementation" value={format(new Date(meeting.meetingTime), 'PPPP')} sub={format(new Date(meeting.meetingTime), 'p')} icon={Clock} />
-                            <DetailRow label="Institutional Binding" value={meeting.schoolName || 'N/A'} sub="Active Campus Context" icon={Building} />
+                            <DetailRow label="Institutional Binding" value={meeting.entityName || 'N/A'} sub="Active Campus Context" icon={Building} />
                             <Separator />
                             <div className="pt-2">
                                 <Button asChild variant="outline" className="w-full rounded-xl font-black h-12 uppercase text-[10px] tracking-widest border-primary/20 text-primary gap-2">

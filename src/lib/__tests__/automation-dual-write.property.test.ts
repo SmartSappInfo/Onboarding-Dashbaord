@@ -11,9 +11,9 @@
  * **Validates: Requirements 14.5**
  * 
  * These tests verify that:
- * 1. Automated tasks include both schoolId and entityId (dual-write pattern)
+ * 1. Automated tasks include both entityId and entityId (dual-write pattern)
  * 2. Automation updates use entityId as primary identifier
- * 3. Triggers accept both schoolId and entityId identifiers
+ * 3. Triggers accept both entityId and entityId identifiers
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -161,7 +161,7 @@ const entityContextArbitrary = fc.record({
   automationId: fc.string({ minLength: 10, maxLength: 20 }),
   runId: fc.string({ minLength: 10, maxLength: 20 }),
   payload: fc.record({
-    schoolName: fc.string({ minLength: 5, maxLength: 50 }),
+    entityName: fc.string({ minLength: 5, maxLength: 50 }),
     assignedTo: fc.record({
       userId: fc.string({ minLength: 10, maxLength: 20 }),
     }),
@@ -169,15 +169,15 @@ const entityContextArbitrary = fc.record({
 });
 
 /**
- * Arbitrary for generating automation execution context with schoolId (legacy)
+ * Arbitrary for generating automation execution context with entityId (legacy)
  */
 const schoolContextArbitrary = fc.record({
-  schoolId: fc.string({ minLength: 10, maxLength: 20 }),
+  entityId: fc.string({ minLength: 10, maxLength: 20 }),
   workspaceId: fc.string({ minLength: 10, maxLength: 20 }),
   automationId: fc.string({ minLength: 10, maxLength: 20 }),
   runId: fc.string({ minLength: 10, maxLength: 20 }),
   payload: fc.record({
-    schoolName: fc.string({ minLength: 5, maxLength: 50 }),
+    entityName: fc.string({ minLength: 5, maxLength: 50 }),
     assignedTo: fc.record({
       userId: fc.string({ minLength: 10, maxLength: 20 }),
     }),
@@ -208,7 +208,7 @@ describe('Property 19: Automation Dual-Write', () => {
     vi.clearAllMocks();
   });
 
-  it('should populate both schoolId and entityId when creating tasks from entityId context', async () => {
+  it('should populate both entityId and entityId when creating tasks from entityId context', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityContextArbitrary,
@@ -217,7 +217,7 @@ describe('Property 19: Automation Dual-Write', () => {
           // Setup: Create entity and workspace_entity
           const entity = {
             id: context.entityId,
-            name: context.payload.schoolName,
+            name: context.payload.entityName,
             entityType: context.entityType,
             contacts: [],
           };
@@ -233,15 +233,15 @@ describe('Property 19: Automation Dual-Write', () => {
           mockWorkspaceEntities.set(workspaceEntity.id, workspaceEntity);
           
           // Also create a legacy school for backward compatibility
-          const schoolId = `school_${context.entityId}`;
+          const entityId = `school_${context.entityId}`;
           const school = {
-            id: schoolId,
+            id: entityId,
             name: entity.name,
             entityId: context.entityId,
             entityType: context.entityType,
             migrationStatus: 'migrated' as const,
           };
-          mockSchools.set(schoolId, school);
+          mockSchools.set(entityId, school);
           
           // Simulate automation creating a task directly via adminDb
           const { adminDb } = await import('../firebase-admin');
@@ -254,8 +254,8 @@ describe('Property 19: Automation Dual-Write', () => {
             status: 'todo',
             category: config.category,
             workspaceId: context.workspaceId,
-            schoolId, // Dual-write: legacy field
-            schoolName: entity.name, // Dual-write: legacy field
+            entityId, // Dual-write: legacy field
+            entityName: entity.name, // Dual-write: legacy field
             entityId: context.entityId, // Dual-write: new field
             entityType: context.entityType, // Dual-write: new field
             assignedTo: config.assignedTo,
@@ -268,7 +268,7 @@ describe('Property 19: Automation Dual-Write', () => {
             reminderSent: false,
           });
           
-          // Verify: Task should have both entityId and schoolId
+          // Verify: Task should have both entityId and entityId
           expect(createdTasks.length).toBeGreaterThan(0);
           const task = createdTasks[createdTasks.length - 1];
           
@@ -276,8 +276,8 @@ describe('Property 19: Automation Dual-Write', () => {
           expect(task.entityId).toBe(context.entityId);
           expect(task.entityType).toBe(context.entityType);
           
-          // Property: Task should have schoolId for backward compatibility
-          expect(task.schoolId).toBe(schoolId);
+          // Property: Task should have entityId for backward compatibility
+          expect(task.entityId).toBe(entityId);
           
           // Property: Task must have source='automation'
           expect(task.source).toBe('automation');
@@ -290,23 +290,23 @@ describe('Property 19: Automation Dual-Write', () => {
     );
   });
 
-  it('should populate both schoolId and entityId when creating tasks from schoolId context', async () => {
+  it('should populate both entityId and entityId when creating tasks from entityId context', async () => {
     await fc.assert(
       fc.asyncProperty(
         schoolContextArbitrary,
         taskConfigArbitrary,
         async (context, config) => {
           // Setup: Create school with entityId (migrated)
-          const entityId = `entity_${context.schoolId}`;
+          const entityId = `entity_${context.entityId}`;
           const school = {
-            id: context.schoolId,
-            name: context.payload.schoolName,
+            id: context.entityId,
+            name: context.payload.entityName,
             entityId: entityId,
             entityType: 'institution' as EntityType,
             migrationStatus: 'migrated' as const,
             focalPersons: [],
           };
-          mockSchools.set(context.schoolId, school);
+          mockSchools.set(context.entityId, school);
           
           // Create corresponding entity
           const entity = {
@@ -329,7 +329,7 @@ describe('Property 19: Automation Dual-Write', () => {
           // Simulate automation creating a task directly via adminDb
           const { adminDb } = await import('../firebase-admin');
           
-          // Execute: Create task via automation with schoolId context (simulating handleCreateTask behavior)
+          // Execute: Create task via automation with entityId context (simulating handleCreateTask behavior)
           await adminDb.collection('tasks').add({
             title: config.title,
             description: config.description,
@@ -337,9 +337,9 @@ describe('Property 19: Automation Dual-Write', () => {
             status: 'todo',
             category: config.category,
             workspaceId: context.workspaceId,
-            schoolId: context.schoolId, // Dual-write: legacy field
-            schoolName: school.name, // Dual-write: legacy field
-            entityId: entityId, // Dual-write: new field (resolved from schoolId)
+            entityId: context.entityId, // Dual-write: legacy field
+            entityName: school.name, // Dual-write: legacy field
+            entityId: entityId, // Dual-write: new field (resolved from entityId)
             entityType: 'institution', // Dual-write: new field
             assignedTo: config.assignedTo,
             dueDate: new Date(Date.now() + config.dueOffsetDays * 24 * 60 * 60 * 1000).toISOString(),
@@ -351,14 +351,14 @@ describe('Property 19: Automation Dual-Write', () => {
             reminderSent: false,
           });
           
-          // Verify: Task should have both schoolId and entityId
+          // Verify: Task should have both entityId and entityId
           expect(createdTasks.length).toBeGreaterThan(0);
           const task = createdTasks[createdTasks.length - 1];
           
-          // Property: Task must have schoolId
-          expect(task.schoolId).toBe(context.schoolId);
+          // Property: Task must have entityId
+          expect(task.entityId).toBe(context.entityId);
           
-          // Property: Task should have entityId resolved from schoolId
+          // Property: Task should have entityId resolved from entityId
           expect(task.entityId).toBe(entityId);
           expect(task.entityType).toBe('institution');
           
@@ -380,7 +380,7 @@ describe('Property 19: Automation Dual-Write', () => {
           if ('entityId' in context && context.entityId) {
             const entity = {
               id: context.entityId,
-              name: context.payload.schoolName,
+              name: context.payload.entityName,
               entityType: (context as any).entityType,
               contacts: [],
             };
@@ -394,13 +394,13 @@ describe('Property 19: Automation Dual-Write', () => {
               displayName: entity.name,
             };
             mockWorkspaceEntities.set(workspaceEntity.id, workspaceEntity);
-          } else if ('schoolId' in context && context.schoolId) {
+          } else if ('entityId' in context && context.entityId) {
             const school = {
-              id: context.schoolId,
-              name: context.payload.schoolName,
+              id: context.entityId,
+              name: context.payload.entityName,
               focalPersons: [],
             };
-            mockSchools.set(context.schoolId, school);
+            mockSchools.set(context.entityId, school);
           }
           
           // Simulate automation creating a task directly via adminDb
@@ -414,7 +414,6 @@ describe('Property 19: Automation Dual-Write', () => {
             status: 'todo',
             category: config.category,
             workspaceId: context.workspaceId,
-            schoolId: 'schoolId' in context ? context.schoolId : undefined,
             entityId: 'entityId' in context ? context.entityId : undefined,
             entityType: 'entityType' in context ? (context as any).entityType : undefined,
             assignedTo: config.assignedTo,
@@ -538,13 +537,13 @@ describe('Property 20: Automation Entity Operations', () => {
     );
   });
 
-  it('should prefer entityId over schoolId when both are present', async () => {
+  it('should prefer entityId over entityId when both are present', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityContextArbitrary,
-        fc.string({ minLength: 10, maxLength: 20 }), // schoolId
+        fc.string({ minLength: 10, maxLength: 20 }), // entityId
         updateConfigArbitrary,
-        async (context, schoolId, config) => {
+        async (context, entityId, config) => {
           // Setup: Create both entity and school
           const entity = {
             id: context.entityId,
@@ -564,16 +563,16 @@ describe('Property 20: Automation Entity Operations', () => {
           mockWorkspaceEntities.set(workspaceEntity.id, workspaceEntity);
           
           const school = {
-            id: schoolId,
+            id: entityId,
             name: 'School Name',
             focalPersons: [],
           };
-          mockSchools.set(schoolId, school);
+          mockSchools.set(entityId, school);
           
           // Simulate automation updating entity directly via adminDb (preferring entityId)
           const { adminDb } = await import('../firebase-admin');
           
-          // Execute: Update with both entityId and schoolId present (entityId should be preferred)
+          // Execute: Update with both entityId and entityId present (entityId should be preferred)
           if (config.updates.name) {
             await adminDb.collection('entities').doc(context.entityId).update({
               name: config.updates.name,
@@ -585,13 +584,13 @@ describe('Property 20: Automation Entity Operations', () => {
           if (config.updates.name) {
             expect(updatedEntities.length).toBeGreaterThan(0);
             
-            // Property: Update must target entityId, not schoolId
+            // Property: Update must target entityId, not entityId
             const entityUpdate = updatedEntities.find(u => u.id === context.entityId);
             expect(entityUpdate).toBeDefined();
           }
           
           // Property: School should NOT be updated when entityId is present
-          const schoolData = mockSchools.get(schoolId);
+          const schoolData = mockSchools.get(entityId);
           expect(schoolData?.name).toBe('School Name'); // Unchanged
         }
       ),
@@ -721,10 +720,10 @@ describe('Property 21: Automation Trigger Compatibility', () => {
   });
 
   /**
-   * Arbitrary for generating automation trigger payloads with schoolId (legacy)
+   * Arbitrary for generating automation trigger payloads with entityId (legacy)
    */
   const schoolTriggerPayloadArbitrary = fc.record({
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
+    entityId: fc.string({ minLength: 10, maxLength: 20 }),
     workspaceId: fc.string({ minLength: 10, maxLength: 20 }),
     organizationId: fc.string({ minLength: 10, maxLength: 20 }),
     action: fc.constantFrom('school_created', 'school_stage_changed', 'tag_added'),
@@ -778,7 +777,7 @@ describe('Property 21: Automation Trigger Compatibility', () => {
     );
   });
 
-  it('should accept trigger payloads with schoolId (backward compatibility)', async () => {
+  it('should accept trigger payloads with entityId (backward compatibility)', async () => {
     await fc.assert(
       fc.asyncProperty(
         schoolTriggerPayloadArbitrary,
@@ -790,41 +789,41 @@ describe('Property 21: Automation Trigger Compatibility', () => {
         async (payload, trigger) => {
           // Setup: Create school
           const school = {
-            id: payload.schoolId,
+            id: payload.entityId,
             name: 'Test School',
             focalPersons: [],
           };
-          mockSchools.set(payload.schoolId, school);
+          mockSchools.set(payload.entityId, school);
           
           // Import the function to test
           const { triggerAutomationProtocols } = await import('../automation-processor');
           
-          // Execute: Trigger automation with schoolId payload (legacy)
+          // Execute: Trigger automation with entityId payload (legacy)
           await triggerAutomationProtocols(trigger, payload);
           
-          // Property: Trigger should accept schoolId without errors
+          // Property: Trigger should accept entityId without errors
           // (No exception thrown means success)
           expect(true).toBe(true);
           
-          // Property: schoolId should be preserved in execution context
-          expect(payload.schoolId).toBeDefined();
+          // Property: entityId should be preserved in execution context
+          expect(payload.entityId).toBeDefined();
         }
       ),
       { numRuns: 50 }
     );
   });
 
-  it('should accept trigger payloads with both entityId and schoolId', async () => {
+  it('should accept trigger payloads with both entityId and entityId', async () => {
     await fc.assert(
       fc.asyncProperty(
         entityTriggerPayloadArbitrary,
-        fc.string({ minLength: 10, maxLength: 20 }), // schoolId
+        fc.string({ minLength: 10, maxLength: 20 }), // entityId
         fc.constantFrom<AutomationTrigger>(
           'SCHOOL_CREATED',
           'SCHOOL_STAGE_CHANGED',
           'TAG_ADDED'
         ),
-        async (entityPayload, schoolId, trigger) => {
+        async (entityPayload, entityId, trigger) => {
           // Setup: Create both entity and school
           const entity = {
             id: entityPayload.entityId,
@@ -844,13 +843,13 @@ describe('Property 21: Automation Trigger Compatibility', () => {
           mockWorkspaceEntities.set(workspaceEntity.id, workspaceEntity);
           
           const school = {
-            id: schoolId,
+            id: entityId,
             name: 'Test School',
             entityId: entityPayload.entityId,
             migrationStatus: 'migrated' as const,
             focalPersons: [],
           };
-          mockSchools.set(schoolId, school);
+          mockSchools.set(entityId, school);
           
           // Import the function to test
           const { triggerAutomationProtocols } = await import('../automation-processor');
@@ -858,7 +857,7 @@ describe('Property 21: Automation Trigger Compatibility', () => {
           // Execute: Trigger automation with both identifiers
           const payload = {
             ...entityPayload,
-            schoolId, // Both identifiers present
+            entityId, // Both identifiers present
           };
           await triggerAutomationProtocols(trigger, payload);
           
@@ -867,7 +866,7 @@ describe('Property 21: Automation Trigger Compatibility', () => {
           
           // Property: Both identifiers should be preserved
           expect(payload.entityId).toBeDefined();
-          expect(payload.schoolId).toBeDefined();
+          expect(payload.entityId).toBeDefined();
         }
       ),
       { numRuns: 50 }
@@ -902,13 +901,13 @@ describe('Property 21: Automation Trigger Compatibility', () => {
               displayName: entity.name,
             };
             mockWorkspaceEntities.set(workspaceEntity.id, workspaceEntity);
-          } else if ('schoolId' in payload && payload.schoolId) {
+          } else if ('entityId' in payload && payload.entityId) {
             const school = {
-              id: payload.schoolId,
+              id: payload.entityId,
               name: 'Test School',
               focalPersons: [],
             };
-            mockSchools.set(payload.schoolId, school);
+            mockSchools.set(payload.entityId, school);
           }
           
           // Import the function to test

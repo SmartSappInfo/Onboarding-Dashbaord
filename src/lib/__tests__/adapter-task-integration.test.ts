@@ -40,7 +40,7 @@ describe('Task Integration with Adapter Layer', () => {
   });
 
   describe('Task Creation with Legacy Schools', () => {
-    it('should create task with legacy schoolId', async () => {
+    it('should create task with legacy entityId', async () => {
       const mockSchool = {
         id: 'school_1',
         name: 'Test School',
@@ -81,7 +81,7 @@ describe('Task Integration with Adapter Layer', () => {
         status: 'todo',
         category: 'call',
         assignedTo: 'user_1',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         dueDate: '2024-12-31T00:00:00Z',
         reminders: [],
         reminderSent: false,
@@ -91,10 +91,10 @@ describe('Task Integration with Adapter Layer', () => {
       // Verify task was created
       expect(addDoc).toHaveBeenCalled();
       
-      // Verify activity was logged with schoolId
+      // Verify activity was logged with entityId
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_1',
+          entityId: 'school_1',
           workspaceId: 'workspace_1',
           type: 'task_created',
           source: 'system',
@@ -205,7 +205,6 @@ describe('Task Integration with Adapter Layer', () => {
         status: 'todo',
         category: 'call',
         assignedTo: 'user_1',
-        schoolId: 'school_2',
         entityId: 'entity_1',
         entityType: 'institution',
         dueDate: '2024-12-31T00:00:00Z',
@@ -217,10 +216,10 @@ describe('Task Integration with Adapter Layer', () => {
       // Verify task was created
       expect(addDoc).toHaveBeenCalled();
       
-      // Verify activity was logged with both schoolId and entityId
+      // Verify activity was logged with both entityId and entityId
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_2',
+          entityId: 'school_2',
           workspaceId: 'workspace_1',
           type: 'task_created',
           source: 'system',
@@ -263,7 +262,7 @@ describe('Task Integration with Adapter Layer', () => {
       // Simulate task completion logging
       await logActivity({
         organizationId: 'org_1',
-        schoolId: 'school_3',
+        entityId: 'school_3',
         userId: 'user_1',
         workspaceId: 'workspace_1',
         type: 'task_completed',
@@ -275,7 +274,7 @@ describe('Task Integration with Adapter Layer', () => {
       // Verify activity logger was called
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_3',
+          entityId: 'school_3',
           workspaceId: 'workspace_1',
           type: 'task_completed',
         })

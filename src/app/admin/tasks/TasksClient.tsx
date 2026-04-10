@@ -199,7 +199,7 @@ export default function TasksClient() {
 
             const matchesSearch = searchTerm ? 
                 task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                task.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) 
+                task.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) 
                 : true;
 
             let matchesSmart = true;
@@ -485,14 +485,14 @@ export default function TasksClient() {
                                                             <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
                                                                 {task.title}
                                                             </h4>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                                                {task.category} {task.schoolName && <>· <Building className="h-2.5 w-2.5" /> {task.schoolName}</>}
+                                                            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                                {task.category} {task.entityName && <>· <Building className="h-2.5 w-2.5" /> {task.entityName}</>}
                                                                 {task.entityType && (
                                                                     <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 rounded-sm border-none bg-primary/10 text-primary ml-1">
                                                                         {task.entityType}
                                                                     </Badge>
                                                                 )}
-                                                            </p>
+                                                            </div>
                                                         </div>
                                                     </div>
 

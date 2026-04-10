@@ -118,7 +118,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             </div>
             
             {meetingState === 'UPCOMING' && (
-              <MeetingJoinSection meeting={meeting} schoolId={school.id} />
+              <MeetingJoinSection meeting={meeting} entityId={school.id} />
             )}
             
             {meetingState === 'ENDED_NO_RECORDING' && (

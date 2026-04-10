@@ -47,7 +47,7 @@ export default function MeetingRegisteredState({
       const attendeesRef = collection(firestore, `meetings/${meeting.id}/attendees`);
       await addDoc(attendeesRef, {
         meetingId: meeting.id,
-        schoolId: meeting.schoolId || '',
+        entityId: meeting.entityId || '',
         parentName: registrant.name,
         childrenNames: [],
         joinedAt: new Date().toISOString(),

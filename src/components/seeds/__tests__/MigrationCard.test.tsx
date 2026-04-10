@@ -101,7 +101,7 @@ describe('MigrationCard', () => {
       collection: 'tasks',
       totalRecords: 100,
       recordsToMigrate: 50,
-      sampleRecords: [{ id: 'task1', schoolId: 'school1' }],
+      sampleRecords: [{ id: 'task1', entityId: 'school1' }],
       invalidRecords: []
     };
     
@@ -147,7 +147,7 @@ describe('MigrationCard', () => {
       skipped: 0,
       errors: [
         { id: 'task1', error: 'School not found' },
-        { id: 'task2', error: 'Invalid schoolId' }
+        { id: 'task2', error: 'Invalid entityId' }
       ]
     };
     

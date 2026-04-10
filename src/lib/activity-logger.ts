@@ -13,64 +13,27 @@ type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
  * 
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  * Updated for workspace awareness (Requirement 12)
- * Updated with dual-write pattern for entityId migration (Requirements 4.1, 25.3)
+ * Updated to fully support entity architecture.
  */
 export async function logActivity(activityData: LogActivityInput): Promise<void> {
     try {
         let finalData = { ...activityData };
         
-        // Initialize dual-write fields
-        let schoolId: string | null | undefined = activityData.schoolId;
-        let schoolName: string | null | undefined = activityData.schoolName;
-        let schoolSlug: string | null | undefined = activityData.schoolSlug;
         let entityId: string | null | undefined = activityData.entityId;
+        let entityName: string | null | undefined = activityData.entityName;
+        let entitySlug: string | null | undefined = activityData.entitySlug;
         let entityType: 'institution' | 'family' | 'person' | null | undefined = activityData.entityType;
         let displayName: string | null | undefined = activityData.displayName;
-        let entitySlug: string | null | undefined = activityData.entitySlug;
         
-        // Dual-write resolution logic (Requirements 4.1, 25.3)
+        // Resolution logic
         if (activityData.workspaceId) {
-            // Case 1: Only entityId provided - resolve schoolId for backward compatibility
-            if (entityId && !schoolId) {
+            if (entityId) {
                 const contact = await resolveContact({ entityId }, activityData.workspaceId);
                 if (contact) {
-                    schoolId = contact.schoolData?.id;
-                    schoolName = contact.name;
-                    schoolSlug = contact.slug;
-                    entityType = contact.entityType;
-                    displayName = contact.name;
-                    entitySlug = contact.slug;
-                }
-            }
-            // Case 2: Only schoolId provided - resolve entityId if migrated
-            else if (schoolId && !entityId) {
-                const contact = await resolveContact({ schoolId }, activityData.workspaceId);
-                if (contact) {
-                    schoolName = contact.name;
-                    schoolSlug = contact.slug;
-                    entityId = contact.entityId;
-                    entityType = contact.entityType;
-                    displayName = contact.name;
-                    entitySlug = contact.slug;
-                }
-            }
-            // Case 3: Both provided - ensure denormalized fields are populated
-            else if (schoolId || entityId) {
-                const contact = await resolveContact({ entityId, schoolId }, activityData.workspaceId);
-                if (contact) {
-                    schoolName = schoolName || contact.name;
-                    schoolSlug = schoolSlug || contact.slug;
-                    entityType = entityType || contact.entityType;
-                    displayName = displayName || contact.name;
-                    entitySlug = entitySlug || contact.slug;
-                    
-                    // Ensure both identifiers are populated if available
-                    if (!schoolId && contact.schoolData) {
-                        schoolId = contact.schoolData.id;
-                    }
-                    if (!entityId && contact.entityId) {
-                        entityId = contact.entityId;
-                    }
+                    entityName = contact.name || entityName;
+                    entitySlug = contact.slug || entitySlug;
+                    entityType = contact.entityType || entityType;
+                    displayName = contact.name || displayName;
                 }
             }
         }
@@ -78,13 +41,11 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         // Update finalData with resolved fields
         finalData = {
             ...finalData,
-            schoolId,
-            schoolName,
-            schoolSlug,
             entityId,
+            entityName,
+            entitySlug,
             entityType,
             displayName,
-            entitySlug,
         };
 
         // 3. Persist the Audit Log with all workspace-aware fields (Requirement 12)
@@ -94,7 +55,6 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         });
 
         // 4. BROADCAST TO AUTOMATION ENGINE
-        // Map Activity types to high-level Automation Triggers
         const triggerMap: Record<string, AutomationTrigger> = {
             'school_created': 'SCHOOL_CREATED',
             'pipeline_stage_changed': 'SCHOOL_STAGE_CHANGED',
@@ -108,27 +68,21 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         if (triggerType) {
             console.log(`>>> [EVENT:BUS] Signal detected: ${triggerType}. Invoking Logic Processor.`);
             
-            // Prepare the payload for the engine (Requirement 10.1)
-            // Include organizationId, workspaceId, entityId, entityType, action, actorId, timestamp
             const payload = {
                 ...finalData,
                 activityId: docRef.id,
-                // Include common resolution keys
-                organizationId: activityData.organizationId, // Requirement 10.1
-                schoolId: finalData.schoolId,
-                schoolName: finalData.schoolName,
-                schoolSlug: finalData.schoolSlug,
-                workspaceId: activityData.workspaceId, // Requirement 10.1
+                organizationId: activityData.organizationId,
                 entityId: finalData.entityId,
+                entityName: finalData.entityName,
+                entitySlug: finalData.entitySlug,
+                workspaceId: activityData.workspaceId,
                 entityType: finalData.entityType,
                 displayName: finalData.displayName,
-                entitySlug: finalData.entitySlug,
                 action: activityData.type,
                 actorId: activityData.userId,
                 timestamp: new Date().toISOString()
             };
 
-            // Invoke the processor (Fire and forget, non-blocking for the logger)
             triggerAutomationProtocols(triggerType, payload).catch(err => {
                 console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
             });

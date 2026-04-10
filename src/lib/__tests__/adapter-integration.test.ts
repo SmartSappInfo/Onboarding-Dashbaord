@@ -85,7 +85,7 @@ describe('Adapter Integration Tests', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         userId: 'user_1',
         type: 'test_activity',
         source: 'user_action',
@@ -94,8 +94,8 @@ describe('Adapter Integration Tests', () => {
 
       expect(mockAdd).toHaveBeenCalled();
       const activityData = mockAdd.mock.calls[0][0];
-      expect(activityData.schoolName).toBe('Test School');
-      expect(activityData.schoolSlug).toBe('test-school');
+      expect(activityData.entityName).toBe('Test School');
+      expect(activityData.entitySlug).toBe('test-school');
     });
 
     it('should log activity with migrated entity data', async () => {
@@ -197,7 +197,7 @@ describe('Adapter Integration Tests', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_2',
+        entityId: 'school_2',
         userId: 'user_1',
         type: 'test_activity',
         source: 'user_action',
@@ -206,7 +206,7 @@ describe('Adapter Integration Tests', () => {
 
       expect(mockAdd).toHaveBeenCalled();
       const activityData = mockAdd.mock.calls[0][0];
-      expect(activityData.schoolName).toBe('Migrated School');
+      expect(activityData.entityName).toBe('Migrated School');
       expect(activityData.entityId).toBe('entity_1');
       expect(activityData.entityType).toBe('institution');
       expect(activityData.displayName).toBe('Migrated School');
@@ -325,7 +325,7 @@ describe('Adapter Integration Tests', () => {
         senderProfileId: 'sender_1',
         recipient: 'test@example.com',
         variables: {},
-        schoolId: 'school_3',
+        entityId: 'school_3',
       });
 
       expect(result.success).toBe(true);

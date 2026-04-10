@@ -7,7 +7,7 @@ import { resolveContact } from './contact-adapter';
 import type { School, UserProfile } from './types';
 
 interface InternalNotificationOptions {
-  schoolId?: string;
+  entityId?: string;
   specificUserIds?: string[];
   notifyManager?: boolean;
   emailTemplateId?: string;
@@ -23,7 +23,7 @@ interface InternalNotificationOptions {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
-  const { schoolId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
+  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
 
   console.log(`>>> [NOTIFY] Triggering Internal Notification Hub...`);
 
@@ -32,9 +32,9 @@ export async function triggerInternalNotification(options: InternalNotificationO
     const resolvedContacts: { email?: string; phone?: string; name: string }[] = [];
 
     // 1. Resolve Assigned Manager using adapter layer (Requirement 18)
-    if (notifyManager && schoolId) {
+    if (notifyManager && entityId) {
       // Use adapter to resolve contact from either schools or entities + workspace_entities
-      const contact = await resolveContact(schoolId, variables.workspaceId || 'onboarding');
+      const contact = await resolveContact(entityId, variables.workspaceId || 'onboarding');
       if (contact && contact.assignedTo && contact.assignedTo.userId) {
         recipients.add(contact.assignedTo.userId);
       }
@@ -82,7 +82,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             senderProfileId: 'default', // Fallback to default sender
             recipient: contact.email,
             variables: personalVars,
-            schoolId,
+            entityId,
             workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
           })
         );
@@ -96,7 +96,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             senderProfileId: 'default',
             recipient: contact.phone,
             variables: personalVars,
-            schoolId,
+            entityId,
             workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
           })
         );

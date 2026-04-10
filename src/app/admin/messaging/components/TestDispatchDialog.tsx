@@ -38,7 +38,7 @@ interface TestDispatchDialogProps {
     rawSubject?: string;
     senderProfileId?: string;
     variables?: Record<string, any>;
-    schoolId?: string;
+    entityId?: string;
 }
 
 /**
@@ -55,7 +55,7 @@ export default function TestDispatchDialog({
     rawSubject, 
     senderProfileId, 
     variables = {},
-    schoolId
+    entityId
 }: TestDispatchDialogProps) {
     const { toast } = useToast();
     const [recipient, setRecipient] = React.useState('');
@@ -98,7 +98,7 @@ export default function TestDispatchDialog({
                     senderProfileId: senderProfileId || 'default',
                     recipient: recipient.trim(),
                     variables: finalVars,
-                    schoolId
+                    entityId
                 });
                 if (!result.success) throw new Error(result.error);
             } else if (rawBody) {

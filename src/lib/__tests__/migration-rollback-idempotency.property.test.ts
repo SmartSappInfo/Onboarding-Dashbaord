@@ -46,8 +46,8 @@ describe('Property 18: Rollback Idempotency', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
-            schoolName: fc.string({ minLength: 1, maxLength: 30 }),
+            entityId: fc.uuid(),
+            entityName: fc.string({ minLength: 1, maxLength: 30 }),
           }),
           { minLength: 1, maxLength: 10 }
         ),
@@ -60,7 +60,7 @@ describe('Property 18: Rollback Idempotency', () => {
             // Create migrated record
             await setDoc(doc(firestore, collectionName, record.id), {
               ...record,
-              entityId: `entity_${record.schoolId}`,
+              entityId: `entity_${record.entityId}`,
               entityType: 'institution' as const,
             });
 
@@ -98,7 +98,7 @@ describe('Property 18: Rollback Idempotency', () => {
           for (const finalRecord of finalRecords) {
             expect(finalRecord.entityId).toBeUndefined();
             expect(finalRecord.entityType).toBeUndefined();
-            expect(finalRecord.schoolId).toBeDefined();
+            expect(finalRecord.entityId).toBeDefined();
           }
 
           // Verify: Backup collection deleted after first run
@@ -124,7 +124,7 @@ describe('Property 18: Rollback Idempotency', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
+            entityId: fc.uuid(),
           }),
           { minLength: 1, maxLength: 5 }
         ),
@@ -184,8 +184,8 @@ describe('Property 18: Rollback Idempotency', () => {
           id: fc.uuid(),
           workspaceId: fc.uuid(),
           title: fc.string({ minLength: 1, maxLength: 50 }),
-          schoolId: fc.uuid(),
-          schoolName: fc.string({ minLength: 1, maxLength: 30 }),
+          entityId: fc.uuid(),
+          entityName: fc.string({ minLength: 1, maxLength: 30 }),
           customData: fc.string(),
         }),
         async (collectionName, record) => {
@@ -194,7 +194,7 @@ describe('Property 18: Rollback Idempotency', () => {
           
           await setDoc(doc(firestore, collectionName, record.id), {
             ...record,
-            entityId: `entity_${record.schoolId}`,
+            entityId: `entity_${record.entityId}`,
             entityType: 'institution' as const,
           });
 
@@ -218,8 +218,8 @@ describe('Property 18: Rollback Idempotency', () => {
           expect(finalData.id).toBe(record.id);
           expect(finalData.workspaceId).toBe(record.workspaceId);
           expect(finalData.title).toBe(record.title);
-          expect(finalData.schoolId).toBe(record.schoolId);
-          expect(finalData.schoolName).toBe(record.schoolName);
+          expect(finalData.entityId).toBe(record.entityId);
+          expect(finalData.entityName).toBe(record.entityName);
           expect(finalData.customData).toBe(record.customData);
           expect(finalData.entityId).toBeUndefined();
           expect(finalData.entityType).toBeUndefined();
@@ -241,7 +241,7 @@ describe('Property 18: Rollback Idempotency', () => {
             id: fc.uuid(),
             workspaceId: fc.uuid(),
             title: fc.string({ minLength: 1, maxLength: 50 }),
-            schoolId: fc.uuid(),
+            entityId: fc.uuid(),
           }),
           { minLength: 2, maxLength: 5 }
         ),

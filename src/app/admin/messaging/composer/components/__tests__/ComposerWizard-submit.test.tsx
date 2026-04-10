@@ -161,7 +161,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 isScheduled: false,
             };
             
@@ -183,7 +183,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                         senderProfileId: formData.senderProfileId,
                         recipient: target,
                         variables: formData.variables,
-                        schoolId: formData.schoolId,
+                        entityId: formData.entityId,
                         scheduledAt: undefined,
                     });
                 }
@@ -195,7 +195,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                 senderProfileId: 'sender-1',
                 recipient: 'test@example.com',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 scheduledAt: undefined,
             });
         });
@@ -210,7 +210,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: 'school-1',
+                entityId: 'school-1',
                 isScheduled: false,
             };
             
@@ -229,7 +229,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                         senderProfileId: formData.senderProfileId,
                         recipient: target,
                         variables: formData.variables,
-                        schoolId: formData.schoolId,
+                        entityId: formData.entityId,
                         scheduledAt: undefined,
                     });
                 }
@@ -257,7 +257,7 @@ describe('ComposerWizard - Submit Handler (Task 8.3)', () => {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 variables: {},
-                schoolId: '',
+                entityId: '',
                 isScheduled: false,
             };
             

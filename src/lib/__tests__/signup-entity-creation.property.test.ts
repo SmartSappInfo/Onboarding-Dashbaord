@@ -18,7 +18,7 @@
  * **Validates: Requirements 10.5**
  * 
  * For any completed signup, the system should create an activity record that
- * references the new entity using entityId rather than schoolId.
+ * references the new entity using entityId rather than entityId.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -405,7 +405,7 @@ describe('Property 6: Signup Activity Logging', () => {
     mockSchoolsDoc.mockClear();
   });
 
-  it('should log activity with entityId (not schoolId) for any signup', async () => {
+  it('should log activity with entityId (not entityId) for any signup', async () => {
     await fc.assert(
       fc.asyncProperty(
         signupInputArbitrary,
@@ -421,9 +421,9 @@ describe('Property 6: Signup Activity Logging', () => {
           
           const activityCall = mockLogActivity.mock.calls[mockLogActivity.mock.calls.length - 1][0];
           
-          // Property 6.2: Activity uses entityId, not schoolId
+          // Property 6.2: Activity uses entityId, not entityId
           expect(activityCall.entityId).toBe(result.entityId);
-          expect(activityCall.schoolId).toBeUndefined();
+          expect(activityCall.entityId).toBeUndefined();
           
           // Property 6.3: Activity has correct metadata
           expect(activityCall.organizationId).toBe(signupInput.organizationId);
@@ -471,7 +471,7 @@ describe('Property 6: Signup Activity Logging', () => {
     );
   });
 
-  it('should never log activities with schoolId for new signups', async () => {
+  it('should never log activities with entityId for new signups', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(signupInputArbitrary, { minLength: 1, maxLength: 5 }),
@@ -481,14 +481,14 @@ describe('Property 6: Signup Activity Logging', () => {
             signupInputs.map(input => handleSignupAction(input))
           );
 
-          // Assert: All activity logs use entityId, never schoolId
+          // Assert: All activity logs use entityId, never entityId
           const allActivityCalls = mockLogActivity.mock.calls;
           
           allActivityCalls.forEach(call => {
             const activityData = call[0];
             expect(activityData.entityId).toBeDefined();
             expect(activityData.entityId).toMatch(/^entity_/);
-            expect(activityData.schoolId).toBeUndefined();
+            expect(activityData.entityId).toBeUndefined();
           });
         }
       ),
@@ -557,7 +557,7 @@ describe('Property Integration: Complete Signup Flow', () => {
           expect(mockLogActivity).toHaveBeenCalled();
           const activityCall = mockLogActivity.mock.calls[mockLogActivity.mock.calls.length - 1][0];
           expect(activityCall.entityId).toBe(result.entityId);
-          expect(activityCall.schoolId).toBeUndefined();
+          expect(activityCall.entityId).toBeUndefined();
         }
       ),
       { numRuns: 50 }

@@ -27,7 +27,7 @@ import {
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import type { School, Pipeline } from '@/lib/types';
-import { convertToOnboardingAction } from '@/lib/school-actions';
+import { convertToOnboardingAction } from '@/lib/entity-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

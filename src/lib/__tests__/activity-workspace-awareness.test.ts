@@ -7,7 +7,7 @@
  * - 12.1: Activity documents include workspaceId, entityId, and entityType
  * - 12.2: Denormalization of displayName and entitySlug at time of logging
  * - 12.3: Activity timeline filtering by workspaceId
- * - 12.4: Backward compatibility with schoolId and schoolName
+ * - 12.4: Backward compatibility with entityId and entityName
  * - 12.5: Dual-write for legacy schools records
  */
 
@@ -173,7 +173,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
   });
 
   describe('12.4 & 12.5: Backward compatibility and dual-write for legacy schools', () => {
-    it('should populate both schoolId and entityId for migrated schools', async () => {
+    it('should populate both entityId and entityId for migrated schools', async () => {
       const { adminDb } = await import('../firebase-admin');
       const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_123' });
       (adminDb.collection as any).mockReturnValue({ add: mockAdd });
@@ -194,7 +194,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_123', // Legacy field
+        entityId: 'school_123', // Legacy field
         userId: 'user_1',
         type: 'task_completed',
         source: 'system',
@@ -204,12 +204,12 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
 
-      // Verify both schoolId and entityId are populated (dual-write)
+      // Verify both entityId and entityId are populated (dual-write)
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123', // Legacy field maintained
-          schoolName: 'Migrated School',
-          schoolSlug: 'migrated-school',
+          entityId: 'school_123', // Legacy field maintained
+          entityName: 'Migrated School',
+          entitySlug: 'migrated-school',
           entityId: 'entity_456', // New field populated
           entityType: 'institution',
           displayName: 'Migrated School',
@@ -238,19 +238,19 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
       await logActivity({
         organizationId: 'org_1',
         workspaceId: 'workspace_1',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         userId: 'user_1',
         type: 'school_created',
         source: 'user',
         description: 'Created school',
       });
 
-      // Verify schoolId is maintained, no entityId for legacy records
+      // Verify entityId is maintained, no entityId for legacy records
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123',
-          schoolName: 'Legacy School',
-          schoolSlug: 'legacy-school',
+          entityId: 'school_123',
+          entityName: 'Legacy School',
+          entitySlug: 'legacy-school',
         })
       );
 
@@ -276,7 +276,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
 
       // Verify no contact fields are set
       const callArgs = mockAdd.mock.calls[0][0];
-      expect(callArgs.schoolId).toBeUndefined();
+      expect(callArgs.entityId).toBeUndefined();
       expect(callArgs.entityId).toBeUndefined();
       expect(callArgs.entityType).toBeUndefined();
     });

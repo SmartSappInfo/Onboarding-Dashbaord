@@ -58,11 +58,11 @@ describe('Migration Engine - Unit Tests', () => {
   });
 
   describe('1. Fetch Operation - Identifies Unmigrated Records', () => {
-    it('should identify records with schoolId but no entityId', async () => {
+    it('should identify records with entityId but no entityId', async () => {
       const mockRecords = [
-        createMockDoc('record_1', { schoolId: 'school_1', name: 'Record 1' }),
-        createMockDoc('record_2', { schoolId: 'school_2', entityId: 'entity_2', name: 'Record 2' }),
-        createMockDoc('record_3', { schoolId: 'school_3', name: 'Record 3' }),
+        createMockDoc('record_1', { entityId: 'school_1', name: 'Record 1' }),
+        createMockDoc('record_2', { entityId: 'entity_2', name: 'Record 2' }),
+        createMockDoc('record_3', { entityId: 'school_3', name: 'Record 3' }),
       ];
 
       const mockGetDocs = vi.fn().mockResolvedValue(createMockSnapshot(mockRecords));
@@ -74,8 +74,8 @@ describe('Migration Engine - Unit Tests', () => {
           totalRecords: 3,
           recordsToMigrate: 2,
           sampleRecords: [
-            { id: 'record_1', schoolId: 'school_1', name: 'Record 1' },
-            { id: 'record_3', schoolId: 'school_3', name: 'Record 3' },
+            { id: 'record_1', entityId: 'school_1', name: 'Record 1' },
+            { id: 'record_3', entityId: 'school_3', name: 'Record 3' },
           ],
           invalidRecords: [],
         };
@@ -86,19 +86,19 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.totalRecords).toBe(3);
       expect(result.recordsToMigrate).toBe(2);
       expect(result.sampleRecords).toHaveLength(2);
-      expect(result.sampleRecords[0].schoolId).toBe('school_1');
-      expect(result.sampleRecords[1].schoolId).toBe('school_3');
+      expect(result.sampleRecords[0].entityId).toBe('school_1');
+      expect(result.sampleRecords[1].entityId).toBe('school_3');
     });
 
-    it('should identify invalid records with neither schoolId nor entityId', async () => {
+    it('should identify invalid records with neither entityId nor entityId', async () => {
       vi.spyOn(engine as any, 'fetch').mockImplementation(async () => {
         return {
           collection: 'tasks',
           totalRecords: 2,
           recordsToMigrate: 1,
-          sampleRecords: [{ id: 'record_1', schoolId: 'school_1', name: 'Record 1' }],
+          sampleRecords: [{ id: 'record_1', entityId: 'school_1', name: 'Record 1' }],
           invalidRecords: [
-            { id: 'record_2', reason: 'Missing both schoolId and entityId' },
+            { id: 'record_2', reason: 'Missing both entityId and entityId' },
           ],
         };
       });
@@ -107,14 +107,14 @@ describe('Migration Engine - Unit Tests', () => {
 
       expect(result.invalidRecords).toHaveLength(1);
       expect(result.invalidRecords[0].id).toBe('record_2');
-      expect(result.invalidRecords[0].reason).toBe('Missing both schoolId and entityId');
+      expect(result.invalidRecords[0].reason).toBe('Missing both entityId and entityId');
     });
 
     it('should return sample records (first 5)', async () => {
       vi.spyOn(engine as any, 'fetch').mockImplementation(async () => {
         const sampleRecords = Array.from({ length: 10 }, (_, i) => ({
           id: `record_${i + 1}`,
-          schoolId: `school_${i + 1}`,
+          entityId: `school_${i + 1}`,
           name: `Record ${i + 1}`,
         }));
 
@@ -168,7 +168,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+          { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -181,7 +181,7 @@ describe('Migration Engine - Unit Tests', () => {
           records: [
             {
               id: 'record_1',
-              original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+              original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
               enriched: {
                 entityId: 'entity_existing',
                 entityType: 'institution',
@@ -203,7 +203,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+          { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -216,7 +216,7 @@ describe('Migration Engine - Unit Tests', () => {
           records: [
             {
               id: 'record_1',
-              original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+              original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
               enriched: {
                 entityId: 'entity_school_1',
                 entityType: 'institution',
@@ -236,7 +236,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+          { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -249,7 +249,7 @@ describe('Migration Engine - Unit Tests', () => {
           records: [
             {
               id: 'record_1',
-              original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+              original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
               enriched: {
                 entityId: 'entity_1',
                 entityType: 'family',
@@ -269,7 +269,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'record_1', schoolId: 'nonexistent_school', name: 'Task 1' },
+          { id: 'record_1', entityId: 'nonexistent_school', name: 'Task 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -289,7 +289,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'activities',
         records: [
-          { id: 'record_1', schoolId: 'school_1', name: 'Activity 1' },
+          { id: 'record_1', entityId: 'school_1', name: 'Activity 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -302,7 +302,7 @@ describe('Migration Engine - Unit Tests', () => {
           records: [
             {
               id: 'record_1',
-              original: { id: 'record_1', schoolId: 'school_1', name: 'Activity 1' },
+              original: { id: 'record_1', entityId: 'school_1', name: 'Activity 1' },
               enriched: {
                 entityId: 'entity_1',
                 entityType: 'institution',
@@ -326,7 +326,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -358,7 +358,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -390,7 +390,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', entityId: 'entity_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'entity_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -422,7 +422,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -430,7 +430,7 @@ describe('Migration Engine - Unit Tests', () => {
           },
           {
             id: 'record_2',
-            original: { id: 'record_2', schoolId: 'school_2', name: 'Task 2' },
+            original: { id: 'record_2', entityId: 'school_2', name: 'Task 2' },
             enriched: {
               entityId: 'entity_2',
               entityType: 'institution',
@@ -460,13 +460,13 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.errors[0].id).toBe('record_2');
     });
 
-    it('should preserve schoolId field during update', async () => {
+    it('should preserve entityId field during update', async () => {
       const enrichedBatch: EnrichedBatch = {
         collection: 'tasks',
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -760,7 +760,7 @@ describe('Migration Engine - Unit Tests', () => {
     it('should process records in batches of 450', async () => {
       const largeRecordSet = Array.from({ length: 1000 }, (_, i) => ({
         id: `record_${i + 1}`,
-        original: { id: `record_${i + 1}`, schoolId: `school_${i + 1}`, name: `Task ${i + 1}` },
+        original: { id: `record_${i + 1}`, entityId: `school_${i + 1}`, name: `Task ${i + 1}` },
         enriched: {
           entityId: `entity_${i + 1}`,
           entityType: 'institution' as const,
@@ -792,7 +792,7 @@ describe('Migration Engine - Unit Tests', () => {
     it('should handle multiple batches correctly', async () => {
       const largeRecordSet = Array.from({ length: 900 }, (_, i) => ({
         id: `record_${i + 1}`,
-        original: { id: `record_${i + 1}`, schoolId: `school_${i + 1}`, name: `Task ${i + 1}` },
+        original: { id: `record_${i + 1}`, entityId: `school_${i + 1}`, name: `Task ${i + 1}` },
         enriched: {
           entityId: `entity_${i + 1}`,
           entityType: 'institution' as const,
@@ -824,7 +824,7 @@ describe('Migration Engine - Unit Tests', () => {
     it('should continue processing after batch failure', async () => {
       const largeRecordSet = Array.from({ length: 900 }, (_, i) => ({
         id: `record_${i + 1}`,
-        original: { id: `record_${i + 1}`, schoolId: `school_${i + 1}`, name: `Task ${i + 1}` },
+        original: { id: `record_${i + 1}`, entityId: `school_${i + 1}`, name: `Task ${i + 1}` },
         enriched: {
           entityId: `entity_${i + 1}`,
           entityType: 'institution' as const,
@@ -864,7 +864,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -872,7 +872,7 @@ describe('Migration Engine - Unit Tests', () => {
           },
           {
             id: 'record_2',
-            original: { id: 'record_2', schoolId: 'school_2', name: 'Task 2' },
+            original: { id: 'record_2', entityId: 'school_2', name: 'Task 2' },
             enriched: {
               entityId: 'entity_2',
               entityType: 'institution',
@@ -880,7 +880,7 @@ describe('Migration Engine - Unit Tests', () => {
           },
           {
             id: 'record_3',
-            original: { id: 'record_3', schoolId: 'school_3', name: 'Task 3' },
+            original: { id: 'record_3', entityId: 'school_3', name: 'Task 3' },
             enriched: {
               entityId: 'entity_3',
               entityType: 'institution',
@@ -915,7 +915,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -947,7 +947,7 @@ describe('Migration Engine - Unit Tests', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+          { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -966,7 +966,7 @@ describe('Migration Engine - Unit Tests', () => {
     it('should aggregate errors from multiple batches', async () => {
       const largeRecordSet = Array.from({ length: 900 }, (_, i) => ({
         id: `record_${i + 1}`,
-        original: { id: `record_${i + 1}`, schoolId: `school_${i + 1}`, name: `Task ${i + 1}` },
+        original: { id: `record_${i + 1}`, entityId: `school_${i + 1}`, name: `Task ${i + 1}` },
         enriched: {
           entityId: `entity_${i + 1}`,
           entityType: 'institution' as const,
@@ -1008,7 +1008,7 @@ describe('Migration Engine - Unit Tests', () => {
         records: [
           {
             id: 'record_1',
-            original: { id: 'record_1', schoolId: 'school_1', name: 'Task 1' },
+            original: { id: 'record_1', entityId: 'school_1', name: 'Task 1' },
             enriched: {
               entityId: 'entity_1',
               entityType: 'institution',
@@ -1060,15 +1060,15 @@ describe('Migration Engine - Unit Tests', () => {
   });
 
   describe('9. Collection-Specific Fetch Operations', () => {
-    it('should fetch tasks collection using schoolId field', async () => {
+    it('should fetch tasks collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'tasks',
           totalRecords: 10,
           recordsToMigrate: 5,
           sampleRecords: [
-            { id: 'task_1', schoolId: 'school_1', title: 'Task 1' },
-            { id: 'task_2', schoolId: 'school_2', title: 'Task 2' },
+            { id: 'task_1', entityId: 'school_1', title: 'Task 1' },
+            { id: 'task_2', entityId: 'school_2', title: 'Task 2' },
           ],
           invalidRecords: [],
         };
@@ -1080,14 +1080,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(5);
     });
 
-    it('should fetch activities collection using schoolId field', async () => {
+    it('should fetch activities collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'activities',
           totalRecords: 20,
           recordsToMigrate: 10,
           sampleRecords: [
-            { id: 'activity_1', schoolId: 'school_1', type: 'call' },
+            { id: 'activity_1', entityId: 'school_1', type: 'call' },
           ],
           invalidRecords: [],
         };
@@ -1099,15 +1099,15 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(10);
     });
 
-    it('should fetch meetings collection using schoolSlug field', async () => {
+    it('should fetch meetings collection using entitySlug field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'meetings',
           totalRecords: 15,
           recordsToMigrate: 8,
           sampleRecords: [
-            { id: 'meeting_1', schoolSlug: 'school-slug-1', title: 'Meeting 1' },
-            { id: 'meeting_2', schoolSlug: 'school-slug-2', title: 'Meeting 2' },
+            { id: 'meeting_1', entitySlug: 'school-slug-1', title: 'Meeting 1' },
+            { id: 'meeting_2', entitySlug: 'school-slug-2', title: 'Meeting 2' },
           ],
           invalidRecords: [],
         };
@@ -1117,21 +1117,21 @@ describe('Migration Engine - Unit Tests', () => {
 
       expect(result.collection).toBe('meetings');
       expect(result.recordsToMigrate).toBe(8);
-      expect(result.sampleRecords[0].schoolSlug).toBeDefined();
+      expect(result.sampleRecords[0].entitySlug).toBeDefined();
     });
 
-    it('should identify invalid meetings without schoolSlug', async () => {
+    it('should identify invalid meetings without entitySlug', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'meetings',
           totalRecords: 5,
           recordsToMigrate: 3,
           sampleRecords: [
-            { id: 'meeting_1', schoolSlug: 'school-slug-1', title: 'Meeting 1' },
+            { id: 'meeting_1', entitySlug: 'school-slug-1', title: 'Meeting 1' },
           ],
           invalidRecords: [
-            { id: 'meeting_4', reason: 'Missing both schoolSlug and entityId' },
-            { id: 'meeting_5', reason: 'Missing both schoolSlug and entityId' },
+            { id: 'meeting_4', reason: 'Missing both entitySlug and entityId' },
+            { id: 'meeting_5', reason: 'Missing both entitySlug and entityId' },
           ],
         };
       });
@@ -1139,17 +1139,17 @@ describe('Migration Engine - Unit Tests', () => {
       const result = await engine.fetchCollection('meetings');
 
       expect(result.invalidRecords).toHaveLength(2);
-      expect(result.invalidRecords[0].reason).toContain('schoolSlug');
+      expect(result.invalidRecords[0].reason).toContain('entitySlug');
     });
 
-    it('should fetch forms collection using schoolId field', async () => {
+    it('should fetch forms collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'forms',
           totalRecords: 12,
           recordsToMigrate: 6,
           sampleRecords: [
-            { id: 'form_1', schoolId: 'school_1', title: 'Form 1' },
+            { id: 'form_1', entityId: 'school_1', title: 'Form 1' },
           ],
           invalidRecords: [],
         };
@@ -1161,14 +1161,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(6);
     });
 
-    it('should fetch invoices collection using schoolId field', async () => {
+    it('should fetch invoices collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'invoices',
           totalRecords: 25,
           recordsToMigrate: 15,
           sampleRecords: [
-            { id: 'invoice_1', schoolId: 'school_1', invoiceNumber: 'INV-001' },
+            { id: 'invoice_1', entityId: 'school_1', invoiceNumber: 'INV-001' },
           ],
           invalidRecords: [],
         };
@@ -1180,14 +1180,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(15);
     });
 
-    it('should fetch surveys collection using schoolId field', async () => {
+    it('should fetch surveys collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'surveys',
           totalRecords: 8,
           recordsToMigrate: 4,
           sampleRecords: [
-            { id: 'survey_1', schoolId: 'school_1', title: 'Survey 1' },
+            { id: 'survey_1', entityId: 'school_1', title: 'Survey 1' },
           ],
           invalidRecords: [],
         };
@@ -1199,14 +1199,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(4);
     });
 
-    it('should fetch message_logs collection using schoolId field', async () => {
+    it('should fetch message_logs collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'message_logs',
           totalRecords: 100,
           recordsToMigrate: 50,
           sampleRecords: [
-            { id: 'msg_1', schoolId: 'school_1', messageType: 'email' },
+            { id: 'msg_1', entityId: 'school_1', messageType: 'email' },
           ],
           invalidRecords: [],
         };
@@ -1218,14 +1218,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(50);
     });
 
-    it('should fetch pdfs collection using schoolId field', async () => {
+    it('should fetch pdfs collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'pdfs',
           totalRecords: 30,
           recordsToMigrate: 20,
           sampleRecords: [
-            { id: 'pdf_1', schoolId: 'school_1', title: 'PDF 1' },
+            { id: 'pdf_1', entityId: 'school_1', title: 'PDF 1' },
           ],
           invalidRecords: [],
         };
@@ -1237,14 +1237,14 @@ describe('Migration Engine - Unit Tests', () => {
       expect(result.recordsToMigrate).toBe(20);
     });
 
-    it('should fetch automation_logs collection using schoolId field', async () => {
+    it('should fetch automation_logs collection using entityId field', async () => {
       vi.spyOn(engine as any, 'fetchCollection').mockImplementation(async () => {
         return {
           collection: 'automation_logs',
           totalRecords: 50,
           recordsToMigrate: 25,
           sampleRecords: [
-            { id: 'log_1', schoolId: 'school_1', automationId: 'auto_1' },
+            { id: 'log_1', entityId: 'school_1', automationId: 'auto_1' },
           ],
           invalidRecords: [],
         };
@@ -1264,7 +1264,7 @@ describe('Migration Engine - Unit Tests', () => {
           recordsToMigrate: 100,
           sampleRecords: Array.from({ length: 5 }, (_, i) => ({
             id: `task_${i + 1}`,
-            schoolId: `school_${i + 1}`,
+            entityId: `school_${i + 1}`,
             title: `Task ${i + 1}`,
           })),
           invalidRecords: [],

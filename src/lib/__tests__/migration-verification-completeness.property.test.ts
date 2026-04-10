@@ -7,7 +7,7 @@
  * For any feature collection after migration, the verify operation should
  * correctly count:
  * 1. Records with entityId (migrated)
- * 2. Records with schoolId but no entityId (unmigrated)
+ * 2. Records with entityId but no entityId (unmigrated)
  * 3. Records with entityId that doesn't exist in the entities collection (orphaned)
  * 
  * This test uses fast-check to generate random collection states with various
@@ -29,7 +29,7 @@ import type { Firestore } from 'firebase/firestore';
 // Mock Firestore types
 type MockDocumentData = {
   id: string;
-  schoolId?: string;
+  entityId?: string;
   entityId?: string;
   entityType?: string;
   [key: string]: any;
@@ -113,18 +113,17 @@ describe.skip('Property 14: Verification Completeness', () => {
    */
   const migratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
     entityId: fc.string({ minLength: 15, maxLength: 30 }),
     entityType: fc.constantFrom('institution', 'family', 'person'),
     title: fc.string(),
   });
 
   /**
-   * Arbitrary for generating an unmigrated record (schoolId only)
+   * Arbitrary for generating an unmigrated record (entityId only)
    */
   const unmigratedRecordArbitrary = fc.record({
     id: fc.string({ minLength: 10, maxLength: 20 }),
-    schoolId: fc.string({ minLength: 10, maxLength: 20 }),
+    entityId: fc.string({ minLength: 10, maxLength: 20 }),
     title: fc.string(),
   });
 
@@ -135,7 +134,7 @@ describe.skip('Property 14: Verification Completeness', () => {
     id: fc.string({ minLength: 10, maxLength: 20 }),
     entityId: fc.string({ minLength: 15, maxLength: 30 }).filter(id => id.startsWith('orphan_')),
     entityType: fc.constantFrom('institution', 'family', 'person'),
-    schoolId: fc.option(fc.string({ minLength: 10, maxLength: 20 }), { nil: undefined }),
+    entityId: fc.option(fc.string({ minLength: 10, maxLength: 20 }), { nil: undefined }),
     title: fc.string(),
   });
 
@@ -362,7 +361,7 @@ describe.skip('Property 14: Verification Completeness', () => {
             const entityId = `entity_valid_${i}`;
             const record: MockDocumentData = {
               id: `migrated_${i}`,
-              schoolId: `school_${i}`,
+              entityId: `school_${i}`,
               entityId,
               entityType: 'institution',
               title: `Task ${i}`,
@@ -391,7 +390,7 @@ describe.skip('Property 14: Verification Completeness', () => {
           for (let i = 0; i < numUnmigrated; i++) {
             const record: MockDocumentData = {
               id: `unmigrated_${i}`,
-              schoolId: `school_unmigrated_${i}`,
+              entityId: `school_unmigrated_${i}`,
               title: `Task ${i}`,
             };
             collectionData.set(record.id, record);
@@ -414,7 +413,7 @@ describe.skip('Property 14: Verification Completeness', () => {
     );
   });
 
-  it('should handle records with neither schoolId nor entityId', async () => {
+  it('should handle records with neither entityId nor entityId', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.record({
@@ -454,7 +453,7 @@ describe.skip('Property 14: Verification Completeness', () => {
           // Verify: Records with no identifiers shouldn't be counted as migrated or unmigrated
           expect(result.totalRecords).toBe(migrated.length + noIdentifiers.length);
           expect(result.migratedRecords).toBe(migrated.length);
-          expect(result.unmigratedRecords).toBe(0); // No schoolId-only records
+          expect(result.unmigratedRecords).toBe(0); // No entityId-only records
         }
       ),
       { numRuns: 20 }

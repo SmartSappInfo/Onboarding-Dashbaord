@@ -131,7 +131,7 @@ export default function MeetingsHubClient() {
                 return school.assignedTo?.userId === assignedUserId;
             }).map(s => s.id)
         );
-        temp = temp.filter(m => m.schoolId && filteredSchoolIds.has(m.schoolId));
+        temp = temp.filter(m => m.entityId && filteredSchoolIds.has(m.entityId));
     }
 
     // Then filter by type
@@ -150,7 +150,7 @@ export default function MeetingsHubClient() {
       .then(() => {
         toast({
           title: 'Meeting Deleted',
-          description: `The meeting for ${meetingToDelete.schoolName} has been deleted.`,
+          description: `The meeting for ${meetingToDelete.entityName} has been deleted.`,
         });
         setMeetingToDelete(null);
       })
@@ -175,8 +175,8 @@ export default function MeetingsHubClient() {
 
   const renderActions = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
-    const schoolEmail = meeting.schoolId ? schoolEmailMap.get(meeting.schoolId) : undefined;
-    const publicUrl = `/meetings/${type.slug}/${meeting.schoolSlug}`;
+    const schoolEmail = meeting.entityId ? schoolEmailMap.get(meeting.entityId) : undefined;
+    const publicUrl = `/meetings/${type.slug}/${meeting.entitySlug}`;
 
     return (
       <div className="flex items-center justify-end gap-1">
@@ -257,7 +257,7 @@ export default function MeetingsHubClient() {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
+                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.entityName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
                     <Send className="mr-2 h-4 w-4" />
                     <span>Send Invite/Reminder</span>
                 </Link>
@@ -357,18 +357,18 @@ export default function MeetingsHubClient() {
                             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                                 filteredMeetings.map((meeting) => {
                                 const type = meeting.type || MEETING_TYPES[0];
-                                const logoUrl = meeting.schoolId ? schoolLogoMap.get(meeting.schoolId) : undefined;
+                                const logoUrl = meeting.entityId ? schoolLogoMap.get(meeting.entityId) : undefined;
                                 return (
                                     <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
                                         <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-                                        <AvatarImage src={logoUrl} alt={meeting.schoolName} />
-                                        <AvatarFallback className="font-bold text-xs">{getInitials(meeting.schoolName)}</AvatarFallback>
+                                        <AvatarImage src={logoUrl} alt={meeting.entityName} />
+                                        <AvatarFallback className="font-bold text-xs">{getInitials(meeting.entityName)}</AvatarFallback>
                                         </Avatar>
                                     </TableCell>
                                     <TableCell className="font-black text-sm text-foreground uppercase tracking-tight">
                                         <Link href={`/admin/meetings/${meeting.id}/edit`} className="hover:text-primary hover:underline transition-colors">
-                                            {meeting.schoolName}
+                                            {meeting.entityName}
                                         </Link>
                                     </TableCell>
                                     <TableCell><Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest">{type.name}</Badge></TableCell>
@@ -414,7 +414,7 @@ export default function MeetingsHubClient() {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-black uppercase tracking-tight">Purge Session Architecture?</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium">
-              This will permanently remove the scheduled session for <span className="font-bold text-foreground">"{meetingToDelete?.schoolName}"</span> and its attendance logic.
+              This will permanently remove the scheduled session for <span className="font-bold text-foreground">"{meetingToDelete?.entityName}"</span> and its attendance logic.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4">

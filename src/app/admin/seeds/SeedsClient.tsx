@@ -563,7 +563,7 @@ export default function SeedsClient() {
                             SchoolId → EntityId Migration
                         </CardTitle>
                         <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-muted-foreground">
-                            Migrate feature collections from schoolId to entityId references. Supports dual-write pattern with full rollback capability.
+                            Migrate feature collections from entityId to entityId references. Supports dual-write pattern with full rollback capability.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 pt-0 space-y-6">

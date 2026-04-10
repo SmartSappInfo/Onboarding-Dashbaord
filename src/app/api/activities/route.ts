@@ -9,14 +9,14 @@ import { logActivity } from '@/lib/activity-logger';
 
 /**
  * GET /api/activities
- * Query activities for a contact using either entityId or schoolId
+ * Query activities for a contact using either entityId or entityId
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const workspaceId = searchParams.get('workspaceId');
     const entityId = searchParams.get('entityId');
-    const schoolId = searchParams.get('schoolId');
+    const entityId = searchParams.get('entityId');
     const type = searchParams.get('type');
     const limit = parseInt(searchParams.get('limit') || '50');
     const startAfter = searchParams.get('startAfter');
@@ -28,15 +28,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!entityId && !schoolId) {
+    if (!entityId && !entityId) {
       return NextResponse.json(
-        { error: 'Either entityId or schoolId must be provided' },
+        { error: 'Either entityId or entityId must be provided' },
         { status: 400 }
       );
     }
 
     // Prefer entityId when both provided (Requirement 24.1)
-    const identifier = entityId ? { entityId } : { schoolId: schoolId! };
+    const identifier = entityId ? { entityId } : { entityId: entityId! };
 
     // Get activities using server action
     const activities = await getActivitiesForContact(identifier, workspaceId, limit);
@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
       filteredActivities = filteredActivities.filter(activity => activity.type === type);
     }
 
-    // Add deprecation warning if schoolId was used (Requirement 24.3)
+    // Add deprecation warning if entityId was used (Requirement 24.3)
     const headers: Record<string, string> = {};
-    if (schoolId && !entityId) {
-      headers['Warning'] = '299 - "schoolId parameter is deprecated and will be removed in Q4 2026. Use entityId instead."';
+    if (entityId && !entityId) {
+      headers['Warning'] = '299 - "entityId parameter is deprecated and will be removed in Q4 2026. Use entityId instead."';
     }
 
     // Return both identifiers in response (Requirement 24.2)
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       description,
       entityId,
       entityType,
-      schoolId,
+      entityId,
       userId,
       metadata,
       organizationId
@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!entityId && !schoolId) {
+    if (!entityId && !entityId) {
       return NextResponse.json(
-        { error: 'Either entityId or schoolId must be provided' },
+        { error: 'Either entityId or entityId must be provided' },
         { status: 400 }
       );
     }
@@ -113,17 +113,17 @@ export async function POST(request: NextRequest) {
       // Prefer entityId when both provided (Requirement 24.1)
       entityId: entityId || null,
       entityType: entityType || null,
-      schoolId: schoolId || null,
+      entityId: entityId || null,
       userId: userId || null,
       metadata: metadata || {},
       organizationId: organizationId || 'default',
       source: 'api'
     });
 
-    // Add deprecation warning if schoolId was used (Requirement 24.3)
+    // Add deprecation warning if entityId was used (Requirement 24.3)
     const headers: Record<string, string> = {};
-    if (schoolId && !entityId) {
-      headers['Warning'] = '299 - "schoolId parameter is deprecated and will be removed in Q4 2026. Use entityId instead."';
+    if (entityId && !entityId) {
+      headers['Warning'] = '299 - "entityId parameter is deprecated and will be removed in Q4 2026. Use entityId instead."';
     }
 
     const timestamp = new Date().toISOString();
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         description,
         entityId: entityId || null,
         entityType: entityType || null,
-        schoolId: schoolId || null,
+        entityId: entityId || null,
         userId,
         timestamp,
         metadata,

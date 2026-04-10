@@ -31,7 +31,7 @@ export default function ActivitiesClient() {
     const firestore = useFirestore();
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
     
-    const [schoolId, setSchoolId] = React.useState<string | null>('all');
+    const [entityId, setSchoolId] = React.useState<string | null>('all');
     const [userId, setUserId] = React.useState<string | null>('all');
     const [type, setType] = React.useState<string | null>('all');
     const [zoneId, setZoneId] = React.useState<string | null>('all');
@@ -67,7 +67,7 @@ export default function ActivitiesClient() {
     const { data: users } = useCollection<UserProfile>(usersCol);
     const { data: zones } = useCollection<Zone>(zonesCol);
 
-    const hasActiveFilters = schoolId !== 'all' || userId !== 'all' || type !== 'all' || zoneId !== 'all';
+    const hasActiveFilters = entityId !== 'all' || userId !== 'all' || type !== 'all' || zoneId !== 'all';
 
     const clearFilters = () => {
         setSchoolId('all');
@@ -113,7 +113,7 @@ export default function ActivitiesClient() {
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 ml-1">
                                     <Building className="h-3 w-3" /> School Context
                                 </Label>
-                                <Select value={schoolId || 'all'} onValueChange={setSchoolId}>
+                                <Select value={entityId || 'all'} onValueChange={setSchoolId}>
                                     <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all text-left">
                                         <SelectValue placeholder="All Schools" />
                                     </SelectTrigger>
@@ -169,7 +169,7 @@ export default function ActivitiesClient() {
                         <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                     </div>
                     <ActivityTimeline 
-                        schoolId={schoolId} 
+                        entityId={entityId} 
                         userId={userId} 
                         type={type} 
                         zoneId={zoneId}

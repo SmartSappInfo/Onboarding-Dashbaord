@@ -2,7 +2,7 @@
  * Migration Engine for SchoolId to EntityId Migration
  * 
  * This file implements the core migration engine that handles the fetch-enrich-restore
- * protocol for migrating feature collections from schoolId to entityId references.
+ * protocol for migrating feature collections from entityId to entityId references.
  * 
  * Requirements: 18.1, 19.1, 19.2, 19.7, 20.1, 21.2
  */
@@ -51,7 +51,7 @@ const SAMPLE_SIZE = 5;
 /**
  * Migration Engine Interface
  * 
- * Provides methods for migrating feature collections from schoolId to entityId
+ * Provides methods for migrating feature collections from entityId to entityId
  */
 export interface MigrationEngine {
   /**
@@ -62,13 +62,13 @@ export interface MigrationEngine {
 
   /**
    * Fetch records for a specific collection with collection-specific logic
-   * Handles special cases like meetings using schoolSlug
+   * Handles special cases like meetings using entitySlug
    * Requirement: 18.1, 18.2, 18.3, 18.4
    */
   fetchCollection(collectionName: string): Promise<FetchResult>;
 
   /**
-   * Enrich records by resolving entityId from schoolId
+   * Enrich records by resolving entityId from entityId
    * Requirement: 19.1, 19.2
    */
   enrich(batch: MigrationBatch, onProgress?: ProgressCallback): Promise<EnrichedBatch>;
@@ -112,7 +112,7 @@ export class MigrationEngineImpl implements MigrationEngine {
       const allRecordsSnapshot = await getDocs(collectionRef);
       const totalRecords = allRecordsSnapshot.size;
 
-      // Filter records that need migration (have schoolId but no entityId)
+      // Filter records that need migration (have entityId but no entityId)
       const recordsToMigrate: DocumentData[] = [];
       const invalidRecords: Array<{ id: string; reason: string }> = [];
 
@@ -149,12 +149,12 @@ export class MigrationEngineImpl implements MigrationEngine {
 
   /**
    * Fetch records for a specific collection with collection-specific logic
-   * Handles special cases like meetings using schoolSlug instead of schoolId
+   * Handles special cases like meetings using entitySlug instead of entityId
    * 
    * Requirement: 18.1, 18.2, 18.3, 18.4
    */
   async fetchCollection(collectionName: string): Promise<FetchResult> {
-    // Special handling for meetings collection (uses schoolSlug)
+    // Special handling for meetings collection (uses entitySlug)
     if (collectionName === 'meetings') {
       return this.fetchMeetings();
     }
@@ -164,7 +164,7 @@ export class MigrationEngineImpl implements MigrationEngine {
   }
 
   /**
-   * Fetch meetings collection (special case: uses schoolSlug instead of schoolId)
+   * Fetch meetings collection (special case: uses entitySlug instead of entityId)
    */
   private async fetchMeetings(): Promise<FetchResult> {
     try {
@@ -174,7 +174,7 @@ export class MigrationEngineImpl implements MigrationEngine {
       const allRecordsSnapshot = await getDocs(collectionRef);
       const totalRecords = allRecordsSnapshot.size;
 
-      // Filter records that need migration (have schoolSlug but no entityId)
+      // Filter records that need migration (have entitySlug but no entityId)
       const recordsToMigrate: DocumentData[] = [];
       const invalidRecords: Array<{ id: string; reason: string }> = [];
 
@@ -182,14 +182,14 @@ export class MigrationEngineImpl implements MigrationEngine {
         const data = docSnapshot.data();
         const id = docSnapshot.id;
 
-        // Check if record needs migration (meetings use schoolSlug)
-        if (data.schoolSlug && !data.entityId) {
+        // Check if record needs migration (meetings use entitySlug)
+        if (data.entitySlug && !data.entityId) {
           recordsToMigrate.push({ id, ...data });
-        } else if (!data.schoolSlug && !data.entityId) {
+        } else if (!data.entitySlug && !data.entityId) {
           // Record has neither identifier - invalid
           invalidRecords.push({
             id,
-            reason: 'Missing both schoolSlug and entityId'
+            reason: 'Missing both entitySlug and entityId'
           });
         }
       });
@@ -308,7 +308,7 @@ export class MigrationEngineImpl implements MigrationEngine {
    * Restore enriched records to Firestore with backups
    * 
    * Requirement: 19.5 - Create backup collection before updates
-   * Requirement: 19.6 - Update original record with entityId and entityType while preserving schoolId
+   * Requirement: 19.6 - Update original record with entityId and entityType while preserving entityId
    * Requirement: 19.7 - Process in batches of 450 records
    * Requirement: 19.8 - Log errors for individual record failures
    * Requirement: 19.9 - Continue processing remaining records after error
@@ -354,7 +354,7 @@ export class MigrationEngineImpl implements MigrationEngine {
           });
 
           // Update original record with entityId and entityType (Requirement 19.6)
-          // Preserves original schoolId field (dual-write)
+          // Preserves original entityId field (dual-write)
           const recordRef = doc(
             this.firestore,
             enrichedBatch.collection,
@@ -485,7 +485,7 @@ export class MigrationEngineImpl implements MigrationEngine {
               issue: `Failed to verify entity existence: ${error}`
             });
           }
-        } else if (data.schoolId) {
+        } else if (data.entityId) {
           unmigratedRecords++;
         }
       }

@@ -6,7 +6,7 @@
  * Validates:
  * - Settings load with entityId
  * - Settings update with entityId
- * - Backward compatibility with schoolId
+ * - Backward compatibility with entityId
  * 
  * Requirements: 26.2
  */
@@ -183,11 +183,10 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
     });
   });
 
-  describe('Settings Load with schoolId (Backward Compatibility)', () => {
-    it('should load settings using schoolId for legacy records', async () => {
+  describe('Settings Load with entityId (Backward Compatibility)', () => {
+    it('should load settings using entityId for legacy records', async () => {
       const mockLegacySettings = {
         id: 'settings_126',
-        schoolId: 'school_789',
         entityId: null,
         workspaceId: 'workspace_1',
         notificationsEnabled: true,
@@ -211,29 +210,29 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       expect(result.success).toBe(true);
       expect(result.settings).toBeDefined();
-      expect(result.settings?.schoolId).toBe('school_789');
+      expect(result.settings?.entityId).toBe('school_789');
       expect(result.settings?.entityId).toBeNull();
       
-      // Verify query was built with schoolId
+      // Verify query was built with entityId
       expect(mockWhere).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
-      expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_789');
       expect(mockLimit).toHaveBeenCalledWith(1);
     });
 
-    it('should return undefined when no settings found for schoolId', async () => {
+    it('should return undefined when no settings found for entityId', async () => {
       mockGet.mockResolvedValue({
         empty: true,
         docs: [],
       });
 
       const result = await loadSettings(
-        { schoolId: 'school_nonexistent' },
+        { entityId: 'school_nonexistent' },
         'workspace_1'
       );
 
@@ -241,11 +240,10 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       expect(result.settings).toBeUndefined();
     });
 
-    it('should prefer entityId over schoolId when both provided', async () => {
+    it('should prefer entityId over entityId when both provided', async () => {
       const mockSettings = {
         id: 'settings_127',
-        entityId: 'entity_456',
-        schoolId: 'school_789',
+        entityId: 'school_789',
         workspaceId: 'workspace_1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -262,27 +260,27 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       await loadSettings(
-        { entityId: 'entity_456', schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       // Verify query used entityId (preferred)
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_456');
-      // Should NOT query by schoolId when entityId is present
-      const schoolIdCalls = vi.mocked(mockWhere).mock.calls.filter(
-        call => call[0] === 'schoolId'
+      // Should NOT query by entityId when entityId is present
+      const entityIdCalls = vi.mocked(mockWhere).mock.calls.filter(
+        call => call[0] === 'entityId'
       );
-      expect(schoolIdCalls).toHaveLength(0);
+      expect(entityIdCalls).toHaveLength(0);
     });
 
-    it('should return error when neither entityId nor schoolId provided', async () => {
+    it('should return error when neither entityId nor entityId provided', async () => {
       const result = await loadSettings(
         {},
         'workspace_1'
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Either entityId or schoolId must be provided');
+      expect(result.error).toBe('Either entityId or entityId must be provided');
       
       // Should not attempt to query
       expect(mockGet).not.toHaveBeenCalled();
@@ -293,8 +291,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
     it('should update settings and preserve entityId', async () => {
       const existingSettings = {
         id: 'settings_128',
-        entityId: 'entity_456',
-        schoolId: null,
+        entityId: null,
         entityType: 'institution',
         workspaceId: 'workspace_1',
         notificationsEnabled: true,
@@ -324,8 +321,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       // Verify identifiers were preserved
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_456',
-          schoolId: null,
+          entityId: null,
           entityType: 'institution',
           notificationsEnabled: false,
           emailPreferences: {
@@ -341,8 +337,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
     it('should update display preferences while preserving entityId', async () => {
       const existingSettings = {
         id: 'settings_129',
-        entityId: 'entity_789',
-        schoolId: null,
+        entityId: null,
         entityType: 'family',
         workspaceId: 'workspace_1',
         displayPreferences: {
@@ -425,11 +420,10 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
     });
   });
 
-  describe('Settings Update with schoolId (Backward Compatibility)', () => {
-    it('should update settings and preserve schoolId for legacy records', async () => {
+  describe('Settings Update with entityId (Backward Compatibility)', () => {
+    it('should update settings and preserve entityId for legacy records', async () => {
       const existingLegacySettings = {
         id: 'settings_131',
-        schoolId: 'school_789',
         entityId: null,
         entityType: null,
         workspaceId: 'workspace_1',
@@ -452,10 +446,9 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify schoolId was preserved and entityId remains null
+      // Verify entityId was preserved and entityId remains null
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
           entityId: null,
           entityType: null,
           notificationsEnabled: false,
@@ -466,7 +459,6 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
     it('should preserve both identifiers for dual-write records', async () => {
       const existingDualWriteSettings = {
         id: 'settings_132',
-        schoolId: 'school_789',
         entityId: 'entity_456',
         entityType: 'institution',
         workspaceId: 'workspace_1',
@@ -496,7 +488,6 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       // Verify both identifiers were preserved
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
           entityId: 'entity_456',
           entityType: 'institution',
           emailPreferences: {
@@ -533,8 +524,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       // Verify settings were created with entityId
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_456',
-          schoolId: null,
+          entityId: null,
           entityType: 'institution',
           workspaceId: 'workspace_1',
           notificationsEnabled: true,
@@ -549,11 +539,11 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       );
     });
 
-    it('should create settings with schoolId for legacy compatibility', async () => {
+    it('should create settings with entityId for legacy compatibility', async () => {
       mockAdd.mockResolvedValue({ id: 'settings_134' });
 
       const input = {
-        schoolId: 'school_789',
+        entityId: 'school_789',
         workspaceId: 'workspace_1',
         notificationsEnabled: false,
       };
@@ -563,10 +553,9 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       expect(result.success).toBe(true);
       expect(result.id).toBe('settings_134');
       
-      // Verify settings were created with schoolId
+      // Verify settings were created with entityId
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
           entityId: null,
           entityType: null,
           workspaceId: 'workspace_1',
@@ -579,8 +568,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       mockAdd.mockResolvedValue({ id: 'settings_135' });
 
       const input = {
-        entityId: 'entity_456',
-        schoolId: 'school_789',
+        entityId: 'school_789',
         entityType: 'institution' as const,
         workspaceId: 'workspace_1',
       };
@@ -592,8 +580,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       // Verify both identifiers were written
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_456',
-          schoolId: 'school_789',
+          entityId: 'school_789',
           entityType: 'institution',
         })
       );

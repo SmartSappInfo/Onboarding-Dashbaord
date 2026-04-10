@@ -120,7 +120,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
     const getPublicUrl = (school: School) => {
         if (!selectedPdf) return '';
         const base = typeof window !== 'undefined' ? window.location.origin : '';
-        return `${base}/forms/${selectedPdf.slug || selectedPdf.id}?schoolId=${school.id}`;
+        return `${base}/forms/${selectedPdf.slug || selectedPdf.id}?entityId=${school.id}`;
     };
 
     const handleNext = () => setStep(s => s + 1);
@@ -146,8 +146,8 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
             try {
                 // 1. Initialize/Update Contract Draft
                 const upsertRes = await upsertContractAction({
-                    schoolId: school.id,
-                    schoolName: school.name,
+                    entityId: school.id,
+                    entityName: school.name,
                     pdfId: data.pdfId,
                     pdfName: selectedPdf.name,
                     status: 'sent', // Mark as sent even if handled manually
@@ -161,8 +161,8 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                     if (signatory) {
                         await sendContractAction({
                             contractId: upsertRes.id,
-                            schoolId: school.id,
-                            schoolName: school.name,
+                            entityId: school.id,
+                            entityName: school.name,
                             emailTemplateId: data.emailTemplateId,
                             smsTemplateId: data.smsTemplateId,
                             recipients: [{ name: signatory.name, email: signatory.email, phone: signatory.phone, type: signatory.type }],
@@ -518,7 +518,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                         link: getPublicUrl(currentSchool),
                         event_type: 'Agreement Signature Required (Test)'
                     }}
-                    schoolId={currentSchool.id}
+                    entityId={currentSchool.id}
                 />
             )}
         </Dialog>

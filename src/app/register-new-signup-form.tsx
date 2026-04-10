@@ -44,8 +44,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError, useCollection, useMemoFirebase } from "@/firebase";
-import { FocalPersonManager } from "@/app/admin/schools/components/FocalPersonManager";
-import { PackageSelect } from "@/app/admin/schools/components/PackageSelect";
+import { FocalPersonManager } from "@/app/admin/entities/components/FocalPersonManager";
+import { PackageSelect } from "@/app/admin/entities/components/PackageSelect";
 import { type SubscriptionPackage } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 

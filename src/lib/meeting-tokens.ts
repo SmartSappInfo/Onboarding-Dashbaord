@@ -15,10 +15,10 @@ export function generateRegistrantToken(): string {
 export function buildPersonalizedMeetingUrl(
   origin: string,
   meetingTypeSlug: string,
-  schoolSlug: string,
+  entitySlug: string,
   token: string,
 ): string {
-  return `${origin}/meetings/${meetingTypeSlug}/${schoolSlug}?token=${token}`;
+  return `${origin}/meetings/${meetingTypeSlug}/${entitySlug}?token=${token}`;
 }
 
 /**

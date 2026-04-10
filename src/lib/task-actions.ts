@@ -17,16 +17,16 @@ import { logActivity } from './activity-logger';
  * Resolves entity information for a task using the contact adapter.
  * Supports dual-write for legacy schools records (Requirement 13.4, 13.5)
  * 
- * @param identifier - Contact identifier (schoolId or entityId)
+ * @param identifier - Contact identifier (entityId or entityId)
  * @param workspaceId - Workspace context
- * @returns Object with schoolId, schoolName, entityId, entityType
+ * @returns Object with entityId, entityName, entityId, entityType
  */
 async function resolveTaskEntityInfo(
-    identifier: { schoolId?: string | null; entityId?: string | null },
+    identifier: { entityId?: string | null; entityId?: string | null },
     workspaceId: string
 ) {
-    if (!identifier.schoolId && !identifier.entityId) {
-        return { schoolId: null, schoolName: null, entityId: null, entityType: null };
+    if (!identifier.entityId && !identifier.entityId) {
+        return { entityId: null, entityType: null };
     }
 
     try {
@@ -36,8 +36,8 @@ async function resolveTaskEntityInfo(
         
         if (contact) {
             return {
-                schoolId: contact.schoolData?.id || identifier.schoolId || null,
-                schoolName: contact.name,
+                entityId: contact.schoolData?.id || identifier.entityId || null,
+                entityName: contact.name,
                 entityId: contact.entityId || identifier.entityId || null,
                 entityType: contact.entityType || null,
             };
@@ -48,8 +48,8 @@ async function resolveTaskEntityInfo(
 
     // Fallback: use provided identifiers
     return {
-        schoolId: identifier.schoolId || null,
-        schoolName: null,
+        entityId: identifier.entityId || null,
+        entityName: null,
         entityId: identifier.entityId || null,
         entityType: null
     };
@@ -70,7 +70,7 @@ export function getTaskInterlinkUrl(task: Task): string | null {
     }
     
     if (task.relatedEntityType === 'School') {
-        return `/admin/schools/${task.relatedEntityId}`;
+        return `/admin/entities/${task.relatedEntityId}`;
     }
 
     if (task.relatedEntityType === 'Meeting') {
@@ -86,7 +86,7 @@ export function getTaskInterlinkUrl(task: Task): string | null {
  * Updated for workspace awareness and dual-write pattern (Requirements 3.1, 25.3):
  * - Requires workspaceId to be set on all new tasks
  * - Supports entityId and entityType for unified entity model
- * - Maintains backward compatibility with schoolId (dual-write)
+ * - Maintains backward compatibility with entityId (dual-write)
  * - Resolves both identifiers when only one is provided
  */
 export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'createdAt'>) {
@@ -96,14 +96,14 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
     // Resolve entity information using dual-write pattern
     const resolveAndCreate = async () => {
         const entityInfo = await resolveTaskEntityInfo(
-            { schoolId: task.schoolId, entityId: task.entityId },
+            { entityId: task.entityId },
             task.workspaceId
         );
         
         const taskData = {
             ...task,
-            schoolId: entityInfo.schoolId,
-            schoolName: entityInfo.schoolName,
+            entityId: entityInfo.entityId,
+            entityName: entityInfo.entityName,
             entityId: entityInfo.entityId,
             entityType: entityInfo.entityType,
             createdAt: timestamp,
@@ -120,7 +120,6 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
         // Log to timeline with workspace awareness
         logActivity({
             organizationId: task.organizationId || 'default',
-            schoolId: task.schoolId || undefined,
             entityId: task.entityId || undefined,
             entityType: task.entityType || undefined,
             userId: null, 
@@ -165,7 +164,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
         if (isMarkingDone) {
             logActivity({
                 organizationId: updates.organizationId || 'default',
-                schoolId: updates.schoolId || '',
+                entityId: updates.entityId || '',
                 userId: null,
                 workspaceId: updates.workspaceId ? updates.workspaceId : 'onboarding',
                 type: 'task_completed',

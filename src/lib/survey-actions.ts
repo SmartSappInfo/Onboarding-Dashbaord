@@ -3,16 +3,16 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { Survey, SurveyResponse } from './types';
+import type { Survey, SurveyResponse, Webhook } from './types';
 
 /**
- * Get surveys for a specific contact (by entityId or schoolId)
- * Implements query fallback pattern: prefer entityId, fallback to schoolId
+ * Get surveys for a specific contact (by entityId or entityId)
+ * Implements query fallback pattern: prefer entityId, fallback to entityId
  * 
  * Requirements: 13.5, 22.1, 22.2
  */
 export async function getSurveysForContact(
-  contactId: { entityId?: string | null; schoolId?: string | null },
+  contactId: { entityId?: string | null; entityId?: string | null },
   workspaceId: string
 ): Promise<Survey[]> {
   try {
@@ -22,9 +22,9 @@ export async function getSurveysForContact(
     // Prefer entityId when available (Requirement 22.2)
     if (contactId.entityId) {
       query = query.where('entityId', '==', contactId.entityId);
-    } else if (contactId.schoolId) {
-      // Fallback to schoolId for backward compatibility (Requirement 22.1)
-      query = query.where('schoolId', '==', contactId.schoolId);
+    } else if (contactId.entityId) {
+      // Fallback to entityId for backward compatibility (Requirement 22.1)
+      query = query.where('entityId', '==', contactId.entityId);
     } else {
       // No contact identifier provided, return empty array
       return [];
@@ -39,14 +39,14 @@ export async function getSurveysForContact(
 }
 
 /**
- * Get survey responses for a specific contact (by entityId or schoolId)
- * Implements query fallback pattern: prefer entityId, fallback to schoolId
+ * Get survey responses for a specific contact (by entityId or entityId)
+ * Implements query fallback pattern: prefer entityId, fallback to entityId
  * 
  * Requirements: 13.5, 22.1, 22.2
  */
 export async function getSurveyResponsesForContact(
   surveyId: string,
-  contactId: { entityId?: string | null; schoolId?: string | null }
+  contactId: { entityId?: string | null; entityId?: string | null }
 ): Promise<SurveyResponse[]> {
   try {
     let query = adminDb.collection('surveys').doc(surveyId).collection('responses');
@@ -54,9 +54,9 @@ export async function getSurveyResponsesForContact(
     // Prefer entityId when available (Requirement 22.2)
     if (contactId.entityId) {
       query = query.where('entityId', '==', contactId.entityId) as any;
-    } else if (contactId.schoolId) {
-      // Fallback to schoolId for backward compatibility (Requirement 22.1)
-      query = query.where('schoolId', '==', contactId.schoolId) as any;
+    } else if (contactId.entityId) {
+      // Fallback to entityId for backward compatibility (Requirement 22.1)
+      query = query.where('entityId', '==', contactId.entityId) as any;
     } else {
       // No contact identifier provided, return empty array
       return [];
@@ -99,8 +99,8 @@ export async function cloneSurvey(surveyId: string, userId: string) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       // Preserve dual-write fields from original survey
-      schoolId: originalData.schoolId || null,
-      schoolName: originalData.schoolName || null,
+      entityId: originalData.entityId || null,
+      entityName: originalData.entityName || null,
       entityId: originalData.entityId || null,
     };
 
@@ -120,7 +120,7 @@ export async function cloneSurvey(surveyId: string, userId: string) {
 
     // Log activity
     await logActivity({
-      schoolId: '', 
+      entityId: '', 
       organizationId: 'default',
       userId,
       workspaceId: '',
@@ -153,7 +153,7 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
     try {
         await batch.commit();
         await logActivity({
-            schoolId: '',
+            entityId: '',
             organizationId: 'default',
             userId,
             workspaceId: '',
@@ -167,5 +167,63 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
     } catch (error: any) {
         console.error("Delete Responses Error:", error);
         return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Submits a public survey response using the Admin SDK.
+ * Bypasses client-side security rules to ensure reliability for public paths.
+ */
+export async function submitPublicSurveyResponse(surveyId: string, responseData: any, sessionId?: string | null) {
+  try {
+    const surveyRef = adminDb.collection('surveys').doc(surveyId);
+    
+    // 1. Add the response to the subcollection
+    const docRef = await surveyRef.collection('responses').add({
+      ...responseData,
+      submittedAt: new Date().toISOString()
+    });
+
+    // 2. If session exists, mark as submitted
+    if (sessionId) {
+      await adminDb.collection('survey_sessions').doc(sessionId).set({
+        isSubmitted: true,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
+
+    return { success: true, id: docRef.id };
+  } catch (error: any) {
+    console.error("Submit Public Survey Response Error:", error);
+    return { success: false, error: error.message || "Failed to submit response." };
+  }
+}
+
+/**
+ * Triggers a survey webhook from the server.
+ * Ensures the webhook endpoint is protected from public read access.
+ */
+export async function triggerSurveyWebhook(webhookId: string, payload: any) {
+    try {
+        const webhookDoc = await adminDb.collection('webhooks').doc(webhookId).get();
+        if (!webhookDoc.exists) {
+            return { success: false, error: "Webhook endpoint not found." };
+        }
+        
+        const webhook = webhookDoc.data() as Webhook;
+        const res = await fetch(webhook.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            return { success: false, error: `Webhook failed with status ${res.status}` };
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Trigger Webhook Error:", error);
+        return { success: false, error: error.message || "Failed to trigger webhook." };
     }
 }

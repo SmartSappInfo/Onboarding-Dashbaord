@@ -43,13 +43,13 @@ const DEFAULTS: Record<string, MeetingHeroDefaults> = {
  */
 export function getHeroTitle(
   meetingTypeId: string,
-  schoolName: string,
+  entityName: string,
   override?: string,
 ): string {
   if (override) return override;
   const d = DEFAULTS[meetingTypeId];
   const raw = d?.title ?? 'Upcoming Session';
-  return raw.replace(/\{\{school\}\}/g, schoolName);
+  return raw.replace(/\{\{school\}\}/g, entityName);
 }
 
 /**
@@ -57,13 +57,13 @@ export function getHeroTitle(
  */
 export function getHeroDescription(
   meetingTypeId: string,
-  schoolName: string,
+  entityName: string,
   override?: string,
 ): string {
   if (override) return override;
   const d = DEFAULTS[meetingTypeId];
   const raw = d?.description ?? '';
-  return raw.replace(/\{\{school\}\}/g, schoolName);
+  return raw.replace(/\{\{school\}\}/g, entityName);
 }
 
 /**

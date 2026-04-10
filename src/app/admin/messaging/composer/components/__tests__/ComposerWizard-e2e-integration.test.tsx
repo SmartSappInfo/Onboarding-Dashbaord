@@ -127,7 +127,7 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                     senderProfileId,
                     recipient: '',
                     variables,
-                    schoolId: entityId,
+                    entityId: entityId,
                 });
             }
 
@@ -137,21 +137,21 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                 senderProfileId: 'sender-1',
                 recipient: '',
                 variables: { greeting: 'Hello' },
-                schoolId: 'entity-1',
+                entityId: 'entity-1',
             });
             expect(mockSendMessage).toHaveBeenNthCalledWith(2, {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 recipient: '',
                 variables: { greeting: 'Hello' },
-                schoolId: 'entity-2',
+                entityId: 'entity-2',
             });
             expect(mockSendMessage).toHaveBeenNthCalledWith(3, {
                 templateId: 'template-1',
                 senderProfileId: 'sender-1',
                 recipient: '',
                 variables: { greeting: 'Hello' },
-                schoolId: 'entity-3',
+                entityId: 'entity-3',
             });
         });
 
@@ -168,13 +168,13 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                 senderProfileId: 'sender-1',
                 recipient: '',
                 variables: {},
-                schoolId: entityId,
+                entityId: entityId,
             });
 
             expect(mockSendMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
                     recipient: '',
-                    schoolId: 'entity-1',
+                    entityId: 'entity-1',
                 })
             );
         });
@@ -198,7 +198,7 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                     senderProfileId: 'sender-1',
                     recipient: '',
                     variables: {},
-                    schoolId: entityId,
+                    entityId: entityId,
                 });
 
                 if (result.success) {
@@ -237,7 +237,7 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                     senderProfileId: 'sender-1',
                     recipient: '',
                     variables: {},
-                    schoolId: entityId,
+                    entityId: entityId,
                 });
 
                 if (result.success && result.logId) {
@@ -477,7 +477,7 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                     senderProfileId: 'sender-1',
                     recipient: '',
                     variables: {},
-                    schoolId: entityId,
+                    entityId: entityId,
                 });
 
                 if (result.success) {
@@ -536,7 +536,7 @@ describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
                     senderProfileId: 'sender-1',
                     recipient: '',
                     variables: {},
-                    schoolId: entityId,
+                    entityId: entityId,
                 });
 
                 if (result.success) {

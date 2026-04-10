@@ -70,7 +70,7 @@ const getStatusBadgeVariant = (status: any) => {
     }
 }
 
-export default function SchoolsClient() {
+export default function EntitiesClient() {
   const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
@@ -218,9 +218,9 @@ export default function SchoolsClient() {
       setSortConfig({ key, direction });
   };
 
-  const toggleSchoolSelection = (schoolId: string) => {
+  const toggleSchoolSelection = (entityId: string) => {
     setSelectedSchoolIds(prev =>
-      prev.includes(schoolId) ? prev.filter(id => id !== schoolId) : [...prev, schoolId]
+      prev.includes(entityId) ? prev.filter(id => id !== entityId) : [...prev, entityId]
     );
   };
 
@@ -253,18 +253,18 @@ export default function SchoolsClient() {
                         </Button>
                     )}
                     <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
-                        <Link href="/admin/schools/upload">
+                        <Link href="/admin/entities/upload">
                             <FileUp className="mr-2 h-4 w-4" />
                             Bulk Import
                         </Link>
                     </Button>
                     <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95 text-white">
-                        <Link href="/admin/schools/new/ai">
+                        <Link href="/admin/entities/new/ai">
                             <Sparkles className="h-4 w-4" /> AI Architect
                         </Link>
                     </RainbowButton>
                     <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
-                        <Link href="/admin/schools/new">
+                        <Link href="/admin/entities/new">
                             <PlusCircle className="mr-2 h-5 w-5" />
                             Add New School
                         </Link>
@@ -354,7 +354,7 @@ export default function SchoolsClient() {
                             </TableCell>
                             <TableCell className="py-4">
                                 <div className="flex flex-col text-left gap-1">
-                                    <Link href={`/admin/schools/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
+                                    <Link href={`/admin/entities/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
                                     <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
                                         <User className="h-2 w-2" /> {signatory?.name || 'No Primary Contact'}
                                     </span>
@@ -420,7 +420,7 @@ export default function SchoolsClient() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
                                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/schools/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">View Console</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">View Console</span></Link></DropdownMenuItem>
                                     
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
                                         <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" /></div>
@@ -439,10 +439,10 @@ export default function SchoolsClient() {
 
                                     <DropdownMenuSeparator className="my-2" />
                                     
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/schools/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Edit Profile</span></Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?schoolId=${school.id}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Edit Profile</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${school.id}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
-                                        <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
+                                        <Link href={`/admin/messaging/composer?entityId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
                                             <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
                                             <span className="font-bold text-sm">Send Message</span>
                                         </Link>

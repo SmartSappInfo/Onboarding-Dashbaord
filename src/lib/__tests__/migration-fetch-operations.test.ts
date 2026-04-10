@@ -5,10 +5,10 @@
  * - tasks, activities, forms, invoices, meetings, surveys, message_logs, pdfs, automation_logs
  * 
  * Validates:
- * - Fetch identifies records with schoolId but no entityId
+ * - Fetch identifies records with entityId but no entityId
  * - Fetch returns correct counts and sample records
  * - Fetch identifies invalid records
- * - Special handling for meetings collection (schoolSlug)
+ * - Special handling for meetings collection (entitySlug)
  * 
  * Requirements: 18.1, 18.2, 18.3, 18.4
  * Task: 6.1, 6.2
@@ -35,7 +35,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
   });
 
   describe('Task 6.1: Fetch for tasks collection', () => {
-    it('should query tasks where schoolId exists and entityId is null', async () => {
+    it('should query tasks where entityId exists and entityId is null', async () => {
       const engine = createMigrationEngine(mockFirestore);
       
       // Mock the fetch implementation
@@ -44,14 +44,14 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 100,
         recordsToMigrate: 45,
         sampleRecords: [
-          { id: 'task_1', schoolId: 'school_1', title: 'Task 1', priority: 'high' },
-          { id: 'task_2', schoolId: 'school_2', title: 'Task 2', priority: 'medium' },
-          { id: 'task_3', schoolId: 'school_3', title: 'Task 3', priority: 'low' },
-          { id: 'task_4', schoolId: 'school_4', title: 'Task 4', priority: 'urgent' },
-          { id: 'task_5', schoolId: 'school_5', title: 'Task 5', priority: 'high' },
+          { id: 'task_1', entityId: 'school_1', title: 'Task 1', priority: 'high' },
+          { id: 'task_2', entityId: 'school_2', title: 'Task 2', priority: 'medium' },
+          { id: 'task_3', entityId: 'school_3', title: 'Task 3', priority: 'low' },
+          { id: 'task_4', entityId: 'school_4', title: 'Task 4', priority: 'urgent' },
+          { id: 'task_5', entityId: 'school_5', title: 'Task 5', priority: 'high' },
         ],
         invalidRecords: [
-          { id: 'task_invalid', reason: 'Missing both schoolId and entityId' },
+          { id: 'task_invalid', reason: 'Missing both entityId and entityId' },
         ],
       });
 
@@ -62,12 +62,12 @@ describe('Migration Fetch Operations - Integration Tests', () => {
       
       // Validate: Returns sample records (first 5)
       expect(result.sampleRecords).toHaveLength(5);
-      expect(result.sampleRecords[0].schoolId).toBe('school_1');
-      expect(result.sampleRecords[4].schoolId).toBe('school_5');
+      expect(result.sampleRecords[0].entityId).toBe('school_1');
+      expect(result.sampleRecords[4].entityId).toBe('school_5');
       
       // Validate: Identifies invalid records
       expect(result.invalidRecords).toHaveLength(1);
-      expect(result.invalidRecords[0].reason).toBe('Missing both schoolId and entityId');
+      expect(result.invalidRecords[0].reason).toBe('Missing both entityId and entityId');
     });
 
     it('should return total record count', async () => {
@@ -113,11 +113,11 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 200,
         recordsToMigrate: 80,
         sampleRecords: [
-          { id: 'activity_1', schoolId: 'school_1', type: 'call' },
-          { id: 'activity_2', schoolId: 'school_2', type: 'email' },
-          { id: 'activity_3', schoolId: 'school_3', type: 'meeting' },
-          { id: 'activity_4', schoolId: 'school_4', type: 'note' },
-          { id: 'activity_5', schoolId: 'school_5', type: 'status_change' },
+          { id: 'activity_1', entityId: 'school_1', type: 'call' },
+          { id: 'activity_2', entityId: 'school_2', type: 'email' },
+          { id: 'activity_3', entityId: 'school_3', type: 'meeting' },
+          { id: 'activity_4', entityId: 'school_4', type: 'note' },
+          { id: 'activity_5', entityId: 'school_5', type: 'status_change' },
         ],
         invalidRecords: [],
       });
@@ -137,8 +137,8 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 50,
         recordsToMigrate: 25,
         sampleRecords: [
-          { id: 'form_1', schoolId: 'school_1', title: 'Form 1' },
-          { id: 'form_2', schoolId: 'school_2', title: 'Form 2' },
+          { id: 'form_1', entityId: 'school_1', title: 'Form 1' },
+          { id: 'form_2', entityId: 'school_2', title: 'Form 2' },
         ],
         invalidRecords: [],
       });
@@ -157,8 +157,8 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 150,
         recordsToMigrate: 60,
         sampleRecords: [
-          { id: 'invoice_1', schoolId: 'school_1', invoiceNumber: 'INV-001' },
-          { id: 'invoice_2', schoolId: 'school_2', invoiceNumber: 'INV-002' },
+          { id: 'invoice_1', entityId: 'school_1', invoiceNumber: 'INV-001' },
+          { id: 'invoice_2', entityId: 'school_2', invoiceNumber: 'INV-002' },
         ],
         invalidRecords: [],
       });
@@ -169,7 +169,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
       expect(result.recordsToMigrate).toBe(60);
     });
 
-    it('should fetch meetings collection using schoolSlug', async () => {
+    it('should fetch meetings collection using entitySlug', async () => {
       const engine = createMigrationEngine(mockFirestore);
       
       vi.spyOn(engine as any, 'fetchCollection').mockResolvedValue({
@@ -177,12 +177,12 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 75,
         recordsToMigrate: 30,
         sampleRecords: [
-          { id: 'meeting_1', schoolSlug: 'school-slug-1', title: 'Meeting 1' },
-          { id: 'meeting_2', schoolSlug: 'school-slug-2', title: 'Meeting 2' },
-          { id: 'meeting_3', schoolSlug: 'school-slug-3', title: 'Meeting 3' },
+          { id: 'meeting_1', entitySlug: 'school-slug-1', title: 'Meeting 1' },
+          { id: 'meeting_2', entitySlug: 'school-slug-2', title: 'Meeting 2' },
+          { id: 'meeting_3', entitySlug: 'school-slug-3', title: 'Meeting 3' },
         ],
         invalidRecords: [
-          { id: 'meeting_invalid', reason: 'Missing both schoolSlug and entityId' },
+          { id: 'meeting_invalid', reason: 'Missing both entitySlug and entityId' },
         ],
       });
 
@@ -190,9 +190,9 @@ describe('Migration Fetch Operations - Integration Tests', () => {
 
       expect(result.collection).toBe('meetings');
       expect(result.recordsToMigrate).toBe(30);
-      // Validate special case: meetings use schoolSlug
-      expect(result.sampleRecords[0].schoolSlug).toBeDefined();
-      expect(result.invalidRecords[0].reason).toContain('schoolSlug');
+      // Validate special case: meetings use entitySlug
+      expect(result.sampleRecords[0].entitySlug).toBeDefined();
+      expect(result.invalidRecords[0].reason).toContain('entitySlug');
     });
 
     it('should fetch surveys collection', async () => {
@@ -203,7 +203,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 40,
         recordsToMigrate: 20,
         sampleRecords: [
-          { id: 'survey_1', schoolId: 'school_1', title: 'Survey 1' },
+          { id: 'survey_1', entityId: 'school_1', title: 'Survey 1' },
         ],
         invalidRecords: [],
       });
@@ -222,8 +222,8 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 500,
         recordsToMigrate: 200,
         sampleRecords: [
-          { id: 'msg_1', schoolId: 'school_1', messageType: 'email' },
-          { id: 'msg_2', schoolId: 'school_2', messageType: 'sms' },
+          { id: 'msg_1', entityId: 'school_1', messageType: 'email' },
+          { id: 'msg_2', entityId: 'school_2', messageType: 'sms' },
         ],
         invalidRecords: [],
       });
@@ -242,7 +242,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 80,
         recordsToMigrate: 40,
         sampleRecords: [
-          { id: 'pdf_1', schoolId: 'school_1', title: 'PDF 1' },
+          { id: 'pdf_1', entityId: 'school_1', title: 'PDF 1' },
         ],
         invalidRecords: [],
       });
@@ -261,8 +261,8 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 300,
         recordsToMigrate: 150,
         sampleRecords: [
-          { id: 'log_1', schoolId: 'school_1', automationId: 'auto_1' },
-          { id: 'log_2', schoolId: 'school_2', automationId: 'auto_2' },
+          { id: 'log_1', entityId: 'school_1', automationId: 'auto_1' },
+          { id: 'log_2', entityId: 'school_2', automationId: 'auto_2' },
         ],
         invalidRecords: [],
       });
@@ -367,7 +367,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 100,
         recordsToMigrate: 45,
         sampleRecords: [
-          { id: 'task_1', schoolId: 'school_1', title: 'Task 1' },
+          { id: 'task_1', entityId: 'school_1', title: 'Task 1' },
         ],
         invalidRecords: [],
       };
@@ -465,7 +465,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         recordsToMigrate: 100,
         sampleRecords: Array.from({ length: 5 }, (_, i) => ({
           id: `task_${i + 1}`,
-          schoolId: `school_${i + 1}`,
+          entityId: `school_${i + 1}`,
           title: `Task ${i + 1}`,
         })),
         invalidRecords: [],
@@ -486,9 +486,9 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         totalRecords: 3,
         recordsToMigrate: 3,
         sampleRecords: [
-          { id: 'task_1', schoolId: 'school_1', title: 'Task 1' },
-          { id: 'task_2', schoolId: 'school_2', title: 'Task 2' },
-          { id: 'task_3', schoolId: 'school_3', title: 'Task 3' },
+          { id: 'task_1', entityId: 'school_1', title: 'Task 1' },
+          { id: 'task_2', entityId: 'school_2', title: 'Task 2' },
+          { id: 'task_3', entityId: 'school_3', title: 'Task 3' },
         ],
         invalidRecords: [],
       });
@@ -509,15 +509,15 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         recordsToMigrate: 8,
         sampleRecords: [],
         invalidRecords: [
-          { id: 'task_invalid_1', reason: 'Missing both schoolId and entityId' },
-          { id: 'task_invalid_2', reason: 'Missing both schoolId and entityId' },
+          { id: 'task_invalid_1', reason: 'Missing both entityId and entityId' },
+          { id: 'task_invalid_2', reason: 'Missing both entityId and entityId' },
         ],
       });
 
       const result = await engine.fetchCollection('tasks');
 
       expect(result.invalidRecords).toHaveLength(2);
-      expect(result.invalidRecords[0].reason).toBe('Missing both schoolId and entityId');
+      expect(result.invalidRecords[0].reason).toBe('Missing both entityId and entityId');
     });
 
     it('should provide record IDs for invalid records', async () => {
@@ -529,7 +529,7 @@ describe('Migration Fetch Operations - Integration Tests', () => {
         recordsToMigrate: 4,
         sampleRecords: [],
         invalidRecords: [
-          { id: 'task_broken', reason: 'Missing both schoolId and entityId' },
+          { id: 'task_broken', reason: 'Missing both entityId and entityId' },
         ],
       });
 

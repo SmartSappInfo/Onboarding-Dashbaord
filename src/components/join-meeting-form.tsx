@@ -23,12 +23,12 @@ const formSchema = z.object({
 
 interface JoinMeetingFormProps {
   meetingId: string;
-  schoolId: string;
+  entityId: string;
   meetingLink: string;
   meetingTime: string;
 }
 
-export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meetingTime }: JoinMeetingFormProps) {
+export default function JoinMeetingForm({ meetingId, entityId, meetingLink, meetingTime }: JoinMeetingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMeetingTime, setIsMeetingTime] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -75,7 +75,7 @@ export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meet
         
         await addDoc(attendeesCollection, {
             meetingId,
-            schoolId,
+            entityId,
             parentName: data.name,
             childrenNames: children,
             joinedAt: new Date().toISOString(),

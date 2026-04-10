@@ -14,7 +14,7 @@ import { logActivity } from './activity-logger';
  * FIRESTORE INDEXES REQUIRED (Requirement 22.3):
  * - invoices: (organizationId ASC, entityId ASC, status ASC)
  * - invoices: (workspaceIds ARRAY, entityId ASC, createdAt DESC)
- * - invoices: (workspaceIds ARRAY, schoolId ASC, createdAt DESC) [legacy fallback]
+ * - invoices: (workspaceIds ARRAY, entityId ASC, createdAt DESC) [legacy fallback]
  */
 
 /**
@@ -33,14 +33,14 @@ export async function getPublicInvoiceAction(id: string) {
 }
 
 /**
- * Fetches invoices for a specific contact (by entityId or schoolId).
+ * Fetches invoices for a specific contact (by entityId or entityId).
  * Supports query fallback pattern (Requirement 8.4, 22.1).
  * 
- * @param contactIdentifier - Object with either entityId or schoolId
+ * @param contactIdentifier - Object with either entityId or entityId
  * @param workspaceId - Optional workspace filter
  */
 export async function getInvoicesForContactAction(
-    contactIdentifier: { entityId?: string; schoolId?: string },
+    contactIdentifier: { entityId?: string; entityId?: string },
     workspaceId?: string
 ) {
     try {
@@ -50,10 +50,10 @@ export async function getInvoicesForContactAction(
         // Prefer entityId when both are provided (Requirement 22.1)
         if (contactIdentifier.entityId) {
             query = query.where('entityId', '==', contactIdentifier.entityId) as any;
-        } else if (contactIdentifier.schoolId) {
-            query = query.where('schoolId', '==', contactIdentifier.schoolId) as any;
+        } else if (contactIdentifier.entityId) {
+            query = query.where('entityId', '==', contactIdentifier.entityId) as any;
         } else {
-            throw new Error("Either entityId or schoolId must be provided");
+            throw new Error("Either entityId or entityId must be provided");
         }
         
         // Add workspace filter if provided
@@ -77,9 +77,9 @@ export async function getInvoicesForContactAction(
 
 /**
  * Generates a draft invoice for a specific contact (school or entity) and period using a selected profile.
- * Supports dual-write pattern: accepts either schoolId or entityId, populates both when available.
+ * Supports dual-write pattern: accepts either entityId or entityId, populates both when available.
  * 
- * @param contactId - Either schoolId (legacy) or entityId (new)
+ * @param contactId - Either entityId (legacy) or entityId (new)
  * @param periodId - Billing period ID
  * @param profileId - Billing profile ID
  * @param userId - User creating the invoice
@@ -108,14 +108,14 @@ export async function generateInvoiceAction(
         const period = periodSnap.data() as BillingPeriod;
 
         // Use adapter to resolve contact from either schools or entities + workspace_entities
-        // This supports both legacy schoolId and new entityId
+        // This supports both legacy entityId and new entityId
         const contact = await resolveContact(contactId, activeWorkspaceId);
         if (!contact || !contact.schoolData) throw new Error("Institutional record missing.");
         
         const school = contact.schoolData;
         
         // Dual-write: Extract both identifiers for backward compatibility
-        const schoolId = school.id;
+        const entityId = school.id;
         const entityId = contact.entityId || null;
         const entityType = contact.entityType || null;
 
@@ -141,8 +141,8 @@ export async function generateInvoiceAction(
         const invoiceData: Omit<Invoice, 'id'> = {
             invoiceNumber,
             // Dual-write: populate both legacy and new fields
-            schoolId,
-            schoolName: school.name,
+            entityId,
+            entityName: school.name,
             entityId,
             entityType,
             periodId,
@@ -183,7 +183,6 @@ export async function generateInvoiceAction(
         
         // Log activity with dual-write support
         await logActivity({
-            schoolId,
             entityId,
             organizationId: school.organizationId || 'default',
             userId,
@@ -220,8 +219,7 @@ export async function updateInvoiceAction(id: string, updates: Partial<Invoice>,
         const safeUpdates = {
             ...updates,
             // Ensure these fields are not accidentally removed
-            schoolId: updates.schoolId ?? existingInvoice.schoolId,
-            entityId: updates.entityId ?? existingInvoice.entityId,
+            entityId: updates.entityId ?? existingInvoice.entityId: updates.entityId ?? existingInvoice.entityId,
             entityType: updates.entityType ?? existingInvoice.entityType,
             updatedAt: new Date().toISOString()
         };

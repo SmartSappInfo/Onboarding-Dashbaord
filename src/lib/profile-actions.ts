@@ -14,7 +14,7 @@ import type { FocalPerson, EntityType } from './types';
  */
 
 interface UpdateProfileInput {
-  schoolId: string;
+  entityId: string;
   entityId?: string;
   workspaceId: string;
   updates: {
@@ -46,7 +46,7 @@ interface UpdateProfileInput {
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<{ success: boolean; error?: string }> {
   try {
-    const { schoolId, entityId, workspaceId, updates } = input;
+    const { entityId, workspaceId, updates } = input;
     
     // Separate identity and operational fields
     const identityFields: Record<string, any> = {};
@@ -93,7 +93,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
     }
     
     // Always update legacy schools collection for backward compatibility
-    const schoolRef = adminDb.collection('schools').doc(schoolId);
+    const schoolRef = adminDb.collection('schools').doc(entityId);
     await schoolRef.update({
       ...legacyFields,
       ...identityFields,

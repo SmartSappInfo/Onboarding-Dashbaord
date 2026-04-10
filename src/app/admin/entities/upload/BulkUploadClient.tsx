@@ -109,7 +109,7 @@ export default function BulkUploadClient() {
     const [isAiMapping, setIsAiMapping] = React.useState(false);
     
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
-    const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; schoolName?: string; error?: string }[]>([]);
+    const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
     const [currentRowIdx, setCurrentRowIdx] = React.useState(0);
     const [failedRowIndices, setFailedRowIndices] = React.useState<number[]>([]);
 
@@ -224,7 +224,7 @@ export default function BulkUploadClient() {
                     fileName
                 );
                 if (res.success) {
-                    setExecutionResults(p => [...p, { row: actualIdx, status: 'success', schoolName: res.schoolName }]);
+                    setExecutionResults(p => [...p, { row: actualIdx, status: 'success', entityName: res.entityName }]);
                 } else {
                     freshFailedIndices.push(actualIdx);
                     setExecutionResults(p => [...p, { row: actualIdx, status: 'error', error: res.error }]);
@@ -333,7 +333,7 @@ export default function BulkUploadClient() {
                                         <div><p className="text-sm font-black uppercase text-muted-foreground mb-1">Success Rate</p><p className="text-4xl font-black text-emerald-600">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p></div>
                                         {failedRowIndices.length > 0 && <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="h-14 px-8 rounded-xl font-black uppercase tracking-widest text-xs gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"><AlertCircle size={16} /> Manage {failedRowIndices.length} Failures</Button>}
                                     </div>
-                                    <Button onClick={() => router.push('/admin/schools')} className="h-16 px-16 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Open Directory <ArrowRight className="ml-2" /></Button>
+                                    <Button onClick={() => router.push('/admin/entities')} className="h-16 px-16 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Open Directory <ArrowRight className="ml-2" /></Button>
                                 </CardContent>
                             </Card>
                         </motion.div>

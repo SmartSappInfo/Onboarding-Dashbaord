@@ -4,10 +4,10 @@
  * Tests for Task 34.3: Write server action tests
  * 
  * Validates:
- * - Server actions accept both identifiers (entityId and schoolId)
+ * - Server actions accept both identifiers (entityId and entityId)
  * - Server actions use entityId for operations
  * - Contact Adapter integration
- * - Backward compatibility with schoolId
+ * - Backward compatibility with entityId
  * 
  * Requirements: 26.2
  */
@@ -138,7 +138,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         );
       });
 
-      it('should accept schoolId parameter in createTaskAction', async () => {
+      it('should accept entityId parameter in createTaskAction', async () => {
         mockAdd.mockResolvedValue({ id: 'task_2' });
         
         const mockContact: ResolvedContact = {
@@ -176,19 +176,19 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           organizationId: 'org_1',
           assignedTo: 'user_1',
           dueDate: new Date().toISOString(),
-          schoolId: 'school_1',
+          entityId: 'school_1',
           reminders: [],
           reminderSent: false,
         });
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
       });
 
-      it('should accept both entityId and schoolId in createTaskAction', async () => {
+      it('should accept both entityId and entityId in createTaskAction', async () => {
         mockAdd.mockResolvedValue({ id: 'task_3' });
         
         const mockContact: ResolvedContact = {
@@ -228,15 +228,14 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           organizationId: 'org_1',
           assignedTo: 'user_1',
           dueDate: new Date().toISOString(),
-          entityId: 'entity_1',
-          schoolId: 'school_1',
+          entityId: 'school_1',
           reminders: [],
           reminderSent: false,
         });
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
-          { entityId: 'entity_1', schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
       });
@@ -252,15 +251,15 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
       });
 
-      it('should accept schoolId in getTasksForContact', async () => {
+      it('should accept entityId in getTasksForContact', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getTasksForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
     });
 
@@ -269,17 +268,17 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getTasksForContact(
-          { entityId: 'entity_1', schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         // Should query by entityId (preferred)
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
-        // Should NOT query by schoolId when entityId present
-        expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        // Should NOT query by entityId when entityId present
+        expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
-      it('should populate entityId in created tasks when resolved from schoolId', async () => {
+      it('should populate entityId in created tasks when resolved from entityId', async () => {
         mockAdd.mockResolvedValue({ id: 'task_4' });
         
         const mockContact: ResolvedContact = {
@@ -319,7 +318,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           organizationId: 'org_1',
           assignedTo: 'user_1',
           dueDate: new Date().toISOString(),
-          schoolId: 'school_1',
+          entityId: 'school_1',
           reminders: [],
           reminderSent: false,
         });
@@ -385,7 +384,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(resolveContact).toHaveBeenCalled();
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            schoolName: 'Resolved Entity',
+            entityName: 'Resolved Entity',
             entityType: 'family',
           })
         );
@@ -413,9 +412,8 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            entityId: 'entity_nonexistent',
-            schoolId: null,
-            schoolName: null,
+            entityId: null,
+            entityName: null,
             entityType: null,
           })
         );
@@ -459,19 +457,19 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           organizationId: 'org_1',
           assignedTo: 'user_1',
           dueDate: new Date().toISOString(),
-          schoolId: 'school_1',
+          entityId: 'school_1',
           reminders: [],
           reminderSent: false,
         });
 
         expect(resolveContact).toHaveBeenCalledWith(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            schoolId: 'school_1',
-            schoolName: 'Legacy School',
+            entityId: 'school_1',
+            entityName: 'Legacy School',
             entityId: null,
             entityType: null,
           })
@@ -480,7 +478,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
     });
 
     describe('Backward Compatibility', () => {
-      it('should support legacy schoolId-only tasks', async () => {
+      it('should support legacy entityId-only tasks', async () => {
         mockAdd.mockResolvedValue({ id: 'task_8' });
         
         const legacyContact: ResolvedContact = {
@@ -518,7 +516,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           organizationId: 'org_1',
           assignedTo: 'user_1',
           dueDate: new Date().toISOString(),
-          schoolId: 'school_1',
+          entityId: 'school_1',
           reminders: [],
           reminderSent: false,
         });
@@ -526,18 +524,17 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            schoolId: 'school_1',
             entityId: null,
           })
         );
       });
 
-      it('should query by schoolId for legacy records', async () => {
+      it('should query by entityId for legacy records', async () => {
         const mockTasks = [
           {
             id: 'task_1',
             title: 'Legacy Task',
-            schoolId: 'school_1',
+            entityId: 'school_1',
             workspaceId: 'workspace_1',
           },
         ];
@@ -550,15 +547,15 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getTasksForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(results).toHaveLength(1);
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
-      it('should maintain schoolId field during migration period', async () => {
+      it('should maintain entityId field during migration period', async () => {
         mockAdd.mockResolvedValue({ id: 'task_9' });
         
         const migratedContact: ResolvedContact = {
@@ -606,7 +603,6 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         // Verify both identifiers are present (dual-write)
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            schoolId: 'school_1',
             entityId: 'entity_1',
           })
         );
@@ -632,7 +628,6 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            schoolId: null,
             entityId: null,
             entityType: null,
           })
@@ -654,29 +649,29 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
       });
 
-      it('should accept schoolId in getActivitiesForContact', async () => {
+      it('should accept entityId in getActivitiesForContact', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getActivitiesForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
     });
 
     describe('Use EntityId for Operations', () => {
-      it('should prefer entityId over schoolId in queries', async () => {
+      it('should prefer entityId over entityId in queries', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getActivitiesForContact(
-          { entityId: 'entity_1', schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
-        expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
       it('should return activities ordered by timestamp', async () => {
@@ -707,12 +702,12 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
     });
 
     describe('Backward Compatibility', () => {
-      it('should query legacy activities by schoolId', async () => {
+      it('should query legacy activities by entityId', async () => {
         const mockActivities = [
           {
             id: 'activity_2',
             type: 'email',
-            schoolId: 'school_1',
+            entityId: 'school_1',
             timestamp: '2024-01-01T00:00:00Z',
           },
         ];
@@ -725,12 +720,12 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getActivitiesForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(results).toHaveLength(1);
-        expect(results[0].schoolId).toBe('school_1');
+        expect(results[0].entityId).toBe('school_1');
       });
 
       it('should return empty array when no identifier provided', async () => {
@@ -760,17 +755,17 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
       });
 
-      it('should accept schoolId in loadSettings', async () => {
+      it('should accept entityId in loadSettings', async () => {
         mockGet.mockResolvedValue({
           docs: [],
         });
 
         await loadSettings(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
       it('should accept entityId in createSettings', async () => {
@@ -803,12 +798,12 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         await loadSettings(
-          { entityId: 'entity_1', schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
-        expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
       it('should use entityId for settings updates', async () => {
@@ -831,10 +826,10 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
     });
 
     describe('Backward Compatibility', () => {
-      it('should load settings by schoolId for legacy records', async () => {
+      it('should load settings by entityId for legacy records', async () => {
         const mockSettings = {
           id: 'settings_1',
-          schoolId: 'school_1',
+          entityId: 'school_1',
           workspaceId: 'workspace_1',
           settings: {},
         };
@@ -849,13 +844,13 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const result = await loadSettings(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(result).toBeTruthy();
-        // Result is EntitySettings which doesn't have schoolId directly
-        expect(mockSettings.schoolId).toBe('school_1');
+        // Result is EntitySettings which doesn't have entityId directly
+        expect(mockSettings.entityId).toBe('school_1');
       });
 
       it('should return null when settings not found', async () => {
@@ -886,15 +881,15 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
       });
 
-      it('should accept schoolId in getSurveysForContact', async () => {
+      it('should accept entityId in getSurveysForContact', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveysForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
       it('should accept entityId in getSurveyResponsesForContact', async () => {
@@ -908,29 +903,29 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
       });
 
-      it('should accept schoolId in getSurveyResponsesForContact', async () => {
+      it('should accept entityId in getSurveyResponsesForContact', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveyResponsesForContact(
           'survey_1',
-          { schoolId: 'school_1' }
+          { entityId: 'school_1' }
         );
 
-        expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
     });
 
     describe('Use EntityId for Operations', () => {
-      it('should prefer entityId over schoolId in survey queries', async () => {
+      it('should prefer entityId over entityId in survey queries', async () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getSurveysForContact(
-          { entityId: 'entity_1', schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
-        expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
 
       it('should prefer entityId in survey response queries', async () => {
@@ -938,21 +933,21 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         await getSurveyResponsesForContact(
           'survey_1',
-          { entityId: 'entity_1', schoolId: 'school_1' }
+          { entityId: 'school_1' }
         );
 
         expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_1');
-        expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+        expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
       });
     });
 
     describe('Backward Compatibility', () => {
-      it('should query surveys by schoolId for legacy records', async () => {
+      it('should query surveys by entityId for legacy records', async () => {
         const mockSurveys = [
           {
             id: 'survey_1',
             title: 'Legacy Survey',
-            schoolId: 'school_1',
+            entityId: 'school_1',
             workspaceId: 'workspace_1',
           },
         ];
@@ -965,12 +960,12 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         const results = await getSurveysForContact(
-          { schoolId: 'school_1' },
+          { entityId: 'school_1' },
           'workspace_1'
         );
 
         expect(results).toHaveLength(1);
-        expect(results[0].schoolId).toBe('school_1');
+        expect(results[0].entityId).toBe('school_1');
       });
 
       it('should return empty array when no identifier provided', async () => {
@@ -1033,8 +1028,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
       expect(taskResult.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_1',
-          schoolId: 'school_1',
+          entityId: 'school_1',
         })
       );
 
@@ -1076,8 +1070,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
       expect(taskResult.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_nonexistent',
-          schoolId: null,
+          entityId: null,
         })
       );
     });

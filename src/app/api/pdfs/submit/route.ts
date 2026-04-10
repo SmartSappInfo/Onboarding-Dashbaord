@@ -12,7 +12,7 @@ import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
-    const { pdfId, formData, schoolId: submittedSchoolId, entityId: submittedEntityId, entityType: submittedEntityType } = await req.json();
+    const { pdfId, formData, entityId: submittedEntityId, entityType: submittedEntityType } = await req.json();
 
     if (!pdfId || !formData) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });
@@ -31,19 +31,18 @@ export async function POST(req: Request) {
     }
 
     // Determine the target identifiers for contract logic (dual-write support)
-    const targetSchoolId = submittedSchoolId || pdfData.schoolId;
+    const targetSchoolId = submittedSchoolId || pdfData.entityId;
     const targetEntityId = submittedEntityId || pdfData.entityId;
     const targetEntityType = submittedEntityType || null;
 
     const timestamp = new Date().toISOString();
 
-    // Dual-write: populate both schoolId and entityId (Requirement 16.5)
+    // Dual-write: populate both entityId and entityId (Requirement 16.5)
     const submissionData = {
       pdfId,
       submittedAt: timestamp,
       formData,
       status: 'submitted',
-      schoolId: targetSchoolId || null,
       entityId: targetEntityId || null,
       entityType: targetEntityType
     };
@@ -56,7 +55,7 @@ export async function POST(req: Request) {
         console.log(`>>> [CONTRACT:SYNC] Closing agreement for school: ${targetSchoolId}`);
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol
-            .where('schoolId', '==', targetSchoolId)
+            .where('entityId', '==', targetSchoolId)
             .where('status', 'in', ['sent', 'draft', 'partially_signed'])
             .limit(1)
             .get();
@@ -72,7 +71,6 @@ export async function POST(req: Request) {
             
             // Use entityId for activity logging if available (Requirement 16.1)
             await logActivity({
-                schoolId: targetSchoolId,
                 entityId: targetEntityId || null,
                 organizationId: pdfData.organizationId || 'default',
                 userId: null,
@@ -122,7 +120,6 @@ export async function POST(req: Request) {
                     result_url,
                     download_url: result_url
                 },
-                schoolId: targetSchoolId || undefined,
                 entityId: targetEntityId || undefined, // Pass entityId for dual-write (Requirement 16.5)
                 workspaceId // Pass workspace context (Requirement 11)
             });
@@ -132,7 +129,7 @@ export async function POST(req: Request) {
     // 3. INTERNAL TEAM NOTIFICATION
     if (pdfData.adminAlertsEnabled) {
         await triggerInternalNotification({
-            schoolId: targetSchoolId || '',
+            entityId: targetSchoolId || '',
             notifyManager: pdfData.adminAlertNotifyManager,
             specificUserIds: pdfData.adminAlertSpecificUserIds,
             emailTemplateId: pdfData.adminAlertEmailTemplateId,
@@ -143,7 +140,7 @@ export async function POST(req: Request) {
                 form_name: pdfData.name,
                 submission_id: submissionId,
                 event_type: pdfData.isContractDocument ? 'Contract Signed' : 'Doc Signed',
-                school_name: pdfData.schoolName || 'Unknown'
+                school_name: pdfData.entityName || 'Unknown'
             }
         });
     }
@@ -151,7 +148,6 @@ export async function POST(req: Request) {
     // Log general activity if not already logged
     if (!pdfData.isContractDocument || !targetSchoolId) {
         await logActivity({
-            schoolId: targetSchoolId || '',
             entityId: targetEntityId || null,
             organizationId: pdfData.organizationId || 'default',
             userId: null,

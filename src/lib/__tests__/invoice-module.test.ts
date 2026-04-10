@@ -62,7 +62,7 @@ describe('Invoice Module Migration', () => {
   });
 
   describe('Invoice Creation with entityId (Requirement 8.1)', () => {
-    it('should create invoice with both schoolId and entityId when entity is migrated', async () => {
+    it('should create invoice with both entityId and entityId when entity is migrated', async () => {
       // Arrange
       const mockSchool: School = {
         id: 'school_123',
@@ -151,13 +151,13 @@ describe('Invoice Module Migration', () => {
       expect(mockAdd).toHaveBeenCalled();
       
       const invoiceData = mockAdd.mock.calls[0][0];
-      expect(invoiceData.schoolId).toBe('school_123');
+      expect(invoiceData.entityId).toBe('school_123');
       expect(invoiceData.entityId).toBe('entity_123');
       expect(invoiceData.entityType).toBe('institution');
-      expect(invoiceData.schoolName).toBe('Test School');
+      expect(invoiceData.entityName).toBe('Test School');
     });
 
-    it('should create invoice with schoolId only when entity is not migrated', async () => {
+    it('should create invoice with entityId only when entity is not migrated', async () => {
       // Arrange
       const mockSchool: School = {
         id: 'school_456',
@@ -246,7 +246,7 @@ describe('Invoice Module Migration', () => {
       expect(mockAdd).toHaveBeenCalled();
       
       const invoiceData = mockAdd.mock.calls[0][0];
-      expect(invoiceData.schoolId).toBe('school_456');
+      expect(invoiceData.entityId).toBe('school_456');
       expect(invoiceData.entityId).toBeNull();
       expect(invoiceData.entityType).toBeNull();
     });
@@ -258,8 +258,8 @@ describe('Invoice Module Migration', () => {
       const existingInvoice: Invoice = {
         id: 'invoice_123',
         invoiceNumber: 'INV-2024-ABC',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
+        entityId: 'school_123',
+        entityName: 'Test School',
         entityId: 'entity_123',
         entityType: 'institution',
         periodId: 'period_1',
@@ -314,7 +314,7 @@ describe('Invoice Module Migration', () => {
       expect(mockUpdate).toHaveBeenCalled();
       
       const updateData = mockUpdate.mock.calls[0][0];
-      expect(updateData.schoolId).toBe('school_123');
+      expect(updateData.entityId).toBe('school_123');
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
       expect(updateData.status).toBe('sent');
@@ -325,8 +325,8 @@ describe('Invoice Module Migration', () => {
       const existingInvoice: Invoice = {
         id: 'invoice_123',
         invoiceNumber: 'INV-2024-ABC',
-        schoolId: 'school_123',
-        schoolName: 'Test School',
+        entityId: 'school_123',
+        entityName: 'Test School',
         entityId: 'entity_123',
         entityType: 'institution',
         periodId: 'period_1',
@@ -383,7 +383,7 @@ describe('Invoice Module Migration', () => {
       // entityId should be preserved from existing invoice
       expect(updateData.entityId).toBe('entity_123');
       expect(updateData.entityType).toBe('institution');
-      expect(updateData.schoolId).toBe('school_123');
+      expect(updateData.entityId).toBe('school_123');
     });
   });
 
@@ -394,15 +394,13 @@ describe('Invoice Module Migration', () => {
         {
           id: 'invoice_1',
           invoiceNumber: 'INV-001',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           createdAt: '2024-01-01',
         },
         {
           id: 'invoice_2',
           invoiceNumber: 'INV-002',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           createdAt: '2024-02-01',
         },
       ];
@@ -435,13 +433,13 @@ describe('Invoice Module Migration', () => {
       expect(mockWhere).toHaveBeenCalledWith('workspaceIds', 'array-contains', 'workspace_1');
     });
 
-    it('should fallback to schoolId when entityId is not provided', async () => {
+    it('should fallback to entityId when entityId is not provided', async () => {
       // Arrange
       const mockInvoices = [
         {
           id: 'invoice_3',
           invoiceNumber: 'INV-003',
-          schoolId: 'school_456',
+          entityId: 'school_456',
           createdAt: '2024-01-01',
         },
       ];
@@ -463,24 +461,23 @@ describe('Invoice Module Migration', () => {
 
       // Act
       const result = await getInvoicesForContactAction(
-        { schoolId: 'school_456' },
+        { entityId: 'school_456' },
         'workspace_1'
       );
 
       // Assert
       expect(result.success).toBe(true);
       expect(result.invoices).toHaveLength(1);
-      expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_456');
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_456');
     });
 
-    it('should prefer entityId when both entityId and schoolId are provided', async () => {
+    it('should prefer entityId when both entityId and entityId are provided', async () => {
       // Arrange
       const mockInvoices = [
         {
           id: 'invoice_1',
           invoiceNumber: 'INV-001',
-          entityId: 'entity_123',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           createdAt: '2024-01-01',
         },
       ];
@@ -502,23 +499,23 @@ describe('Invoice Module Migration', () => {
 
       // Act
       const result = await getInvoicesForContactAction(
-        { entityId: 'entity_123', schoolId: 'school_123' }
+        { entityId: 'school_123' }
       );
 
       // Assert
       expect(result.success).toBe(true);
-      // Should use entityId, not schoolId
+      // Should use entityId, not entityId
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_123');
-      expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_123');
+      expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_123');
     });
 
-    it('should throw error when neither entityId nor schoolId is provided', async () => {
+    it('should throw error when neither entityId nor entityId is provided', async () => {
       // Act
       const result = await getInvoicesForContactAction({});
 
       // Assert
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Either entityId or schoolId must be provided');
+      expect(result.error).toContain('Either entityId or entityId must be provided');
     });
   });
 
@@ -582,7 +579,7 @@ describe('Invoice Module Migration', () => {
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
     });
 
-    it('should log activity with both schoolId and entityId', async () => {
+    it('should log activity with both entityId and entityId', async () => {
       // Arrange
       const mockSchool: School = {
         id: 'school_123',
@@ -669,7 +666,6 @@ describe('Invoice Module Migration', () => {
       // Assert
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123',
           entityId: 'entity_123',
           workspaceId: 'workspace_1',
         })
@@ -769,7 +765,7 @@ describe('Invoice Module Migration', () => {
       const invoiceData = mockAdd.mock.calls[0][0];
       
       // Verify entity information is included for PDF rendering
-      expect(invoiceData.schoolName).toBe('Test Institution');
+      expect(invoiceData.entityName).toBe('Test Institution');
       expect(invoiceData.entityId).toBe('entity_456');
       expect(invoiceData.entityType).toBe('institution');
       
@@ -875,8 +871,8 @@ describe('Invoice Module Migration', () => {
       const invoiceData = mockAdd.mock.calls[0][0];
       
       // Verify legacy school information is included for PDF
-      expect(invoiceData.schoolName).toBe('Legacy School');
-      expect(invoiceData.schoolId).toBe('school_legacy');
+      expect(invoiceData.entityName).toBe('Legacy School');
+      expect(invoiceData.entityId).toBe('school_legacy');
       expect(invoiceData.entityId).toBeNull();
       expect(invoiceData.entityType).toBeNull();
     });

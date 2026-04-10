@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FocalPersonManager } from '@/app/admin/schools/components/FocalPersonManager';
+import { FocalPersonManager } from '@/app/admin/entities/components/FocalPersonManager';
 
 const institutionFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),

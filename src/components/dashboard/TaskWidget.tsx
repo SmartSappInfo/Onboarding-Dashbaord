@@ -84,9 +84,9 @@ export function TaskWidget() {
                                                 <Clock className="h-2.5 w-2.5" />
                                                 {isTodayDue ? 'Today' : isOverdue ? 'Overdue' : format(new Date(task.dueDate), 'MMM d')}
                                             </div>
-                                            {task.schoolName && (
+                                            {task.entityName && (
                                                 <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-40 truncate">
-                                                    {task.schoolName}
+                                                    {task.entityName}
                                                 </span>
                                             )}
                                         </div>

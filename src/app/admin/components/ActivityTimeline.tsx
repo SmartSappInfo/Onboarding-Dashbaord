@@ -11,7 +11,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 
 interface ActivityTimelineProps {
-  schoolId?: string | null;
   entityId?: string | null; // Support filtering by entityId (Requirement 4.3)
   userId?: string | null;
   type?: string | null;
@@ -28,20 +27,32 @@ const DateSeparator = ({ date }: { date: string }) => {
     );
 };
 
-export default function ActivityTimeline({ schoolId, entityId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ entityId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useTenant();
 
   // HIGH PERFORMANCE: Fetch pool of workspace-specific activities (Requirement 12).
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
+    
+    // SERVER-SIDE OPTIMIZATION: If filtering by entityId, request a scoped stream (Requirement 4.3).
+    if (entityId && entityId !== 'all') {
+        return query(
+            collection(firestore, 'activities'),
+            where('workspaceId', '==', activeWorkspaceId),
+            where('entityId', '==', entityId),
+            orderBy('timestamp', 'desc'),
+            limit(dataLimit)
+        );
+    }
+
     return query(
         collection(firestore, 'activities'), 
         where('workspaceId', '==', activeWorkspaceId),
         orderBy('timestamp', 'desc'), 
         limit(200)
     );
-  }, [firestore, activeWorkspaceId]);
+  }, [firestore, activeWorkspaceId, entityId, dataLimit]);
 
   const { data: allActivities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
@@ -71,27 +82,18 @@ export default function ActivityTimeline({ schoolId, entityId, userId, type, zon
   }, [schools, zoneId]);
 
   // CLIENT-SIDE FILTERING: Refine the workspace-specific pool by sub-filters.
-  // Updated to support entityId filtering with schoolId fallback (Requirement 4.3, 4.5)
+  // Updated to support entityId filtering with entityId fallback (Requirement 4.3, 4.5)
   const filteredActivities = React.useMemo(() => {
     if (!allActivities) return [];
 
     let filtered = allActivities;
 
     if (zoneId && zoneId !== 'all' && schoolsInZone) {
-        filtered = filtered.filter(a => a.schoolId && schoolsInZone.has(a.schoolId));
+        filtered = filtered.filter(a => a.entityId && schoolsInZone.has(a.entityId));
     }
-    if (schoolId && schoolId !== 'all') {
-        filtered = filtered.filter(a => a.schoolId === schoolId);
-    }
-    // Filter by entityId with schoolId fallback (Requirement 4.3, 4.5)
+    // Filter by entityId (Requirement 4.3, 4.5)
     if (entityId && entityId !== 'all') {
-        filtered = filtered.filter(a => {
-            // Match by entityId if available
-            if (a.entityId === entityId) return true;
-            // Fallback: match by schoolId if entityId not set (legacy records)
-            if (!a.entityId && a.schoolId === entityId) return true;
-            return false;
-        });
+        filtered = filtered.filter(a => a.entityId === entityId);
     }
     if (userId && userId !== 'all') {
         filtered = filtered.filter(a => a.userId === userId);
@@ -101,7 +103,7 @@ export default function ActivityTimeline({ schoolId, entityId, userId, type, zon
     }
 
     return filtered.slice(0, dataLimit);
-  }, [allActivities, schoolId, entityId, userId, type, zoneId, schoolsInZone, dataLimit]);
+  }, [allActivities, entityId, userId, type, zoneId, schoolsInZone, dataLimit]);
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {
@@ -170,7 +172,7 @@ export default function ActivityTimeline({ schoolId, entityId, userId, type, zon
                               key={activity.id}
                               activity={activity}
                               user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                              showSchoolName={!schoolId || schoolId === 'all'}
+                              showSchoolName={!entityId || entityId === 'all'}
                            />
                       ))}
                     </div>

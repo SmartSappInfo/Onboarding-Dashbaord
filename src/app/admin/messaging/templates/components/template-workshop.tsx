@@ -467,7 +467,7 @@ export function TemplateWorkshop({
                 rawBody={resolvedPreviewHtml}
                 rawSubject={resolveVariables(subject, simVariables)}
                 variables={simVariables}
-                schoolId={simEntity === 'School' ? simRecordId : undefined}
+                entityId={simEntity === 'School' ? simRecordId : undefined}
             />
         </div>
     );

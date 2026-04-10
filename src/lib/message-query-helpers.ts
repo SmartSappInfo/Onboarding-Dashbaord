@@ -4,18 +4,18 @@ import { adminDb } from './firebase-admin';
 import type { MessageLog } from './types';
 
 /**
- * Query message logs by contact identifier (entityId or schoolId)
- * Supports fallback pattern: prefer entityId, fall back to schoolId
+ * Query message logs by contact identifier (entityId or entityId)
+ * Supports fallback pattern: prefer entityId, fall back to entityId
  * 
  * Requirements: 15.5, 22.1
  */
 export async function getMessagesForContact(params: {
   entityId?: string;
-  schoolId?: string;
+  entityId?: string;
   workspaceId: string;
   limit?: number;
 }): Promise<MessageLog[]> {
-  const { entityId, schoolId, workspaceId, limit: queryLimit = 50 } = params;
+  const { entityId, workspaceId, limit: queryLimit = 50 } = params;
 
   try {
     let query = adminDb
@@ -27,11 +27,11 @@ export async function getMessagesForContact(params: {
     // Prefer entityId when available (Requirement 22.1)
     if (entityId) {
       query = query.where('entityId', '==', entityId);
-    } else if (schoolId) {
-      // Fallback to schoolId for backward compatibility (Requirement 15.5)
-      query = query.where('schoolId', '==', schoolId);
+    } else if (entityId) {
+      // Fallback to entityId for backward compatibility (Requirement 15.5)
+      query = query.where('entityId', '==', entityId);
     } else {
-      throw new Error('Either entityId or schoolId must be provided');
+      throw new Error('Either entityId or entityId must be provided');
     }
 
     const snapshot = await query.get();
@@ -104,10 +104,10 @@ export async function getMessagesForEntities(params: {
  */
 export async function countMessagesForContact(params: {
   entityId?: string;
-  schoolId?: string;
+  entityId?: string;
   workspaceId: string;
 }): Promise<number> {
-  const { entityId, schoolId, workspaceId } = params;
+  const { entityId, workspaceId } = params;
 
   try {
     let query = adminDb
@@ -117,10 +117,10 @@ export async function countMessagesForContact(params: {
     // Prefer entityId when available
     if (entityId) {
       query = query.where('entityId', '==', entityId);
-    } else if (schoolId) {
-      query = query.where('schoolId', '==', schoolId);
+    } else if (entityId) {
+      query = query.where('entityId', '==', entityId);
     } else {
-      throw new Error('Either entityId or schoolId must be provided');
+      throw new Error('Either entityId or entityId must be provided');
     }
 
     const snapshot = await query.count().get();

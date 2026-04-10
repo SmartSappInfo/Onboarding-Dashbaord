@@ -242,7 +242,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
       .filter((id: string | null | undefined): id is string => Boolean(id))
   );
   
-  // Support both entityId (new) and schoolId (legacy) references in activities
+  // Support both entityId (new) and entityId (legacy) references in activities
   const activityEntityIds = new Set(
     activities
       .map((a: Activity) => a.entityId)
@@ -250,7 +250,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   );
   const activitySchoolIds = new Set(
     activities
-      .map((a: Activity) => a.schoolId)
+      .map((a: Activity) => a.entityId)
       .filter((id: string | null | undefined): id is string => Boolean(id))
   );
   
@@ -259,7 +259,7 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   // For activities with entityId, resolve from workspace_entities
   const recentActivityEntities = workspaceEntities.filter((we: any) => activityEntityIds.has(we.entityId));
   
-  // For activities with schoolId (legacy), resolve from schools
+  // For activities with entityId (legacy), resolve from schools
   const recentActivitySchools = schools.filter((s: School) => activitySchoolIds.has(s.id));
 
   return {

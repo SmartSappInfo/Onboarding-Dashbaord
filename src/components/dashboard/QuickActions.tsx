@@ -9,7 +9,7 @@ export function QuickActions() {
     <DashboardCard title="Quick Actions">
       <div className="grid grid-cols-2 gap-3">
         <Button asChild className="w-full justify-start gap-2">
-          <Link href="/admin/schools/new">
+          <Link href="/admin/entities/new">
             <PlusCircle className="h-4 w-4" /> Add School
           </Link>
         </Button>

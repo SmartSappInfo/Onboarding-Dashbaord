@@ -152,7 +152,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                     </div>
                     
                     <div className="mt-12">
-                        <NotesSection schoolId={school.id} />
+                        <NotesSection entityId={school.id} />
                     </div>
                 </div>
             </ScrollArea>
@@ -171,7 +171,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                     </Link>
                 </Button>
             </div>
-            <Button onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+            <Button onClick={() => router.push(`/admin/entities/${school.id}/edit`)}>
               <PenSquare className="mr-2 h-4 w-4" />
               Edit Details
             </Button>

@@ -30,7 +30,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         workspaceIds: [mockWorkspaceId],
         entityId: 'entity_456',
         entityType: 'institution',
-        schoolId: null,
+        entityId: null,
         channel: 'email',
         recipient: 'test@example.com',
         body: 'Test message',
@@ -70,7 +70,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
     });
 
-    it('should display contact from legacy school using schoolId', async () => {
+    it('should display contact from legacy school using entityId', async () => {
       const mockLog: MessageLog = {
         id: 'msg_2',
         organizationId: 'org_123',
@@ -81,8 +81,8 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        schoolId: 'school_789',
-        schoolName: 'Legacy School',
+        entityId: 'school_789',
+        entityName: 'Legacy School',
         channel: 'email',
         recipient: 'legacy@example.com',
         body: 'Test message',
@@ -125,7 +125,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       expect(resolveContact).toHaveBeenCalledWith('school_789', mockWorkspaceId);
     });
 
-    it('should prefer entityId over schoolId when both present', async () => {
+    it('should prefer entityId over entityId when both present', async () => {
       const mockLog: MessageLog = {
         id: 'msg_3',
         organizationId: 'org_123',
@@ -136,8 +136,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        entityId: 'entity_456',
-        schoolId: 'school_789',
+        entityId: 'school_789',
         entityType: 'institution',
         channel: 'email',
         recipient: 'test@example.com',
@@ -174,7 +173,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Migrated Contact')).toBeInTheDocument();
       });
 
-      // Should use entityId, not schoolId
+      // Should use entityId, not entityId
       expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
     });
 
@@ -199,7 +198,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -250,7 +249,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -301,7 +300,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -357,7 +356,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -400,8 +399,8 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        schoolId: 'school_789',
-        schoolName: 'Legacy School',
+        entityId: 'school_789',
+        entityName: 'Legacy School',
         channel: 'email',
         recipient: 'legacy@example.com',
         body: 'Test message',
@@ -464,7 +463,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -482,7 +481,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should fallback to schoolName when displayName not available', async () => {
+    it('should fallback to entityName when displayName not available', async () => {
       const mockLog: MessageLog = {
         id: 'msg_10',
         organizationId: 'org_123',
@@ -493,8 +492,8 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        schoolId: 'school_nonexistent',
-        schoolName: 'School Name Fallback',
+        entityId: 'school_nonexistent',
+        entityName: 'School Name Fallback',
         channel: 'email',
         recipient: 'test@example.com',
         body: 'Test message',
@@ -542,7 +541,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -579,7 +578,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       render(
@@ -615,7 +614,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -674,7 +673,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        schoolId: null
+        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -703,7 +702,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should handle message log with only schoolId', async () => {
+    it('should handle message log with only entityId', async () => {
       const mockLog: MessageLog = {
         id: 'msg_15',
         organizationId: 'org_123',
@@ -714,7 +713,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        schoolId: 'school_789',
+        entityId: 'school_789',
         channel: 'email',
         recipient: 'test@example.com',
         body: 'Test message',
@@ -754,7 +753,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should handle null entityId and schoolId', async () => {
+    it('should handle null entityId and entityId', async () => {
       const mockLog: MessageLog = {
         id: 'msg_16',
         organizationId: 'org_123',
@@ -766,7 +765,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
         entityId: null,
-        schoolId: null,
         channel: 'email',
         recipient: 'test@example.com',
         body: 'Test message',
@@ -789,7 +787,7 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should handle message log with dual-write (both entityId and schoolId)', async () => {
+    it('should handle message log with dual-write (both entityId and entityId)', async () => {
       const mockLog: MessageLog = {
         id: 'msg_17',
         organizationId: 'org_123',
@@ -800,10 +798,9 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         senderName: 'Test Sender',
         workspaceId: mockWorkspaceId,
         workspaceIds: [mockWorkspaceId],
-        entityId: 'entity_456',
-        schoolId: 'school_789',
+        entityId: 'school_789',
         displayName: 'Dual Write Contact',
-        schoolName: 'Dual Write School',
+        entityName: 'Dual Write School',
         entityType: 'institution',
         channel: 'email',
         recipient: 'test@example.com',

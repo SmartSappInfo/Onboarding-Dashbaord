@@ -1,13 +1,13 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar } from 'lucide-react';
+import { LayoutDashboard, Building, Settings, Calendar } from 'lucide-react';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/schools', icon: School, label: 'Schools' },
+  { href: '/admin/entities', icon: Building, label: 'Entities' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
 ];
 

@@ -5,10 +5,10 @@
  * 
  * Validates:
  * - Task creation with entityId only
- * - Task creation with schoolId only
+ * - Task creation with entityId only
  * - Task creation with both identifiers
  * - Task query by entityId
- * - Task query by schoolId
+ * - Task query by entityId
  * - Contact Adapter integration in UI
  * 
  * Requirements: 26.2
@@ -72,10 +72,10 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
   });
 
   describe('Task Creation with entityId only', () => {
-    it('should create task with entityId and resolve schoolId from adapter', async () => {
+    it('should create task with entityId and resolve entityId from adapter', async () => {
       mockAdd.mockResolvedValue({ id: 'task_123' });
 
-      // Mock adapter to return contact with schoolId
+      // Mock adapter to return contact with entityId
       const mockContact: ResolvedContact = {
         id: 'entity_456',
         name: 'Test Institution',
@@ -135,16 +135,16 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'entity_456',
           entityType: 'institution',
-          schoolId: 'school_789', // Resolved from adapter
-          schoolName: 'Test Institution',
+          entityId: 'school_789', // Resolved from adapter
+          entityName: 'Test Institution',
         })
       );
     });
 
-    it('should create task with entityId when no schoolId exists', async () => {
+    it('should create task with entityId when no entityId exists', async () => {
       mockAdd.mockResolvedValue({ id: 'task_124' });
 
-      // Mock adapter to return contact without schoolId (new entity)
+      // Mock adapter to return contact without entityId (new entity)
       const mockContact: ResolvedContact = {
         id: 'entity_456',
         name: 'New Family',
@@ -177,20 +177,20 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify task was created with entityId but null schoolId
+      // Verify task was created with entityId but null entityId
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
           entityId: 'entity_456',
           entityType: 'family',
-          schoolId: null, // No legacy school
-          schoolName: 'New Family',
+          entityId: null, // No legacy school
+          entityName: 'New Family',
         })
       );
     });
   });
 
-  describe('Task Creation with schoolId only', () => {
-    it('should create task with schoolId and resolve entityId from adapter for migrated school', async () => {
+  describe('Task Creation with entityId only', () => {
+    it('should create task with entityId and resolve entityId from adapter for migrated school', async () => {
       mockAdd.mockResolvedValue({ id: 'task_125' });
 
       // Mock adapter to return migrated contact with entityId
@@ -231,7 +231,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
         assignedTo: 'user_1',
         dueDate: new Date().toISOString(),
-        schoolId: 'school_789',
+        entityId: 'school_789',
         reminders: [],
         reminderSent: false,
       };
@@ -240,24 +240,24 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify adapter was called with schoolId
+      // Verify adapter was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       // Verify task was created with both identifiers (dual-write)
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
-          schoolName: 'Migrated School',
+          entityId: 'school_789',
+          entityName: 'Migrated School',
           entityId: 'entity_999', // Resolved from adapter
           entityType: 'institution',
         })
       );
     });
 
-    it('should create task with schoolId only for legacy school not yet migrated', async () => {
+    it('should create task with entityId only for legacy school not yet migrated', async () => {
       mockAdd.mockResolvedValue({ id: 'task_126' });
 
       // Mock adapter to return legacy contact without entityId
@@ -296,7 +296,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
         assignedTo: 'user_1',
         dueDate: new Date().toISOString(),
-        schoolId: 'school_888',
+        entityId: 'school_888',
         reminders: [],
         reminderSent: false,
       };
@@ -305,11 +305,11 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify task was created with schoolId but null entityId
+      // Verify task was created with entityId but null entityId
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_888',
-          schoolName: 'Legacy School',
+          entityId: 'school_888',
+          entityName: 'Legacy School',
           entityId: null, // Not migrated yet
           entityType: null,
         })
@@ -318,7 +318,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
   });
 
   describe('Task Creation with both identifiers', () => {
-    it('should create task with both schoolId and entityId when provided', async () => {
+    it('should create task with both entityId and entityId when provided', async () => {
       mockAdd.mockResolvedValue({ id: 'task_127' });
 
       // Mock adapter to return contact
@@ -359,7 +359,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
         assignedTo: 'user_1',
         dueDate: new Date().toISOString(),
-        schoolId: 'school_789',
         entityId: 'entity_456',
         entityType: 'institution' as const,
         reminders: [],
@@ -372,15 +371,15 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       
       // Verify adapter was called with both identifiers
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'entity_456', schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       // Verify task was created with both identifiers preserved
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_789',
-          schoolName: 'Test Institution',
+          entityId: 'school_789',
+          entityName: 'Test Institution',
           entityId: 'entity_456',
           entityType: 'institution',
         })
@@ -412,7 +411,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
         assignedTo: 'user_1',
         dueDate: new Date().toISOString(),
-        schoolId: 'school_789',
         entityId: 'entity_456',
         reminders: [],
         reminderSent: false,
@@ -510,19 +508,19 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
     });
   });
 
-  describe('Task Query by schoolId', () => {
-    it('should query tasks by schoolId for legacy records', async () => {
+  describe('Task Query by entityId', () => {
+    it('should query tasks by entityId for legacy records', async () => {
       const mockTasks = [
         {
           id: 'task_3',
           title: 'Task 3',
-          schoolId: 'school_789',
+          entityId: 'school_789',
           workspaceId: 'workspace_1',
         },
         {
           id: 'task_4',
           title: 'Task 4',
-          schoolId: 'school_789',
+          entityId: 'school_789',
           workspaceId: 'workspace_1',
         },
       ];
@@ -535,7 +533,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       const results = await getTasksForContact(
-        { schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
@@ -543,32 +541,31 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       expect(results[0].id).toBe('task_3');
       expect(results[1].id).toBe('task_4');
       
-      // Verify query was built with schoolId
+      // Verify query was built with entityId
       expect(mockWhere).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
-      expect(mockWhere).toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'school_789');
       expect(mockOrderBy).toHaveBeenCalledWith('dueDate', 'asc');
     });
 
-    it('should return empty array when no tasks found for schoolId', async () => {
+    it('should return empty array when no tasks found for entityId', async () => {
       mockGet.mockResolvedValue({
         docs: [],
       });
 
       const results = await getTasksForContact(
-        { schoolId: 'school_nonexistent' },
+        { entityId: 'school_nonexistent' },
         'workspace_1'
       );
 
       expect(results).toHaveLength(0);
     });
 
-    it('should prefer entityId over schoolId when both provided', async () => {
+    it('should prefer entityId over entityId when both provided', async () => {
       const mockTasks = [
         {
           id: 'task_5',
           title: 'Task 5',
-          entityId: 'entity_456',
-          schoolId: 'school_789',
+          entityId: 'school_789',
           workspaceId: 'workspace_1',
         },
       ];
@@ -581,14 +578,14 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       await getTasksForContact(
-        { entityId: 'entity_456', schoolId: 'school_789' },
+        { entityId: 'school_789' },
         'workspace_1'
       );
 
       // Verify query used entityId (preferred)
       expect(mockWhere).toHaveBeenCalledWith('entityId', '==', 'entity_456');
-      // Should NOT query by schoolId when entityId is present
-      expect(mockWhere).not.toHaveBeenCalledWith('schoolId', '==', 'school_789');
+      // Should NOT query by entityId when entityId is present
+      expect(mockWhere).not.toHaveBeenCalledWith('entityId', '==', 'school_789');
     });
   });
 
@@ -644,7 +641,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       // Verify contact information was used
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolName: 'Resolved Contact',
+          entityName: 'Resolved Contact',
           entityType: 'institution',
         })
       );
@@ -679,9 +676,8 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       // Verify task was created with provided identifiers
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_nonexistent',
-          schoolId: null,
-          schoolName: null,
+          entityId: null,
+          entityName: null,
           entityType: null,
         })
       );
@@ -726,7 +722,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
         assignedTo: 'user_1',
         dueDate: new Date().toISOString(),
-        schoolId: 'school_123',
+        entityId: 'school_123',
         reminders: [],
         reminderSent: false,
       };
@@ -735,15 +731,15 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       // Verify adapter resolved legacy contact
       expect(resolveContact).toHaveBeenCalledWith(
-        { schoolId: 'school_123' },
+        { entityId: 'school_123' },
         'workspace_1'
       );
 
       // Verify task created with legacy data
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123',
-          schoolName: 'Legacy School',
+          entityId: 'school_123',
+          entityName: 'Legacy School',
           entityId: null,
           entityType: null,
         })

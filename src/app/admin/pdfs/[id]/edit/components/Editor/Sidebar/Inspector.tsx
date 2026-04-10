@@ -130,7 +130,7 @@ export function Inspector() {
                         <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
                             <Building className="h-3 w-3" /> School Data Context
                         </Label>
-                        {pdf.schoolId ? (
+                        {pdf.entityId ? (
                             <Select 
                                 value={selectedField.variableKey} 
                                 onValueChange={(val) => updateField(selectedField.id, { variableKey: val, label: SCHOOL_VARIABLES.find(v => v.key === val)?.label })}

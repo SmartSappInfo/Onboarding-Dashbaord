@@ -65,7 +65,7 @@ const mockActivities = [
   {
     id: 'activity2',
     workspaceId: 'workspace1',
-    schoolId: 'school1',
+    entityId: 'school1',
     userId: 'user2',
     type: 'email',
     description: 'Emailed legacy school',
@@ -84,7 +84,7 @@ const mockTasks = [
   {
     id: 'task2',
     workspaceId: 'workspace1',
-    schoolId: 'school1',
+    entityId: 'school1',
     title: 'Task for legacy school',
     status: 'in_progress',
   },
@@ -244,12 +244,12 @@ describe('Dashboard Module Migration', () => {
       expect(activityWithEntityId.entityId).toBe('entity_1');
     });
 
-    it('should support activities with schoolId references (legacy)', async () => {
+    it('should support activities with entityId references (legacy)', async () => {
       const data = await getDashboardData(mockFirestore, 'workspace1');
       
-      const activityWithSchoolId = data.activities.find((a: any) => a.schoolId === 'school1');
+      const activityWithSchoolId = data.activities.find((a: any) => a.entityId === 'school1');
       expect(activityWithSchoolId).toBeDefined();
-      expect(activityWithSchoolId.schoolId).toBe('school1');
+      expect(activityWithSchoolId.entityId).toBe('school1');
     });
 
     it('should include both recentActivityEntities and recentActivitySchools', async () => {
@@ -272,11 +272,11 @@ describe('Dashboard Module Migration', () => {
       expect(data.metrics).toBeDefined();
     });
 
-    it('should query tasks with schoolId references (legacy)', async () => {
+    it('should query tasks with entityId references (legacy)', async () => {
       const data = await getDashboardData(mockFirestore, 'workspace1');
       
       // Verify dashboard data is returned successfully
-      // Tasks with schoolId should also be queried for backward compatibility
+      // Tasks with entityId should also be queried for backward compatibility
       expect(data).toBeDefined();
       expect(data.metrics).toBeDefined();
     });

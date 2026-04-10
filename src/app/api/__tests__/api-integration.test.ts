@@ -1,12 +1,12 @@
 /**
  * @fileOverview API Integration Tests for EntityId Migration
- * Requirements: 26.2 - Test API accepts both schoolId and entityId
+ * Requirements: 26.2 - Test API accepts both entityId and entityId
  * 
  * Tests validate:
- * - API accepts both schoolId and entityId parameters
+ * - API accepts both entityId and entityId parameters
  * - API returns both identifiers in responses
  * - API creates entities for new contacts (not legacy schools)
- * - Deprecation warnings are sent for schoolId usage
+ * - Deprecation warnings are sent for entityId usage
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -93,7 +93,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       );
     });
 
-    it('should accept schoolId parameter (legacy)', async () => {
+    it('should accept entityId parameter (legacy)', async () => {
       const { getActivitiesForContact } = await import('@/lib/activity-actions');
       vi.mocked(getActivitiesForContact).mockResolvedValue([
         {
@@ -103,7 +103,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
           type: 'call',
           source: 'manual',
           description: 'Test activity',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           userId: 'user1',
           timestamp: '2024-01-01T00:00:00Z',
           createdAt: '2024-01-01T00:00:00Z'
@@ -111,7 +111,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       ]);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/activities?workspaceId=workspace1&schoolId=school_123'
+        'http://localhost:3000/api/activities?workspaceId=workspace1&entityId=school_123'
       );
 
       const response = await getActivities(request);
@@ -119,9 +119,9 @@ describe('API Integration Tests - Activities Endpoint', () => {
 
       expect(response.status).toBe(200);
       expect(data.activities).toHaveLength(1);
-      expect(data.activities[0].schoolId).toBe('school_123');
+      expect(data.activities[0].entityId).toBe('school_123');
       expect(getActivitiesForContact).toHaveBeenCalledWith(
-        { schoolId: 'school_123' },
+        { entityId: 'school_123' },
         'workspace1',
         50
       );
@@ -132,7 +132,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       vi.mocked(getActivitiesForContact).mockResolvedValue([]);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/activities?workspaceId=workspace1&entityId=entity_123&schoolId=school_123'
+        'http://localhost:3000/api/activities?workspaceId=workspace1&entityId=entity_123&entityId=school_123'
       );
 
       await getActivities(request);
@@ -144,17 +144,17 @@ describe('API Integration Tests - Activities Endpoint', () => {
       );
     });
 
-    it('should return deprecation warning when using schoolId', async () => {
+    it('should return deprecation warning when using entityId', async () => {
       const { getActivitiesForContact } = await import('@/lib/activity-actions');
       vi.mocked(getActivitiesForContact).mockResolvedValue([]);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/activities?workspaceId=workspace1&schoolId=school_123'
+        'http://localhost:3000/api/activities?workspaceId=workspace1&entityId=school_123'
       );
 
       const response = await getActivities(request);
 
-      expect(response.headers.get('Warning')).toContain('schoolId parameter is deprecated');
+      expect(response.headers.get('Warning')).toContain('entityId parameter is deprecated');
     });
 
     it('should return both identifiers in response', async () => {
@@ -169,7 +169,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
           description: 'Test activity',
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           userId: 'user1',
           timestamp: '2024-01-01T00:00:00Z',
           createdAt: '2024-01-01T00:00:00Z'
@@ -184,7 +184,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       const data = await response.json();
 
       expect(data.activities[0].entityId).toBe('entity_123');
-      expect(data.activities[0].schoolId).toBe('school_123');
+      expect(data.activities[0].entityId).toBe('school_123');
     });
 
     it('should require workspaceId', async () => {
@@ -199,7 +199,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       expect(data.error).toContain('workspaceId is required');
     });
 
-    it('should require either entityId or schoolId', async () => {
+    it('should require either entityId or entityId', async () => {
       const request = new NextRequest(
         'http://localhost:3000/api/activities?workspaceId=workspace1'
       );
@@ -208,7 +208,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Either entityId or schoolId must be provided');
+      expect(data.error).toContain('Either entityId or entityId must be provided');
     });
   });
 
@@ -239,12 +239,12 @@ describe('API Integration Tests - Activities Endpoint', () => {
         expect.objectContaining({
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: null
+          entityId: null
         })
       );
     });
 
-    it('should create activity with schoolId (legacy)', async () => {
+    it('should create activity with entityId (legacy)', async () => {
       const { logActivity } = await import('@/lib/activity-logger');
       vi.mocked(logActivity).mockResolvedValue(undefined);
 
@@ -254,7 +254,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
           workspaceId: 'workspace1',
           type: 'call',
           description: 'Test activity',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           userId: 'user1'
         })
       });
@@ -263,10 +263,9 @@ describe('API Integration Tests - Activities Endpoint', () => {
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      expect(data.schoolId).toBe('school_123');
+      expect(data.entityId).toBe('school_123');
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
-          schoolId: 'school_123',
           entityId: null
         })
       );
@@ -284,7 +283,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
           description: 'Test activity',
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           userId: 'user1'
         })
       });
@@ -294,7 +293,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
 
       expect(response.status).toBe(201);
       expect(data.entityId).toBe('entity_123');
-      expect(data.schoolId).toBe('school_123');
+      expect(data.entityId).toBe('school_123');
     });
   });
 });
@@ -335,7 +334,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
       expect(data.tasks[0].entityId).toBe('entity_123');
     });
 
-    it('should accept schoolId parameter (legacy)', async () => {
+    it('should accept entityId parameter (legacy)', async () => {
       const { getTasksForContact } = await import('@/lib/task-server-actions');
       vi.mocked(getTasksForContact).mockResolvedValue([
         {
@@ -347,7 +346,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
           status: 'todo',
           category: 'general',
           assignedTo: 'user1',
-          schoolId: 'school_123',
+          entityId: 'school_123',
           dueDate: '2024-01-01T00:00:00Z',
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
@@ -357,27 +356,27 @@ describe('API Integration Tests - Tasks Endpoint', () => {
       ]);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/tasks?workspaceId=workspace1&schoolId=school_123'
+        'http://localhost:3000/api/tasks?workspaceId=workspace1&entityId=school_123'
       );
 
       const response = await getTasks(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.tasks[0].schoolId).toBe('school_123');
+      expect(data.tasks[0].entityId).toBe('school_123');
     });
 
-    it('should return deprecation warning when using schoolId', async () => {
+    it('should return deprecation warning when using entityId', async () => {
       const { getTasksForContact } = await import('@/lib/task-server-actions');
       vi.mocked(getTasksForContact).mockResolvedValue([]);
 
       const request = new NextRequest(
-        'http://localhost:3000/api/tasks?workspaceId=workspace1&schoolId=school_123'
+        'http://localhost:3000/api/tasks?workspaceId=workspace1&entityId=school_123'
       );
 
       const response = await getTasks(request);
 
-      expect(response.headers.get('Warning')).toContain('schoolId parameter is deprecated');
+      expect(response.headers.get('Warning')).toContain('entityId parameter is deprecated');
     });
   });
 
@@ -452,7 +451,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
           title: 'Test task',
           entityId: 'entity_123',
           entityType: 'institution',
-          schoolId: 'school_123'
+          entityId: 'school_123'
         })
       });
 
@@ -460,8 +459,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
 
       expect(createTaskAction).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'entity_123',
-          schoolId: 'school_123'
+          entityId: 'school_123'
         })
       );
     });

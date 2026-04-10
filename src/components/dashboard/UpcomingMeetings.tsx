@@ -14,7 +14,7 @@ export function UpcomingMeetings({ meetings }: { meetings: any[] }) {
             <li key={m.id}>
               <Link href={`/admin/meetings/${m.id}/edit`} className="flex justify-between items-center p-2 rounded-md hover:bg-muted/50 transition-colors -m-2">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{m.schoolName}</p>
+                  <p className="font-medium truncate">{m.entityName}</p>
                   <p className="text-sm text-muted-foreground">{m.type.name}</p>
                 </div>
                 <div className="text-right shrink-0 ml-4">

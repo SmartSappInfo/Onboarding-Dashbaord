@@ -92,9 +92,9 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
 
     const firestore = useFirestore();
     const schoolDocRef = React.useMemo(() => {
-        if (!firestore || !survey.schoolId) return null;
-        return doc(firestore, 'schools', survey.schoolId);
-    }, [firestore, survey.schoolId]);
+        if (!firestore || !survey.entityId) return null;
+        return doc(firestore, 'schools', survey.entityId);
+    }, [firestore, survey.entityId]);
     
     const { data: school } = useDoc<any>(schoolDocRef);
     

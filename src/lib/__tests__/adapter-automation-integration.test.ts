@@ -86,8 +86,8 @@ describe('Automation Integration with Adapter Layer', () => {
 
       // Simulate automation trigger
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId: 'school_1',
-        schoolName: 'Test School',
+        entityId: 'school_1',
+        entityName: 'Test School',
         workspaceId: 'workspace_1',
       });
 
@@ -212,8 +212,8 @@ describe('Automation Integration with Adapter Layer', () => {
 
       // Simulate automation trigger
       await triggerAutomationProtocols('SCHOOL_CREATED', {
-        schoolId: 'school_2',
-        schoolName: 'Migrated School',
+        entityId: 'school_2',
+        entityName: 'Migrated School',
         workspaceId: 'workspace_1',
       });
 

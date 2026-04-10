@@ -148,7 +148,7 @@ export default function AgreementsClient() {
             }
         }
 
-        const contractMap = new Map(contracts?.map(c => [c.schoolId, c]) || []);
+        const contractMap = new Map(contracts?.map(c => [c.entityId, c]) || []);
 
         return baseSchools.map(school => ({
             ...school,
@@ -199,7 +199,7 @@ export default function AgreementsClient() {
         if (!item.contract?.pdfId) return;
         if (typeof window === 'undefined') return;
         
-        const url = `${window.location.origin}/forms/${item.contract.pdfId}?schoolId=${item.id}`;
+        const url = `${window.location.origin}/forms/${item.contract.pdfId}?entityId=${item.id}`;
         navigator.clipboard.writeText(url);
         toast({ title: 'Link Copied', description: 'Unique signing URL is ready to share.' });
     };
@@ -216,7 +216,7 @@ export default function AgreementsClient() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${contract.schoolName}_Signed_Agreement.pdf`;
+            a.download = `${contract.entityName}_Signed_Agreement.pdf`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -240,7 +240,7 @@ export default function AgreementsClient() {
                 contract.id, 
                 contract.pdfId, 
                 contract.submissionId || null, 
-                { schoolId: school.id }, 
+                { entityId: school.id }, 
                 user.uid
             );
             
@@ -469,7 +469,7 @@ export default function AgreementsClient() {
                                                                             className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
                                                                             asChild
                                                                         >
-                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?entityId=${item.id}`} target="_blank" rel="noopener noreferrer">
                                                                                 <Globe className="h-4 w-4" />
                                                                             </a>
                                                                         </Button>
@@ -524,7 +524,7 @@ export default function AgreementsClient() {
                                                                             <span className="font-bold text-sm">Copy Link</span>
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
-                                                                            <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${contract.pdfId}?entityId=${item.id}`} target="_blank" rel="noopener noreferrer">
                                                                                 <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
                                                                                 <span className="font-bold text-sm">Open Portal</span>
                                                                             </a>

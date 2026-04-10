@@ -91,7 +91,7 @@ export function ContactDetailPage({
             <CardTitle>Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <NotesSection schoolId={entity.id} />
+            <NotesSection entityId={entity.id} />
           </CardContent>
         </Card>
 

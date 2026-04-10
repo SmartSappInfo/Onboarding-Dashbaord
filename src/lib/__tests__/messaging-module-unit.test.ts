@@ -3,8 +3,8 @@
  * 
  * Tests the messaging module's support for entityId migration including:
  * - Message sending with entityId
- * - Message log creation with dual-write (schoolId + entityId)
- * - Message queries by entityId and schoolId
+ * - Message log creation with dual-write (entityId + entityId)
+ * - Message queries by entityId and entityId
  * - Contact Adapter integration
  * 
  * Requirements:
@@ -194,7 +194,7 @@ describe('Messaging Module - EntityId Migration', () => {
       expect(resolveContact).toHaveBeenCalledWith('entity_123', 'workspace_1');
     });
 
-    it('should send message with schoolId only (legacy)', async () => {
+    it('should send message with entityId only (legacy)', async () => {
       // Setup mocks
       const mockTemplateDoc = {
         exists: true,
@@ -291,26 +291,26 @@ describe('Messaging Module - EntityId Migration', () => {
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
 
-      // Call sendMessage with schoolId only
+      // Call sendMessage with entityId only
       const result = await sendMessage({
         templateId: 'template_1',
         senderProfileId: 'sender_1',
         recipient: '+1234567890',
         variables: {},
-        schoolId: 'school_1',
+        entityId: 'school_1',
       });
 
       // Verify success
       expect(result.success).toBe(true);
       expect(result.logId).toBe('log_2');
 
-      // Verify Contact Adapter was called with schoolId
+      // Verify Contact Adapter was called with entityId
       expect(resolveContact).toHaveBeenCalledWith('school_1', expect.any(String));
     });
   });
 
   describe('Message Log Creation with Dual-Write (Requirement 15.2)', () => {
-    it('should create message log with both schoolId and entityId for migrated contact', async () => {
+    it('should create message log with both entityId and entityId for migrated contact', async () => {
       // Setup mocks
       const mockTemplateDoc = {
         exists: true,
@@ -338,7 +338,7 @@ describe('Messaging Module - EntityId Migration', () => {
         }),
       };
 
-      // Migrated contact has both schoolId and entityId
+      // Migrated contact has both entityId and entityId
       const mockContact = {
         id: 'entity_123',
         name: 'Test Institution',
@@ -429,15 +429,15 @@ describe('Messaging Module - EntityId Migration', () => {
       // Verify success
       expect(result.success).toBe(true);
 
-      // Verify dual-write: both schoolId and entityId are populated
+      // Verify dual-write: both entityId and entityId are populated
       expect(capturedLogData).toBeDefined();
-      expect(capturedLogData.schoolId).toBe('school_1');
+      expect(capturedLogData.entityId).toBe('school_1');
       expect(capturedLogData.entityId).toBe('entity_123');
       expect(capturedLogData.entityType).toBe('institution');
       expect(capturedLogData.workspaceId).toBe('workspace_1');
     });
 
-    it('should create message log with schoolId only for legacy contact', async () => {
+    it('should create message log with entityId only for legacy contact', async () => {
       // Setup mocks
       const mockTemplateDoc = {
         exists: true,
@@ -465,7 +465,7 @@ describe('Messaging Module - EntityId Migration', () => {
         }),
       };
 
-      // Legacy contact has only schoolId
+      // Legacy contact has only entityId
       const mockContact = {
         id: 'school_1',
         name: 'Test School',
@@ -546,15 +546,15 @@ describe('Messaging Module - EntityId Migration', () => {
         senderProfileId: 'sender_1',
         recipient: 'recipient@example.com',
         variables: {},
-        schoolId: 'school_1',
+        entityId: 'school_1',
       });
 
       // Verify success
       expect(result.success).toBe(true);
 
-      // Verify legacy: schoolId populated, entityId is null
+      // Verify legacy: entityId populated, entityId is null
       expect(capturedLogData).toBeDefined();
-      expect(capturedLogData.schoolId).toBe('school_1');
+      expect(capturedLogData.entityId).toBe('school_1');
       expect(capturedLogData.entityId).toBeNull();
     });
 
@@ -586,7 +586,7 @@ describe('Messaging Module - EntityId Migration', () => {
         }),
       };
 
-      // New entity contact has only entityId (no legacy schoolId)
+      // New entity contact has only entityId (no legacy entityId)
       const mockContact = {
         id: 'entity_456',
         name: 'New Family',
@@ -666,9 +666,9 @@ describe('Messaging Module - EntityId Migration', () => {
       // Verify success
       expect(result.success).toBe(true);
 
-      // Verify new entity: entityId populated, schoolId is null
+      // Verify new entity: entityId populated, entityId is null
       expect(capturedLogData).toBeDefined();
-      expect(capturedLogData.schoolId).toBeNull();
+      expect(capturedLogData.entityId).toBeNull();
       expect(capturedLogData.entityId).toBe('entity_456');
       expect(capturedLogData.entityType).toBe('family');
     });
@@ -692,7 +692,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: null,
           entityId: 'entity_123',
           entityType: 'institution',
           providerId: 'provider_1',
@@ -713,7 +712,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: null,
           entityId: 'entity_123',
           entityType: 'institution',
           providerId: 'provider_2',
@@ -753,7 +751,7 @@ describe('Messaging Module - EntityId Migration', () => {
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_123');
     });
 
-    it('should query messages by schoolId (fallback)', async () => {
+    it('should query messages by entityId (fallback)', async () => {
       const mockMessages: MessageLog[] = [
         {
           id: 'log_3',
@@ -770,7 +768,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: 'school_1',
           entityId: null,
           providerId: 'provider_3',
           providerStatus: 'sent',
@@ -791,24 +788,24 @@ describe('Messaging Module - EntityId Migration', () => {
         get: vi.fn().mockResolvedValue(mockSnapshot),
       });
 
-      // Query by schoolId (fallback)
+      // Query by entityId (fallback)
       const messages = await getMessagesForContact({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
         limit: 50,
       });
 
       // Verify results
       expect(messages).toHaveLength(1);
-      expect(messages[0].schoolId).toBe('school_1');
+      expect(messages[0].entityId).toBe('school_1');
 
-      // Verify query used schoolId
+      // Verify query used entityId
       const mockCollection = (adminDb.collection as any)();
       expect(mockCollection.where).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
-      expect(mockCollection.where).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+      expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'school_1');
     });
 
-    it('should prefer entityId when both entityId and schoolId are provided', async () => {
+    it('should prefer entityId when both entityId and entityId are provided', async () => {
       const mockMessages: MessageLog[] = [
         {
           id: 'log_4',
@@ -825,7 +822,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: 'school_1',
           entityId: 'entity_123',
           entityType: 'institution',
           providerId: 'provider_4',
@@ -849,8 +845,7 @@ describe('Messaging Module - EntityId Migration', () => {
 
       // Query with both identifiers
       const messages = await getMessagesForContact({
-        entityId: 'entity_123',
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
         limit: 50,
       });
@@ -858,20 +853,20 @@ describe('Messaging Module - EntityId Migration', () => {
       // Verify results
       expect(messages).toHaveLength(1);
 
-      // Verify query preferred entityId over schoolId
+      // Verify query preferred entityId over entityId
       const mockCollection = (adminDb.collection as any)();
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_123');
-      expect(mockCollection.where).not.toHaveBeenCalledWith('schoolId', '==', 'school_1');
+      expect(mockCollection.where).not.toHaveBeenCalledWith('entityId', '==', 'school_1');
     });
 
-    it('should throw error when neither entityId nor schoolId is provided', async () => {
+    it('should throw error when neither entityId nor entityId is provided', async () => {
       // Attempt to query without identifiers
       await expect(
         getMessagesForContact({
           workspaceId: 'workspace_1',
           limit: 50,
         })
-      ).rejects.toThrow('Either entityId or schoolId must be provided');
+      ).rejects.toThrow('Either entityId or entityId must be provided');
     });
 
     it('should query messages for multiple entities', async () => {
@@ -891,7 +886,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: null,
           entityId: 'entity_1',
           entityType: 'institution',
           providerId: 'provider_5',
@@ -912,7 +906,6 @@ describe('Messaging Module - EntityId Migration', () => {
           variables: {},
           workspaceIds: ['workspace_1'],
           workspaceId: 'workspace_1',
-          schoolId: null,
           entityId: 'entity_2',
           entityType: 'family',
           providerId: 'provider_6',
@@ -974,7 +967,7 @@ describe('Messaging Module - EntityId Migration', () => {
       expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'entity_123');
     });
 
-    it('should count messages by schoolId (fallback)', async () => {
+    it('should count messages by entityId (fallback)', async () => {
       const mockCountSnapshot = {
         data: () => ({ count: 3 }),
       };
@@ -986,19 +979,19 @@ describe('Messaging Module - EntityId Migration', () => {
         }),
       });
 
-      // Count messages by schoolId
+      // Count messages by entityId
       const count = await countMessagesForContact({
-        schoolId: 'school_1',
+        entityId: 'school_1',
         workspaceId: 'workspace_1',
       });
 
       // Verify count
       expect(count).toBe(3);
 
-      // Verify query used schoolId
+      // Verify query used entityId
       const mockCollection = (adminDb.collection as any)();
       expect(mockCollection.where).toHaveBeenCalledWith('workspaceId', '==', 'workspace_1');
-      expect(mockCollection.where).toHaveBeenCalledWith('schoolId', '==', 'school_1');
+      expect(mockCollection.where).toHaveBeenCalledWith('entityId', '==', 'school_1');
     });
   });
 

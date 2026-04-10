@@ -9,7 +9,7 @@ import { ArrowRight } from "lucide-react";
 import * as React from 'react';
 
 // This component now receives all necessary data as props
-// Updated to support both entityId (migrated) and schoolId (legacy) references
+// Updated to support both entityId (migrated) and entityId (legacy) references
 // Requirements: 6.2, 6.4
 export function RecentActivity({ 
   activities, 
@@ -39,15 +39,15 @@ export function RecentActivity({
     return new Map(entities.map(entity => [entity.entityId, entity]));
   }, [entities]);
   
-  // Helper to resolve contact for an activity (supports both entityId and schoolId)
+  // Helper to resolve contact for an activity (supports both entityId and entityId)
   const resolveContact = React.useCallback((activity: Activity) => {
     // Prefer entityId if available (migrated contacts)
     if (activity.entityId && entitiesMap.has(activity.entityId)) {
       return entitiesMap.get(activity.entityId);
     }
-    // Fallback to schoolId (legacy contacts)
-    if (activity.schoolId && schoolsMap.has(activity.schoolId)) {
-      return schoolsMap.get(activity.schoolId);
+    // Fallback to entityId (legacy contacts)
+    if (activity.entityId && schoolsMap.has(activity.entityId)) {
+      return schoolsMap.get(activity.entityId);
     }
     return undefined;
   }, [entitiesMap, schoolsMap]);

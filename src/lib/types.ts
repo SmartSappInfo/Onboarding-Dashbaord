@@ -689,8 +689,8 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  schoolId?: string; // Legacy field for backward compatibility
-  schoolName?: string; // Legacy field for backward compatibility
+  entityId?: string; // Legacy field for backward compatibility
+  entityName?: string; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType | null; // Type of entity
   periodId: string;
@@ -722,9 +722,9 @@ export interface Invoice {
 
 export interface Meeting {
   id: string;
-  schoolId?: string; // Legacy field for backward compatibility
-  schoolName?: string; // Legacy field for backward compatibility
-  schoolSlug?: string; // Legacy field for backward compatibility (used in public URLs)
+  entityId?: string; // Legacy field for backward compatibility
+  entityName?: string; // Legacy field for backward compatibility
+  entitySlug?: string; // Legacy field for backward compatibility (used in public URLs)
   entityId?: string; // New unified entity reference
   entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
@@ -842,9 +842,8 @@ export interface Survey {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
-  schoolId?: string | null; // Legacy field for backward compatibility
-  schoolName?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference (formerly schoolId)
+  entityName?: string | null;
 }
 
 export interface SurveyElement {
@@ -951,9 +950,10 @@ export interface SurveyResponse {
     questionId: string;
     value: any;
   }[];
-  schoolId?: string | null; // Legacy field for backward compatibility
-  entityId?: string | null; // New unified entity reference
+  entityId?: string | null; // Unified entity reference
+  entityName?: string | null; // Snapshot for display
   entityType?: EntityType; // Type of entity
+  workspaceId?: string | null; // Workspace context at time of submission
 }
 
 export interface SurveySummary {
@@ -999,8 +999,8 @@ export interface PDFForm {
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;
   logoUrl?: string;
-  schoolId?: string | null; // Legacy field for backward compatibility
-  schoolName?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // Legacy field for backward compatibility
+  entityName?: string | null; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   webhookEnabled?: boolean;
   webhookId?: string;
@@ -1049,15 +1049,15 @@ export interface Submission {
   submittedAt: string;
   formData: { [key: string]: any };
   status: 'submitted' | 'partial';
-  schoolId?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType; // Type of entity
 }
 
 export interface Contract {
   id: string;
-  schoolId: string;
-  schoolName: string;
+  entityId: string;
+  entityName: string;
   pdfId: string;
   pdfName: string;
   status: ContractStatus;
@@ -1077,9 +1077,9 @@ export interface Activity {
   id: string;
   organizationId: string; // Organization tenant identifier
   workspaceId: string; // Strictly confined
-  schoolId?: string; // Legacy field for backward compatibility
-  schoolName?: string; // Legacy field for backward compatibility
-  schoolSlug?: string; // Legacy field for backward compatibility
+  entityId?: string; // Legacy field for backward compatibility
+  entityName?: string; // Legacy field for backward compatibility
+  entitySlug?: string; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType | null; // Type of entity
   displayName?: string; // Denormalized entity name at time of logging
@@ -1104,8 +1104,8 @@ export interface Task {
   category: TaskCategory;
   assignedTo: string;
   assignedToName?: string;
-  schoolId?: string | null; // Legacy field for backward compatibility
-  schoolName?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // Legacy field for backward compatibility
+  entityName?: string | null; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType; // Type of entity
   dueDate: string;
@@ -1249,7 +1249,7 @@ export interface AutomationRun {
   finishedAt?: string;
   triggerData: Record<string, any>;
   error?: string;
-  schoolId?: string | null; // Legacy field for backward compatibility
+  entityId?: string | null; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType; // Type of entity
 }
@@ -1379,11 +1379,11 @@ export interface MessageLog {
   variables: Record<string, any>;
   workspaceIds: string[];
   workspaceId?: string; // Primary workspace context (Requirement 11)
-  schoolId: string | null; // Legacy field for backward compatibility
+  entityId: string | null; // Legacy field for backward compatibility
   entityId?: string | null; // New unified entity reference
   entityType?: EntityType; // Type of entity
   displayName?: string; // Denormalized entity display name
-  schoolName?: string; // Legacy denormalized school name
+  entityName?: string; // Legacy denormalized school name
   providerId: string | null;
   providerStatus: string | null;
   error?: string;

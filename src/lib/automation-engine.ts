@@ -74,7 +74,7 @@ async function executeAction(db: Firestore, action: AutomationAction, context: T
                     school_id: school.id,
                     contact_name: getContactPerson(school) || ''
                 },
-                schoolId: school.id,
+                entityId: school.id,
                 workspaceId: school.workspaceIds?.[0] || 'onboarding' // Pass workspace context (Requirement 11)
             });
             break;
@@ -92,9 +92,9 @@ async function executeAction(db: Firestore, action: AutomationAction, context: T
                 priority: action.taskPriority || 'medium',
                 status: 'todo',
                 category: action.taskCategory || 'general',
-                schoolId: school.id,
+                entityId: school.id,
                 workspaceId: 'onboarding',
-                schoolName: school.name,
+                entityName: school.name,
                 assignedTo,
                 assignedToName: school.assignedTo?.name || 'Manager',
                 dueDate: dueDate.toISOString(),

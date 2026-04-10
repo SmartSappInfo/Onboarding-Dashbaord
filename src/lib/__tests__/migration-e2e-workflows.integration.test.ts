@@ -5,7 +5,7 @@
  * Requirements: 26.2, 26.7
  * 
  * These tests validate complete user workflows from creation through display,
- * ensuring the migration from schoolId to entityId works correctly across
+ * ensuring the migration from entityId to entityId works correctly across
  * all feature modules.
  */
 
@@ -131,16 +131,16 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         {
           id: 'task_001',
           workspaceId: testWorkspaceId,
-          schoolId: testSchoolId,
-          schoolName: 'Legacy School',
+          entityId: testSchoolId,
+          entityName: 'Legacy School',
           title: 'Follow up call',
           // No entityId - needs migration
         },
         {
           id: 'task_002',
           workspaceId: testWorkspaceId,
-          schoolId: testSchoolId,
-          schoolName: 'Legacy School',
+          entityId: testSchoolId,
+          entityName: 'Legacy School',
           title: 'Send documents',
           // No entityId - needs migration
         },
@@ -168,7 +168,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       expect(fetchResult.recordsToMigrate).toBe(2);
       expect(fetchResult.invalidRecords).toHaveLength(0);
 
-      // Step 2: ENRICH - Resolve entityId from schoolId
+      // Step 2: ENRICH - Resolve entityId from entityId
       const migratedSchool = {
         ...mockLegacySchool,
         migrationStatus: 'migrated',
@@ -187,7 +187,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       }));
 
       expect(enrichedTasks[0].entityId).toBe(testEntityId);
-      expect(enrichedTasks[0].schoolId).toBe(testSchoolId); // Preserved
+      expect(enrichedTasks[0].entityId).toBe(testSchoolId); // Preserved
 
       // Step 3: RESTORE - Create backups and update records
       const backupCollection = 'backup_tasks_entity_migration';
@@ -277,19 +277,19 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         {
           id: 'task_001',
           workspaceId: testWorkspaceId,
-          schoolId: testSchoolId,
+          entityId: testSchoolId,
           title: 'Valid task',
         },
         {
           id: 'task_002',
           workspaceId: testWorkspaceId,
-          schoolId: 'invalid_school_id',
-          title: 'Task with invalid schoolId',
+          entityId: 'invalid_school_id',
+          title: 'Task with invalid entityId',
         },
         {
           id: 'task_003',
           workspaceId: testWorkspaceId,
-          schoolId: testSchoolId,
+          entityId: testSchoolId,
           title: 'Another valid task',
         },
       ];
@@ -352,7 +352,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
 
       mockFirestore.setDoc.mockResolvedValue(undefined);
 
-      // Verify dual-write: both entityId and schoolId can be present
+      // Verify dual-write: both entityId and entityId can be present
       expect(newTask.entityId).toBe(testEntityId);
       expect(newTask.entityType).toBe('institution');
 
@@ -404,18 +404,18 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       expect(displayTask.stageName).toBe('Prospecting');
     });
 
-    it('should handle legacy schoolId fallback when entityId not available', async () => {
-      // Create task with only schoolId (legacy pattern)
+    it('should handle legacy entityId fallback when entityId not available', async () => {
+      // Create task with only entityId (legacy pattern)
       const legacyTask: Partial<Task> = {
         id: 'task_legacy_001',
         workspaceId: testWorkspaceId,
         title: 'Legacy task',
-        schoolId: testSchoolId,
-        schoolName: 'Legacy School',
+        entityId: testSchoolId,
+        entityName: 'Legacy School',
         // No entityId
       };
 
-      // Resolve contact using schoolId
+      // Resolve contact using entityId
       mockFirestore.getDoc.mockResolvedValueOnce({
         exists: () => true,
         data: () => mockLegacySchool,
@@ -519,14 +519,14 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       expect(timeline[0].stageName).toBe('Prospecting');
     });
 
-    it('should support querying activities by schoolId for backward compatibility', async () => {
+    it('should support querying activities by entityId for backward compatibility', async () => {
       const legacyActivities: Partial<Activity>[] = [
         {
           id: 'activity_legacy_001',
           workspaceId: testWorkspaceId,
           type: 'call',
-          schoolId: testSchoolId,
-          schoolName: 'Legacy School',
+          entityId: testSchoolId,
+          entityName: 'Legacy School',
           timestamp: new Date().toISOString(),
         },
       ];
@@ -540,9 +540,9 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         size: legacyActivities.length,
       });
 
-      const queryResult = legacyActivities.filter((a) => a.schoolId === testSchoolId);
+      const queryResult = legacyActivities.filter((a) => a.entityId === testSchoolId);
       expect(queryResult).toHaveLength(1);
-      expect(queryResult[0].schoolId).toBe(testSchoolId);
+      expect(queryResult[0].entityId).toBe(testSchoolId);
     });
   });
 
@@ -669,7 +669,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [testWorkspaceId],
-        schoolId: null,
+        entityId: null,
         providerId: null,
         providerStatus: null,
       };
@@ -703,7 +703,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
           senderName: 'SmartSapp',
           variables: {},
           workspaceIds: [testWorkspaceId],
-          schoolId: null,
+          entityId: null,
           providerId: null,
           providerStatus: null,
         },
@@ -764,7 +764,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [testWorkspaceId],
-        schoolId: null,
+        entityId: null,
         providerId: null,
         providerStatus: null,
       };
@@ -823,7 +823,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [workspaceId],
-        schoolId: null,
+        entityId: null,
         providerId: null,
         providerStatus: null,
       };

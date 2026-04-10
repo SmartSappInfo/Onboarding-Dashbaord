@@ -101,7 +101,7 @@ export default function NotificationBell() {
                                             <p className="text-xs font-bold leading-tight mb-1">{n.description}</p>
                                             <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
                                                 <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}</span>
-                                                {n.schoolName && <span className="flex items-center gap-1 border-l pl-3 truncate">{n.schoolName}</span>}
+                                                {n.entityName && <span className="flex items-center gap-1 border-l pl-3 truncate">{n.entityName}</span>}
                                             </div>
                                         </div>
                                     </div>

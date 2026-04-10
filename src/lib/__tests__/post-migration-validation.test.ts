@@ -77,10 +77,10 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
     });
 
     for (const collectionName of COLLECTIONS_TO_VERIFY) {
-      // Query for records with schoolId but no entityId
+      // Query for records with entityId but no entityId
       const unmigratedQuery = query(
         collection(firestore, collectionName),
-        where('schoolId', '!=', null),
+        where('entityId', '!=', null),
         where('entityId', '==', null)
       );
 
@@ -144,7 +144,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_123',
             entityType: 'institution',
-            schoolId: 'school_123',
+            entityId: 'school_123',
           }),
         },
         {
@@ -152,7 +152,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_456',
             entityType: 'family',
-            schoolId: 'school_456',
+            entityId: 'school_456',
           }),
         },
         {
@@ -160,7 +160,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_789',
             entityType: 'person',
-            schoolId: 'school_789',
+            entityId: 'school_789',
           }),
         },
       ],
@@ -189,7 +189,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
     }
   });
 
-  it('should verify schoolId is preserved during migration', async () => {
+  it('should verify entityId is preserved during migration', async () => {
     const mockGetDocs = getDocs as unknown as ReturnType<typeof vi.fn>;
     mockGetDocs.mockResolvedValue({
       empty: false,
@@ -200,7 +200,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_123',
             entityType: 'institution',
-            schoolId: 'school_123',
+            entityId: 'school_123',
           }),
         },
         {
@@ -208,7 +208,7 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_456',
             entityType: 'family',
-            schoolId: 'school_456',
+            entityId: 'school_456',
           }),
         },
       ],
@@ -225,10 +225,10 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
       for (const docSnapshot of snapshot.docs) {
         const data = docSnapshot.data();
 
-        // Verify schoolId is still present (dual-write)
-        if (data.schoolId) {
-          expect(typeof data.schoolId).toBe('string');
-          expect(data.schoolId.length).toBeGreaterThan(0);
+        // Verify entityId is still present (dual-write)
+        if (data.entityId) {
+          expect(typeof data.entityId).toBe('string');
+          expect(data.entityId.length).toBeGreaterThan(0);
         }
       }
     }
@@ -252,7 +252,7 @@ describe('Task 37.2: Test critical user workflows', () => {
         title: 'Test Task',
         entityId: 'entity_123',
         entityType: 'institution',
-        schoolId: 'school_123',
+        entityId: 'school_123',
         workspaceId: 'workspace_123',
         status: 'todo',
         createdAt: Timestamp.now(),
@@ -265,7 +265,7 @@ describe('Task 37.2: Test critical user workflows', () => {
       title: 'Test Task',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      schoolId: 'school_123',
+      entityId: 'school_123',
       workspaceId: 'workspace_123',
       status: 'todo' as const,
       createdAt: Timestamp.now(),
@@ -280,7 +280,7 @@ describe('Task 37.2: Test critical user workflows', () => {
     const retrievedTask = taskDoc.data();
     expect(retrievedTask?.entityId).toBe('entity_123');
     expect(retrievedTask?.entityType).toBe('institution');
-    expect(retrievedTask?.schoolId).toBe('school_123');
+    expect(retrievedTask?.entityId).toBe('school_123');
   });
 
   it('should test activity logging and timeline workflow', async () => {
@@ -367,7 +367,7 @@ describe('Task 37.2: Test critical user workflows', () => {
       formId: 'form_123',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      schoolId: 'school_123',
+      entityId: 'school_123',
       responses: { question1: 'answer1' },
       submittedAt: Timestamp.now(),
     };
@@ -412,7 +412,7 @@ describe('Task 37.2: Test critical user workflows', () => {
       invoiceNumber: 'INV-001',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      schoolId: 'school_123',
+      entityId: 'school_123',
       organizationId: 'org_123',
       total: 1000,
       status: 'sent' as const,
@@ -499,7 +499,7 @@ describe('Task 37.2: Test critical user workflows', () => {
       id: 'message_123',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      schoolId: 'school_123',
+      entityId: 'school_123',
       workspaceId: 'workspace_123',
       messageType: 'email' as const,
       recipient: 'test@example.com',

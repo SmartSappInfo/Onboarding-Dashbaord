@@ -66,7 +66,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 /**
  * InvoicesClient - Invoice Registry UI
  * 
- * Entity Resolution: Contact information (schoolName, entityId, entityType) is resolved
+ * Entity Resolution: Contact information (entityName, entityId, entityType) is resolved
  * server-side via the Contact Adapter during invoice generation (see billing-actions.ts).
  * The UI displays the pre-resolved entity information from the invoice record.
  * 
@@ -179,7 +179,7 @@ export default function InvoicesClient() {
         if (statusFilter !== 'all') temp = temp.filter(i => i.status === statusFilter);
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
-            temp = temp.filter(i => i.schoolName?.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
+            temp = temp.filter(i => i.entityName?.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
         }
         return temp;
     }, [invoices, statusFilter, searchTerm]);
@@ -253,7 +253,7 @@ export default function InvoicesClient() {
                                             <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 tabular-nums">{format(new Date(invoice.createdAt), 'MMM d, yyyy')}</p>
                                         </TableCell>
                                         <TableCell>
-                                            <span className="text-xs font-black uppercase text-foreground/80">{invoice.schoolName}</span>
+                                            <span className="text-xs font-black uppercase text-foreground/80">{invoice.entityName}</span>
                                         </TableCell>
                                         <TableCell className="text-[10px] font-bold text-muted-foreground uppercase">{invoice.periodName}</TableCell>
                                         <TableCell className="text-right font-black text-sm tabular-nums">

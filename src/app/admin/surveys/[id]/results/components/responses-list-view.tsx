@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * Component to display entity information for a survey response
- * Uses Contact Adapter to resolve entity data from either entityId or schoolId
+ * Uses Contact Adapter to resolve entity data from either entityId or entityId
  * Requirements: 13.4, 23.1
  */
 function EntityInfo({ response }: { response: SurveyResponse }) {
@@ -48,14 +48,14 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
 
     React.useEffect(() => {
         async function loadContact() {
-            if (!response.entityId && !response.schoolId) {
+            if (!response.entityId) {
                 setIsLoading(false);
                 return;
             }
 
             try {
                 const resolved = await resolveContact(
-                    { entityId: response.entityId, schoolId: response.schoolId },
+                    { entityId: response.entityId },
                     activeWorkspaceId
                 );
                 setContact(resolved);
@@ -67,7 +67,7 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
         }
 
         loadContact();
-    }, [response.entityId, response.schoolId, activeWorkspaceId]);
+    }, [response.entityId, activeWorkspaceId]);
 
     if (isLoading) {
         return <Skeleton className="h-5 w-24" />;

@@ -150,9 +150,9 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
                                                     )}>
                                                         {task.title}
                                                     </p>
-                                                    {task.schoolName && (
+                                                    {task.entityName && (
                                                         <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter truncate mt-0.5 opacity-60">
-                                                            {task.schoolName}
+                                                            {task.entityName}
                                                         </p>
                                                     )}
                                                 </div>

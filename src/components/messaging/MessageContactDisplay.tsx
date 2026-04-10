@@ -20,7 +20,7 @@ const ENTITY_TYPE_ICONS = {
 
 /**
  * Displays contact information for a message log using the Contact Adapter pattern
- * Resolves entity information from either entityId or schoolId (fallback)
+ * Resolves entity information from either entityId or entityId (fallback)
  * Handles both migrated and legacy contacts gracefully
  * 
  * Requirements: 15.4, 23.1, 23.3, 23.5 (Task 35.2)
@@ -34,8 +34,8 @@ export function MessageContactDisplay({ log, workspaceId }: MessageContactDispla
   React.useEffect(() => {
     async function resolveContact() {
       try {
-        // Prefer entityId, fallback to schoolId (Requirement 23.1, 23.5)
-        const identifier = log.entityId || log.schoolId;
+        // Prefer entityId, fallback to entityId (Requirement 23.1, 23.5)
+        const identifier = log.entityId || log.entityId;
         
         if (!identifier) {
           setContactName(null);
@@ -55,14 +55,14 @@ export function MessageContactDisplay({ log, workspaceId }: MessageContactDispla
           setIsLegacy(contact.migrationStatus === 'legacy');
         } else {
           // Fallback to denormalized fields if contact not found
-          setContactName(log.displayName || log.schoolName || null);
+          setContactName(log.displayName || log.entityName || null);
           setEntityType(log.entityType || 'institution');
           setIsLegacy(!log.entityId);
         }
       } catch (error) {
         console.error('Error resolving contact for message:', error);
         // Fallback to denormalized fields on error
-        setContactName(log.displayName || log.schoolName || null);
+        setContactName(log.displayName || log.entityName || null);
         setEntityType(log.entityType || 'institution');
         setIsLegacy(!log.entityId);
       } finally {
@@ -71,7 +71,7 @@ export function MessageContactDisplay({ log, workspaceId }: MessageContactDispla
     }
 
     resolveContact();
-  }, [log.entityId, log.schoolId, log.displayName, log.schoolName, log.entityType, workspaceId]);
+  }, [log.entityId, log.entityId, log.displayName, log.entityName, log.entityType, workspaceId]);
 
   if (isLoading) {
     return <Skeleton className="h-4 w-32" />;

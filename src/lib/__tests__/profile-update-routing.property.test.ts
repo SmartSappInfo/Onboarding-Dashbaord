@@ -291,7 +291,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update profile with identity fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates,
@@ -363,7 +362,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { name: newName },
@@ -418,7 +416,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { contacts: newContacts },
@@ -473,7 +470,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { globalTags: newTags },
@@ -532,7 +528,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update profile with operational fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates,
@@ -610,7 +605,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { pipelineId: newPipelineId },
@@ -665,7 +659,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { workspaceTags: newTags },
@@ -724,7 +717,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: { assignedTo: newAssignedTo },
@@ -783,7 +775,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update profile with mixed fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates,
@@ -878,7 +869,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update both identity and operational fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: {
@@ -1058,7 +1048,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update with only operational fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates,
@@ -1116,7 +1105,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update with only identity fields
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates,
@@ -1173,7 +1161,6 @@ describe('Property 7: Profile Update Routing', () => {
 
             // Execute: Update with empty arrays
             const result = await updateProfile({
-              schoolId: school.id,
               entityId: entity.id,
               workspaceId,
               updates: {

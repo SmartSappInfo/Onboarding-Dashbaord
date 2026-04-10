@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils';
 
 interface ContactDisplayProps {
   entityId?: string | null;
-  schoolId?: string | null;
+  entityId?: string | null;
   displayName?: string | null;
-  schoolName?: string | null;
+  entityName?: string | null;
   entityType?: 'institution' | 'family' | 'person' | null;
   workspaceId: string;
   showType?: boolean;
@@ -31,7 +31,7 @@ const ENTITY_TYPE_ICONS = {
  * ContactDisplay Component
  * 
  * A reusable component for displaying contact information across the application.
- * Uses the Contact Adapter to resolve entity information from either entityId or schoolId.
+ * Uses the Contact Adapter to resolve entity information from either entityId or entityId.
  * Handles both migrated and legacy contacts gracefully with fallback to denormalized fields.
  * 
  * Requirements: 23.1, 23.3, 23.5 (Task 35.2)
@@ -46,10 +46,10 @@ const ENTITY_TYPE_ICONS = {
  * />
  * 
  * @example
- * // With schoolId (legacy contact)
+ * // With entityId (legacy contact)
  * <ContactDisplay 
- *   schoolId="school_789" 
- *   schoolName="Test School"
+ *   entityId="school_789" 
+ *   entityName="Test School"
  *   workspaceId="workspace_456"
  * />
  * 
@@ -64,9 +64,8 @@ const ENTITY_TYPE_ICONS = {
  */
 export function ContactDisplay({
   entityId,
-  schoolId,
   displayName,
-  schoolName,
+  entityName,
   entityType: providedEntityType,
   workspaceId,
   showType = false,
@@ -75,7 +74,7 @@ export function ContactDisplay({
   iconClassName,
   nameClassName,
 }: ContactDisplayProps) {
-  const [contactName, setContactName] = React.useState<string | null>(displayName || schoolName || null);
+  const [contactName, setContactName] = React.useState<string | null>(displayName || entityName || null);
   const [entityType, setEntityType] = React.useState<'institution' | 'family' | 'person' | null>(providedEntityType || null);
   const [isLegacy, setIsLegacy] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -84,19 +83,19 @@ export function ContactDisplay({
   // Determine if we need to resolve via Contact Adapter
   React.useEffect(() => {
     // If we have denormalized fields, use them directly (no adapter lookup needed)
-    if (displayName || schoolName) {
-      setContactName(displayName ?? schoolName ?? null);
+    if (displayName || entityName) {
+      setContactName(displayName ?? entityName ?? null);
       setEntityType(providedEntityType ?? null);
-      setIsLegacy(!entityId && !!schoolId);
+      setIsLegacy(!entityId && !!entityId);
       setShouldResolve(false);
       return;
     }
 
     // If we only have IDs, we need to resolve via adapter
-    if (entityId || schoolId) {
+    if (entityId || entityId) {
       setShouldResolve(true);
     }
-  }, [entityId, schoolId, displayName, schoolName, providedEntityType]);
+  }, [entityId, displayName, entityName, providedEntityType]);
 
   // Resolve contact via Contact Adapter if needed
   React.useEffect(() => {
@@ -105,7 +104,7 @@ export function ContactDisplay({
     async function resolveContact() {
       setIsLoading(true);
       try {
-        const identifier = entityId || schoolId;
+        const identifier = entityId || entityId;
         
         if (!identifier) {
           setContactName(null);
@@ -140,7 +139,7 @@ export function ContactDisplay({
     }
 
     resolveContact();
-  }, [shouldResolve, entityId, schoolId, workspaceId]);
+  }, [shouldResolve, entityId, workspaceId]);
 
   if (isLoading) {
     return <Skeleton className={cn("h-4 w-32", className)} />;
@@ -179,9 +178,8 @@ export function ContactDisplay({
  */
 export function ContactDisplayInline({
   entityId,
-  schoolId,
   displayName,
-  schoolName,
+  entityName,
   entityType: providedEntityType,
   workspaceId,
   showType = false,
@@ -191,9 +189,9 @@ export function ContactDisplayInline({
   return (
     <ContactDisplay
       entityId={entityId}
-      schoolId={schoolId}
+      entityId={entityId}
       displayName={displayName}
-      schoolName={schoolName}
+      entityName={entityName}
       entityType={providedEntityType}
       workspaceId={workspaceId}
       showType={showType}

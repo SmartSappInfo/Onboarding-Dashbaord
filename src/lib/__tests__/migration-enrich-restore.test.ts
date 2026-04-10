@@ -6,9 +6,9 @@
  * Requirements tested:
  * - 19.2: Resolve entityId by querying schools collection
  * - 19.3: Use school's entityId if migrationStatus === 'migrated'
- * - 19.4: Generate entityId using format entity_<schoolId> if school doesn't have entityId
+ * - 19.4: Generate entityId using format entity_<entityId> if school doesn't have entityId
  * - 19.5: Create backup collection before updates
- * - 19.6: Update original record with entityId and entityType while preserving schoolId
+ * - 19.6: Update original record with entityId and entityType while preserving entityId
  * - 19.7: Process in batches of 450 records
  * - 19.8: Log errors for individual record failures
  * - 19.9: Continue processing remaining records after error
@@ -69,7 +69,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_1', schoolId: 'school_1', title: 'Test Task' }
+          { id: 'task_1', entityId: 'school_1', title: 'Test Task' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -101,7 +101,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_2', schoolId: 'school_2', title: 'Test Task' }
+          { id: 'task_2', entityId: 'school_2', title: 'Test Task' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -131,7 +131,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_3', schoolId: 'school_3', title: 'Test Task' }
+          { id: 'task_3', entityId: 'school_3', title: 'Test Task' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -162,7 +162,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_4', schoolId: 'school_4', title: 'Test Task' }
+          { id: 'task_4', entityId: 'school_4', title: 'Test Task' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -194,8 +194,8 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_5', schoolId: 'school_missing', title: 'Test Task' },
-          { id: 'task_6', schoolId: 'school_6', title: 'Test Task 2' }
+          { id: 'task_5', entityId: 'school_missing', title: 'Test Task' },
+          { id: 'task_6', entityId: 'school_6', title: 'Test Task 2' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -237,9 +237,9 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_7', schoolId: 'school_7', title: 'Test Task' },
-          { id: 'task_8', schoolId: 'school_8', title: 'Test Task 2' },
-          { id: 'task_9', schoolId: 'school_9', title: 'Test Task 3' }
+          { id: 'task_7', entityId: 'school_7', title: 'Test Task' },
+          { id: 'task_8', entityId: 'school_8', title: 'Test Task 2' },
+          { id: 'task_9', entityId: 'school_9', title: 'Test Task 3' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -279,9 +279,9 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const batch: MigrationBatch = {
         collection: 'tasks',
         records: [
-          { id: 'task_10', schoolId: 'school_10', title: 'Test Task 1' },
-          { id: 'task_11', schoolId: 'school_11', title: 'Test Task 2' },
-          { id: 'task_12', schoolId: 'school_12', title: 'Test Task 3' }
+          { id: 'task_10', entityId: 'school_10', title: 'Test Task 1' },
+          { id: 'task_11', entityId: 'school_11', title: 'Test Task 2' },
+          { id: 'task_12', entityId: 'school_12', title: 'Test Task 3' }
         ],
         batchSize: 450,
         totalBatches: 1,
@@ -336,7 +336,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_13',
-            original: { id: 'task_13', schoolId: 'school_13', title: 'Test Task' },
+            original: { id: 'task_13', entityId: 'school_13', title: 'Test Task' },
             enriched: { entityId: 'entity_13', entityType: 'institution' }
           }
         ],
@@ -353,7 +353,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       const backupData = setCalls[0][1];
       expect(backupData).toMatchObject({
         id: 'task_13',
-        schoolId: 'school_13',
+        entityId: 'school_13',
         title: 'Test Task'
       });
       expect(backupData).toHaveProperty('backedUpAt');
@@ -366,7 +366,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_14',
-            original: { id: 'task_14', schoolId: 'school_14', title: 'Test Task' },
+            original: { id: 'task_14', entityId: 'school_14', title: 'Test Task' },
             enriched: { entityId: 'entity_14', entityType: 'family' }
           }
         ],
@@ -388,14 +388,14 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       expect(updateData).toHaveProperty('updatedAt');
     });
 
-    it('should preserve original schoolId field', async () => {
+    it('should preserve original entityId field', async () => {
       // Requirement 19.6 - dual-write
       const enrichedBatch: EnrichedBatch = {
         collection: 'tasks',
         records: [
           {
             id: 'task_15',
-            original: { id: 'task_15', schoolId: 'school_15', title: 'Test Task' },
+            original: { id: 'task_15', entityId: 'school_15', title: 'Test Task' },
             enriched: { entityId: 'entity_15', entityType: 'institution' }
           }
         ],
@@ -404,13 +404,13 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
 
       await engine.restore(enrichedBatch);
 
-      // Update should only include entityId and entityType, not remove schoolId
+      // Update should only include entityId and entityType, not remove entityId
       const updateCalls = vi.mocked(mockWriteBatch.update).mock.calls;
       expect(updateCalls.length).toBeGreaterThan(0);
       
-      // Check the update data (second argument) - should NOT contain schoolId
+      // Check the update data (second argument) - should NOT contain entityId
       const updateData = updateCalls[0][1];
-      expect(updateData).not.toHaveProperty('schoolId');
+      expect(updateData).not.toHaveProperty('entityId');
       expect(updateData).toHaveProperty('entityId');
       expect(updateData).toHaveProperty('entityType');
     });
@@ -424,7 +424,6 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
             id: 'task_16',
             original: { 
               id: 'task_16', 
-              schoolId: 'school_16', 
               entityId: 'entity_16', // Already has entityId
               title: 'Test Task' 
             },
@@ -445,7 +444,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
       // Requirement 19.7
       const records = Array.from({ length: 900 }, (_, i) => ({
         id: `task_${i}`,
-        original: { id: `task_${i}`, schoolId: `school_${i}`, title: `Task ${i}` },
+        original: { id: `task_${i}`, entityId: `school_${i}`, title: `Task ${i}` },
         enriched: { entityId: `entity_${i}`, entityType: 'institution' as const }
       }));
 
@@ -468,12 +467,12 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_17',
-            original: { id: 'task_17', schoolId: 'school_17', title: 'Test Task 1' },
+            original: { id: 'task_17', entityId: 'school_17', title: 'Test Task 1' },
             enriched: { entityId: 'entity_17', entityType: 'institution' }
           },
           {
             id: 'task_18',
-            original: { id: 'task_18', schoolId: 'school_18', title: 'Test Task 2' },
+            original: { id: 'task_18', entityId: 'school_18', title: 'Test Task 2' },
             enriched: { entityId: 'entity_18', entityType: 'institution' }
           }
         ],
@@ -501,12 +500,12 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_19',
-            original: { id: 'task_19', schoolId: 'school_19', title: 'Test Task 1' },
+            original: { id: 'task_19', entityId: 'school_19', title: 'Test Task 1' },
             enriched: { entityId: 'entity_19', entityType: 'institution' }
           },
           {
             id: 'task_20',
-            original: { id: 'task_20', schoolId: 'school_20', title: 'Test Task 2' },
+            original: { id: 'task_20', entityId: 'school_20', title: 'Test Task 2' },
             enriched: { entityId: 'entity_20', entityType: 'institution' }
           }
         ],
@@ -544,14 +543,13 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_21',
-            original: { id: 'task_21', schoolId: 'school_21', title: 'Test Task 1' },
+            original: { id: 'task_21', entityId: 'school_21', title: 'Test Task 1' },
             enriched: { entityId: 'entity_21', entityType: 'institution' }
           },
           {
             id: 'task_22',
             original: { 
               id: 'task_22', 
-              schoolId: 'school_22', 
               entityId: 'entity_22', // Already migrated
               title: 'Test Task 2' 
             },
@@ -579,7 +577,7 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_23',
-            original: { id: 'task_23', schoolId: 'school_23', title: 'Test Task' },
+            original: { id: 'task_23', entityId: 'school_23', title: 'Test Task' },
             enriched: { entityId: 'entity_23', entityType: 'institution' }
           }
         ],
@@ -606,12 +604,12 @@ describe('Migration Engine - Enrich & Restore Operation', () => {
         records: [
           {
             id: 'task_24',
-            original: { id: 'task_24', schoolId: 'school_24', title: 'Test Task 1' },
+            original: { id: 'task_24', entityId: 'school_24', title: 'Test Task 1' },
             enriched: { entityId: 'entity_24', entityType: 'institution' }
           },
           {
             id: 'task_25',
-            original: { id: 'task_25', schoolId: 'school_25', title: 'Test Task 2' },
+            original: { id: 'task_25', entityId: 'school_25', title: 'Test Task 2' },
             enriched: { entityId: 'entity_25', entityType: 'institution' }
           }
         ],
