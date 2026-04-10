@@ -141,7 +141,7 @@ export default function PipelineClient() {
   const hasActiveFilters = searchTerm !== '' || zoneFilter !== 'all' || statusFilter !== 'all';
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-50/50">
+    <div className="flex h-full flex-col overflow-hidden bg-background">
       <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30">
         <div className="p-4 sm:p-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 shrink-0 text-left">
@@ -235,8 +235,8 @@ export default function PipelineClient() {
                 </AnimatePresence>
 
                 <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                    <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-black uppercase text-[9px] tracking-widest px-4 transition-all", activeView === 'board' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="mr-1.5 h-3.5 w-3.5" /> Board</Button>
-                    <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-black uppercase text-[9px] tracking-widest px-4 transition-all", activeView === 'config' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Config</Button>
+                    <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-black uppercase text-[9px] tracking-widest px-4 transition-all", activeView === 'board' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="mr-1.5 h-3.5 w-3.5" /> Board</Button>
+                    <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-black uppercase text-[9px] tracking-widest px-4 transition-all", activeView === 'config' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Config</Button>
                 </div>
             </div>
         </div>

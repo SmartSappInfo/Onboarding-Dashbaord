@@ -120,57 +120,61 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-              <ArrowRightLeft className="h-6 w-6" />
+        <DialogHeader className="p-8 bg-emerald-500/10 border-b border-emerald-500/20 shrink-0 text-left">
+            <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-500/20">
+                    <Zap className="h-6 w-6" />
+                </div>
+                <div className="text-left">
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-emerald-500">Lead Conversion</DialogTitle>
+                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-emerald-400 opacity-70">Elevate {school.name} to Onboarding</DialogDescription>
+                </div>
             </div>
-            <div className="text-left">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">Workflow Migration</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Transfer institution to another pipeline</DialogDescription>
-            </div>
-          </div>
         </DialogHeader>
 
         <div className="p-8 space-y-8 bg-background text-left">
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border shadow-inner">
-                <div className="p-2 bg-white rounded-xl shadow-sm shrink-0 text-primary">
+                <div className="p-2 bg-card rounded-xl shadow-sm shrink-0 text-primary">
                     <Building className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Source Record</p>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Target Institution</p>
                     <p className="text-base font-black uppercase text-foreground truncate">{school.name}</p>
                 </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
-                    <Workflow className="h-3 w-3" /> Target Pipeline
+                    <Workflow className="h-3 w-3" /> Select Integration Pipeline
                 </Label>
-                <Select value={targetPipelineId || ''} onValueChange={setTargetPipelineId}>
-                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold">
-                        <SelectValue placeholder="Select destination..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-2xl p-2">
-                        {pipelines?.filter(p => p.id !== school.pipelineId).map(p => (
-                            <SelectItem key={p.id} value={p.id} className="rounded-lg p-3">
-                                <div className="flex flex-col">
-                                    <span className="font-black uppercase text-xs">{p.name}</span>
-                                    <span className="text-[10px] text-muted-foreground font-medium">{p.description}</span>
-                                </div>
-                            </SelectItem>
-                        ))}
-                        {pipelines?.filter(p => p.id !== school.pipelineId).length === 0 && (
-                            <div className="p-4 text-center text-[10px] font-black uppercase text-muted-foreground opacity-40">No alternate pipelines defined</div>
-                        )}
-                    </SelectContent>
-                </Select>
+                
+                <div className="space-y-2">
+                    {isLoading ? (
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                    ) : pipelines?.filter(p => p.id !== school.pipelineId).map(p => (
+                        <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setTargetPipelineId(p.id)}
+                            className={cn(
+                                "w-full flex flex-col items-start p-4 rounded-2xl border-2 transition-all text-left",
+                                targetPipelineId === p.id ? "bg-primary/10 border-primary shadow-md" : "bg-card/50 border-transparent hover:bg-muted/30"
+                            )}
+                        >
+                            <div className="flex items-center justify-between w-full mb-1">
+                                <span className={cn("font-black uppercase text-xs", targetPipelineId === p.id ? "text-primary" : "text-foreground")}>{p.name}</span>
+                                {targetPipelineId === p.id && <Check className="h-4 w-4 text-primary animate-in zoom-in" />}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium line-clamp-1">{p.description}</p>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-4">
-                <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-[9px] font-bold text-amber-800 leading-relaxed uppercase tracking-tighter text-left">
-                    Transferring a school will reset its position to the first stage of the destination pipeline. Current workflow history is preserved in the audit log.
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 mt-4">
+                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-[9px] font-bold text-blue-500 leading-relaxed uppercase tracking-tighter text-left">
+                    "School Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
                 </p>
             </div>
         </div>

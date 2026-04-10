@@ -148,7 +148,7 @@ export default function AutomationsClient() {
                             variant="outline" 
                             onClick={handlePulseEngine} 
                             disabled={isPulsing}
-                            className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-white shadow-sm transition-all active:scale-95"
+                            className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary bg-card shadow-sm transition-all active:scale-95"
                         >
                             {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                             Pulse Engine
@@ -160,7 +160,7 @@ export default function AutomationsClient() {
                 </div>
 
                 <Tabs defaultValue="blueprints" className="space-y-8">
-                    <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
+                    <TabsList className="bg-card/20 border shadow-sm p-1 h-12 rounded-2xl w-fit">
                         <TabsTrigger value="blueprints" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Active Blueprints</TabsTrigger>
                         <TabsTrigger value="runs" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
                             <History className="h-4 w-4" /> Run Ledger
@@ -174,7 +174,7 @@ export default function AutomationsClient() {
                                 placeholder="Search workflows..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="h-12 rounded-2xl bg-white border-none shadow-sm ring-1 ring-border focus:ring-primary/20 font-bold pl-11"
+                                className="h-12 rounded-2xl bg-card border-none shadow-sm ring-1 ring-border focus:ring-primary/20 font-bold pl-11"
                             />
                         </div>
 
@@ -182,7 +182,7 @@ export default function AutomationsClient() {
                             {isLoadingAuth ? (
                                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2.5rem]" />)
                             ) : filteredAutomations.length > 0 ? filteredAutomations.map((auth) => (
-                                <Card key={auth.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+                                <Card key={auth.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border glass-card overflow-hidden group hover:ring-primary/20 transition-all">
                                     <CardHeader className="bg-muted/10 border-b p-6 pb-4">
                                         <div className="flex items-center justify-between">
                                             <div className={cn(
@@ -227,7 +227,7 @@ export default function AutomationsClient() {
                                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/5" asChild>
                                                     <Link href={`/admin/automations/${auth.id}/edit`}><Settings2 className="h-4 w-4 text-primary" /></Link>
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-50 text-destructive" onClick={() => handleDelete(auth.id)}>
+                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-rose-500/10 text-destructive" onClick={() => handleDelete(auth.id)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -260,8 +260,8 @@ export default function AutomationsClient() {
                                         <div className="flex items-center gap-6">
                                             <div className={cn(
                                                 "p-2.5 rounded-xl shadow-sm transition-all",
-                                                run.status === 'completed' ? "bg-emerald-50 text-emerald-600" : 
-                                                run.status === 'failed' ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
+                                                run.status === 'completed' ? "bg-emerald-500/10 text-emerald-500" : 
+                                                run.status === 'failed' ? "bg-rose-500/10 text-rose-500" : "bg-blue-500/10 text-blue-500"
                                             )}>
                                                 {run.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> : 
                                                  run.status === 'failed' ? <XCircle className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
@@ -281,7 +281,7 @@ export default function AutomationsClient() {
                                         </div>
                                         <div className="flex items-center gap-8">
                                             {run.error && (
-                                                <Badge variant="destructive" className="bg-rose-50 text-rose-600 border-none text-[8px] font-black uppercase px-2 gap-1 h-5 shadow-sm">
+                                                <Badge variant="destructive" className="bg-rose-500/10 text-rose-500 border-none text-[8px] font-black uppercase px-2 gap-1 h-5 shadow-sm">
                                                     <AlertCircle className="h-2.5 w-2.5" /> Logic Error
                                                 </Badge>
                                             )}
@@ -352,13 +352,13 @@ export default function AutomationsClient() {
 
                             {/* Failure Stack */}
                             {selectedRun?.error && (
-                                <Card className="border-rose-200 bg-rose-50 overflow-hidden rounded-2xl shadow-sm animate-pulse">
-                                    <div className="p-4 bg-rose-100 flex items-center gap-2 border-b border-rose-200">
-                                        <ShieldAlert size={14} className="text-rose-600" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-rose-900">Logical Termination Fault</span>
+                                <Card className="border-rose-500/20 bg-rose-500/10 overflow-hidden rounded-2xl shadow-sm animate-pulse">
+                                    <div className="p-4 bg-rose-500/20 flex items-center gap-2 border-b border-rose-500/30">
+                                        <ShieldAlert size={14} className="text-rose-500" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">Logical Termination Fault</span>
                                     </div>
                                     <CardContent className="p-4">
-                                        <pre className="text-xs font-mono font-bold text-rose-700 whitespace-pre-wrap leading-relaxed">{selectedRun.error}</pre>
+                                        <pre className="text-xs font-mono font-bold text-rose-400 whitespace-pre-wrap leading-relaxed">{selectedRun.error}</pre>
                                     </CardContent>
                                 </Card>
                             )}
@@ -386,7 +386,7 @@ export default function AutomationsClient() {
                                             <SearchCode size={14} />
                                         </Button>
                                     </div>
-                                    <div className="p-6 rounded-[2rem] bg-slate-900 text-blue-400 overflow-hidden shadow-2xl ring-1 ring-white/10">
+                                    <div className="p-6 rounded-[2rem] bg-slate-950/80 text-blue-500 overflow-hidden shadow-2xl ring-1 ring-white/10 backdrop-blur-md">
                                         <pre className="text-[11px] font-mono leading-relaxed max-h-[300px] overflow-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {JSON.stringify(selectedRun?.triggerData, null, 2)}
                                         </pre>
@@ -394,11 +394,11 @@ export default function AutomationsClient() {
                                 </div>
                             </div>
 
-                            <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-4">
-                                <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                            <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">
+                                <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
-                                    <p className="text-xs font-black text-blue-900 uppercase">Audit Integrity</p>
-                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-widest text-left">
+                                    <p className="text-xs font-black text-blue-500 uppercase">Audit Integrity</p>
+                                    <p className="text-[9px] font-bold text-blue-400/60 leading-relaxed uppercase tracking-widest text-left">
                                         This snapshot reflects the exact institutional state at the moment the trigger fired. 
                                         Subsequent changes to school records will not be reflected in this trace.
                                     </p>
@@ -409,7 +409,7 @@ export default function AutomationsClient() {
 
                     <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex items-center justify-between sm:justify-between">
                         <Button variant="ghost" onClick={() => setSelectedRun(null)} className="rounded-xl font-bold px-8">Close Trace</Button>
-                        <Button variant="outline" asChild className="rounded-xl font-black gap-2 border-primary/20 text-primary uppercase text-[10px] tracking-widest bg-white h-11 px-8 shadow-lg transition-all active:scale-95">
+                        <Button variant="outline" asChild className="rounded-xl font-black gap-2 border-primary/20 text-primary uppercase text-[10px] tracking-widest bg-card h-11 px-8 shadow-lg transition-all active:scale-95">
                             <Link href={`/admin/automations/${selectedRun?.automationId}/edit`}>
                                 View Logic Blueprint <ArrowRight size={14} />
                             </Link>

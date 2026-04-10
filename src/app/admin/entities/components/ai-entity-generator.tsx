@@ -35,7 +35,7 @@ import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebas
 import { useTenant } from '@/context/TenantContext';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
-import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Button as MovingButton } from '@/components/ui/moving-border';
 import type { Module, Zone, OnboardingStage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -242,10 +242,15 @@ export default function AiSchoolGenerator() {
                         >
                             Discard
                         </Button>
-                        <RainbowButton type="submit" disabled={isGenerating || !form.formState.isValid} className="h-14 px-12 font-black text-lg gap-3 shadow-2xl active:scale-95 transition-all">
+                        <MovingButton 
+                            type="submit" 
+                            disabled={isGenerating || !form.formState.isValid} 
+                            containerClassName="h-14 px-12 rounded-2xl"
+                            className="h-full w-full font-black text-lg gap-3 bg-slate-900"
+                        >
                             {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
                             {isGenerating ? 'Architecting...' : 'Initialize Hub with AI'}
-                        </RainbowButton>
+                        </MovingButton>
                     </div>
                 </form>
             </Form>

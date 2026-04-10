@@ -26,6 +26,7 @@ import { generateSurvey } from '@/ai/flows/generate-survey-flow';
 import type { Survey, UserProfile } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import AiModelSelector from '@/components/ai/AiModelSelector';
+import { Button as MovingButton } from '@/components/ui/moving-border';
 import { Loader2, Sparkles } from 'lucide-react';
 
 
@@ -241,10 +242,15 @@ export default function AiSurveyGenerator() {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isGenerating} size="lg" className="h-14 px-8 font-black text-lg gap-3">
+                        <MovingButton 
+                            type="submit" 
+                            disabled={isGenerating} 
+                            containerClassName="h-14 px-8 rounded-2xl"
+                            className="h-full w-full font-black text-lg gap-3 bg-slate-900"
+                        >
                             {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
                             {isGenerating ? 'Building Engine...' : 'Generate Intelligent Survey'}
-                        </Button>
+                        </MovingButton>
                     </div>
                 </form>
             </Form>

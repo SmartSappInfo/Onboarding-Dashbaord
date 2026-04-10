@@ -16,7 +16,7 @@ export default function SettingsClient() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
       <div className="max-w-7xl mx-auto space-y-12">
         {/* Organization Profile Header */}
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+        <Card className="rounded-[2.5rem] glass-card overflow-hidden">
           <div className="h-2 w-full bg-primary" />
           <CardContent className="p-8 md:p-12">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">

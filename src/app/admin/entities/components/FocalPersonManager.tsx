@@ -70,8 +70,8 @@ function FocalPersonItem({
     return (
         <Card
             className={cn(
-                "border-none ring-1 ring-border shadow-sm overflow-hidden relative group bg-background transition-all duration-500 text-left",
-                isSignatory ? "ring-primary/40 bg-primary/[0.02] shadow-xl" : "hover:ring-primary/20",
+                "border-none ring-1 ring-border shadow-sm overflow-hidden relative group bg-card/50 transition-all duration-500 text-left",
+                isSignatory ? "ring-primary/40 bg-primary/[0.04] shadow-xl" : "hover:ring-primary/20",
                 personErrors && "ring-destructive/50 bg-destructive/5"
             )}
         >
@@ -100,67 +100,67 @@ function FocalPersonItem({
                     <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
                         <User className="h-3 w-3 text-primary" /> Full Name
                     </Label>
-                    <Input
-                        {...register(`focalPersons.${index}.name`)}
-                        placeholder="e.g. Ama Serwaa"
-                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                            <Mail className="h-3 w-3" /> Email
-                        </Label>
                         <Input
-                            {...register(`focalPersons.${index}.email`)}
-                            type="email"
-                            placeholder="ama@school.edu"
-                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                            {...register(`focalPersons.${index}.name`)}
+                            placeholder="e.g. Ama Serwaa"
+                            className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                            <Phone className="h-3 w-3" /> Phone
-                        </Label>
-                        <Input
-                            {...register(`focalPersons.${index}.phone`)}
-                            placeholder="+233..."
-                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
-                        />
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
-                    <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                            <ShieldCheck className="h-3 w-3" /> Authority Role
-                        </Label>
-                        {isCustomRole ? (
-                            <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
-                                <Input 
-                                    {...register(`focalPersons.${index}.type`)}
-                                    placeholder="Enter custom role..."
-                                    className="h-10 rounded-xl bg-muted/20 border-none font-bold"
-                                    autoFocus
-                                />
-                                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        ) : (
-                            <Controller
-                                name={`focalPersons.${index}.type`}
-                                control={control}
-                                render={({ field: selectField }) => (
-                                    <Select 
-                                        onValueChange={(val) => {
-                                            if (val === 'CUSTOM') setIsCustomRole(true);
-                                            else selectField.onChange(val);
-                                        }} 
-                                        value={selectField.value}
-                                    >
-                                        <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                            <SelectValue />
-                                        </SelectTrigger>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                                <Mail className="h-3 w-3" /> Email
+                            </Label>
+                            <Input
+                                {...register(`focalPersons.${index}.email`)}
+                                type="email"
+                                placeholder="ama@school.edu"
+                                className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                                <Phone className="h-3 w-3" /> Phone
+                            </Label>
+                            <Input
+                                {...register(`focalPersons.${index}.phone`)}
+                                placeholder="+233..."
+                                className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                        <div className="space-y-2">
+                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                                <ShieldCheck className="h-3 w-3" /> Authority Role
+                            </Label>
+                            {isCustomRole ? (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                                    <Input 
+                                        {...register(`focalPersons.${index}.type`)}
+                                        placeholder="Enter custom role..."
+                                        className="h-10 rounded-xl bg-muted/10 border-none font-bold"
+                                        autoFocus
+                                    />
+                                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
+                                </div>
+                            ) : (
+                                <Controller
+                                    name={`focalPersons.${index}.type`}
+                                    control={control}
+                                    render={({ field: selectField }) => (
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                if (val === 'CUSTOM') setIsCustomRole(true);
+                                                else selectField.onChange(val);
+                                            }} 
+                                            value={selectField.value}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-muted/10 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                                <SelectValue />
+                                            </SelectTrigger>
                                         <SelectContent className="rounded-xl shadow-2xl border-none">
                                             {STANDARD_ROLES.map((t) => (
                                                 <SelectItem key={t} value={t} className="font-bold">
@@ -257,7 +257,7 @@ function FocalPersonItem({
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
                                     {attachments.map((att: any, aIdx: number) => (
-                                        <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-white border shadow-sm group/att">
+                                        <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-card border shadow-sm group/att">
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <FileText className="h-3 w-3 text-primary" />
                                                 <span className="text-[10px] font-bold uppercase truncate max-w-[150px]">{att.name}</span>
@@ -336,9 +336,9 @@ export function FocalPersonManager() {
       </div>
       
       {errors.focalPersons?.message && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex items-center gap-3 animate-pulse">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
-            <p className="text-[10px] font-black uppercase text-rose-900 tracking-widest">
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse">
+            <AlertCircle className="h-5 w-5 text-rose-500" />
+            <p className="text-[10px] font-black uppercase text-rose-500 tracking-widest leading-tight">
                 Logic Integrity Failure: {String(errors.focalPersons.message)}
             </p>
         </div>

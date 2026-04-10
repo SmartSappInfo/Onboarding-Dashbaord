@@ -75,7 +75,7 @@ export default function MediaClient() {
   const isLoading = isWorkspaceLoading || isMediaLoading;
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
       <div className="max-w-7xl mx-auto space-y-8 text-left">
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -91,19 +91,19 @@ export default function MediaClient() {
             </div>
         </div>
 
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-3xl overflow-hidden bg-card">
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-[2.5rem] overflow-hidden glass-card bg-card">
             <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4 text-left">
                 <div className="relative flex-grow w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                     <Input 
                         placeholder="Filter your assets..." 
-                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
+                        className="pl-11 h-12 rounded-2xl bg-background/50 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
-                    <TabsList className="bg-muted/30 h-12 p-1 rounded-2xl border w-full">
+                    <TabsList className="bg-card/20 h-12 p-1 rounded-2xl border w-full">
                         {TABS.map(tab => (
                             <TabsTrigger 
                                 key={tab.id} 
@@ -141,7 +141,7 @@ export default function MediaClient() {
                 <MediaAssetCard key={asset.id} asset={asset} />
               ))
             ) : (
-              <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-card/50 flex flex-col items-center justify-center gap-4 opacity-30">
+              <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background/20 flex flex-col items-center justify-center gap-4 opacity-30">
                 <Film className="h-16 w-16" />
                 <p className="font-black uppercase tracking-widest text-xs">No {activeTab} in this workspace</p>
               </div>

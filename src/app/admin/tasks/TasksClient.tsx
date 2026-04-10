@@ -100,19 +100,19 @@ import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
-    urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
-    high: { label: 'High', color: 'text-orange-600 bg-orange-50 border-orange-200', icon: AlertTriangle },
-    medium: { label: 'Medium', color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Clock },
-    low: { label: 'Low', color: 'text-slate-500 bg-slate-50 border-slate-200', icon: Circle }
+    urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
+    high: { label: 'High', color: 'text-orange-600 bg-orange-500/10 border-orange-200/20', icon: AlertTriangle },
+    medium: { label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-200/20', icon: Clock },
+    low: { label: 'Low', color: 'text-slate-500 bg-slate-500/10 border-slate-200/20', icon: Circle }
 };
 
 const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
-    call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-50' },
-    visit: { label: 'Campus Visit', icon: MapPin, color: 'text-blue-500 bg-blue-50' },
-    document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-50' },
-    training: { label: 'Staff Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-50' },
-    follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-50' },
-    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-slate-50' }
+    call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-500/10' },
+    visit: { label: 'Campus Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
+    document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
+    training: { label: 'Staff Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
+    follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-500/10' },
+    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-slate-500/10' }
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -330,7 +330,7 @@ export default function TasksClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-50 text-left">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
             <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
                 {/* Executive KPI Stats */}
@@ -389,7 +389,7 @@ export default function TasksClient() {
                 </section>
 
                 {/* Toolbar */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 rounded-[2rem] border shadow-sm ring-1 ring-black/5">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 glass-card p-4 rounded-[2rem]">
                     <div className="flex flex-wrap items-center gap-3">
                         <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
                             {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
@@ -468,7 +468,7 @@ export default function TasksClient() {
                                                 <div 
                                                     key={task.id} 
                                                     className={cn(
-                                                        "group flex items-center gap-4 p-4 sm:p-5 bg-white rounded-[1.5rem] border border-border/50 hover:border-primary/30 transition-all hover:shadow-xl hover:-translate-y-0.5",
+                                                        "group flex items-center gap-4 p-4 sm:p-5 glass-card rounded-[1.5rem] hover:border-primary/30",
                                                         task.status === 'done' && "opacity-60"
                                                     )}
                                                 >
@@ -508,7 +508,7 @@ export default function TasksClient() {
                                                     </div>
 
                                                     <div className="hidden sm:flex items-center gap-3 shrink-0">
-                                                        <Badge variant="outline" className="h-6 rounded-lg font-black uppercase text-[8px] bg-slate-100 border-none px-2.5">
+                                                        <Badge variant="outline" className="h-6 rounded-lg font-black uppercase text-[8px] bg-muted/30 border-none px-2.5">
                                                             {STATUS_LABELS[task.status] || task.status}
                                                         </Badge>
                                                         <Badge variant="outline" className={cn("h-6 rounded-lg font-black uppercase text-[8px] border-none px-2.5", P.color)}>
@@ -623,7 +623,7 @@ export default function TasksClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
+        <Card className="rounded-[2.5rem] glass-card overflow-hidden group border-none">
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />

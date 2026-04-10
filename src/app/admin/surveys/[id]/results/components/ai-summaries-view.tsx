@@ -36,7 +36,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Sparkles, BrainCircuit, MoreVertical, Copy, Trash2, MessageSquareQuote } from 'lucide-react';
-import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Button as MovingButton } from '@/components/ui/moving-border';
 
 const formSchema = z.object({
   prompt: z.string().min(10, { message: 'Please enter a query of at least 10 characters.' }),
@@ -159,10 +159,15 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                         )}
                                     />
                                     <div className="flex justify-end">
-                                        <RainbowButton type="submit" disabled={isQuerying}>
+                                        <MovingButton 
+                                            type="submit" 
+                                            disabled={isQuerying}
+                                            containerClassName="h-10 px-6 rounded-xl"
+                                            className="h-full w-full font-bold bg-slate-900"
+                                        >
                                             {isQuerying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                                             {isQuerying ? 'Thinking...' : 'Ask AI'}
-                                        </RainbowButton>
+                                        </MovingButton>
                                     </div>
                                 </form>
                             </Form>

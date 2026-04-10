@@ -78,7 +78,7 @@ export default function AdminDashboardPage() {
                         className="flex flex-col gap-1"
                     >
                         <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-black tracking-tight uppercase">Intelligence Hub</h1>
+                            <h1 className="text-3xl font-headline font-black tracking-tight uppercase">Intelligence Hub</h1>
                             <Badge 
                                 variant="outline" 
                                 className="font-black uppercase text-[10px] px-3 h-6 border-2 animate-in zoom-in duration-500"
@@ -101,22 +101,22 @@ export default function AdminDashboardPage() {
                         animate={{ opacity: 1, x: 0 }}
                         className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 shrink-0"
                     >
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1 opacity-40">Direct Entry:</h3>
+                        <h3 className="text-[10px] font-headline font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1 opacity-40">Direct Entry:</h3>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-white border-primary/10 hover:border-primary/30 transition-all">
+                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
                                 <Link href="/admin/entities/new">
                                     <PlusCircle className="h-4 w-4 mr-2 text-primary" /> 
                                     {isProspectTrack ? 'Add Lead' : 'Add School'}
                                 </Link>
                             </Button>
 
-                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-white border-primary/10 hover:border-primary/30 transition-all">
+                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
                                 <Link href="/admin/meetings/new">
                                     <CalendarPlus className="h-4 w-4 mr-2 text-primary" /> Session
                                 </Link>
                             </Button>
 
-                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-white border-primary/10 hover:border-primary/30 transition-all">
+                            <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
                                 <Link href="/admin/surveys/new">
                                     <FilePlus className="h-4 w-4 mr-2 text-primary" /> Survey
                                 </Link>

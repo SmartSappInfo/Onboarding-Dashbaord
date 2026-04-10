@@ -17,7 +17,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Button as MovingButton } from '@/components/ui/moving-border';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Paperclip, FileText, CheckCircle2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
@@ -347,7 +347,7 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-1 overflow-hidden p-0 bg-slate-50 dark:bg-slate-900/50">
+                            <CardContent className="flex-1 overflow-hidden p-0 bg-background/20">
                                 <ScrollArea className="h-full p-4" viewportRef={scrollRef}>
                                     <div className={cn(
                                         "space-y-4 mx-auto",
@@ -360,15 +360,15 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                             )}>
                                                 <div className={cn(
                                                     "h-8 w-8 rounded-full flex items-center justify-center shrink-0 shadow-sm",
-                                                    m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-white border text-primary"
+                                                    m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-card border border-border/50 text-primary"
                                                 )}>
                                                     {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                                                 </div>
                                                 <div className={cn(
                                                     "p-3 rounded-2xl text-sm shadow-sm",
                                                     m.role === 'user' 
-                                                        ? "bg-primary text-primary-foreground rounded-tr-none" 
-                                                        : "bg-white border rounded-tl-none text-foreground dark:bg-slate-800 dark:border-slate-700"
+                                                        ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/20" 
+                                                        : "bg-card border border-border/50 rounded-tl-none text-foreground"
                                                 )}>
                                                     {m.content}
                                                 </div>
@@ -376,10 +376,10 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                         ))}
                                         {isLoading && (
                                             <div className="flex gap-3 mr-auto max-w-[85%] animate-pulse">
-                                                <div className="h-8 w-8 rounded-full bg-white border flex items-center justify-center text-primary shrink-0">
+                                                <div className="h-8 w-8 rounded-full bg-card border border-border/50 flex items-center justify-center text-primary shrink-0">
                                                     <Loader2 className="h-4 w-4 animate-spin" />
                                                 </div>
-                                                <div className="p-3 rounded-2xl rounded-tl-none bg-white border text-sm text-muted-foreground italic dark:bg-slate-800 dark:border-slate-700">
+                                                <div className="p-3 rounded-2xl rounded-tl-none bg-card border border-border/50 text-sm text-muted-foreground italic">
                                                     Analyzing architecture...
                                                 </div>
                                             </div>
@@ -387,13 +387,13 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                     </div>
                                 </ScrollArea>
                             </CardContent>
-                            <CardFooter className="p-4 border-t bg-white dark:bg-slate-900 shrink-0">
+                            <CardFooter className="p-4 border-t bg-card/50 backdrop-blur-md shrink-0">
                                 <div className={cn(
                                     "flex flex-col w-full gap-2 mx-auto",
                                     isFullScreen ? "max-w-4xl" : "max-w-full"
                                 )}>
                                     {stagedFile && (
-                                        <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
+                                        <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
                                             <FileText className="h-4 w-4 text-primary" />
                                             <span className="text-[10px] font-bold text-primary truncate max-w-[200px]">{stagedFile.name}</span>
                                             <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
@@ -418,9 +418,9 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                                         size="icon"
                                                         disabled={isLoading || isUploadingFile}
                                                         onClick={() => fileInputRef.current?.click()}
-                                                        className="h-11 w-11 rounded-xl shrink-0 border border-slate-100 hover:bg-slate-50"
+                                                        className="h-11 w-11 rounded-xl shrink-0 border border-border/50 hover:bg-accent/10"
                                                     >
-                                                        {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-slate-500" />}
+                                                        {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>Attach Document (PDF, DOCX, TXT)</TooltipContent>
@@ -435,7 +435,7 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                                     onChange={(e) => setInput(e.target.value)}
                                                     onKeyDown={handleKeyDown}
                                                     disabled={isLoading}
-                                                    className="min-h-[100px] max-h-[300px] rounded-xl bg-slate-50 dark:bg-slate-800 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
+                                                    className="min-h-[100px] max-h-[300px] rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" 
                                                 />
                                             ) : (
                                                 <Input
@@ -444,20 +444,20 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                                                     onChange={(e) => setInput(e.target.value)}
                                                     onKeyDown={handleKeyDown}
                                                     disabled={isLoading}
-                                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                                                    className="h-11 rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
                                                 />
                                             )}
                                         </div>
-                                        <Button 
+                                        <MovingButton 
                                             type="button"
-                                            size="icon" 
                                             onClick={handleSend}
                                             disabled={(!input.trim() && !stagedFile) || isLoading || isUploadingFile}
-                                            className="h-11 w-11 rounded-xl shrink-0 mb-[1px]"
+                                            containerClassName="h-11 w-11 rounded-xl shrink-0 mb-[1px]"
+                                            className="h-full w-full bg-slate-900"
                                         >
                                             <span className="sr-only">Send message</span>
                                             <Send className="h-4 w-4" />
-                                        </Button>
+                                        </MovingButton>
                                     </div>
                                 </div>
                             </CardFooter>
@@ -484,14 +484,15 @@ export default function AiChatEditor({ variant = 'default', className }: AiChatE
                     </Tooltip>
                 </TooltipProvider>
             ) : (
-                <RainbowButton
+                <MovingButton
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="h-9 px-4 gap-2 font-bold"
+                    containerClassName="h-9 rounded-xl"
+                    className="h-full px-4 gap-2 font-bold bg-slate-900"
                 >
-                    {isOpen ? <X className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    <span>AI Partner</span>
-                </RainbowButton>
+                    {isOpen ? <X className="h-4 w-4 text-primary" /> : <Sparkles className="h-4 w-4 text-primary" />}
+                    <span className="text-primary text-xs uppercase tracking-widest font-black">AI Partner</span>
+                </MovingButton>
             )}
         </div>
     );

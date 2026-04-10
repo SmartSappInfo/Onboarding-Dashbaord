@@ -68,16 +68,16 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                     value={`${school.currency} ${(school.arrearsBalance || 0).toLocaleString()}`} 
                     sub="Unpaid balance from previous terms"
                     icon={CreditCard} 
-                    color="text-rose-600" 
-                    bg="bg-rose-50" 
+                    color="text-rose-500" 
+                    bg="bg-rose-500/10" 
                 />
                 <StatCard 
                     label="Available Credit" 
                     value={`${school.currency} ${(school.creditBalance || 0).toLocaleString()}`} 
                     sub="Overpayments and pre-funding"
                     icon={Wallet} 
-                    color="text-emerald-600" 
-                    bg="bg-emerald-50" 
+                    color="text-emerald-500" 
+                    bg="bg-emerald-500/10" 
                 />
                 <StatCard 
                     label="Total Net Balance" 
@@ -91,7 +91,7 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Invoice History */}
-                <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+                <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card/10 backdrop-blur-md">
                     <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                                 {invoices.map((invoice) => (
                                     <div key={invoice.id} className="p-6 flex items-center justify-between group hover:bg-muted/5 transition-colors">
                                         <div className="flex items-center gap-5">
-                                            <div className="p-3 bg-muted rounded-2xl border border-border/50 group-hover:bg-white transition-colors">
+                                            <div className="p-3 bg-muted/10 rounded-2xl border border-border/50 group-hover:bg-card transition-colors">
                                                 <FileText className="h-5 w-5 text-muted-foreground" />
                                             </div>
                                             <div>
@@ -132,7 +132,7 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                                                 <p className="font-black text-base tabular-nums">{invoice.currency} {invoice.totalPayable.toLocaleString()}</p>
                                                 <Badge variant="outline" className={cn(
                                                     "h-5 text-[8px] font-black uppercase border-none px-2 rounded-full",
-                                                    invoice.status === 'paid' ? "bg-emerald-50 text-emerald-600" : "bg-orange-50 text-orange-600"
+                                                    invoice.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" : "bg-orange-500/10 text-orange-500"
                                                 )}>
                                                     {invoice.status}
                                                 </Badge>
@@ -186,12 +186,12 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                                 </>
                             ) : (
                                 <div className="py-10 text-center space-y-4">
-                                    <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
-                                        <AlertCircle className="h-6 w-6 text-orange-600 mx-auto mb-2" />
-                                        <p className="text-[10px] font-black uppercase text-orange-900 tracking-tighter">Package Unassigned</p>
-                                        <p className="text-[9px] font-bold text-orange-700/60 uppercase leading-relaxed mt-1">Please update the school profile to enable automated billing.</p>
+                                    <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20">
+                                        <AlertCircle className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+                                        <p className="text-[10px] font-black uppercase text-orange-500 tracking-tighter">Package Unassigned</p>
+                                        <p className="text-[9px] font-bold text-orange-400/60 uppercase leading-relaxed mt-1">Please update the school profile to enable automated billing.</p>
                                     </div>
-                                    <Button variant="outline" asChild className="rounded-xl font-bold h-9 border-orange-200 text-orange-700 hover:bg-orange-50 transition-all text-[10px] uppercase tracking-widest">
+                                    <Button variant="outline" asChild className="rounded-xl font-bold h-9 border-orange-500/20 text-orange-500 hover:bg-orange-500/10 transition-all text-[10px] uppercase tracking-widest">
                                         <Link href={`/admin/entities/${school.id}/edit`}>Configure Billing Profile</Link>
                                     </Button>
                                 </div>
@@ -219,7 +219,7 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
+        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card/10 backdrop-blur-md overflow-hidden group hover:ring-primary/20 transition-all text-left">
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />

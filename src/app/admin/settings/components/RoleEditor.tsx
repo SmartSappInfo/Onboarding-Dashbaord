@@ -191,7 +191,7 @@ export default function RoleEditor() {
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : roles?.map(role => (
-                    <Card key={role.id} className="rounded-[2.5rem] border-none ring-1 ring-border bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
+                    <Card key={role.id} className="rounded-[2.5rem] glass-card overflow-hidden group text-left">
                         <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between border-b bg-muted/5">
                             <div className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: role.color }} />
@@ -322,7 +322,7 @@ export default function RoleEditor() {
                                     </div>
 
                                     {isSuperAdmin && (
-                                        <div className="p-6 rounded-[2rem] bg-amber-50 border border-amber-100 flex items-center justify-between shadow-sm text-left">
+                                        <div className="p-6 rounded-[2rem] bg-amber-500/10 border border-amber-500/20 flex items-center justify-between shadow-sm text-left">
                                             <div className="space-y-1">
                                                 <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Global Default Template</p>
                                                 <p className="text-[10px] text-amber-700 font-bold uppercase tracking-widest opacity-80">
@@ -358,7 +358,7 @@ export default function RoleEditor() {
                                                                     key={p.id} 
                                                                     className={cn(
                                                                         "flex items-center justify-between p-4 rounded-2xl border transition-all",
-                                                                        isChecked ? "bg-white border-primary/20 shadow-md ring-1 ring-primary/5" : "bg-muted/30 border-transparent grayscale opacity-60"
+                                                                        isChecked ? "bg-card border-primary/20 shadow-md ring-1 ring-primary/5" : "bg-muted/30 border-transparent grayscale opacity-60"
                                                                     )}
                                                                 >
                                                                     <div className="space-y-0.5 flex-1 pr-4">
@@ -381,8 +381,8 @@ export default function RoleEditor() {
                                         </div>
                                     </div>
 
-                                    <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-sm text-left">
-                                        <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
+                                    <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-5 shadow-sm text-left">
+                                        <div className="p-3 bg-card rounded-2xl text-blue-600 shadow-sm border border-blue-500/20"><Zap className="h-6 w-6" /></div>
                                         <div className="space-y-1">
                                             <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Security Protocol</p>
                                             <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">

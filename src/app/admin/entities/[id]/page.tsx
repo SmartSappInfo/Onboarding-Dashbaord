@@ -233,7 +233,7 @@ export default function SchoolDetailPage() {
     const isProspect = checkIsProspect(school);
 
     return (
-        <div className={cn("h-full overflow-y-auto bg-muted/10 pb-32", school.schoolStatus === 'Churned' && "grayscale opacity-80")}>
+        <div className={cn("h-full overflow-y-auto bg-background pb-32", school.schoolStatus === 'Churned' && "grayscale opacity-80")}>
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -279,7 +279,7 @@ export default function SchoolDetailPage() {
                     </div>
                 </div>
 
-                <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
+                <Card className="border-none shadow-2xl overflow-hidden glass-card rounded-[2.5rem] bg-card">
                     <div className="h-48 bg-slate-900 relative group">
                         {school.heroImageUrl && <Image src={school.heroImageUrl} alt="banner" fill className="object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />}
                         <div className="absolute bottom-6 right-8 flex gap-3">
@@ -303,7 +303,7 @@ export default function SchoolDetailPage() {
                     </div>
                     <CardContent className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end md:items-center gap-8">
                         <div 
-                            className="relative h-44 w-44 rounded-[3rem] bg-white p-3 shadow-2xl ring-8 ring-white overflow-hidden border border-border/50 shrink-0 group cursor-pointer"
+                            className="relative h-44 w-44 rounded-[3rem] bg-card p-3 shadow-2xl ring-8 ring-border/20 overflow-hidden border border-border/50 shrink-0 group cursor-pointer"
                             onClick={() => setIsLogoDialogOpen(true)}
                         >
                             {school.logoUrl ? (
@@ -349,7 +349,7 @@ export default function SchoolDetailPage() {
                 </Card>
 
                 <Tabs defaultValue="overview" className="space-y-8">
-                    <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
+                    <TabsList className="bg-card/40 border shadow-sm p-1 h-12 rounded-2xl w-fit backdrop-blur-sm">
                         <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Insights</TabsTrigger>
                         <TabsTrigger value="tasks" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
                             Tasks
@@ -367,8 +367,8 @@ export default function SchoolDetailPage() {
 
                     <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                                <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
+                            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+                                <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
                                     <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Focal Directory</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0">
@@ -377,7 +377,7 @@ export default function SchoolDetailPage() {
                                             resolvedContact.contacts.map((person, idx) => (
                                                 <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
+                                                        <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-black text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
                                                         <div>
                                                             <p className="font-black text-base">{person.name}</p>
                                                             <Badge variant="outline" className="mt-1 text-[8px] font-black uppercase tracking-tighter h-5">{person.type}</Badge>
@@ -396,17 +396,17 @@ export default function SchoolDetailPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                                <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
+                            <Card className="border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+                                <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
                                     <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-8 space-y-8">
-                                    <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/5 border border-primary/10 shadow-inner">
+                                    <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/10 border border-primary/20 shadow-inner">
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Network Impact</p>
                                             <p className="text-3xl font-black tabular-nums tracking-tighter text-primary">{school.nominalRoll?.toLocaleString() || '0'}</p>
                                         </div>
-                                        <div className="p-3 bg-white rounded-2xl shadow-sm border border-primary/10"><Users className="h-6 w-6 text-primary" /></div>
+                                        <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
                                     </div>
                                     <div className="space-y-6">
                                         <DetailItem icon={UserCheck} label="Primary Handler" value={resolvedContact.assignedTo?.name || 'Unassigned'} />
@@ -441,7 +441,7 @@ export default function SchoolDetailPage() {
                                 Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                             ) : tasks && tasks.length > 0 ? (
                                 tasks.map(task => (
-                                    <Card key={task.id} className="border-border/50 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all">
+                                    <Card key={task.id} className="border-border/50 rounded-2xl bg-card shadow-sm hover:shadow-md transition-all">
                                         <CardContent className="p-4 flex items-center gap-4">
                                             <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
                                             <div className="flex-1 min-w-0">
@@ -457,7 +457,7 @@ export default function SchoolDetailPage() {
                                     </Card>
                                 ))
                             ) : (
-                                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
+                                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-background/20 opacity-30 flex flex-col items-center gap-2">
                                     <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">No pending actions for this {singular.toLowerCase()}</p>
                                 </div>
@@ -487,8 +487,8 @@ export default function SchoolDetailPage() {
             </div>
 
             <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border shadow-2xl bg-card">
+                    <DialogHeader className="p-8 bg-card/20 border-b shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
                                 <Camera className="h-6 w-6" />
@@ -512,7 +512,7 @@ export default function SchoolDetailPage() {
                             </div>
                         )}
                     </div>
-                    <DialogFooter className="p-4 bg-muted/30 border-t flex justify-end">
+                    <DialogFooter className="p-4 bg-card/50 border-t flex justify-end">
                         <Button variant="ghost" onClick={() => setIsLogoDialogOpen(false)} className="rounded-xl font-bold">Discard</Button>
                     </DialogFooter>
                 </DialogContent>

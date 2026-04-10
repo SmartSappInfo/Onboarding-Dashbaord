@@ -197,7 +197,7 @@ export default function ReportsClient() {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
             <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -221,14 +221,14 @@ export default function ReportsClient() {
                 {/* KPI Tier */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard label="Network Growth" value={`+${velocityData[velocityData.length-1].count}`} sub="New Signups (30D)" icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
-                    <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Task Closure" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Roll" icon={Users} color="text-purple-600" bg="bg-purple-50" />
+                    <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-500" bg="bg-emerald-500/10" />
+                    <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Task Closure" icon={Clock} color="text-blue-500" bg="bg-blue-500/10" />
+                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Roll" icon={Users} color="text-purple-500" bg="bg-purple-500/10" />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* CRM Resolution Trend */}
-                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
@@ -253,7 +253,7 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <MapPin className="h-4 w-4" /> Regional Strategic Density
@@ -280,8 +280,8 @@ export default function ReportsClient() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Functional Lead-Time Analysis */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
-                        <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
+                        <CardHeader className="bg-primary/10 p-8 border-b border-primary/20">
                             <CardTitle className="text-lg font-black uppercase tracking-tight">Lead-Time Analysis</CardTitle>
                             <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Average days to resolution per task category.</CardDescription>
                         </CardHeader>
@@ -309,7 +309,7 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Operational Insights */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
                         <CardHeader className="bg-muted/10 border-b p-8">
                             <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
                                 <Zap className="h-5 w-5 text-primary" /> Executive Snapshot
@@ -329,7 +329,7 @@ export default function ReportsClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all">
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />

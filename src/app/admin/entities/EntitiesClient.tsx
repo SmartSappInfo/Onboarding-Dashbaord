@@ -254,7 +254,7 @@ export default function EntitiesClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center gap-3 shrink-0">
@@ -288,7 +288,7 @@ export default function EntitiesClient() {
                 </div>
             </div>
             
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
+            <Card className="glass-card rounded-2xl overflow-hidden">
                 <CardContent className="p-4 space-y-3">
                     <div className="flex flex-wrap items-center gap-4">
                         <div className="flex-1 min-w-[200px]">
@@ -362,7 +362,7 @@ export default function EntitiesClient() {
                                 className="h-4 w-4 rounded border-border cursor-pointer"
                                 aria-label={`Select ${school.name}`}
                               />
-                              <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                              <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
                                 <AvatarImage src={school.logoUrl} alt={school.name} />
                                 <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
                               </Avatar>
@@ -439,17 +439,15 @@ export default function EntitiesClient() {
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
                                     
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
-                                        <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" /></div>
+                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">{updateStatus}</span>
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringSchool(school)}>
-                                        <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
+                                        <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">Transfer Pipeline</span>
                                     </DropdownMenuItem>
-
                                     <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingSchool(school)}>
-                                        <div className="p-1.5 bg-violet-50 rounded-lg text-violet-600"><TagIcon className="h-3.5 w-3.5" /></div>
+                                        <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">Manage Tags</span>
                                     </DropdownMenuItem>
 

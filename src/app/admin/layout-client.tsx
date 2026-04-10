@@ -271,12 +271,14 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-[#F8FAFC]">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur-md shadow-sm print:hidden">
+      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
+        {/* Dark Mode Background Aura */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,95,255,0.05),transparent_50%)] pointer-events-none hidden dark:block" />
+        <header className="glass-header h-16 flex shrink-0 items-center gap-4 px-6 print:hidden">
           <SidebarTrigger className="-ml-1" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
           <div className="flex items-center gap-3 shrink-0">
-              {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
+              <ThemeToggle />
               <NotificationBell />
               <div className="h-8 w-px bg-border mx-1" />
               <DropdownMenu>
@@ -301,6 +303,12 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                   </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="my-1" />
+                  {hasPerm('system_user_switch') && (
+                    <>
+                      <AssignedUserGlobalFilter />
+                      <DropdownMenuSeparator className="my-1" />
+                    </>
+                  )}
                   <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs uppercase">My Profile</span></Link></DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1" />
                   <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs uppercase">Log out</span></DropdownMenuItem>

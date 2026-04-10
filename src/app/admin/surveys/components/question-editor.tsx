@@ -149,7 +149,7 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
     };
 
     return (
-        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted p-1 rounded-md mb-2")}>
+        <div className={cn("flex items-center gap-0.5", !minimal && "bg-card/20 p-1 rounded-md mb-2 ring-1 ring-border")}>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)">
                 <Bold className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
@@ -199,7 +199,7 @@ const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; fie
                     {element.type === 'video' && <VideoEmbed url={field.value} />}
                     {element.type === 'audio' && <div className="p-4"><audio controls src={field.value} className="w-full" /></div>}
                     {element.type === 'document' && (
-                        <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 hover:bg-muted">
+                        <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 hover:bg-accent/10 transition-colors">
                             <FileText className="h-8 w-8 text-muted-foreground" />
                             <div>
                                 <p className="font-semibold">Document</p>
@@ -213,7 +213,7 @@ const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; fie
                 </div>
             ) : (
                 <div 
-                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/50 bg-card/5 rounded-xl cursor-pointer hover:bg-accent/5 transition-all"
                     onClick={() => setIsDialogOpen(true)}
                 >
                     <Icon className="h-12 w-12 text-muted-foreground" />
@@ -400,7 +400,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
-                        className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                        className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -427,7 +427,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                        className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -481,7 +481,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
-                        className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                        className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -508,7 +508,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                        className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -620,8 +620,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
                       control={control}
                       render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select a question..." /></SelectTrigger>
+                       <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Select a question..." /></SelectTrigger>
                           <SelectContent>
                           {potentialSourceQuestions.map((q) => (
                               <SelectItem key={q.id} value={q.id}>
@@ -637,8 +637,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       name={`elements.${elementIndex}.rules.${index}.operator`}
                       control={control}
                       render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="w-1/2 bg-muted/50 border-border/50"><SelectValue placeholder="Operator..." /></SelectTrigger>
+                           <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="w-1/2 bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Operator..." /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="isEqualTo">Is</SelectItem>
                               <SelectItem value="isNotEqualTo">Is not</SelectItem>
@@ -660,7 +660,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <Controller
                           name={`elements.${elementIndex}.rules.${index}.targetValue`}
                           control={control}
-                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-muted/50 border-border/50" />}
+                           render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-card border-border/50 ring-1 ring-border" />}
                           />
                       )}
                   </div>
@@ -676,8 +676,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           name={`elements.${elementIndex}.rules.${index}.action.type`}
                           control={control}
                           render={({ field }) => (
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="w-full bg-muted/50 border-border/50"><SelectValue placeholder="Action..." /></SelectTrigger>
+                               <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Action..." /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="jump">Jump To...</SelectItem>
                                       <SelectItem value="show">Show Element(s)...</SelectItem>
@@ -693,8 +693,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                               name={`elements.${elementIndex}.rules.${index}.action.targetElementId`}
                               control={control}
                               render={({ field }) => (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                      <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Target element..." /></SelectTrigger>
+                                   <Select onValueChange={field.onChange} value={field.value}>
+                                      <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Target element..." /></SelectTrigger>
                                       <SelectContent>
                                       {getJumpTargets().map((el) => (
                                           <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
@@ -767,7 +767,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-fit justify-start text-left font-normal h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full sm:w-fit justify-start text-left font-normal h-11 bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -934,7 +934,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   return (
     <div className="relative group" ref={setNodeRef} style={style}>
         <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-accent/10"
             {...attributes}
             {...listeners}
         >
@@ -945,10 +945,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             className={cn(
                 "border transition-all duration-200",
                 hasErrors ? "border-destructive shadow-lg" : "border-border shadow-xs group-hover:shadow-md",
-                element.hidden ? "opacity-60 bg-muted/20" : "bg-card"
+                element.hidden ? "opacity-60 bg-card/10 backdrop-blur-sm" : "bg-card"
             )}
         >
-             <CardHeader className="py-3 px-4 border-b bg-muted/10">
+             <CardHeader className="py-3 px-4 border-b bg-card/20">
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                         <div className={cn(
@@ -1092,9 +1092,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-muted/20 border-none shadow-none h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
+                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-card border-none shadow-none ring-1 ring-border h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-card border-none shadow-none ring-1 ring-border min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1129,14 +1129,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                 </div>
                                                             </RadioGroup>
                                                             {enableScoring && (
-                                                                <div className="flex gap-4 items-center rounded-xl border border-primary/20 bg-muted/20 p-4 shadow-xs mt-4">
+                                                                <div className="flex gap-4 items-center rounded-xl ring-1 ring-primary/20 bg-card p-4 shadow-xs mt-4">
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "Yes"</FormLabel>
-                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
+                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "No"</FormLabel>
-                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
+                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
                                                                 </div>
                                                             )}
@@ -1147,10 +1147,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
+                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-card ring-1 ring-border appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:ring-primary/20 focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
                                                 case 'file-upload':
                                                     return (
-                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-muted/20">
+                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-card/50 shadow-inner">
                                                             <Upload className="w-4 h-4 text-primary" />
                                                             <span className="font-bold">File Upload Field</span>
                                                         </div>
@@ -1241,7 +1241,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 </div>
                                 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
-                                    <div className="space-y-4 bg-muted/20 rounded-xl p-4 shadow-xs border border-primary/10">
+                                    <div className="space-y-4 bg-card ring-1 ring-border rounded-xl p-4 shadow-xs border-none">
                                         <div className="flex justify-between items-center gap-3">
                                             <Controller 
                                                 name={`elements.${index}.renderAsPage`} 
@@ -1281,7 +1281,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     {...field} 
                                                     value={field.value ?? ''} 
                                                     placeholder="e.g., Company Details" 
-                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
+                                                    className="h-11 rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
                                                 />
                                             )} 
                                         />
@@ -1339,7 +1339,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Embed HTML Code</FormLabel>
-                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-muted/20 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
+                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
                                 </FormItem>
                             )} />
                         )}

@@ -143,8 +143,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
 
     return (
         <div className={cn(
-            "h-full w-full bg-slate-50 relative group/builder",
-            isFullScreen && "fixed inset-0 z-[100] bg-slate-50"
+            "h-full w-full bg-background relative group/builder",
+            isFullScreen && "fixed inset-0 z-[100] bg-background"
         )}>
             <ReactFlow
                 nodes={nodes}
@@ -159,7 +159,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 fitView
                 snapToGrid
                 snapGrid={[15, 15]}
-                className="bg-muted/10"
+                className="bg-background"
             >
                 <Background color="#cbd5e1" gap={30} size={1} />
                 
@@ -184,26 +184,26 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 </Panel>
 
                 <Panel position="bottom-center" className="mb-8">
-                    <Card className="rounded-full bg-slate-900 text-white px-6 py-3 shadow-2xl flex items-center gap-6 ring-1 ring-white/10">
+                    <Card className="rounded-full bg-accent/10 backdrop-blur-md text-foreground px-6 py-3 shadow-2xl flex items-center gap-6 ring-1 ring-border">
                         <div className="flex items-center gap-2">
                             <Layers className="h-4 w-4 text-primary" />
                             <span className="text-[10px] font-black uppercase tracking-widest">{nodes.length} Elements</span>
                         </div>
-                        <div className="h-4 w-px bg-white/10" />
+                        <div className="h-4 w-px bg-border" />
                         <div className="flex items-center gap-2">
-                            <Wand2 className="h-4 w-4 text-emerald-400" />
-                            <span className="text-[10px] font-bold text-white/60 uppercase tracking-tighter italic">Architecture Verified</span>
+                            <Wand2 className="h-4 w-4 text-emerald-500" />
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter italic">Architecture Verified</span>
                         </div>
                     </Card>
                 </Panel>
 
-                <Controls className="!bg-white !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
+                <Controls className="!bg-card !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
             </ReactFlow>
 
             {/* Sidebar Inspector Context */}
             <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
                 <Card className={cn(
-                    "rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-white/95 backdrop-blur-md p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] h-full flex flex-col ring-1 ring-black/5 overflow-hidden",
+                    "rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] glass-card p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] h-full flex flex-col ring-1 ring-border overflow-hidden",
                     selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
                 )}>
                     <div className="flex items-center justify-between mb-6 shrink-0">

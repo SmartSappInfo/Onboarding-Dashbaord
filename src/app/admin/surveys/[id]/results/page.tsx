@@ -146,16 +146,16 @@ export default function SurveyResultsPage() {
             onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
             className="flex h-full flex-col"
         >
-            <div className="shrink-0 border-b bg-background p-4 sm:p-6">
+            <div className="shrink-0 border-b bg-card/40 backdrop-blur-md p-4 sm:p-6">
                  <div className="flex items-center justify-between">
-                    <TabsList>
-                        <TabsTrigger value="responses">
+                    <TabsList className="bg-card/20 border-border/50">
+                        <TabsTrigger value="responses" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
                             <FileText className="mr-2 h-4 w-4" /> Responses
                         </TabsTrigger>
-                        <TabsTrigger value="analytics">
+                        <TabsTrigger value="analytics" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
                             <BarChart3 className="mr-2 h-4 w-4" /> Analytics
                         </TabsTrigger>
-                        <TabsTrigger value="ai-summaries">
+                        <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
                             <Brain className="mr-2 h-4 w-4" /> AI Summaries
                         </TabsTrigger>
                     </TabsList>

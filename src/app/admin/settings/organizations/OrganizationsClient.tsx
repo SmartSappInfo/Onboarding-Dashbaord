@@ -99,8 +99,8 @@ export default function OrganizationsClient() {
                         Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2rem]" />)
                     ) : organizations?.map(org => (
                         <Card key={org.id} className={cn(
-                            "rounded-[2.5rem] border-none ring-1 transition-all duration-500 overflow-hidden bg-white text-left group",
-                            org.status === 'archived' ? "opacity-50 grayscale ring-border" : "ring-border shadow-sm hover:ring-primary/20 hover:shadow-xl"
+                            "rounded-[2.5rem] glass-card overflow-hidden text-left group transition-all duration-500",
+                            org.status === 'archived' ? "opacity-50 grayscale ring-border" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                         )}>
                             <div className="h-1.5 w-full bg-primary" />
                             <CardHeader className="p-6 pb-4">

@@ -302,7 +302,7 @@ export default function SurveysClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
         <div className="max-w-7xl mx-auto space-y-8 text-left">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div className="flex flex-col">
@@ -325,18 +325,18 @@ export default function SurveysClient() {
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
+            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-border">
                 <div className="relative flex-grow w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                     <Input 
                         placeholder="Search survey titles..." 
-                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" 
+                        className="pl-11 h-12 rounded-2xl bg-card border-none font-bold ring-1 ring-border focus:ring-primary/20" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-card border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-accent/10 ring-1 ring-border">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -348,10 +348,10 @@ export default function SurveysClient() {
                 </Select>
             </div>
             
-            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
             <Table>
                 <TableHeader>
-                <TableRow className="bg-muted/30">
+                <TableRow className="bg-card/20 border-b border-border/50">
                     <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 pl-6">Blueprint Title</TableHead>
                     <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-widest py-4 text-center">Status</TableHead>
                     <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Responses</TableHead>
@@ -372,7 +372,7 @@ export default function SurveysClient() {
                     ))
                 ) : filteredTemplates.length > 0 ? (
                     filteredTemplates.map((survey) => (
-                    <TableRow key={survey.id} className="group hover:bg-muted/30 transition-colors">
+                    <TableRow key={survey.id} className="group hover:bg-accent/5 transition-colors border-border/30">
                         <TableCell className="font-bold pl-6">
                         <div className="flex items-center gap-2">
                             <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
@@ -381,7 +381,7 @@ export default function SurveysClient() {
                             {survey.scoringEnabled && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-black gap-1">
+                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-black gap-1">
                                             <Trophy className="h-2.5 w-2.5" />
                                             Scored
                                         </Badge>

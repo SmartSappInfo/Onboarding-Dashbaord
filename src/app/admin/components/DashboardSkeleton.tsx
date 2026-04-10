@@ -12,7 +12,7 @@ export function DashboardSkeleton() {
             <div className="lg:col-span-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, i) => (
-                        <Card key={i} className="p-6 h-32 rounded-[2rem] border-none ring-1 ring-border bg-white shadow-sm flex items-center gap-5">
+                        <Card key={i} className="p-6 h-32 glass-card flex items-center gap-5">
                             <Skeleton className="h-14 w-14 rounded-2xl shrink-0" />
                             <div className="space-y-2 flex-1">
                                 <Skeleton className="h-3 w-1/2" />
@@ -25,7 +25,7 @@ export function DashboardSkeleton() {
 
             {/* Distribution Card */}
             <div className="lg:col-span-2">
-                <Card className="p-8 space-y-6 h-full rounded-[2rem] border-none ring-1 ring-border bg-white shadow-sm">
+                <Card className="p-8 space-y-6 h-full glass-card">
                     <div className="flex items-center gap-3">
                         <Skeleton className="h-10 w-10 rounded-xl" />
                         <div className="space-y-2">
@@ -45,7 +45,7 @@ export function DashboardSkeleton() {
             
             {/* Pipeline Donut Card */}
             <div className="lg:col-span-2 lg:row-span-2">
-                <Card className="p-8 flex flex-col items-center justify-center min-h-[450px] rounded-[2rem] border-none ring-1 ring-border bg-white shadow-sm">
+                <Card className="p-8 flex flex-col items-center justify-center min-h-[450px] glass-card">
                     <Skeleton className="h-5 w-1/3 mb-8" />
                     <Skeleton className="w-64 h-64 rounded-full border-[30px] border-muted" />
                     <div className="mt-8 grid grid-cols-2 gap-4 w-full px-10">
@@ -57,7 +57,7 @@ export function DashboardSkeleton() {
 
             {/* Messaging/Task Small Widgets */}
             <div className="lg:col-span-2">
-                <Card className="p-8 space-y-6 h-full rounded-[2rem] border-none ring-1 ring-border bg-white shadow-sm">
+                <Card className="p-8 space-y-6 h-full glass-card">
                     <Skeleton className="h-5 w-1/4 mb-4" />
                     <div className="space-y-4">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -76,7 +76,7 @@ export function DashboardSkeleton() {
 
             {/* Large Activity/Chart Row */}
             <div className="lg:col-span-4">
-                 <Card className="p-8 space-y-6 h-full rounded-[2.5rem] border-none ring-1 ring-border bg-white shadow-sm">
+                 <Card className="p-8 space-y-6 h-full glass-card">
                     <div className="flex justify-between items-center">
                         <Skeleton className="h-6 w-48" />
                         <Skeleton className="h-10 w-32 rounded-xl" />

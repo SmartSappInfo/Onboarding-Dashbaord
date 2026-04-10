@@ -331,13 +331,13 @@ export default function SeedsClient() {
 
   if (!isUnlocked) {
     return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
             <div className="mb-12 text-center space-y-4">
                 <SmartSappLogo variant="white" className="h-10 mx-auto" />
                 <h1 className="text-white text-3xl font-black uppercase tracking-tighter">System Seeding Hub</h1>
             </div>
-            <Card className="w-full max-w-md rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-                <CardHeader className="bg-muted/30 p-8 border-b text-center">
+            <Card className="w-full max-w-md rounded-[2.5rem] glass-card overflow-hidden">
+                <CardHeader className="bg-muted/10 p-8 border-b text-center">
                     <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4">
                         <Lock className="h-8 w-8 text-primary" />
                     </div>
@@ -361,8 +361,8 @@ export default function SeedsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/10 pb-32 text-left">
-        <header className="bg-white border-b h-20 flex items-center px-8 shadow-sm">
+    <div className="min-h-screen bg-background pb-32 text-left">
+        <header className="bg-card/50 backdrop-blur-md border-b h-20 flex items-center px-8 shadow-sm">
             <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-6 w-6 text-primary" /></div>

@@ -120,8 +120,8 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                             <div
                                 className={cn(
                                     'flex items-center justify-center w-9 h-9 rounded-2xl border-2 transition-all duration-300 shadow-sm',
-                                    isCompleted ? 'bg-primary border-primary text-white' : 
-                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
+                                    isCompleted ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 
+                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-card border-border text-muted-foreground',
                                 )}
                             >
                                 {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
@@ -317,7 +317,7 @@ export default function NewSurveyPage() {
 
     return (
         <FormProvider {...form}>
-            <div className="h-full flex flex-col bg-muted/30">
+            <div className="h-full flex flex-col bg-background">
                 <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-4 text-left">
                         <div className="p-2 bg-primary/10 rounded-xl">
@@ -335,7 +335,7 @@ export default function NewSurveyPage() {
 
                     <div className="flex items-center gap-3">
                         {step === 2 && (
-                            <div className="flex items-center gap-1 mr-4 bg-muted/30 p-1 rounded-xl border">
+                            <div className="flex items-center gap-1 mr-4 bg-card/20 p-1 rounded-xl border border-border/50">
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -373,7 +373,7 @@ export default function NewSurveyPage() {
                             {step === 1 && (
                                 <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
                                     <div className="md:hidden flex justify-center mb-6">
-                                        <div className="bg-background border shadow-sm p-1 rounded-2xl flex gap-1">
+                                        <div className="bg-card border shadow-sm p-1 rounded-2xl flex gap-1 ring-1 ring-border">
                                             <Button variant={mobileMode === 'edit' ? 'default' : 'ghost'} size="sm" onClick={() => setMobileMode('edit')} className="rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-6">Configure</Button>
                                             <Button variant={mobileMode === 'preview' ? 'default' : 'ghost'} size="sm" onClick={() => setMobileMode('preview')} className="rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-6">Live View</Button>
                                         </div>
@@ -409,7 +409,7 @@ export default function NewSurveyPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="mt-8 p-4 sm:p-6 bg-background border-t">
+                        <div className="mt-8 p-4 sm:p-6 bg-card border-t border-border/50 rounded-t-[2.5rem] shadow-[0_-12px_40px_-5px_rgba(0,0,0,0.05)]">
                             <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
                                 <div className="flex items-center gap-4 text-left">

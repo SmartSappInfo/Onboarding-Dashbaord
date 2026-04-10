@@ -134,8 +134,8 @@ export default function PerspectiveEditor() {
                     Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : perspectives?.map(p => (
                     <Card key={p.id} className={cn(
-                        "rounded-[2.5rem] border-none ring-1 transition-all duration-500 overflow-hidden bg-white text-left group",
-                        p.status === 'archived' ? "opacity-50 grayscale ring-border" : "ring-border shadow-sm hover:ring-primary/20 hover:shadow-xl"
+                        "rounded-[2.5rem] glass-card text-left group transition-all duration-500",
+                        p.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                     )}>
                         <div className="h-1.5 w-full" style={{ backgroundColor: p.color || '#3B5FFF' }} />
                         <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
@@ -230,7 +230,7 @@ export default function PerspectiveEditor() {
                                 />
                             </div>
 
-                            <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 shadow-inner">
+                            <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
                                 <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
                                     <p className="text-xs font-black text-blue-900 uppercase">Seamless Linking</p>

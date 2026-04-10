@@ -239,8 +239,8 @@ export default function WorkspaceEditor() {
                     Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : workspaces?.map(w => (
                     <Card key={w.id} className={cn(
-                        "rounded-[2.5rem] border-none ring-1 transition-all duration-500 overflow-hidden bg-white text-left group",
-                        w.status === 'archived' ? "opacity-50 grayscale ring-border" : "ring-border shadow-sm hover:ring-primary/20 hover:shadow-xl"
+                        "rounded-[2.5rem] glass-card text-left group transition-all duration-500",
+                        w.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                     )}>
                         <div className="h-1.5 w-full" style={{ backgroundColor: w.color || '#3B5FFF' }} />
                         <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
@@ -490,7 +490,7 @@ export default function WorkspaceEditor() {
                                                     </button>
                                                 </div>
 
-                                                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
                                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                                     <div className="space-y-1">
                                                         <p className="text-[10px] font-black text-blue-900 uppercase">Scope Selection</p>
@@ -547,7 +547,7 @@ export default function WorkspaceEditor() {
                                                 </div>
 
                                                 {activeWorkspace.scopeLocked && (
-                                                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                                                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
                                                         <Lock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                                                         <div className="space-y-1">
                                                             <p className="text-[10px] font-black text-amber-900 uppercase">Scope Locked</p>
@@ -597,7 +597,7 @@ export default function WorkspaceEditor() {
                                                     ))}
                                                 </div>
 
-                                                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
                                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                                     <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
                                                         Capabilities control which features are available in this workspace. These can be configured independently of the contact scope.
@@ -684,14 +684,14 @@ export default function WorkspaceEditor() {
                                                             <Input 
                                                                 value={status.label} 
                                                                 onChange={e => updateStatus(idx, { label: e.target.value, value: e.target.value })} 
-                                                                className="h-9 bg-white font-bold text-xs" 
+                                                                className="h-9 bg-card font-bold text-xs" 
                                                             />
                                                         </div>
                                                         <Input 
                                                             value={status.description || ''} 
                                                             onChange={e => updateStatus(idx, { description: e.target.value })} 
                                                             placeholder="Short behavioral description..."
-                                                            className="h-9 bg-white font-medium text-[10px]" 
+                                                            className="h-9 bg-card font-medium text-[10px]" 
                                                         />
                                                     </div>
                                                     <Button 
@@ -708,7 +708,7 @@ export default function WorkspaceEditor() {
                                         </div>
                                     </div>
 
-                                    <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 shadow-inner">
+                                    <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
                                         <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-black text-blue-900 uppercase">Independent Logic</p>

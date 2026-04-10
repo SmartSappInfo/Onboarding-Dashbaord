@@ -203,10 +203,10 @@ export default function MessagingClient() {
     }, [logs, emailStats, reportData]);
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
             <div className="max-w-7xl mx-auto space-y-12">
                 <Tabs defaultValue="overview" className="space-y-12">
-                    <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
+                    <TabsList className="bg-card/50 backdrop-blur-md border shadow-sm h-12 p-1 rounded-xl">
                         <TabsTrigger value="overview" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6">Hub Overview</TabsTrigger>
                         <TabsTrigger value="jobs" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6 gap-2">
                             <Layers className="h-4 w-4" /> Bulk Jobs
@@ -219,26 +219,26 @@ export default function MessagingClient() {
                     <TabsContent value="overview" className="space-y-16 animate-in fade-in slide-in-from-bottom-2">
                         {/* Operational Intelligence Row */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <Card className="rounded-3xl glass-card overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
-                                    <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner">
+                                    <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner border border-primary/20">
                                         <Target className="h-7 w-7" />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">Delivery Efficiency</p>
                                         <div className="flex items-baseline gap-2">
                                             <p className="text-4xl font-black tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
-                                            <Badge variant="outline" className="text-[8px] font-black uppercase bg-emerald-50 text-emerald-600 border-emerald-200">Optimal</Badge>
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Optimal</Badge>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <Card className="rounded-3xl glass-card overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
                                     <div className={cn(
-                                        "p-4 rounded-2xl shrink-0 shadow-inner",
-                                        balance !== null && balance < 50 ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
+                                        "p-4 rounded-2xl shrink-0 shadow-inner border",
+                                        balance !== null && balance < 50 ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"
                                     )}>
                                         <Wallet className="h-7 w-7" />
                                     </div>
@@ -247,7 +247,7 @@ export default function MessagingClient() {
                                         <div className="flex items-center justify-between">
                                             <p className={cn(
                                                 "text-4xl font-black tabular-nums tracking-tighter",
-                                                balance !== null && balance < 50 && "text-red-600"
+                                                balance !== null && balance < 50 && "text-red-500"
                                             )}>
                                                 {isLoadingBalance ? '...' : balance !== null ? balance.toLocaleString() : 'N/A'}
                                             </p>
@@ -258,20 +258,20 @@ export default function MessagingClient() {
                                     </div>
                                 </CardContent>
                                 {balance !== null && balance < 50 && (
-                                    <div className="bg-red-600 text-white text-[8px] font-black uppercase py-1 text-center tracking-widest animate-pulse">Low Units Warning</div>
-                                )}
+                                    <div className="bg-red-500 text-white text-[8px] font-black uppercase py-1 text-center tracking-widest animate-pulse">Low Units Warning</div>
+                                ) || <div className="h-1 bg-transparent" />}
                             </Card>
 
-                            <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <Card className="rounded-3xl glass-card overflow-hidden">
                                 <CardContent className="p-6 flex items-center gap-5">
-                                    <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-600 shrink-0 shadow-inner">
+                                    <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0 shadow-inner border border-emerald-500/20">
                                         <ShieldCheck className="h-7 w-7" />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">Gateway Trust</p>
                                         <div className="flex items-baseline gap-2">
                                             <p className="text-4xl font-black tabular-nums tracking-tighter">100%</p>
-                                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Verified</span>
+                                            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Verified</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -396,14 +396,14 @@ export default function MessagingClient() {
 
                             <div className="space-y-6">
                                 {/* SMS Summary */}
-                                <Card className="bg-emerald-50 border-emerald-100 rounded-[1.5rem] shadow-sm">
+                                <Card className="bg-emerald-500/10 border-emerald-500/20 rounded-[1.5rem] shadow-sm">
                                     <CardContent className="p-6 flex items-center gap-5">
-                                        <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-200">
+                                        <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20">
                                             <Smartphone className="h-6 w-6" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 leading-none mb-1.5">SMS Delivered (Total)</p>
-                                            <p className="text-4xl font-black text-emerald-900 tabular-nums leading-none">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 leading-none mb-1.5">SMS Delivered (Total)</p>
+                                            <p className="text-4xl font-black text-emerald-500 tabular-nums leading-none">
                                                 {reportData.reduce((acc, curr) => acc + (curr.delivered || 0), 0)}
                                             </p>
                                         </div>
@@ -411,14 +411,14 @@ export default function MessagingClient() {
                                 </Card>
 
                                 {/* Email Summary */}
-                                <Card className="bg-blue-50 border-blue-100 rounded-[1.5rem] shadow-sm">
+                                <Card className="bg-blue-500/10 border-blue-500/20 rounded-[1.5rem] shadow-sm">
                                     <CardContent className="p-6 flex items-center gap-5">
-                                        <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-200">
+                                        <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-500/20">
                                             <Mail className="h-6 w-6" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-700 leading-none mb-1.5">Email Sent (Resolved)</p>
-                                            <p className="text-4xl font-black text-blue-900 tabular-nums leading-none">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 leading-none mb-1.5">Email Sent (Resolved)</p>
+                                            <p className="text-4xl font-black text-blue-500 tabular-nums leading-none">
                                                 {emailStats.sent}
                                             </p>
                                         </div>
@@ -426,20 +426,20 @@ export default function MessagingClient() {
                                 </Card>
 
                                 {/* Failure Analytics */}
-                                <Card className="bg-rose-50 border-rose-100 rounded-[1.5rem] shadow-sm">
+                                <Card className="bg-rose-500/10 border-rose-500/20 rounded-[1.5rem] shadow-sm">
                                     <CardHeader className="p-6 pb-2">
-                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-rose-700 flex items-center gap-2">
+                                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-2">
                                             <XCircle className="h-3.5 w-3.5" /> Termination Report
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-6 pt-0 space-y-4">
-                                        <div className="flex justify-between items-end border-b border-rose-100 pb-3">
-                                            <span className="text-[10px] font-bold text-rose-800/60 uppercase">SMS Failures</span>
-                                            <span className="text-2xl font-black text-rose-900 tabular-nums">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</span>
+                                        <div className="flex justify-between items-end border-b border-rose-500/10 pb-3">
+                                            <span className="text-[10px] font-bold text-rose-500 opacity-60 uppercase">SMS Failures</span>
+                                            <span className="text-2xl font-black text-rose-500 tabular-nums">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</span>
                                         </div>
                                         <div className="flex justify-between items-end">
-                                            <span className="text-[10px] font-bold text-rose-800/60 uppercase">Email Bounces</span>
-                                            <span className="text-2xl font-black text-rose-900 tabular-nums">{emailStats.failed}</span>
+                                            <span className="text-[10px] font-bold text-rose-500 opacity-60 uppercase">Email Bounces</span>
+                                            <span className="text-2xl font-black text-rose-500 tabular-nums">{emailStats.failed}</span>
                                         </div>
                                     </CardContent>
                                 </Card>

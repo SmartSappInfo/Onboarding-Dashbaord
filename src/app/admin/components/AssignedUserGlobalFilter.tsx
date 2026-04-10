@@ -47,43 +47,43 @@ export default function AssignedUserGlobalFilter() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor="global-user-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">For</Label>
+    <div className="flex flex-col gap-2 w-full px-2 py-1">
+      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Global View Filter</span>
       <Select value={assignedUserId ?? 'all'} onValueChange={handleValueChange} name="global-user-filter">
-        <SelectTrigger className="w-full min-w-[150px] max-w-[200px]">
+        <SelectTrigger className="w-full h-9 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-xs">
           <SelectValue asChild>
             <div className="flex items-center gap-2 overflow-hidden">
               {assignedUserId === 'unassigned' ? (
                 <span>Unassigned</span>
               ) : selectedUser ? (
                  <>
-                  <Avatar className="h-6 w-6">
+                  <Avatar className="h-5 w-5">
                     <AvatarImage src={selectedUser.photoURL} alt={selectedUser.name} />
-                    <AvatarFallback className="text-xs">{getInitials(selectedUser.name)}</AvatarFallback>
+                    <AvatarFallback className="text-[10px]">{getInitials(selectedUser.name)}</AvatarFallback>
                   </Avatar>
                   <span className="truncate">{selectedUser.name}</span>
                  </>
               ) : (
                 <>
-                  <Users className="h-5 w-5 text-muted-foreground"/>
+                  <Users className="h-4 w-4 text-muted-foreground"/>
                   <span>All Users</span>
                 </>
               )}
             </div>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-2xl border-none shadow-2xl">
           <SelectGroup>
-            <SelectItem value="all">
+            <SelectItem value="all" className="rounded-xl">
                 <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5"/>
-                    <span>All Users</span>
+                    <Users className="h-4 w-4"/>
+                    <span className="font-bold">All Users</span>
                 </div>
             </SelectItem>
-            <SelectItem value="unassigned">
+            <SelectItem value="unassigned" className="rounded-xl">
                 <div className="flex items-center gap-2">
-                    <UserIcon className="h-5 w-5"/>
-                    <span>Unassigned</span>
+                    <UserIcon className="h-4 w-4"/>
+                    <span className="font-bold">Unassigned</span>
                 </div>
             </SelectItem>
           </SelectGroup>
@@ -91,13 +91,13 @@ export default function AssignedUserGlobalFilter() {
             <SelectGroup>
               <SelectSeparator />
               {users.map(user => (
-                <SelectItem key={user.id} value={user.id}>
+                <SelectItem key={user.id} value={user.id} className="rounded-xl">
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="h-5 w-5">
                       <AvatarImage src={user.photoURL} alt={user.name} />
-                      <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                      <AvatarFallback className="text-[10px]">{getInitials(user.name)}</AvatarFallback>
                     </Avatar>
-                    <span>{user.name}</span>
+                    <span className="font-bold">{user.name}</span>
                   </div>
                 </SelectItem>
               ))}

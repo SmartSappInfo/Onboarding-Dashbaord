@@ -1,6 +1,6 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
+import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -25,6 +25,35 @@ export async function updateMediaName(assetId: string, newName: string) {
     return { success: true };
   } catch (error: any) {
     console.error(">>> [MEDIA] Rename Failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Permanently deletes a media asset from Firestore and Storage.
+ */
+export async function deleteMediaAsset(assetId: string, storagePath?: string) {
+  if (!assetId) {
+    return { success: false, error: 'Invalid asset ID.' };
+  }
+
+  try {
+    // 1. Delete Firestore Document
+    await adminDb.collection('media').doc(assetId).delete();
+    
+    // 2. Delete Physical File from Storage if path exists
+    if (storagePath) {
+        try {
+            await adminStorage.file(storagePath).delete();
+        } catch (storageError: any) {
+            console.warn(">>> [MEDIA] Storage Deletion Warning (Document removed, file may persist):", storageError.message);
+        }
+    }
+    
+    revalidatePath('/admin/media');
+    return { success: true };
+  } catch (error: any) {
+    console.error(">>> [MEDIA] Deletion Failed:", error.message);
     return { success: false, error: error.message };
   }
 }

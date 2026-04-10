@@ -215,17 +215,17 @@ export default function NewSchoolPage() {
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
       <div className="max-w-7xl mx-auto space-y-8">
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
-                {/* Institutional Track Selection */}
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
-                    <CardHeader className="bg-primary/5 border-b p-6">
+                {/* Hub Authorization Card */}
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-primary/10 border-b p-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Layout className="h-4 w-4" /></div>
+                            <div className="p-2 bg-card rounded-xl shadow-sm text-primary"><Layout className="h-4 w-4" /></div>
                             <CardTitle className="text-sm font-black uppercase tracking-tight">Hub Authorization</CardTitle>
                         </div>
                     </CardHeader>
@@ -251,8 +251,8 @@ export default function NewSchoolPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                  <CardHeader className="bg-muted/30 border-b pb-6">
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                  <CardHeader className="bg-card/20 border-b pb-6">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-primary/10 rounded-xl">
                             <Building className="h-5 w-5 text-primary" />
@@ -263,10 +263,10 @@ export default function NewSchoolPage() {
                   <CardContent className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField control={methods.control} name="name" render={({ field }) => (
-                        <FormItem className="md:col-span-2"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
+                        <FormItem className="md:col-span-2"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder={`${singular} name...`} {...field} className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={methods.control} name="initials" render={({ field }) => (
-                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
 
@@ -274,7 +274,7 @@ export default function NewSchoolPage() {
                         <FormField control={methods.control} name="status" render={({ field }) => (
                             <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent className="rounded-xl shadow-2xl border-none">
                                         <SelectItem value="Active" className="font-bold">Active</SelectItem>
                                         <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
@@ -311,15 +311,15 @@ export default function NewSchoolPage() {
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Motto / Slogan</Label>
                         <FormField control={methods.control} name="slogan" render={({ field }) => (
-                            <FormItem><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
                         )} />
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Financial Profile Card */}
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-muted/30 border-b pb-6">
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-card/20 border-b pb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-xl"><Banknote className="h-5 w-5 text-primary" /></div>
                             <div>
@@ -353,7 +353,7 @@ export default function NewSchoolPage() {
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
+                                            <SelectTrigger className="h-12 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                                 <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
@@ -369,7 +369,7 @@ export default function NewSchoolPage() {
                         {/* Rate and Discount Adjustment */}
                         <div className={cn(
                             "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500",
-                            watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border opacity-40 pointer-events-none"
+                            watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-background/50 border-border opacity-40 pointer-events-none"
                         )}>
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
@@ -390,7 +390,7 @@ export default function NewSchoolPage() {
                                                     field.onChange(val);
                                                     handleDiscountChange(val);
                                                 }}
-                                                className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                                className="h-12 rounded-xl bg-background/50 border-primary/10 shadow-inner font-black text-xl text-center" 
                                             />
                                         </FormControl>
                                         <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this campus</FormDescription>
@@ -409,7 +409,7 @@ export default function NewSchoolPage() {
                                                     field.onChange(val);
                                                     handleRateChange(val);
                                                 }}
-                                                className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                                className="h-12 rounded-xl bg-background/50 border-primary/10 shadow-inner font-black text-xl text-center" 
                                             />
                                         </FormControl>
                                         <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Effective rate billed per student</FormDescription>
@@ -422,7 +422,7 @@ export default function NewSchoolPage() {
                             <FormItem>
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Remittance Address</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+                                    <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -451,8 +451,8 @@ export default function NewSchoolPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-muted/30 border-b pb-6">
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-card/20 border-b pb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-xl"><UserCheck className="h-5 w-5 text-primary" /></div>
                             <CardTitle className="text-lg font-black uppercase tracking-tight">Account Assignment</CardTitle>
@@ -475,11 +475,80 @@ export default function NewSchoolPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Contact Directory</CardTitle></div></CardHeader><CardContent className="p-6"><FocalPersonManager /></CardContent></Card>
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Plus className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Functional Selection</CardTitle></div></CardHeader><CardContent className="p-6"><FormField control={methods.control} name="modules" render={({ field }) => (<FormItem><FormControl><ModuleSelect {...field} /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-card/20 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div>
+                            <div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Staff focal persons</CardTitle>
+                                <CardDescription className="text-xs font-medium">Primary directory of stakeholders.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <FocalPersonManager />
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-card/20 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl"><Plus className="h-5 w-5 text-primary" /></div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Functional Selection</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <FormField control={methods.control} name="modules" render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <ModuleSelect {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </CardContent>
+                </Card>
               </div>
+
+              {/* Right Sidebar: Operations */}
               <div className="space-y-8">
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle></div></CardHeader><CardContent className="p-6 space-y-6"><FormField control={methods.control} name="zone" render={({ field, fieldState }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel><FormControl><ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</FormLabel><FormControl><Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="nominalRoll" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Total Roll</FormLabel><FormControl><Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card">
+                    <CardHeader className="bg-card/20 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        <FormField control={methods.control} name="zone" render={({ field, fieldState }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel>
+                                <FormControl>
+                                    <ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} /> 
+                        <FormField control={methods.control} name="location" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Physical Address</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} /> 
+                        <FormField control={methods.control} name="nominalRoll" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Nominal Roll</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </CardContent>
+                </Card>
                 <div className="pt-4 sticky top-24">
                   <Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95 uppercase tracking-widest" disabled={methods.formState.isSubmitting || isUsersLoading}>
                     {methods.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize {singular}

@@ -47,8 +47,8 @@ const blockIcons: Record<string, React.ElementType> = {
 function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number, displayMode: 'points' | 'percentage' }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50">
-                <DialogHeader className="p-6 bg-white border-b shrink-0">
+            <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-background">
+                <DialogHeader className="p-6 bg-card border-b shrink-0">
                     <DialogTitle>Outcome Preview: {page.name}</DialogTitle>
                     <DialogDescription>This is how this specific result page will appear to users.</DialogDescription>
                 </DialogHeader>
@@ -80,10 +80,10 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                                             </ul>
                                         )
                                     )}
-                                    {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-white bg-white"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
+                                    {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-card bg-card"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
                                     {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} /></div>}
                                     {block.type === 'button' && <Button size="lg" variant={block.style?.variant as any} className="h-14 px-8 text-lg font-black rounded-xl shadow-lg">{block.title} <ArrowRight className="ml-2 h-5 w-5"/></Button>}
-                                    {block.type === 'quote' && <div className="p-8 bg-white border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
+                                    {block.type === 'quote' && <div className="p-8 bg-card border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
                                     {block.type === 'score-card' && (
                                         <Card className="w-full bg-primary text-white border-none shadow-xl rounded-3xl p-8 flex flex-col items-center text-center">
                                             <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-black tracking-widest uppercase">Sample Result</Badge>
@@ -108,7 +108,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                         </div>
                     </ScrollArea>
                 </div>
-                <DialogFooter className="p-4 bg-white border-t shrink-0">
+                <DialogFooter className="p-4 bg-card border-t shrink-0">
                     <Button onClick={() => onOpenChange(false)} variant="outline">Close Preview</Button>
                 </DialogFooter>
             </DialogContent>
@@ -521,7 +521,7 @@ export default function ResultPageBuilder() {
 
             <Accordion type="single" collapsible className="space-y-4">
                 {pages.map((page, index) => (
-                    <AccordionItem key={page.id} value={page.id} className="border rounded-2xl px-4 bg-background shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <AccordionItem key={page.id} value={page.id} className="border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                         <AccordionTrigger className="hover:no-underline py-6">
                             <div className="flex items-center gap-4 text-left">
                                 <div className="p-2 bg-primary/10 rounded-xl">

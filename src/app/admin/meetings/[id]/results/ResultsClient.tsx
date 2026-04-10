@@ -158,13 +158,13 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     if (!meeting) return <div className="p-20 text-center font-black uppercase tracking-widest opacity-20">Session Not Found</div>;
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-slate-50 text-left">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
             <div className="max-w-7xl mx-auto space-y-10 pb-32">
 
                 {/* Executive Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="flex items-center gap-5">
-                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl bg-white shadow-sm border border-border/50">
+                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl bg-card shadow-sm border border-border/50">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div className="text-left">
@@ -176,7 +176,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-white shadow-sm">
+                        <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-card/50 backdrop-blur-sm shadow-sm">
                             <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
                         </Button>
                         {meeting.registrationEnabled && (
@@ -201,11 +201,11 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Attendance Velocity Chart */}
-                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                    <Card className="lg:col-span-2 rounded-[2.5rem] glass-card overflow-hidden">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-xl shadow-sm"><Zap className="h-4 w-4 text-primary" /></div>
+                                    <div className="p-2 bg-card rounded-xl shadow-sm border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
                                     <CardTitle className="text-sm font-black uppercase tracking-tight">Login Velocity</CardTitle>
                                 </div>
                                 <Badge variant="secondary" className="bg-primary/5 text-primary border-none font-black text-[10px] h-6 px-3">Real-time Pulse</Badge>
@@ -242,7 +242,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                     </Card>
 
                     {/* Operational Details */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
+                    <Card className="rounded-[2.5rem] glass-card overflow-hidden">
                         <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
                             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <CalendarCheck className="h-4 w-4" /> Session Blueprint
@@ -264,7 +264,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                 </div>
 
                 {/* Attendee Registry */}
-                <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                <Card className="rounded-[2.5rem] glass-card overflow-hidden">
                     <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -343,7 +343,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all text-left">
+        <Card className="rounded-[2rem] glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />

@@ -15,7 +15,7 @@ export default function DashboardCard({
   className?: string
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <Card className={cn("flex flex-col", className)} {...props}>
+    <Card className={cn("glass-card ai-glow-border group", className)} {...props}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}

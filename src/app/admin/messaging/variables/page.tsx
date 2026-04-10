@@ -199,7 +199,7 @@ export default function VariableRegistryPage() {
         const isHidden = !!v.hidden;
 
         return (
-            <TableRow className={cn("group hover:bg-muted/30 transition-colors", isHidden && "opacity-50 grayscale bg-muted/10")}>
+            <TableRow className={cn("group hover:bg-accent/5 transition-colors", isHidden && "opacity-50 grayscale bg-muted/5")}>
                 <TableCell className="pl-6 w-[350px]">
                     <div className="flex flex-col gap-0.5 text-left">
                         <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function VariableRegistryPage() {
                     </div>
                 </TableCell>
                 <TableCell className="text-center">
-                    <Badge variant="outline" className="text-[9px] font-black uppercase h-5 bg-muted/20 border-border/50">{v.type}</Badge>
+                    <Badge variant="outline" className="text-[9px] font-black uppercase h-5 bg-primary/10 border-border/50">{v.type}</Badge>
                 </TableCell>
                 <TableCell className="text-center">
                     {usageCount > 0 ? (
@@ -281,8 +281,8 @@ export default function VariableRegistryPage() {
         
         if (items.length === 0) {
             return (
-                <div className="py-24 text-center border-4 border-dashed rounded-[3rem] bg-muted/10 border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
-                    <div className="p-6 bg-white rounded-[2rem] shadow-inner">
+                <div className="py-24 text-center border-4 border-dashed rounded-[3rem] bg-background/20 border-border/20 flex flex-col items-center justify-center gap-4">
+                    <div className="p-6 bg-card rounded-[2rem] shadow-inner border border-border/50">
                         <Tag className="h-12 w-12 text-muted-foreground/20" />
                     </div>
                     <p className="text-muted-foreground font-black uppercase tracking-widest text-xs opacity-40">No variable data in this context.</p>
@@ -291,7 +291,7 @@ export default function VariableRegistryPage() {
         }
 
         return (
-            <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50">
+            <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
                 <Table>
                     <TableHeader className="bg-muted/30">
                         <TableRow>
@@ -348,7 +348,7 @@ export default function VariableRegistryPage() {
     }, [variables, templates, usageMap]);
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
                     <div className="flex items-center gap-3">
@@ -368,8 +368,8 @@ export default function VariableRegistryPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <div className="space-y-6">
-                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
-                            <CardHeader className="bg-primary/5 border-b pb-4">
+                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden glass-card">
+                            <CardHeader className="bg-primary/10 border-b pb-4">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Zap className="h-3 w-3" /> Operational Audit
                                 </CardTitle>
@@ -389,7 +389,7 @@ export default function VariableRegistryPage() {
                                         onClick={() => healthMetrics.broken > 0 && setIsBrokenModalOpen(true)}
                                         className={cn(
                                             "w-full flex justify-between items-end transition-all rounded-lg p-1 -m-1",
-                                            healthMetrics.broken > 0 ? "hover:bg-rose-50" : "cursor-default"
+                                            healthMetrics.broken > 0 ? "hover:bg-rose-500/10" : "cursor-default"
                                         )}
                                     >
                                         <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Broken Contexts</span>
@@ -401,7 +401,7 @@ export default function VariableRegistryPage() {
                                 </div>
                                 
                                 {healthMetrics.broken > 0 && (
-                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3 shadow-sm text-left">
+                                    <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 shadow-sm text-left">
                                         <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
                                             <p className="text-[9px] font-black text-rose-900 uppercase tracking-tighter">Integrity Failure Detected</p>
@@ -412,7 +412,7 @@ export default function VariableRegistryPage() {
                                     </div>
                                 )}
 
-                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-sm text-left">
+                                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 shadow-sm text-left">
                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                     <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
                                         Hiding a variable removes it from design sidebars but preserves its logic in existing templates.
@@ -429,7 +429,7 @@ export default function VariableRegistryPage() {
                                     placeholder="Filter by key or label..." 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 rounded-xl bg-white border-none shadow-none ring-1 ring-border focus:ring-primary/20 font-bold"
+                                    className="pl-10 h-11 rounded-xl bg-background/50 border-none shadow-none ring-1 ring-border focus:ring-primary/20 font-bold"
                                 />
                             </div>
                         </div>
@@ -437,7 +437,7 @@ export default function VariableRegistryPage() {
 
                     <div className="lg:col-span-3">
                         <Tabs defaultValue="general" className="space-y-8">
-                            <div className="bg-white p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
+                            <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
                                 <TabsList className="bg-transparent h-10 gap-1">
                                     <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Building className="h-3 w-3" /> {plural}
@@ -466,7 +466,7 @@ export default function VariableRegistryPage() {
                                 <TabsContent value="meetings" className="m-0"><VariableListView category="meetings" /></TabsContent>
                                 
                                 <TabsContent value="surveys" className="m-0 space-y-6">
-                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border shadow-sm">
+                                    <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
                                         <Select value={selectedSurveyId || 'all'} onValueChange={setSelectedSurveyId}>
                                             <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
@@ -482,7 +482,7 @@ export default function VariableRegistryPage() {
                                 </TabsContent>
 
                                 <TabsContent value="forms" className="m-0 space-y-6">
-                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border shadow-sm">
+                                    <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
                                         <Select value={selectedPdfId || 'all'} onValueChange={setSelectedPdfId}>
                                             <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
@@ -498,7 +498,7 @@ export default function VariableRegistryPage() {
                                 </TabsContent>
 
                                 <TabsContent value="constants" className="m-0">
-                                    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50">
+                                    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
                                         <Table>
                                             <TableHeader className="bg-muted/30">
                                                 <TableRow>
@@ -534,8 +534,8 @@ export default function VariableRegistryPage() {
 
             {/* Broken Context Audit Dialog */}
             <Dialog open={isBrokenModalOpen} onOpenChange={setIsBrokenModalOpen}>
-                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-rose-50 border-b border-rose-100 shrink-0">
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border shadow-2xl bg-card">
+                    <DialogHeader className="p-8 bg-rose-500/10 border-b border-rose-500/20 shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
                                 <ShieldAlert className="h-6 w-6" />
@@ -547,7 +547,7 @@ export default function VariableRegistryPage() {
                         </div>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-hidden flex flex-col bg-white">
+                    <div className="flex-1 overflow-hidden flex flex-col bg-background/50">
                         <ScrollArea className="h-[400px]">
                             <div className="p-6">
                                 <Table>
@@ -560,9 +560,9 @@ export default function VariableRegistryPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {healthMetrics.brokenItems.map((item) => (
-                                            <TableRow key={item.key} className="group hover:bg-rose-50/30 transition-colors">
+                                            <TableRow key={item.key} className="group hover:bg-rose-500/10 transition-colors">
                                                 <TableCell className="pl-6 py-4">
-                                                    <code className="text-xs font-mono font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
+                                                    <code className="text-xs font-mono font-black text-rose-500 bg-rose-500/5 px-2.5 py-1 rounded-lg border border-rose-500/20">
                                                         {"{{" + item.key + "}}"}
                                                     </code>
                                                 </TableCell>
@@ -599,7 +599,7 @@ export default function VariableRegistryPage() {
 
             {/* Constant Editor Dialog */}
             <Dialog open={isAddingConstant} onOpenChange={(o) => { if(!o) { setIsAddingConstant(false); setEditingConst(null); setConstKey(''); setConstLabel(''); setConstValue(''); } }}>
-                <DialogContent className="sm:max-w-md rounded-[2rem]">
+                <DialogContent className="sm:max-w-md rounded-[2rem] bg-card border shadow-2xl">
                     <DialogHeader>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
@@ -610,7 +610,7 @@ export default function VariableRegistryPage() {
                     <div className="space-y-6 py-4 text-left">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Variable Key (Tag Name)</Label>
-                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
+                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-background/50 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
                                 <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-r">{"{{"}</div>
                                 <Input 
                                     placeholder="e.g. support_phone" 
@@ -627,7 +627,7 @@ export default function VariableRegistryPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fixed Value</Label>
-                            <Textarea value={constValue} onChange={e => setConstValue(e.target.value)} placeholder="Enter the value to be resolved..." className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" />
+                            <Textarea value={constValue} onChange={e => setConstValue(e.target.value)} placeholder="Enter the value to be resolved..." className="min-h-[80px] rounded-xl bg-background/50 border-none p-4 font-medium" />
                         </div>
                     </div>
                     <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-4">

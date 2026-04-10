@@ -96,7 +96,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="relative shrink-0">
                     <Avatar className={cn(
-                        "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105",
+                        "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background",
                         school.logoUrl ? "rounded-xl" : "rounded-full"
                     )}>
                         <AvatarImage src={school.logoUrl} alt={school.name} className="object-contain p-1.5" />

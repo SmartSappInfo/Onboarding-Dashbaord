@@ -6,11 +6,11 @@ import {
   useMotionTemplate,
   useMotionValue,
   useTransform,
-} from "framer-motion";
+} from "motion/react";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
-export function MovingBorderButton({
+export function Button({
   borderRadius = "1.75rem",
   children,
   as: Component = "button",
@@ -32,8 +32,8 @@ export function MovingBorderButton({
   return (
     <Component
       className={cn(
-        "bg-transparent relative text-xl h-16 w-40 p-[1px] overflow-hidden ",
-        containerClassName
+        "relative overflow-hidden bg-transparent p-[1px] text-xl",
+        containerClassName,
       )}
       style={{
         borderRadius: borderRadius,
@@ -47,8 +47,8 @@ export function MovingBorderButton({
         <MovingBorder duration={duration} rx="30%" ry="30%">
           <div
             className={cn(
-              "h-20 w-20 opacity-[0.8] bg-[radial-gradient(var(--primary)_40%,transparent_60%)]",
-              borderClassName
+              "h-20 w-20 bg-[radial-gradient(#0ea5e9_40%,transparent_60%)] opacity-[0.8]",
+              borderClassName,
             )}
           />
         </MovingBorder>
@@ -56,8 +56,8 @@ export function MovingBorderButton({
 
       <div
         className={cn(
-          "relative bg-slate-900/[0.8] border border-slate-800 backdrop-blur-xl text-white flex items-center justify-center w-full h-full text-sm antialiased",
-          className
+          "relative flex h-full w-full items-center justify-center border border-slate-800 bg-slate-900/[0.8] text-sm text-white antialiased backdrop-blur-xl",
+          className,
         )}
         style={{
           borderRadius: `calc(${borderRadius} * 0.96)`,
@@ -71,10 +71,10 @@ export function MovingBorderButton({
 
 export const MovingBorder = ({
   children,
-  duration = 2000,
+  duration = 3000,
   rx,
   ry,
-  ...props
+  ...otherProps
 }: {
   children: React.ReactNode;
   duration?: number;
@@ -82,7 +82,7 @@ export const MovingBorder = ({
   ry?: string;
   [key: string]: any;
 }) => {
-  const pathRef = useRef<any>(null);
+  const pathRef = useRef<any>();
   const progress = useMotionValue<number>(0);
 
   useAnimationFrame((time) => {
@@ -95,11 +95,11 @@ export const MovingBorder = ({
 
   const x = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).x
+    (val) => pathRef.current?.getPointAtLength(val).x,
   );
   const y = useTransform(
     progress,
-    (val) => pathRef.current?.getPointAtLength(val).y
+    (val) => pathRef.current?.getPointAtLength(val).y,
   );
 
   const transform = useMotionTemplate`translateX(${x}px) translateY(${y}px) translateX(-50%) translateY(-50%)`;
@@ -112,7 +112,7 @@ export const MovingBorder = ({
         className="absolute h-full w-full"
         width="100%"
         height="100%"
-        {...props}
+        {...otherProps}
       >
         <rect
           fill="none"
