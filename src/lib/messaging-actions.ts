@@ -35,11 +35,12 @@ export async function syncVariableRegistry() {
     // 2. STATIC CORE VARIABLES (Always Sync/Update)
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
       // School (General)
-      { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
-      { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
-      { key: 'school_location', label: 'School Location', category: 'general', source: 'static', entity: 'School', path: 'location', type: 'string' },
-      { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
-      { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
+      // Entity (General)
+      { key: 'school_name', label: 'Entity Name', category: 'general', source: 'static', entity: 'Entity', path: 'displayName', type: 'string' },
+      { key: 'school_initials', label: 'Entity Initials', category: 'general', source: 'static', entity: 'Entity', path: 'initials', type: 'string' },
+      { key: 'school_location', label: 'Physical Location', category: 'general', source: 'static', entity: 'Entity', path: 'locationString', type: 'string' },
+      { key: 'school_phone', label: 'Primary Phone', category: 'general', source: 'static', entity: 'Entity', path: 'primaryPhone', type: 'string' },
+      { key: 'school_email', label: 'Primary Email', category: 'general', source: 'static', entity: 'Entity', path: 'primaryEmail', type: 'string' },
 
       // Signatory Data (General Context)
       { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'signatory.name', type: 'string' },
@@ -58,10 +59,10 @@ export async function syncVariableRegistry() {
       { key: 'currency', label: 'Billing Currency', category: 'finance', source: 'static', entity: 'School', path: 'currency', type: 'string' },
 
       // Contact Tags (FR5.2.1, FR5.2.2)
-      { key: 'contact_tags', label: 'Contact Tags (Comma-Separated)', category: 'general', source: 'static', entity: 'School', path: 'tags', type: 'string' },
-      { key: 'tag_count', label: 'Tag Count', category: 'general', source: 'static', entity: 'School', path: 'tags.length', type: 'number' },
-      { key: 'tag_list', label: 'Tag List (Array)', category: 'general', source: 'static', entity: 'School', path: 'tags[]', type: 'array' },
-      { key: 'has_tag', label: 'Has Tag (Conditional)', category: 'general', source: 'static', entity: 'School', path: 'tags.includes', type: 'boolean' },
+      { key: 'contact_tags', label: 'Contact Tags (Comma-Separated)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags', type: 'string' },
+      { key: 'tag_count', label: 'Tag Count', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags.length', type: 'number' },
+      { key: 'tag_list', label: 'Tag List (Array)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags[]', type: 'array' },
+      { key: 'has_tag', label: 'Has Tag (Conditional)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags.includes', type: 'boolean' },
 
       // Meetings
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
@@ -305,13 +306,19 @@ export async function fetchContextualData(entity: string, id: string, parentId?:
     } else if (entity === 'Submission' && parentId) {
       const snap = await adminDb.collection('pdfs').doc(parentId).collection('submissions').doc(id).get();
       if (snap.exists) data = snap.data();
-    } else if (entity === 'School') {
+    } else if (entity === 'School' || entity === 'Entity') {
       // Use Contact Adapter (Requirement 25.4)
       if (workspaceId) {
         const contact = await resolveContact(id, workspaceId);
         if (contact) {
-          // Return schoolData for backward compatibility with existing templates
-          data = contact.schoolData || null;
+          // Return schoolData or combined data for backward compatibility
+          data = contact.schoolData || {
+            name: contact.name,
+            displayName: contact.name,
+            email: getContactEmail(contact),
+            phone: getContactPhone(contact),
+            focalPerson: contact.contacts?.find(c => c.isSignatory) || contact.contacts?.[0]
+          };
         }
       } else {
         throw new Error("Workspace context required for entity resolution");
@@ -460,10 +467,7 @@ export async function previewCampaignAudience(params: {
     const { workspaceId, includeTagIds = [], excludeTagIds = [], includeLogic = 'OR', limit: previewLimit = 10 } = params;
 
     // Step 1: Get all contacts in workspace
-    const [schoolsSnap, prospectsSnap] = await Promise.all([
-      adminDb.collection('schools').where('workspaceIds', 'array-contains', workspaceId).get(),
-      adminDb.collection('prospects').where('workspaceId', '==', workspaceId).get(),
-    ]);
+    const entitiesSnap = await adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).get();
 
     interface ContactEntry {
       id: string;
@@ -471,10 +475,11 @@ export async function previewCampaignAudience(params: {
       tags: string[];
     }
 
-    const allContacts: ContactEntry[] = [
-      ...schoolsSnap.docs.map(d => ({ id: d.id, name: d.data().name || '', tags: d.data().tags || [] })),
-      ...prospectsSnap.docs.map(d => ({ id: d.id, name: d.data().name || '', tags: d.data().tags || [] })),
-    ];
+    const allContacts: ContactEntry[] = entitiesSnap.docs.map(d => ({ 
+      id: d.data().entityId || d.id, 
+      name: d.data().displayName || d.data().name || '', 
+      tags: d.data().workspaceTags || [] 
+    }));
 
     // Step 2: Apply include filter
     let filtered = allContacts;

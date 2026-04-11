@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { PDFForm, Submission, PDFFormField, School } from '@/lib/types';
+import type { PDFForm, Submission, PDFFormField, Entity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Loader2, Monitor, Clock } from 'lucide-react';
@@ -45,12 +45,12 @@ export default function SubmissionDetailPage() {
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submission, isLoading: isLoadingSubmission } = useDoc<Submission>(submissionDocRef);
 
-  // Fetch school data for variable resolution (as backup)
-  const schoolDocRef = useMemoFirebase(() => {
+  // Fetch identity data for variable resolution (as backup)
+  const entityDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfForm?.entityId) return null;
-    return doc(firestore, 'schools', pdfForm.entityId);
+    return doc(firestore, 'entities', pdfForm.entityId);
   }, [firestore, pdfForm?.entityId]);
-  const { data: school } = useDoc<School>(schoolDocRef);
+  const { data: entity } = useDoc<Entity>(entityDocRef);
 
   // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
   useSetBreadcrumb(pdfForm?.name, `/admin/pdfs/${pdfId}`);
@@ -225,7 +225,7 @@ export default function SubmissionDetailPage() {
                                     pageNumber={index + 1}
                                     fields={pdfForm.fields}
                                     formData={submission.formData}
-                                    school={school || undefined}
+                                    entity={entity || undefined}
                                 />
                             </div>
                         ))
@@ -244,7 +244,7 @@ export default function SubmissionDetailPage() {
   );
 }
 
-function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any }, school?: School }) {
+function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, entity }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any }, entity?: Entity }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const renderTaskRef = React.useRef<any>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
@@ -315,7 +315,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: {
                             if (field.type === 'static-text') {
                                 value = field.staticText;
                             } else if (field.type === 'variable') {
-                                value = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey}}}`;
+                                value = resolveVariableValue(field.variableKey || '', entity) || `{{${field.variableKey}}}`;
                             }
                         }
 

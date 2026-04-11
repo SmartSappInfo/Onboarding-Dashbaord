@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 /**
  * @fileOverview High-fidelity Automation Hub Client.
@@ -59,6 +60,7 @@ export default function AutomationsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
+    const { singular, plural } = useTerminology();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
     const [isPulsing, setIsPulsing] = React.useState(false);
@@ -141,7 +143,7 @@ export default function AutomationsClient() {
                             <Zap className="h-10 w-10 text-primary" />
                             Automation Hub
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">Design and audit proactive institutional logic for the {activeWorkspaceId} track.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1 text-left">Design and audit proactive logic for your {plural.toLowerCase()}.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <Button 
@@ -197,7 +199,7 @@ export default function AutomationsClient() {
                                         </div>
                                         <div className="mt-4">
                                             <CardTitle className="text-lg font-black uppercase tracking-tight truncate">{auth.name}</CardTitle>
-                                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1 opacity-60">Trigger: {auth.trigger.replace('_', ' ')}</CardDescription>
+                                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1 opacity-60 text-left">Trigger: {auth.trigger.replace('SCHOOL', singular.toUpperCase()).replace('_', ' ')}</CardDescription>
                                         </div>
                                         {/* Workspace scope display (Requirement 10.5) */}
                                         <div className="mt-3 pt-3 border-t border-border/30">
@@ -399,8 +401,8 @@ export default function AutomationsClient() {
                                 <div className="space-y-1">
                                     <p className="text-xs font-black text-blue-500 uppercase">Audit Integrity</p>
                                     <p className="text-[9px] font-bold text-blue-400/60 leading-relaxed uppercase tracking-widest text-left">
-                                        This snapshot reflects the exact institutional state at the moment the trigger fired. 
-                                        Subsequent changes to school records will not be reflected in this trace.
+                                        This snapshot reflects the exact state at the moment the trigger fired. 
+                                        Subsequent changes to records will not be reflected in this trace.
                                     </p>
                                 </div>
                             </div>

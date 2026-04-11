@@ -7,7 +7,7 @@ import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
-import { getSchoolEmail, getSchoolPhone, getSignatory } from './school-helpers';
+import { getEntityEmail, getEntityPhone, getSignatory } from './entity-helpers';
 import { getPrimaryWorkspaceId } from './workspace-helpers';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';

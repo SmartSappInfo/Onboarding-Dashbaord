@@ -29,7 +29,7 @@ import {
     ClipboardCheck
 } from 'lucide-react';
 
-import type { School, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
+import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +65,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
-  school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
+  entity: z.custom<WorkspaceEntity>().refine(value => !!value, { message: "Entity is required." }),
   entitySlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
     .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
@@ -131,20 +131,21 @@ export default function EditMeetingPage() {
   }, [firestore, meetingId]);
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
+  const { singular } = useTerminology();
   
   useSetBreadcrumb(meeting?.entityName, `/admin/meetings/${meetingId}`);
 
-  const schoolsCol = useMemoFirebase(() => {
+  const entitiesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('displayName', 'asc'));
   }, [firestore, activeWorkspaceId]);
   
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      school: undefined,
+      entity: undefined,
       entitySlug: '',
       meetingTime: undefined,
       type: undefined,
@@ -178,17 +179,17 @@ export default function EditMeetingPage() {
   const registrationEnabled = form.watch('registrationEnabled');
 
   React.useEffect(() => {
-    if (meeting && schools && !hasInitialized) {
-      const selectedSchool = schools.find(s => s.id === meeting.entityId);
+    if (meeting && entities && !hasInitialized) {
+      const selectedEntity = entities.find(s => s.id === meeting.entityId);
       const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || 
                           MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
                           MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
                           MEETING_TYPES[0];
 
-      if (selectedSchool) {
+      if (selectedEntity) {
           form.reset({
-            school: selectedSchool,
-            entitySlug: meeting.entitySlug || selectedSchool.slug,
+            entity: selectedEntity,
+            entitySlug: meeting.entitySlug || selectedEntity.slug,
             meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
             type: selectedType,
             meetingLink: meeting.meetingLink || '',
@@ -216,7 +217,7 @@ export default function EditMeetingPage() {
           setHasInitialized(true);
       }
     }
-  }, [meeting, schools, form, hasInitialized]);
+  }, [meeting, entities, form, hasInitialized]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) return;
@@ -236,12 +237,11 @@ export default function EditMeetingPage() {
         }
 
         const meetingData = {
-            entityId: data.school.id,
-            entityName: data.school.name,
+            entityId: data.entity.id,
+            entityName: data.entity.displayName,
             entitySlug: data.entitySlug,
-            entityId: meeting?.entityId || null,
-            entityType: meeting?.entityType || null,
-            workspaceIds: data.school.workspaceIds || [activeWorkspaceId],
+            entityType: data.entity.entityType || 'institution',
+            workspaceIds: data.entity.workspaceIds || [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -276,30 +276,30 @@ export default function EditMeetingPage() {
         const docRef = doc(firestore, 'meetings', meetingId);
         
         await updateDoc(docRef, meetingData);
-        toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
+        toast({ title: 'Meeting Updated', description: `Session for ${data.entity.displayName} saved.` });
         
         logActivity({
             organizationId: activeOrganizationId,
-            entityId: meeting?.entityId || null,
-            entityType: meeting?.entityType || null,
+            entityId: data.entity.id,
+            entityType: data.entity.entityType || 'institution',
             userId: user.uid,
             workspaceId: activeWorkspaceId,
-            type: 'school_updated',
+            type: 'entity_updated',
             source: 'user_action',
-            description: `updated the ${data.type.name} session for "${data.school.name}".`,
+            description: `updated the ${data.type.name} session for "${data.entity.displayName}".`,
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
         if (data.adminAlertsEnabled && !meeting?.adminAlertsEnabled) {
              triggerInternalNotification({
-                entityId: data.school.id,
+                entityId: data.entity.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
                 emailTemplateId: data.adminAlertEmailTemplateId,
                 smsTemplateId: data.adminAlertSmsTemplateId,
                 channel: data.adminAlertChannel,
                 variables: {
-                    school_name: data.school.name,
+                    school_name: data.entity.displayName,
                     meeting_type: data.type.name,
                     date: format(data.meetingTime, 'PPPP'),
                     time: format(data.meetingTime, 'p'),
@@ -321,7 +321,7 @@ export default function EditMeetingPage() {
     let isValid = false;
     
     if (currentStep === 0) {
-      isValid = await form.trigger(['school', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
+      isValid = await form.trigger(['entity', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
     } else if (currentStep === 1) {
       isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
     } else if (currentStep === 2) {
@@ -339,7 +339,7 @@ export default function EditMeetingPage() {
     }
   };
 
-  if (isLoadingMeeting || isLoadingSchools) {
+  if (isLoadingMeeting || isLoadingEntities) {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 bg-muted/5">
             <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
@@ -445,28 +445,28 @@ export default function EditMeetingPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
-                                    name="school"
+                                    name="entity"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context School</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
                                         <Select
                                             onValueChange={(entityId: string) => {
-                                                const school = schools?.find((s) => s.id === entityId);
-                                                field.onChange(school);
-                                                if (school && !form.getValues('entitySlug')) {
-                                                    form.setValue('entitySlug', school.slug, { shouldValidate: true });
+                                                const entity = entities?.find((s) => s.id === entityId);
+                                                field.onChange(entity);
+                                                if (entity && !form.getValues('entitySlug')) {
+                                                    form.setValue('entitySlug', entity.slug, { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                                    <SelectValue placeholder="Select institution..." />
+                                                    <SelectValue placeholder={`Select ${singular.toLowerCase()}...`} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl">
-                                                {schools?.map((school) => (
-                                                    <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                {entities?.map((entity) => (
+                                                    <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>

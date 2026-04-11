@@ -1,10 +1,9 @@
-
 'use client';
 
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { School } from '@/lib/types';
+import type { WorkspaceEntity } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -40,20 +39,22 @@ import Link from 'next/link';
 import ChangeStatusModal from '../../entities/components/ChangeStatusModal';
 import TransferPipelineModal from '../../entities/components/TransferPipelineModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface EntityCardProps {
-    school: School;
+    entity: WorkspaceEntity;
     isOverlay?: boolean;
 }
 
 /**
  * @fileOverview High-fidelity Institutional Card for Kanban boards.
- * Updated to use dynamic School Status labels and independent workspace lifecycles.
+ * Updated to use dynamic WorkspaceEntity properties and terminology.
  */
-export default function EntityCard({ school, isOverlay }: EntityCardProps) {
+export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [transferModalOpen, setTransferModalOpen] = React.useState(false);
   const { activeWorkspace } = useWorkspace();
+  const { singular } = useTerminology();
 
   const {
     attributes,
@@ -62,7 +63,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: school.id, data: { type: 'SCHOOL', school } });
+  } = useSortable({ id: entity.id, data: { type: 'ENTITY', entity } });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -70,22 +71,22 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
     opacity: isDragging && !isOverlay ? 0 : 1,
   };
 
-  const signatory = school.focalPersons?.find(p => p.isSignatory) || school.focalPersons?.[0];
-  const schoolTitle = toTitleCase(school.name);
+  const signatory = entity.focalPersons?.find(p => p.isSignatory) || entity.focalPersons?.[0];
+  const displayName = toTitleCase(entity.displayName);
 
   // Resolve status color from active workspace config
   const statusMeta = React.useMemo(() => {
-      return activeWorkspace?.statuses?.find(s => s.value === school.schoolStatus);
-  }, [activeWorkspace, school.schoolStatus]);
+      return activeWorkspace?.statuses?.find(s => s.value === entity.lifecycleStatus);
+  }, [activeWorkspace, entity.lifecycleStatus]);
 
   return (
     <TooltipProvider>
         <div ref={setNodeRef} style={style}>
         <Card
         className={cn(
-            "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden",
+            "w-full max-w-full mb-3 touch-manipulation rounded-[1.5rem] border-none ring-1 transition-all duration-300 bg-card select-none group/card overflow-hidden text-left",
             isOverlay ? "ring-primary shadow-2xl scale-105 rotate-1" : "ring-border shadow-sm hover:shadow-lg hover:ring-primary/20",
-            school.schoolStatus === 'Churned' && "grayscale opacity-60"
+            entity.lifecycleStatus === 'Churned' && "grayscale opacity-60"
         )}
         >
         <CardHeader 
@@ -97,11 +98,11 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <div className="relative shrink-0">
                     <Avatar className={cn(
                         "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background",
-                        school.logoUrl ? "rounded-xl" : "rounded-full"
+                        entity.logoUrl ? "rounded-xl" : "rounded-full"
                     )}>
-                        <AvatarImage src={school.logoUrl} alt={school.name} className="object-contain p-1.5" />
+                        <AvatarImage src={entity.logoUrl} alt={entity.displayName} className="object-contain p-1.5" />
                         <AvatarFallback className="text-[10px] font-black bg-primary/5 text-primary">
-                            {school.initials || school.name.substring(0, 2).toUpperCase()}
+                            {entity.displayName.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: statusMeta?.color || '#cbd5e1' }} />
@@ -109,12 +110,12 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <div className="min-w-0 flex-1 text-left">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full">
-                                {schoolTitle}
+                            <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full text-left">
+                                {displayName}
                             </CardTitle>
                         </TooltipTrigger>
                         <TooltipContent side="top">
-                            <p className="font-bold text-xs">{schoolTitle}</p>
+                            <p className="font-bold text-xs">{displayName}</p>
                         </TooltipContent>
                     </Tooltip>
                     <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground uppercase tracking-widest opacity-60 min-w-0">
@@ -134,7 +135,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                     <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1.5">Record Logic</DropdownMenuLabel>
                     
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
-                        <Link href={`/admin/entities/${school.id}`}>
+                        <Link href={`/admin/entities/${entity.id}`}>
                             <Eye className="h-3.5 w-3.5 text-primary" />
                             <span className="font-bold text-xs uppercase">Full Console</span>
                         </Link>
@@ -152,7 +153,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
 
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
-                        <Link href={`/admin/entities/${school.id}/edit`}>
+                        <Link href={`/admin/entities/${entity.id}/edit`}>
                             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="font-bold text-xs uppercase">Edit Profile</span>
                         </Link>
@@ -167,9 +168,9 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                     <div className="flex flex-col text-left shrink-0">
                         <div className="flex items-center gap-1">
                             <Users className="h-2.5 w-2.5 text-primary/40" />
-                            <span className="text-[10px] font-black tabular-nums tracking-tighter leading-none">{school.nominalRoll?.toLocaleString() || 0}</span>
+                            <span className="text-[10px] font-black tabular-nums tracking-tighter leading-none">{(entity as any).nominalRoll?.toLocaleString() || 0}</span>
                         </div>
-                        <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Students</span>
+                        <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Capacity</span>
                     </div>
                     
                     <div className="h-6 w-px bg-border/50 shrink-0" />
@@ -177,9 +178,9 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                     <div className="flex flex-col text-left min-w-0 flex-1">
                         <div className="flex items-center gap-1 min-w-0">
                             <MapPin className="h-2.5 w-2.5 text-primary/40 shrink-0" />
-                            <span className="text-[9px] font-bold text-foreground/80 truncate leading-none">{toTitleCase(school.zone?.name || 'Global')}</span>
+                            <span className="text-[9px] font-bold text-foreground/80 truncate leading-none">{toTitleCase(entity.currentStageName || 'Global')}</span>
                         </div>
-                        <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Region</span>
+                        <span className="text-[7px] font-black uppercase text-muted-foreground tracking-tighter opacity-40 mt-0.5">Current Stage</span>
                     </div>
                 </div>
 
@@ -188,7 +189,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                     className="h-4 text-[7px] font-black uppercase border-none px-1.5 rounded-sm shadow-inner shrink-0"
                     style={{ backgroundColor: `${statusMeta?.color || '#cbd5e1'}15`, color: statusMeta?.color || '#64748b' }}
                 >
-                    {school.schoolStatus}
+                    {entity.lifecycleStatus}
                 </Badge>
             </div>
 
@@ -197,7 +198,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/tasks?entityId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/tasks?entityId=${entity.entityId}&assignedTo=${entity.assignedTo?.userId || 'all'}`} onPointerDown={e => e.stopPropagation()}>
                                 <PlusCircle className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -208,7 +209,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/messaging/composer?entityId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${signatory?.email || signatory?.phone || ''}`} onPointerDown={e => e.stopPropagation()}>
                                 <Send className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -219,7 +220,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="outline" size="icon" asChild className="h-7 w-7 rounded-lg border-primary/10 bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all shadow-sm shrink-0">
-                            <Link href={`/admin/meetings/new?entityId=${school.id}`} onPointerDown={e => e.stopPropagation()}>
+                            <Link href={`/admin/meetings/new?entityId=${entity.entityId}`} onPointerDown={e => e.stopPropagation()}>
                                 <CalendarPlus className="h-3 w-3" />
                             </Link>
                         </Button>
@@ -230,7 +231,7 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
                 <div className="flex-1" />
 
                 <Button variant="ghost" size="sm" asChild className="h-7 px-2 rounded-lg text-primary hover:bg-primary/5 font-black uppercase text-[8px] tracking-widest gap-1 group/btn min-w-0 truncate" onPointerDown={e => e.stopPropagation()}>
-                    <Link href={`/admin/entities/${school.id}`} className="truncate">
+                    <Link href={`/admin/entities/${entity.id}`} className="truncate">
                         <span className="truncate">Open Console</span> <ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/btn:translate-x-0.5 shrink-0" />
                     </Link>
                 </Button>
@@ -240,12 +241,12 @@ export default function EntityCard({ school, isOverlay }: EntityCardProps) {
         </div>
 
         <ChangeStatusModal 
-            school={school} 
+            entity={entity} 
             open={statusModalOpen} 
             onOpenChange={setStatusModalOpen} 
         />
         <TransferPipelineModal 
-            school={school} 
+            entity={entity} 
             open={transferModalOpen} 
             onOpenChange={setTransferModalOpen} 
         />

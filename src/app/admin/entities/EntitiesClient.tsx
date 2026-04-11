@@ -1,11 +1,10 @@
-
 'use client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { collection, doc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
-import type { School, OnboardingStage, Zone, SchoolStatus, Tag, TagCategory } from '@/lib/types';
+import type { WorkspaceEntity, Entity, OnboardingStage, Zone, Tag, TagCategory } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
@@ -15,7 +14,7 @@ import { getContactsByTagsAction } from '@/lib/tag-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon, Mail, Phone, MessageCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,8 +64,10 @@ const getInitials = (name?: string) => {
 
 const getStatusBadgeVariant = (status: any) => {
     switch (status) {
+        case 'active':
         case 'Active': return 'default';
         case 'Inactive': return 'secondary';
+        case 'archived':
         case 'Archived': return 'outline';
         default: return 'secondary';
     }
@@ -94,22 +95,22 @@ export default function EntitiesClient() {
     editProfile
   } = useTerminology();
 
-  const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
-  const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
-  const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
-  const [changingStatusSchool, setChangingStatusSchool] = useState<School | null>(null);
-  const [transferringSchool, setTransferringSchool] = useState<School | null>(null);
-  const [taggingSchool, setTaggingSchool] = useState<School | null>(null);
+  const [entityToDelete, setEntityToDelete] = useState<WorkspaceEntity | null>(null);
+  const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
+  const [changingStageEntity, setChangingStageEntity] = useState<WorkspaceEntity | null>(null);
+  const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
+  const [transferringEntity, setTransferringEntity] = useState<WorkspaceEntity | null>(null);
+  const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
 
   // Tag-related state
-  const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
+  const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
   const [isBulkTagOpen, setIsBulkTagOpen] = useState(false);
 
   // Tag filter state — initialised from URL params
@@ -179,41 +180,40 @@ export default function EntitiesClient() {
     updateUrlParams(filter);
   }, [updateUrlParams]);
 
-  // MULTI-WORKSPACE QUERY: Use array-contains to find schools shared with the current hub
-  const schoolsCol = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId)) : null, 
+  // STRICT ENTITY QUERY: Use workspace_entities collection exclusively
+  const entitiesCol = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId)) : null, 
   [firestore, activeWorkspaceId]);
 
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
   const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
   
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
   const { data: stages } = useCollection<OnboardingStage>(stagesCol);
   const { data: zones } = useCollection<Zone>(zonesCol);
 
-  const isLoading = isLoadingSchools || isLoadingFilter || isTagFiltering;
+  const isLoading = isLoadingEntities || isLoadingFilter || isTagFiltering;
 
-  const filteredSchools = useMemo(() => {
-    if (!schools) return [];
-    let temp = schools;
+  const filteredEntities = useMemo(() => {
+    if (!entities) return [];
+    let temp = entities;
 
     // 1. Global Assignment Filter
     if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
     
     // 2. Search & UI Filters
-    if (searchTerm) temp = temp.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (stageFilter !== 'all') temp = temp.filter(s => s.stage?.id === stageFilter);
-    if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
+    if (searchTerm) temp = temp.filter(s => s.displayName?.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (stageFilter !== 'all') temp = temp.filter(s => s.stageId === stageFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
     
     // 3. Tag Filter — restrict to IDs returned by getContactsByTagsAction
-    if (tagFilteredIds !== null) temp = temp.filter(s => tagFilteredIds.has(s.id));
+    if (tagFilteredIds !== null) temp = temp.filter(s => tagFilteredIds.has(s.entityId));
     
     return temp;
-  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter, tagFilteredIds]);
+  }, [entities, assignedUserId, searchTerm, stageFilter, statusFilter, tagFilteredIds]);
   
-  const sortedSchools = useMemo(() => {
-    let sortable = [...filteredSchools];
+  const sortedEntities = useMemo(() => {
+    let sortable = [...filteredEntities];
     if (sortConfig) {
       sortable.sort((a, b) => {
           const getValue = (obj: any, path: string) => path.split('.').reduce((o, i) => o?.[i], obj);
@@ -226,7 +226,7 @@ export default function EntitiesClient() {
       });
     }
     return sortable;
-  }, [filteredSchools, sortConfig]);
+  }, [filteredEntities, sortConfig]);
   
   const handleSort = (key: any) => {
       let direction: 'asc' | 'desc' = 'asc';
@@ -234,21 +234,21 @@ export default function EntitiesClient() {
       setSortConfig({ key, direction });
   };
 
-  const toggleSchoolSelection = (entityId: string) => {
-    setSelectedSchoolIds(prev =>
-      prev.includes(entityId) ? prev.filter(id => id !== entityId) : [...prev, entityId]
+  const toggleEntitySelection = (id: string) => {
+    setSelectedEntityIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
-  const handleDeleteSchool = () => {
-    if (!firestore || !schoolToDelete) return;
-    const docRef = doc(firestore, 'schools', schoolToDelete.id);
-    deleteDoc(docRef).then(() => {
-        toast({ title: `${singular} Deleted`, description: `${schoolToDelete.name} has been removed.` });
-        setSchoolToDelete(null);
+  const handleDeleteEntity = () => {
+    if (!firestore || !entityToDelete) return;
+    const docRef = doc(firestore, 'workspace_entities', entityToDelete.id);
+    updateDoc(docRef, { status: 'archived', updatedAt: new Date().toISOString() }).then(() => {
+        toast({ title: `${singular} Archived`, description: `${entityToDelete.displayName} has been removed from this workspace.` });
+        setEntityToDelete(null);
     }).catch((error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
-        setSchoolToDelete(null);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update' }));
+        setEntityToDelete(null);
     });
   };
 
@@ -258,14 +258,14 @@ export default function EntitiesClient() {
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center gap-3 shrink-0">
-                    {selectedSchoolIds.length > 0 && (
+                    {selectedEntityIds.length > 0 && (
                         <Button
                             variant="outline"
                             className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
                             onClick={() => setIsBulkTagOpen(true)}
                         >
                             <TagIcon className="h-4 w-4" />
-                            Tag {selectedSchoolIds.length} Selected
+                            Tag {selectedEntityIds.length} Selected
                         </Button>
                     )}
                     <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
@@ -300,18 +300,8 @@ export default function EntitiesClient() {
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
                                 <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="Inactive">Inactive</SelectItem>
-                                <SelectItem value="Archived">Archived</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                            <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                <SelectValue placeholder="All Zones" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="all">All Zones</SelectItem>
-                                {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="archived">Archived</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={stageFilter} onValueChange={setStageFilter}>
@@ -334,11 +324,10 @@ export default function EntitiesClient() {
                     <TableHeader className="bg-muted/30">
                     <TableRow>
                         <TableHead className="w-[80px]"></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
-                        <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Visibility</span></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('stage.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><span className="text-[10px] font-bold uppercase tracking-widest">Focal Persons</span></TableHead>
                         <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
                         <TableHead className="text-right pr-6"><span className="text-[10px] font-bold uppercase tracking-widest">Actions</span></TableHead>
                     </TableRow>
@@ -346,37 +335,35 @@ export default function EntitiesClient() {
                     <TableBody>
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+                        <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                         ))
-                    ) : sortedSchools.length > 0 ? (
-                        sortedSchools.map((school) => {
-                        const signatory = (school.focalPersons || []).find(p => p.isSignatory) || school.focalPersons?.[0];
+                    ) : sortedEntities.length > 0 ? (
+                        sortedEntities.map((entity) => {
                         return (
-                        <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
+                        <TableRow key={entity.id} className={cn("group hover:bg-muted/30 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
                             <TableCell className="pl-6">
                             <div className="flex items-center gap-2">
                               <input
                                 type="checkbox"
-                                checked={selectedSchoolIds.includes(school.id)}
-                                onChange={() => toggleSchoolSelection(school.id)}
+                                checked={selectedEntityIds.includes(entity.id)}
+                                onChange={() => toggleEntitySelection(entity.id)}
                                 className="h-4 w-4 rounded border-border cursor-pointer"
-                                aria-label={`Select ${school.name}`}
+                                aria-label={`Select ${entity.displayName}`}
                               />
                               <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
-                                <AvatarImage src={school.logoUrl} alt={school.name} />
-                                <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
+                                <AvatarFallback className="font-bold text-xs">{getInitials(entity.displayName)}</AvatarFallback>
                               </Avatar>
                             </div>
                             </TableCell>
                             <TableCell className="py-4">
                                 <div className="flex flex-col text-left gap-1">
-                                    <Link href={`/admin/entities/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
+                                    <Link href={`/admin/entities/${entity.entityId}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{entity.displayName}</Link>
                                     <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
-                                        <User className="h-2 w-2" /> {signatory?.name || 'No Primary Contact'}
+                                        <User className="h-2 w-2" /> {entity.primaryEmail || 'No Primary Contact'}
                                     </span>
-                                    {school.tags && school.tags.length > 0 && allTags && (
+                                    {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
                                         <TagBadges
-                                            tagIds={school.tags}
+                                            tagIds={entity.workspaceTags}
                                             allTags={allTags}
                                             maxVisible={3}
                                         />
@@ -384,37 +371,67 @@ export default function EntitiesClient() {
                                 </div>
                             </TableCell>
                             <TableCell className="text-center">
-                                <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
+                                <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{entity.status}</Badge>
                             </TableCell>
-                            <TableCell className="text-center">
-                                <div className="flex justify-center items-center gap-1">
-                                    {school.workspaceIds?.length > 1 ? (
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary cursor-help"><Share2 className="h-3.5 w-3.5" /></div>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="p-2 space-y-1">
-                                                    <p className="text-[9px] font-black uppercase text-primary border-b pb-1">Shared Visibility</p>
-                                                    {school.workspaceIds.map(w => <p key={w} className="text-[10px] font-bold uppercase">• {w}</p>)}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    ) : <span className="text-[10px] font-black text-muted-foreground/30">—</span>}
+                            <TableCell>
+                            <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.currentStageName || 'Welcome'}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col gap-1.5 max-w-[200px]">
+                                    {(entity.focalPersons || []).length > 0 ? (
+                                        entity.focalPersons?.map((fp, idx) => (
+                                            <div key={idx} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group/fp">
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className={cn("text-[10px] font-black truncate uppercase", fp.isSignatory && "text-primary")}>{fp.name}</span>
+                                                    <span className="text-[8px] font-bold opacity-50 uppercase truncate">{fp.type}</span>
+                                                </div>
+                                                <div className="flex items-center gap-0.5 opacity-0 group-hover/fp:opacity-100 transition-opacity">
+                                                    {fp.email && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+                                                                    <a href={`mailto:${fp.email}`}><Mail className="h-3 w-3" /></a>
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="text-[10px]">Email {fp.name}</TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                    {fp.phone && (
+                                                        <>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+                                                                        <a href={`tel:${fp.phone}`}><Phone className="h-3 w-3" /></a>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="text-[10px]">Call {fp.name}</TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+                                                                        <a href={`https://wa.me/${fp.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3 w-3" /></a>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="text-[10px]">WhatsApp {fp.name}</TooltipContent>
+                                                          </Tooltip>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <span className="text-[10px] italic opacity-40">No Focal Persons</span>
+                                    )}
                                 </div>
                             </TableCell>
-                            <TableCell><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><MapPin className="h-3 w-3" /> {school.zone?.name || 'Unassigned'}</div></TableCell>
-                            <TableCell>
-                            <Badge style={{ backgroundColor: school.stage?.color || '#ccc', color: 'white' }} className="text-[10px] font-bold uppercase border-none h-6">{school.stage?.name || 'Welcome'}</Badge>
-                            </TableCell>
                             <TableCell className="text-xs font-medium text-muted-foreground">
-                            {school.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
+                            {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
                             </TableCell>
                             <TableCell className="text-right pr-6">
                             <div className="flex items-center justify-end gap-1 transition-opacity">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageSchool(school)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageEntity(entity)}>
                                             <Workflow className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
@@ -422,7 +439,7 @@ export default function EntitiesClient() {
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningSchool(school)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
                                             <UserPlus className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
@@ -436,34 +453,34 @@ export default function EntitiesClient() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
                                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
                                     
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
                                         <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">{updateStatus}</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringSchool(school)}>
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringEntity(entity)}>
                                         <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">Transfer Pipeline</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingSchool(school)}>
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
                                         <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
                                         <span className="font-bold text-sm">Manage Tags</span>
                                     </DropdownMenuItem>
 
                                     <DropdownMenuSeparator className="my-2" />
                                     
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${school.id}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
-                                        <Link href={`/admin/messaging/composer?entityId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
+                                        <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`}>
                                             <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
                                             <span className="font-bold text-sm">Send Message</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     
                                     <DropdownMenuSeparator className="my-2" />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setSchoolToDelete(school)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -471,38 +488,38 @@ export default function EntitiesClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={8} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>
             </div>
         </div>
       </div>
-      <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will permanently remove <span className="font-bold">{schoolToDelete?.name}</span> and all its interaction history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSchool} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Delete Campus</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
       
-      <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
-      <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
-      <ChangeStatusModal school={changingStatusSchool} open={!!changingStatusSchool} onOpenChange={(open) => !open && setChangingStatusSchool(null)} />
-      <TransferPipelineModal school={transferringSchool} open={!!transferringSchool} onOpenChange={(open) => !open && setTransferringSchool(null)} />
+      <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
+      <ChangeStageModal entity={changingStageEntity} open={!!changingStageEntity} onOpenChange={(open) => !open && setChangingStageEntity(null)} />
+      <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
+      <TransferPipelineModal entity={transferringEntity} open={!!transferringEntity} onOpenChange={(open) => !open && setTransferringEntity(null)} />
       
-      {taggingSchool && (
-        <AlertDialog open={!!taggingSchool} onOpenChange={(open) => !open && setTaggingSchool(null)}>
+      {taggingEntity && (
+        <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>
           <AlertDialogContent className="rounded-2xl max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle className="font-black">Manage Tags</AlertDialogTitle>
               <AlertDialogDescription className="text-xs text-muted-foreground">
-                {taggingSchool.name}
+                {taggingEntity.displayName}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <TagSelector
-              contactId={taggingSchool.id}
+              contactId={taggingEntity.entityId}
               contactType="school"
-              currentTagIds={taggingSchool.tags ?? []}
+              currentTagIds={taggingEntity.workspaceTags ?? []}
             />
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingSchool(null)}>Done</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -510,9 +527,9 @@ export default function EntitiesClient() {
       <BulkTagOperations
         open={isBulkTagOpen}
         onOpenChange={setIsBulkTagOpen}
-        selectedContactIds={selectedSchoolIds}
+        selectedContactIds={selectedEntityIds}
         contactType="school"
-        onComplete={() => setSelectedSchoolIds([])}
+        onComplete={() => setSelectedEntityIds([])}
       />
     </TooltipProvider>
   );

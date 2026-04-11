@@ -1,14 +1,29 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { Workspace } from './types';
+import { resolveTerminologyFromWorkspace } from './terminology';
 
 /**
  * @fileOverview Server-side actions for Workspace Management.
  */
+
+/**
+ * Resolves terminology for a workspace (Server Action for public portals)
+ */
+export async function getTerminologyAction(workspaceId: string) {
+    if (!workspaceId) return resolveTerminologyFromWorkspace(null);
+    try {
+        const snap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (!snap.exists) return resolveTerminologyFromWorkspace(null);
+        return resolveTerminologyFromWorkspace(snap.data());
+    } catch (e) {
+        console.error(`[TERMINOLOGY] Resolution failed for ${workspaceId}:`, e);
+        return resolveTerminologyFromWorkspace(null);
+    }
+}
 
 /**
  * Creates or updates a Workspace.

@@ -115,8 +115,8 @@ export default function PipelineClient() {
     
     try {
         const res = await savePipelineAction(null, {
-            name: 'New Pipeline Architecture',
-            description: `Operational track for ${activeWorkspaceId}.`,
+            name: 'New Pipeline',
+            description: `Operational track for ${plural.toLowerCase()}.`,
             workspaceIds: [activeWorkspaceId],
             stageIds: [],
             accessRoles: [],
@@ -205,11 +205,11 @@ export default function PipelineClient() {
                                 <PopoverContent className="w-72 p-4 rounded-2xl border-none shadow-2xl space-y-6" align="end">
                                     <div className="space-y-4">
                                         <div className="space-y-2 text-left">
-                                            <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Regional Zone</Label>
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Zone / Region</Label>
                                             <Select value={zoneFilter} onValueChange={setZoneFilter}>
                                                 <SelectTrigger className="h-9 rounded-lg bg-muted/20 border-none font-bold text-[10px]"><SelectValue placeholder="All Zones" /></SelectTrigger>
                                                 <SelectContent className="rounded-xl">
-                                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">Global Network</SelectItem>
+                                                    <SelectItem value="all" className="text-[10px] uppercase font-bold">Global View</SelectItem>
                                                     {zones?.map(z => <SelectItem key={z.id} value={z.id} className="text-[10px] uppercase font-bold">{z.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>

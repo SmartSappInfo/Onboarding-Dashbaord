@@ -225,8 +225,18 @@ export async function createEntityAction(
         addedAt: timestamp,
         updatedAt: timestamp,
         displayName: displayName,
-        primaryEmail: data.primaryEmail || '',
-        primaryPhone: data.primaryPhone || '',
+        // Denormalized Focal Persons (Requirement: Show all in table)
+        primaryContactName: data.contacts?.find((c: any) => c.isSignatory)?.name || '',
+        primaryEmail: data.contacts?.find((c: any) => c.isSignatory)?.email || '',
+        primaryPhone: data.contacts?.find((c: any) => c.isSignatory)?.phone || '',
+        focalPersons: data.contacts?.map((c: any) => ({
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            type: c.type,
+            isSignatory: c.isSignatory
+        })) || [],
+        interests: data.modules || [],
     };
 
     // Save to Operational Workspace Collection
@@ -325,32 +335,40 @@ export async function updateEntityAction(
         if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
         if (data.status) weUpdate.status = data.status.toLowerCase();
         if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
-        if (data.primaryEmail !== undefined) weUpdate.primaryEmail = data.primaryEmail;
-        if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
-        // DO NOT update pipelineId/stageId directly from regular edit form unless explicitly passed
+        
+        // Denormalized Focal Persons Sync
+        if (data.contacts) {
+            const signatory = data.contacts.find((c: any) => c.isSignatory);
+            weUpdate.primaryContactName = signatory?.name || '';
+            weUpdate.primaryEmail = signatory?.email || '';
+            weUpdate.primaryPhone = signatory?.phone || '';
+            weUpdate.focalPersons = data.contacts.map((c: any) => ({
+                name: c.name,
+                email: c.email,
+                phone: c.phone,
+                type: c.type,
+                isSignatory: c.isSignatory
+            }));
+        } else {
+            if (data.primaryEmail !== undefined) weUpdate.primaryEmail = data.primaryEmail;
+            if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;
+        }
+
+        if (data.modules !== undefined) {
+            weUpdate.interests = data.modules;
+        }
         
         await weRef.update(weUpdate);
     } else {
         console.warn(`Workspace entity ${workspaceEntityId} not found during update.`);
     }
 
-    // 5. Dual Write to Legacy Schools Collection
-    const schoolRef = adminDb.collection('schools').doc(entityId);
-    const schoolSnap = await schoolRef.get();
-    
-    if (schoolSnap.exists) {
-        // Strip out purely nested fields if passing them
-        const legacyUpdate = {
-            ...data,
-            name: displayName,
+    // 5. Update lifecycle status if provided in workspace_entities
+    if (data.lifecycleStatus && weSnap.exists) {
+        await weRef.update({
+            lifecycleStatus: data.lifecycleStatus,
             updatedAt: timestamp
-        };
-        // Remove nested objects meant for new architecture
-        delete legacyUpdate.institutionData;
-        delete legacyUpdate.familyData;
-        delete legacyUpdate.personData;
-        
-        await schoolRef.update(legacyUpdate);
+        });
     }
 
     // 6. Log Activity

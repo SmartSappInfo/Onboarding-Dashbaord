@@ -1,11 +1,9 @@
-
-
 'use client';
 
 import * as React from 'react';
 import { collection, doc, updateDoc, orderBy, query } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
-import type { School, OnboardingStage } from '@/lib/types';
+import type { WorkspaceEntity, OnboardingStage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,18 +12,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { logActivity } from '@/lib/activity-logger';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface ChangeStageModalProps {
-  school: School | null;
+  entity: WorkspaceEntity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function ChangeStageModal({ school, open, onOpenChange }: ChangeStageModalProps) {
+export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeStageModalProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeOrganizationId } = useTenant();
   const { toast } = useToast();
+  const { singular } = useTerminology();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   const stagesQuery = useMemoFirebase(() => {
@@ -35,29 +35,31 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
   const { data: stages, isLoading } = useCollection<OnboardingStage>(stagesQuery);
 
   const handleStageChange = async (stage: OnboardingStage) => {
-    if (!firestore || !school || !user) return;
+    if (!firestore || !entity || !user) return;
     setIsUpdating(true);
 
-    const schoolDocRef = doc(firestore, 'schools', school.id);
-    const newStageData = { id: stage.id, name: stage.name, order: stage.order, color: stage.color };
-    const oldStageName = school.stage?.name || 'an unknown stage';
-
+    const weDocRef = doc(firestore, 'workspace_entities', entity.id);
+    const oldStageName = entity.currentStageName || 'an unknown stage';
 
     try {
-      await updateDoc(schoolDocRef, { stage: newStageData });
+      await updateDoc(weDocRef, { 
+        stageId: stage.id, 
+        currentStageName: stage.name,
+        updatedAt: new Date().toISOString()
+      });
       
       toast({
         title: 'Stage Updated',
-        description: `${school.name} has been moved to the "${stage.name}" stage.`,
+        description: `${entity.displayName} has been moved to the "${stage.name}" stage.`,
       });
       logActivity({
           organizationId: activeOrganizationId,
-          entityId: school.id,
+          entityId: entity.entityId,
           userId: user.uid,
-          workspaceId: school.workspaceIds[0] || 'onboarding',
+          workspaceId: entity.workspaceId,
           type: 'pipeline_stage_changed',
           source: 'user_action',
-          description: `moved school "${school.name}" from "${oldStageName}" to "${stage.name}"`,
+          description: `moved ${singular.toLowerCase()} "${entity.displayName}" from "${oldStageName}" to "${stage.name}"`,
           metadata: {
               from: oldStageName,
               to: stage.name,
@@ -66,9 +68,9 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
       onOpenChange(false);
     } catch (e) {
         const permissionError = new FirestorePermissionError({
-            path: schoolDocRef.path,
+            path: weDocRef.path,
             operation: 'update',
-            requestResourceData: { stage: newStageData },
+            requestResourceData: { stageId: stage.id, currentStageName: stage.name },
         });
         errorEmitter.emit('permission-error', permissionError);
       toast({
@@ -83,45 +85,51 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change Onboarding Stage</DialogTitle>
-          <DialogDescription>
-            Move "{school?.name}" to a new stage in the pipeline.
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="h-96 border rounded-md">
-          <div className="p-2">
-            {isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : (
-              stages?.map(stage => (
-                <button
-                  key={stage.id}
-                  onClick={() => handleStageChange(stage)}
-                  className="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-                  disabled={isUpdating || school?.stage?.id === stage.id}
-                >
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
-                  <span className="font-medium">{stage.name}</span>
-                  {school?.stage?.id === stage.id && (
-                      <span className="ml-auto text-xs text-muted-foreground">Current</span>
-                  )}
-                </button>
-              ))
-            )}
-            {!isLoading && (!stages || stages.length === 0) && (
-                <p className="text-center text-sm text-muted-foreground p-4">No stages found.</p>
-            )}
+      <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+          <div className="flex flex-col text-left">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">Change Pipeline Stage</DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">
+              Move "{entity?.displayName}" to a new phase
+            </DialogDescription>
           </div>
-        </ScrollArea>
-        <DialogFooter>
-            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUpdating}>Cancel</Button>
+        </DialogHeader>
+        <div className="p-6 bg-background">
+          <ScrollArea className="h-96 border-2 border-dashed rounded-2xl bg-muted/10">
+            <div className="p-2 space-y-1">
+              {isLoading ? (
+                <div className="space-y-2 p-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                stages?.map(stage => (
+                  <button
+                    key={stage.id}
+                    onClick={() => handleStageChange(stage)}
+                    className="w-full text-left flex items-center gap-4 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all group disabled:opacity-50"
+                    disabled={isUpdating || entity?.stageId === stage.id}
+                  >
+                    <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: stage.color }} />
+                    <span className="font-black uppercase text-xs text-foreground/80 group-hover:text-primary transition-colors">{stage.name}</span>
+                    {entity?.stageId === stage.id && (
+                        <Badge variant="secondary" className="ml-auto text-[8px] font-black uppercase bg-primary/10 text-primary">Current</Badge>
+                    )}
+                  </button>
+                ))
+              )}
+              {!isLoading && (!stages || stages.length === 0) && (
+                  <p className="text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground p-20 opacity-30 italic">No stages found.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+        <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end gap-3">
+            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest animate-pulse px-4">
+                {isUpdating && <><Loader2 className="h-3 w-3 animate-spin"/> Updating Stage...</>}
+            </div>
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-11 px-8">Discard</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

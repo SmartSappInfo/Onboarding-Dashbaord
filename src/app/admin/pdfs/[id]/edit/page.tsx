@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
-import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
+import { type PDFForm, type PDFFormField, type WorkspaceEntity, type Entity, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
@@ -138,13 +138,10 @@ export default function EditPdfPage() {
   });
 
   const { reset, watch, setValue, getValues, trigger } = form;
-  const watchedSchoolId = watch('entityId');
-  const watchedSchoolName = watch('entityName');
+  const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc')) : null, [firestore, activeWorkspaceId]);
+  const { data: entities } = useCollection<WorkspaceEntity>(schoolsQuery);
 
-  const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc')) : null, [firestore, activeWorkspaceId]);
-  const { data: schools } = useCollection<School>(schoolsQuery);
-
-  const selectedSchool = React.useMemo(() => schools?.find(s => s.id === watchedSchoolId), [schools, watchedSchoolId]);
+  const selectedSchool = React.useMemo(() => entities?.find(s => s.id === watchedSchoolId), [entities, watchedSchoolId]);
 
   const { state: historyState, set: setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
 
@@ -276,7 +273,7 @@ export default function EditPdfPage() {
                                                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="entityId" control={form.control} render={({ field }) => (
-                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Associated Organization</Label><Select onValueChange={(val) => { const school = schools?.find(s => s.id === val); field.onChange(val === 'none' ? null : val); setValue('entityName', school ? school.name : 'SmartSapp'); }} value={field.value || 'none'}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue placeholder="Select a school..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Independent (No School)</SelectItem>{schools?.map(school => (<SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>))}</SelectContent></Select></div>
+                                                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sample Data Context</Label><Select onValueChange={(val) => { const ent = entities?.find(s => s.id === val); field.onChange(val === 'none' ? null : val); setValue('entityName', ent ? ent.displayName : 'SmartSapp'); }} value={field.value || 'none'}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue placeholder="Select context..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Generic (No Context)</SelectItem>{entities?.map(ent => (<SelectItem key={ent.id} value={ent.id}>{ent.displayName}</SelectItem>))}</SelectContent></Select></div>
                                                 )} />
                                             </CardContent>
                                         </Card>

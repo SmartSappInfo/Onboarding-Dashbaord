@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, School, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
@@ -83,9 +83,9 @@ export default function MessageTemplatesPage() {
         );
     }, [firestore, activeWorkspaceId]);
 
-    const schoolsQuery = useMemoFirebase(() => {
+    const entitiesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+        return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('displayName', 'asc'));
     }, [firestore, activeWorkspaceId]);
 
     const meetingsQuery = useMemoFirebase(() => {
@@ -106,7 +106,7 @@ export default function MessageTemplatesPage() {
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
@@ -232,7 +232,7 @@ export default function MessageTemplatesPage() {
                         initialTemplate={editingTemplate}
                         variables={variables || []}
                         styles={styles || []}
-                        schools={schools || []}
+                        entities={entities || []}
                         meetings={meetings || []}
                         surveys={surveys || []}
                         pdfs={pdfs || []}

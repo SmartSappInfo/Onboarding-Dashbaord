@@ -6,7 +6,7 @@ import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/
 import dynamic from 'next/dynamic';
 
 import { useFirestore } from '@/firebase';
-import type { School, Meeting } from '@/lib/types';
+import type { Meeting, Entity } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,7 +62,7 @@ function MeetingPageSkeleton() {
   )
 }
 
-const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+const ParentEngagementLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
   const helpVideos = [
       'https://youtu.be/4zchas6SKtE',
       'https://youtu.be/1p5ICDnyzjk',
@@ -76,7 +76,7 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
     ];
   return (
     <>
-      <MeetingHero school={school} meeting={meeting} />
+      <MeetingHero entity={entity} meeting={meeting} />
       <WelcomeSection />
       <AppDownloadSection />
       <SetupProfileSection />
@@ -88,28 +88,28 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
   )
 }
 
-const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+const KickoffLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
   return (
     <>
-      <KickoffMeetingHero school={school} meeting={meeting} />
+      <KickoffMeetingHero entity={entity} meeting={meeting} />
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
   )
 }
 
-const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+const TrainingLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
   return (
     <>
-      <TrainingMeetingHero school={school} meeting={meeting} />
+      <TrainingMeetingHero entity={entity} meeting={meeting} />
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
   )
 }
 
-const WebinarLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+const WebinarLayout = ({ entity, meeting }: { entity: any, meeting: Meeting }) => {
   return (
     <>
-      <WebinarMeetingHero school={school} meeting={meeting} />
+      <WebinarMeetingHero entity={entity} meeting={meeting} />
       {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
       {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
     </>
@@ -123,7 +123,7 @@ interface SchoolMeetingLoaderProps {
 
 export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeetingLoaderProps) {
     const firestore = useFirestore();
-    const [school, setSchool] = useState<School | null>(null);
+    const [entity, setEntity] = useState<any | null>(null);
     const [meeting, setMeeting] = useState<Meeting | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeet
 
         const fetchData = async () => {
           setIsLoading(true);
-          setSchool(null);
+          setEntity(null);
           setMeeting(null);
           setError(null);
 
@@ -180,52 +180,39 @@ export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeet
             const bestMeeting = sorted[0];
             setMeeting(bestMeeting);
 
-            // Resolve school using entityId first (if available), then fallback to entityId
-            // Requirement 9.5: Support both entityId and entitySlug for resolution
+            // Resolve institution using entityId (Requirement 9.5)
             if (bestMeeting.entityId) {
-                // Try to resolve from entities collection first (migrated contacts)
                 const entityRef = doc(firestore, 'entities', bestMeeting.entityId);
                 const entitySnap = await getDoc(entityRef);
                 
                 if (entitySnap.exists()) {
-                    // Entity found - use entity data
-                    const entityData = entitySnap.data();
-                    // For backward compatibility, create a School-like object from entity
-                    setSchool({
-                        id: bestMeeting.entityId || bestMeeting.entityId,
-                        name: entityData.name,
-                        slug: entityData.slug || entitySlug,
-                        logoUrl: entityData.institutionData?.logoUrl,
-                        entityId: bestMeeting.entityId,
-                        migrationStatus: 'migrated',
-                    } as School);
-                } else if (bestMeeting.entityId) {
-                    // Entity not found, fallback to school
-                    const schoolRef = doc(firestore, 'schools', bestMeeting.entityId);
-                    const schoolSnap = await getDoc(schoolRef);
-                    if (schoolSnap.exists()) {
-                        setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
-                    } else {
-                        setError("Contact document could not be resolved.");
-                    }
-                }
-            } else if (bestMeeting.entityId) {
-                // Legacy meeting - use entityId
-                const schoolRef = doc(firestore, 'schools', bestMeeting.entityId);
-                const schoolSnap = await getDoc(schoolRef);
-
-                if (schoolSnap.exists()) {
-                    setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
+                    const data = entitySnap.data();
+                    setEntity({
+                        id: entitySnap.id,
+                        name: data.name,
+                        slug: data.slug || entitySlug,
+                        logoUrl: data.institutionData?.logoUrl || data.logoUrl,
+                        contacts: data.contacts || []
+                    });
+                } else {
+                    setError("Institutional identity could not be verified.");
                 }
             } else {
-                // No entityId or entityId - fallback to slug lookup
-                const schoolsCol = collection(firestore, 'schools');
-                const schoolQuery = query(schoolsCol, where('slug', '==', entitySlug.toLowerCase()), limit(1));
-                const schoolSnapshot = await getDocs(schoolQuery);
-                if (!schoolSnapshot.empty) {
-                    setSchool({ id: schoolSnapshot.docs[0].id, ...schoolSnapshot.docs[0].data() } as School);
+                // Fallback to slug-based lookup in entities collection
+                const entitiesCol = collection(firestore, 'entities');
+                const entQuery = query(entitiesCol, where('slug', '==', entitySlug.toLowerCase()), limit(1));
+                const entSnapshot = await getDocs(entQuery);
+                if (!entSnapshot.empty) {
+                    const data = entSnapshot.docs[0].data();
+                    setEntity({
+                        id: entSnapshot.docs[0].id,
+                        name: data.name,
+                        slug: data.slug || entitySlug,
+                        logoUrl: data.institutionData?.logoUrl || data.logoUrl,
+                        contacts: data.contacts || []
+                    });
                 } else {
-                    setError("School document could not be resolved.");
+                    setError("Target institution not found.");
                 }
             }
 
@@ -248,7 +235,7 @@ export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeet
         );
     }
 
-    if (error || !school || !meeting) {
+    if (error || !entity || !meeting) {
         return (
             <div className="container py-20 min-h-screen flex flex-col items-center justify-center">
                 <MeetingNotFound />
@@ -258,13 +245,13 @@ export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeet
 
     switch(typeSlug) {
       case 'parent-engagement':
-        return <ParentEngagementLayout school={school} meeting={meeting} />;
+        return <ParentEngagementLayout entity={entity} meeting={meeting} />;
       case 'kickoff':
-        return <KickoffLayout school={school} meeting={meeting} />;
+        return <KickoffLayout entity={entity} meeting={meeting} />;
       case 'training':
-        return <TrainingLayout school={school} meeting={meeting} />;
+        return <TrainingLayout entity={entity} meeting={meeting} />;
       case 'webinar':
-        return <WebinarLayout school={school} meeting={meeting} />;
+        return <WebinarLayout entity={entity} meeting={meeting} />;
       default:
         return <div className="container py-20 text-center text-destructive font-black uppercase tracking-widest">Unsupported Protocol.</div>;
     }

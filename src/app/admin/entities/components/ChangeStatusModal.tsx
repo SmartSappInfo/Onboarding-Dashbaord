@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import type { School, WorkspaceStatus } from '@/lib/types';
+import type { WorkspaceEntity, WorkspaceStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { 
     Dialog, 
@@ -28,19 +28,21 @@ import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface ChangeStatusModalProps {
-  school: School | null;
+  entity: WorkspaceEntity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function ChangeStatusModal({ school, open, onOpenChange }: ChangeStatusModalProps) {
+export default function ChangeStatusModal({ entity, open, onOpenChange }: ChangeStatusModalProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspace } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular } = useTerminology();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
   // Statuses are now dynamic and independent per workspace
@@ -56,36 +58,37 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
       ];
   }, [activeWorkspace]);
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!firestore || !school || !user || isUpdating) return;
-    if (school.schoolStatus === newStatus) {
+  const handleStatusChange = async (newLifecycleStatus: string) => {
+    if (!firestore || !entity || !user || isUpdating) return;
+    if (entity.lifecycleStatus === newLifecycleStatus) {
         onOpenChange(false);
         return;
     }
 
     setIsUpdating(true);
-    const schoolRef = doc(firestore, 'schools', school.id);
+    const weRef = doc(firestore, 'workspace_entities', entity.id);
 
     try {
-      await updateDoc(schoolRef, {
-        schoolStatus: newStatus,
+      await updateDoc(weRef, {
+        lifecycleStatus: newLifecycleStatus,
+        status: 'active', // Selecting a lifecycle status normally means the entity is active in the workspace
         updatedAt: new Date().toISOString()
       });
       
       toast({ 
         title: 'Status Updated', 
-        description: `"${school.name}" state set to ${newStatus}.` 
+        description: `"${entity.displayName}" set to ${newLifecycleStatus}.` 
       });
 
       logActivity({
-          entityId: school.id,
+          entityId: entity.entityId,
           userId: user.uid,
           organizationId: activeOrganizationId,
-          workspaceId: school.workspaceIds[0] || 'onboarding',
-          type: 'school_updated',
+          workspaceId: entity.workspaceId,
+          type: 'entity_updated',
           source: 'user_action',
-          description: `changed status of "${school.name}" from ${school.schoolStatus} to ${newStatus}`,
-          metadata: { from: school.schoolStatus, to: newStatus }
+          description: `changed lifecycle status of ${singular.toLowerCase()} "${entity.displayName}" from ${entity.lifecycleStatus || 'none'} to ${newLifecycleStatus}`,
+          metadata: { from: entity.lifecycleStatus, to: newLifecycleStatus }
       });
 
       onOpenChange(false);
@@ -96,7 +99,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
     }
   };
 
-  if (!school) return null;
+  if (!entity) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,15 +110,15 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div className="text-left">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">School Status Architect</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify current status for {school.name}</DialogDescription>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight">{singular} Status Architect</DialogTitle>
+              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify current state for {entity.displayName}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <div className="p-6 space-y-4 bg-background">
             {workspaceStatuses.map((status) => {
-                const isActive = school.schoolStatus === status.value;
+                const isActive = entity.lifecycleStatus === status.value;
 
                 return (
                     <button
@@ -153,7 +156,7 @@ export default function ChangeStatusModal({ school, open, onOpenChange }: Change
             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 mt-4">
                 <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                 <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
-                    "School Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
+                    "{singular} Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
                 </p>
             </div>
         </div>

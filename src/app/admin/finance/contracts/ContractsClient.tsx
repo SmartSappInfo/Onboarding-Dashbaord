@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, doc, getDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { School, Contract, UserProfile } from '@/lib/types';
+import type { WorkspaceEntity, Entity, Contract, UserProfile } from '@/lib/types';
 import { 
     FileCheck, 
     Search, 
@@ -91,13 +91,13 @@ export default function AgreementsClient() {
     
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
-    const [selectedSchools, setSelectedSchools] = React.useState<School[]>([]);
+    const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
-    const [withdrawingSchool, setWithdrawingSchool] = React.useState<School | null>(null);
+    const [withdrawingEntity, setWithdrawingEntity] = React.useState<WorkspaceEntity | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
     // Single Contract Deletion State
-    const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, school: School } | null>(null);
+    const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
     const [isPurging, setIsPurging] = React.useState(false);
 
     // Permission Check
@@ -118,49 +118,56 @@ export default function AgreementsClient() {
     const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
 
     // Data Subscriptions - SYNCED TO WORKSPACE
-    const schoolsCol = useMemoFirebase(() => 
+    const entitiesCol = useMemoFirebase(() => 
         firestore ? query(
-            collection(firestore, 'schools'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('name', 'asc')
+            collection(firestore, 'workspace_entities'), 
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('displayName', 'asc')
         ) : null, 
     [firestore, activeWorkspaceId]);
+
+    const globalEntitiesCol = useMemoFirebase(() => 
+        firestore ? query(collection(firestore, 'entities')) : null, 
+    [firestore]);
 
     const contractsCol = useMemoFirebase(() => 
         firestore ? query(collection(firestore, 'contracts'), orderBy('updatedAt', 'desc')) : null, 
     [firestore]);
 
-    const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+    const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
+    const { data: globalEntities, isLoading: isLoadingGlobal } = useCollection<Entity>(globalEntitiesCol);
     const { data: contracts, isLoading: isLoadingContracts } = useCollection<Contract>(contractsCol);
 
-    const isLoading = isLoadingSchools || isLoadingContracts || isLoadingFilter;
+    const isLoading = isLoadingEntities || isLoadingGlobal || isLoadingContracts || isLoadingFilter;
 
-    // Logic to merge Schools with their specific Contract records
-    const schoolsWithContracts = React.useMemo(() => {
-        if (!schools) return [];
+    // Logic to merge WorkspaceEntities with Core Identity and Contract records
+    const entitiesWithContracts = React.useMemo(() => {
+        if (!entities) return [];
         
-        let baseSchools = schools;
+        let baseEntities = entities;
         if (assignedUserId) {
             if (assignedUserId === 'unassigned') {
-                baseSchools = baseSchools.filter(s => !s.assignedTo?.userId);
+                baseEntities = baseEntities.filter(s => !s.assignedTo?.userId);
             } else {
-                baseSchools = baseSchools.filter(s => s.assignedTo?.userId === assignedUserId);
+                baseEntities = baseEntities.filter(s => s.assignedTo?.userId === assignedUserId);
             }
         }
 
         const contractMap = new Map(contracts?.map(c => [c.entityId, c]) || []);
+        const identityMap = new Map(globalEntities?.map(e => [e.id, e]) || []);
 
-        return baseSchools.map(school => ({
-            ...school,
-            contract: contractMap.get(school.id) || null
+        return baseEntities.map(we => ({
+            ...we,
+            identity: identityMap.get(we.entityId),
+            contract: contractMap.get(we.entityId) || null
         }));
-    }, [schools, contracts, assignedUserId]);
+    }, [entities, globalEntities, contracts, assignedUserId]);
 
     const filteredList = React.useMemo(() => {
-        let list = schoolsWithContracts;
+        let list = entitiesWithContracts;
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
-            list = list.filter(item => item.name.toLowerCase().includes(s));
+            list = list.filter(item => item.displayName.toLowerCase().includes(s));
         }
         if (statusFilter !== 'all') {
             list = list.filter(item => {
@@ -169,37 +176,37 @@ export default function AgreementsClient() {
             });
         }
         return list;
-    }, [schoolsWithContracts, searchTerm, statusFilter]);
+    }, [entitiesWithContracts, searchTerm, statusFilter]);
 
     const stats = React.useMemo(() => {
-        const total = schoolsWithContracts.length;
+        const total = entitiesWithContracts.length;
         const signed = filteredList.filter(item => item.contract?.status === 'signed').length;
         const pending = filteredList.filter(item => item.contract?.status === 'sent').length;
         const actionRequired = total - signed;
         const coverage = total > 0 ? Math.round((signed / total) * 100) : 0;
 
         return { total, signed, pending, actionRequired, coverage };
-    }, [schoolsWithContracts, filteredList]);
+    }, [entitiesWithContracts, filteredList]);
 
-    const toggleSelect = (school: School) => {
-        setSelectedSchools(prev => {
-            const exists = prev.find(s => s.id === school.id);
-            if (exists) return prev.filter(s => s.id !== school.id);
-            return [...prev, school];
+    const toggleSelect = (entity: WorkspaceEntity) => {
+        setSelectedEntities(prev => {
+            const exists = prev.find(s => s.id === entity.id);
+            if (exists) return prev.filter(s => s.id !== entity.id);
+            return [...prev, entity];
         });
     };
 
     const handleSelectAllUnprepared = () => {
         const unprepared = filteredList.filter(item => !item.contract || item.contract.status === 'no_contract' || item.contract.status === 'draft');
-        setSelectedSchools(unprepared);
-        toast({ title: 'Batch Selected', description: `${unprepared.length} unprepared schools identified.` });
+        setSelectedEntities(unprepared);
+        toast({ title: 'Batch Selected', description: `${unprepared.length} unprepared entities identified.` });
     };
 
     const handleCopyLink = (item: any) => {
         if (!item.contract?.pdfId) return;
         if (typeof window === 'undefined') return;
         
-        const url = `${window.location.origin}/forms/${item.contract.pdfId}?entityId=${item.id}`;
+        const url = `${window.location.origin}/forms/${item.contract.pdfId}?entityId=${item.entityId}`;
         navigator.clipboard.writeText(url);
         toast({ title: 'Link Copied', description: 'Unique signing URL is ready to share.' });
     };
@@ -233,14 +240,14 @@ export default function AgreementsClient() {
     const handlePurgeConfirmed = async () => {
         if (!contractToPurge || !user) return;
         setIsPurging(true);
-        const { contract, school } = contractToPurge;
+        const { contract, entity } = contractToPurge;
         
         try {
             const result = await deleteContractAction(
                 contract.id, 
                 contract.pdfId, 
                 contract.submissionId || null, 
-                school.id, 
+                entity.entityId, 
                 user.uid
             );
             
@@ -258,7 +265,7 @@ export default function AgreementsClient() {
     const clearFilters = () => {
         setSearchTerm('');
         setStatusFilter('all');
-        setSelectedSchools([]);
+        setSelectedEntities([]);
     };
 
     const getStatusBadge = (status: string) => {
@@ -335,7 +342,7 @@ export default function AgreementsClient() {
                             <div className="flex-grow min-w-[240px] relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                                 <Input 
-                                    placeholder="Search by school name..." 
+                                    placeholder="Search by entity name..." 
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                     className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
@@ -381,10 +388,10 @@ export default function AgreementsClient() {
                                 <TableRow>
                                     <TableHead className="w-12 pl-6 py-5">
                                         <Checkbox 
-                                            checked={selectedSchools.length === filteredList.length && filteredList.length > 0}
+                                            checked={selectedEntities.length === filteredList.length && filteredList.length > 0}
                                             onCheckedChange={(checked) => {
-                                                if (checked) setSelectedSchools(filteredList);
-                                                else setSelectedSchools([]);
+                                                if (checked) setSelectedEntities(filteredList);
+                                                else setSelectedEntities([]);
                                             }}
                                         />
                                     </TableHead>
@@ -412,7 +419,7 @@ export default function AgreementsClient() {
                                         const contract = item.contract;
                                         const status = contract?.status || 'no_contract';
                                         const isSigningInProcess = downloadingId === contract?.id;
-                                        const isSelected = !!selectedSchools.find(s => s.id === item.id);
+                                        const isSelected = !!selectedEntities.find(s => s.id === item.id);
                                         
                                         return (
                                             <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}>
@@ -431,8 +438,8 @@ export default function AgreementsClient() {
                                                             <Building className="h-4 w-4" />
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="font-black text-sm uppercase tracking-tight text-foreground">{item.name}</span>
-                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{item.zone?.name || 'Unassigned Zone'}</span>
+                                                            <span className="font-black text-sm uppercase tracking-tight text-foreground">{item.displayName}</span>
+                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{item.identity?.institutionData?.location?.zone || 'Unassigned Zone'}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
@@ -441,7 +448,7 @@ export default function AgreementsClient() {
                                                     {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
                                                 </TableCell>
                                                 <TableCell className="text-xs font-medium text-foreground/80">
-                                                    {item.focalPersons?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
+                                                    {item.identity?.contacts?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
                                                 </TableCell>
                                                 <TableCell className="text-right pr-8">
                                                     <div className="flex items-center justify-end gap-1">
@@ -469,7 +476,7 @@ export default function AgreementsClient() {
                                                                             className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
                                                                             asChild
                                                                         >
-                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?entityId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${item.contract?.pdfId || ''}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
                                                                                 <Globe className="h-4 w-4" />
                                                                             </a>
                                                                         </Button>
@@ -505,11 +512,11 @@ export default function AgreementsClient() {
                                                                     </>
                                                                 ) : (
                                                                     <>
-                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedEntities([item]); setIsWizardOpen(true); }}>
                                                                             <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Plus className="h-4 w-4" /></div>
                                                                             <span className="font-bold text-sm">Prep Contract</span>
                                                                         </DropdownMenuItem>
-                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedEntities([item]); setIsWizardOpen(true); }}>
                                                                             <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Send className="h-4 w-4" /></div>
                                                                             <span className="font-bold text-sm">Send Agreement</span>
                                                                         </DropdownMenuItem>
@@ -524,7 +531,7 @@ export default function AgreementsClient() {
                                                                             <span className="font-bold text-sm">Copy Link</span>
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
-                                                                            <a href={`/forms/${contract.pdfId}?entityId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
                                                                                 <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
                                                                                 <span className="font-bold text-sm">Open Portal</span>
                                                                             </a>
@@ -537,7 +544,7 @@ export default function AgreementsClient() {
                                                                         <DropdownMenuSeparator className="my-2 mx-2" />
                                                                         <DropdownMenuItem 
                                                                             className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                            onClick={() => setContractToPurge({ contract, school: item })}
+                                                                            onClick={() => setContractToPurge({ contract, entity: item })}
                                                                         >
                                                                             <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
                                                                             <span className="font-bold text-sm">Purge Record</span>
@@ -550,7 +557,7 @@ export default function AgreementsClient() {
                                                                         <DropdownMenuSeparator className="my-2 mx-2" />
                                                                         <DropdownMenuItem 
                                                                             className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                            onClick={() => setWithdrawingSchool(item)}
+                                                                            onClick={() => setWithdrawingEntity(item)}
                                                                         >
                                                                             <div className="p-1.5 bg-destructive/10 rounded-lg"><History className="h-4 w-4" /></div>
                                                                             <span className="font-bold text-sm">Audit & Purge History</span>
@@ -569,7 +576,7 @@ export default function AgreementsClient() {
                                         <TableCell colSpan={6} className="h-64 text-center">
                                             <div className="flex flex-col items-center justify-center gap-3 opacity-20">
                                                 <FileCheck className="h-12 w-12" />
-                                                <p className="text-xs font-black uppercase tracking-widest">No matching schools in this workspace</p>
+                                                <p className="text-xs font-black uppercase tracking-widest">No matching entities in this workspace</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -581,7 +588,7 @@ export default function AgreementsClient() {
 
                 {/* Bulk Actions Floating Bar */}
                 <AnimatePresence>
-                    {selectedSchools.length > 0 && (
+                    {selectedEntities.length > 0 && (
                         <motion.div 
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -595,7 +602,7 @@ export default function AgreementsClient() {
                                             <ShieldCheck className="h-4 w-4 text-primary" />
                                         </div>
                                         <span className="text-xs font-bold uppercase tracking-tight whitespace-nowrap">
-                                            {selectedSchools.length} Selection{selectedSchools.length !== 1 ? 's' : ''}
+                                            {selectedEntities.length} Selection{selectedEntities.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl">
@@ -610,7 +617,7 @@ export default function AgreementsClient() {
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            onClick={() => setSelectedSchools([])}
+                                            onClick={() => setSelectedEntities([])}
                                             className="h-9 w-9 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
                                         >
                                             <X className="h-4 w-4" />
@@ -622,22 +629,22 @@ export default function AgreementsClient() {
                     )}
                 </AnimatePresence>
 
-                {isWizardOpen && selectedSchools.length > 0 && (
+                {isWizardOpen && selectedEntities.length > 0 && (
                     <ContractWizard 
-                        schools={selectedSchools} 
+                        entities={selectedEntities} 
                         open={isWizardOpen} 
                         onOpenChange={(o) => {
                             setIsWizardOpen(o);
-                            if (!o) setSelectedSchools([]);
+                            if (!o) setSelectedEntities([]);
                         }} 
                     />
                 )}
 
-                {withdrawingSchool && (
+                {withdrawingEntity && (
                     <WithdrawContractModal 
-                        school={withdrawingSchool} 
-                        open={!!withdrawingSchool} 
-                        onOpenChange={(o) => !o && setWithdrawingSchool(null)} 
+                        entity={withdrawingEntity} 
+                        open={!!withdrawingEntity} 
+                        onOpenChange={(o) => !o && setWithdrawingEntity(null)} 
                     />
                 )}
 
@@ -650,7 +657,7 @@ export default function AgreementsClient() {
                             </div>
                             <AlertDialogTitle className="text-center font-black uppercase tracking-tight">Purge Agreement Record?</AlertDialogTitle>
                             <AlertDialogDescription className="text-center text-sm font-medium">
-                                You are about to permanently remove the agreement record for <span className="font-bold text-foreground">"{contractToPurge?.school.name}"</span>. 
+                                You are about to permanently remove the agreement record for <span className="font-bold text-foreground">"{contractToPurge?.entity.displayName}"</span>. 
                                 <br/><br/>
                                 <strong className="text-destructive uppercase text-[10px] tracking-widest">Impact Alert:</strong> This will also delete the corresponding signed PDF from the Doc Signing module, ensuring no orphan data remains. This action is irreversible.
                             </AlertDialogDescription>

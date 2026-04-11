@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { Meeting, School } from '@/lib/types';
+import type { Meeting, WorkspaceEntity } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
-import { getSchoolEmail } from '@/lib/school-helpers';
+import { getEntityEmail } from '@/lib/entity-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -98,42 +98,42 @@ export default function MeetingsHubClient() {
     );
   }, [meetingsCol, activeWorkspaceId]);
 
-  const schoolsCol = useMemoFirebase(() => {
+  const entitiesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
 
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
 
-  const isLoading = isLoadingMeetings || isLoadingSchools || isLoadingFilter;
+  const isLoading = isLoadingMeetings || isLoadingEntities || isLoadingFilter;
 
-  const schoolLogoMap = useMemo(() => {
-    if (!schools) return new Map<string, string | undefined>();
-    return new Map(schools.map(s => [s.id, s.logoUrl]));
-  }, [schools]);
+  const entityLogoMap = useMemo(() => {
+    if (!entities) return new Map<string, string | undefined>();
+    return new Map(entities.map(s => [s.id, s.logoUrl]));
+  }, [entities]);
 
-  const schoolEmailMap = useMemo(() => {
-    if (!schools) return new Map<string, string | undefined>();
-    return new Map(schools.map(s => [s.id, getSchoolEmail(s)]));
-  }, [schools]);
+  const entityEmailMap = useMemo(() => {
+    if (!entities) return new Map<string, string | undefined>();
+    return new Map(entities.map(s => [s.id, getEntityEmail(s)]));
+  }, [entities]);
 
   const filteredMeetings = useMemo(() => {
-    if (!meetings || !schools) return [];
+    if (!meetings || !entities) return [];
     
     let temp = meetings;
 
     // Filter by assigned user
     if (assignedUserId) {
-        const filteredSchoolIds = new Set(
-            schools.filter(school => {
+        const filteredEntityIds = new Set(
+            entities.filter(entity => {
                 if (assignedUserId === 'unassigned') {
-                    return !school.assignedTo?.userId;
+                    return !entity.assignedTo?.userId;
                 }
-                return school.assignedTo?.userId === assignedUserId;
+                return entity.assignedTo?.userId === assignedUserId;
             }).map(s => s.id)
         );
-        temp = temp.filter(m => m.entityId && filteredSchoolIds.has(m.entityId));
+        temp = temp.filter(m => m.entityId && filteredEntityIds.has(m.entityId));
     }
 
     // Then filter by type
@@ -142,7 +142,7 @@ export default function MeetingsHubClient() {
     }
     
     return temp;
-  }, [meetings, schools, typeFilter, assignedUserId]);
+  }, [meetings, entities, typeFilter, assignedUserId]);
 
   const handleDeleteMeeting = () => {
     if (!firestore || !meetingToDelete) return;
@@ -177,7 +177,7 @@ export default function MeetingsHubClient() {
 
   const renderActions = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
-    const schoolEmail = meeting.entityId ? schoolEmailMap.get(meeting.entityId) : undefined;
+    const entityEmail = meeting.entityId ? entityEmailMap.get(meeting.entityId) : undefined;
     const publicUrl = `/meetings/${type.slug}/${meeting.entitySlug}`;
 
     return (
@@ -259,7 +259,7 @@ export default function MeetingsHubClient() {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.entityName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
+                <Link href={`/admin/messaging/composer?recipient=${entityEmail || ''}&var_school_name=${encodeURIComponent(meeting.entityName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
                     <Send className="mr-2 h-4 w-4" />
                     <span>Send Invite/Reminder</span>
                 </Link>
@@ -359,7 +359,7 @@ export default function MeetingsHubClient() {
                             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                                 filteredMeetings.map((meeting) => {
                                 const type = meeting.type || MEETING_TYPES[0];
-                                const logoUrl = meeting.entityId ? schoolLogoMap.get(meeting.entityId) : undefined;
+                                 const logoUrl = meeting.entityId ? entityLogoMap.get(meeting.entityId) : undefined;
                                 return (
                                     <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">

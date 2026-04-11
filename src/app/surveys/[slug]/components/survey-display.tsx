@@ -91,14 +91,14 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     const [isMounted, setIsMounted] = React.useState(false);
 
     const firestore = useFirestore();
-    const schoolDocRef = React.useMemo(() => {
+    const entityDocRef = React.useMemo(() => {
         if (!firestore || !survey.entityId) return null;
-        return doc(firestore, 'schools', survey.entityId);
+        return doc(firestore, 'entities', survey.entityId);
     }, [firestore, survey.entityId]);
     
-    const { data: school } = useDoc<any>(schoolDocRef);
+    const { data: entity } = useDoc<any>(entityDocRef);
     
-    const displayLogoUrl = survey.logoUrl || school?.logoUrl || school?.branding?.logoUrl;
+    const displayLogoUrl = survey.logoUrl || entity?.institutionData?.logoUrl || entity?.logoUrl;
 
     React.useEffect(() => {
         setIsMounted(true);

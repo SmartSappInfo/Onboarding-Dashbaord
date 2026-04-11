@@ -314,16 +314,16 @@ export default function ComposerWizard() {
         if (step === 3 && watchedSelectedEntityIds.length > 0 && watchedMode === 'single') {
             const fetchSample = async () => {
                 const firstId = watchedSelectedEntityIds[0];
-                const res = await fetchContextualData('School', firstId, undefined, activeWorkspace?.id);
+                const res = await fetchContextualData('Entity', firstId, undefined, activeWorkspace?.id);
                 if (res.success && res.data) {
                     // Extract common fields for simulation
                     const sample = {
-                        name: res.data.name,
-                        school_name: res.data.name,
-                        email: res.data.email,
-                        phone: res.data.phone,
-                        contact_name: res.data.focalPerson?.name || res.data.name,
-                        first_name: (res.data.focalPerson?.name || res.data.name || '').split(' ')[0],
+                        name: res.data.displayName || res.data.name,
+                        school_name: res.data.displayName || res.data.name,
+                        email: res.data.primaryEmail || res.data.email,
+                        phone: res.data.primaryPhone || res.data.phone,
+                        contact_name: res.data.focalPerson?.name || res.data.displayName || res.data.name,
+                        first_name: (res.data.focalPerson?.name || res.data.displayName || res.data.name || '').split(' ')[0],
                     };
                     setSampleVariables(sample);
                 }

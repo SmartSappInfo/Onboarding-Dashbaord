@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
-import type { School, UserProfile } from '@/lib/types';
+import type { WorkspaceEntity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,20 +14,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon, Loader2, Search } from 'lucide-react';
 import { logActivity } from '@/lib/activity-logger';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface AssignUserModalProps {
-  school: School | null;
+  entity: WorkspaceEntity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
-export default function AssignUserModal({ school, open, onOpenChange }: AssignUserModalProps) {
+export default function AssignUserModal({ entity, open, onOpenChange }: AssignUserModalProps) {
   const firestore = useFirestore();
   const { user: currentUser } = useUser();
   const { activeOrganizationId } = useTenant();
   const { toast } = useToast();
+  const { singular } = useTerminology();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isAssigning, setIsAssigning] = React.useState(false);
 
@@ -53,37 +55,40 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
   }, [users, searchTerm]);
 
   const handleAssign = async (userToAssign: UserProfile | null) => {
-    if (!firestore || !school || !currentUser) return;
+    if (!firestore || !entity || !currentUser) return;
     setIsAssigning(true);
 
-    const schoolDocRef = doc(firestore, 'schools', school.id);
+    const weDocRef = doc(firestore, 'workspace_entities', entity.id);
     const assignmentData = userToAssign
       ? { userId: userToAssign.id, name: userToAssign.name, email: userToAssign.email }
       : { userId: null, name: 'Unassigned', email: null };
 
-    const oldAssignedToName = school.assignedTo?.name || 'Unassigned';
+    const oldAssignedToName = entity.assignedTo?.name || 'Unassigned';
 
     try {
-      await updateDoc(schoolDocRef, { assignedTo: assignmentData });
+      await updateDoc(weDocRef, { 
+        assignedTo: assignmentData,
+        updatedAt: new Date().toISOString()
+      });
       
       toast({
-        title: 'School Reassigned',
-        description: `${school.name} has been assigned to ${assignmentData.name || 'Unassigned'}.`,
+        title: `${singular} Reassigned`,
+        description: `${entity.displayName} has been assigned to ${assignmentData.name || 'Unassigned'}.`,
       });
       logActivity({
         organizationId: activeOrganizationId,
-        entityId: school.id,
+        entityId: entity.entityId,
         userId: currentUser.uid,
-        type: 'school_assigned',
-        workspaceId: school.workspaceIds[0] || 'onboarding',
+        type: 'entity_assigned',
+        workspaceId: entity.workspaceId,
         source: 'user_action',
-        description: `assigned school "${school.name}" to ${assignmentData.name || 'Unassigned'}`,
+        description: `assigned ${singular.toLowerCase()} "${entity.displayName}" to ${assignmentData.name || 'Unassigned'}`,
         metadata: { from: oldAssignedToName, to: assignmentData.name }
       });
       onOpenChange(false);
     } catch (e) {
         const permissionError = new FirestorePermissionError({
-            path: schoolDocRef.path,
+            path: weDocRef.path,
             operation: 'update',
             requestResourceData: { assignedTo: assignmentData },
         });
@@ -91,7 +96,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
       toast({
         variant: 'destructive',
         title: 'Assignment Failed',
-        description: 'You may not have the required permissions to assign this school.',
+        description: `You may not have the required permissions to assign this ${singular.toLowerCase()}.`,
       });
     } finally {
       setIsAssigning(false);
@@ -108,7 +113,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
             </div>
             <div className="text-left">
               <DialogTitle className="text-xl font-black uppercase tracking-tight">Assign Account Owner</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select a team member for "{school?.name}"</DialogDescription>
+              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select a team member for "{entity?.displayName}"</DialogDescription>
             </div>
           </div>
         </DialogHeader>

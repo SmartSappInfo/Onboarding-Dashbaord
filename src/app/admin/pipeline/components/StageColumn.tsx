@@ -5,7 +5,7 @@ import * as React from 'react';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import type { School, OnboardingStage } from '@/lib/types';
+import type { WorkspaceEntity, OnboardingStage } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { GripVertical, ShieldCheck as ShieldIcon } from 'lucide-react';
@@ -16,17 +16,16 @@ import EntityCard from './EntityCard';
 
 interface StageColumnProps {
     stage: OnboardingStage;
-    schools: School[];
+    entities: WorkspaceEntity[];
     isOverlay?: boolean;
     customWidth?: number;
 }
 
 /**
  * @fileOverview High-fidelity Kanban Column.
- * Re-architected with white headers, color-matched top accent lines,
- * and high-contrast metric badges.
+ * Powered by workspace_entities collection for modern institutional tracking.
  */
-export default function StageColumn({ stage, schools, isOverlay, customWidth = 320 }: StageColumnProps) {
+export default function StageColumn({ stage, entities, isOverlay, customWidth = 320 }: StageColumnProps) {
     const {
         attributes,
         listeners,
@@ -83,7 +82,7 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                         </div>
                     </div>
                     
-                    {/* Color-Coded Count Badge - Updated for higher contrast and better grouping */}
+                    {/* Color-Coded Count Badge - High contrast metrics */}
                     <Badge 
                         variant="outline" 
                         className="rounded-full h-6 px-3 font-black tabular-nums border-none transition-colors shadow-inner shrink-0 ml-2"
@@ -92,23 +91,23 @@ export default function StageColumn({ stage, schools, isOverlay, customWidth = 3
                             color: stageColor
                         }}
                     >
-                        {schools.length}
+                        {entities.length}
                     </Badge>
                 </CardHeader>
                 
                 <ScrollArea className="flex-1 w-full min-w-0">
                     <CardContent className="px-3 pt-5 pb-8 w-full min-w-0">
-                         <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                         <SortableContext items={entities.map(e => e.id)} strategy={verticalListSortingStrategy}>
                             <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0 overflow-hidden">
-                                {schools.map(school => (
-                                    <div key={school.id} className="w-full min-w-0">
-                                        <EntityCard school={school} />
+                                {entities.map(entity => (
+                                    <div key={entity.id} className="w-full min-w-0">
+                                        <EntityCard entity={entity} />
                                     </div>
                                 ))}
                             </div>
                         </SortableContext>
                         
-                        {schools.length === 0 && (
+                        {entities.length === 0 && (
                             <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
                                 <ShieldIcon size={64} />
                                 <p className="text-xs font-black uppercase tracking-[0.3em] leading-none">Segment Clear</p>

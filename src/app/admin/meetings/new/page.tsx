@@ -26,7 +26,7 @@ import {
     ImageIcon
 } from 'lucide-react';
 
-import type { School, MeetingType, MeetingRegistrationField } from '@/lib/types';
+import type { WorkspaceEntity, MeetingType, MeetingRegistrationField } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +61,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
-  school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
+  entity: z.custom<WorkspaceEntity>().refine(value => !!value, { message: "Entity is required." }),
   entitySlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
     .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
@@ -118,21 +118,22 @@ export default function NewMeetingPage() {
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular } = useTerminology();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(0);
 
-  const schoolsCol = useMemoFirebase(() => {
+  const entitiesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
   
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      school: undefined,
+      entity: undefined,
       entitySlug: '',
       meetingTime: new Date(new Date().setHours(10, 0, 0, 0)),
       type: undefined,
@@ -162,25 +163,25 @@ export default function NewMeetingPage() {
 
   const { setValue, reset } = form;
   const watchedType = form.watch('type');
-  const watchedSchool = form.watch('school');
+  const watchedEntity = form.watch('entity');
   const watchedSlug = form.watch('entitySlug');
   const registrationEnabled = form.watch('registrationEnabled');
 
   React.useEffect(() => {
     const entityIdFromUrl = searchParams.get('entityId');
-    if (entityIdFromUrl && schools && !hasInitialized) {
-      const selectedSchool = schools.find(s => s.id === entityIdFromUrl);
-      if (selectedSchool) {
+    if (entityIdFromUrl && entities && !hasInitialized) {
+      const selectedEntity = entities.find(s => s.id === entityIdFromUrl);
+      if (selectedEntity) {
         reset({
             ...form.getValues(),
-            school: selectedSchool,
-            entitySlug: selectedSchool.slug,
+            entity: selectedEntity,
+            entitySlug: selectedEntity.slug,
             type: MEETING_TYPES[0],
         });
         setHasInitialized(true);
       }
     }
-  }, [searchParams, schools, reset, form, hasInitialized]);
+  }, [searchParams, entities, reset, form, hasInitialized]);
 
   // Auto-enable registration for webinars
   React.useEffect(() => {
@@ -194,7 +195,7 @@ export default function NewMeetingPage() {
   React.useEffect(() => {
     if (watchedType) {
       const defaults = getMeetingHeroDefaults(watchedType.id);
-      const entityName = watchedSchool?.name || '{{school}}';
+      const entityName = watchedEntity?.displayName || `{{${singular}}}`;
       const currentTitle = form.getValues('heroTitle');
       const currentDesc = form.getValues('heroDescription');
       if (!currentTitle) {
@@ -204,7 +205,7 @@ export default function NewMeetingPage() {
         setValue('heroDescription', defaults.description.replace(/\{\{school\}\}/g, entityName));
       }
     }
-  }, [watchedType?.id]);
+  }, [watchedType?.id, watchedEntity?.id, singular]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user) return;
@@ -222,12 +223,11 @@ export default function NewMeetingPage() {
         }
         
         const meetingData = {
-            entityId: data.school.id,
-            entityName: data.school.name,
+            entityId: data.entity.id,
+            entityName: data.entity.displayName,
             entitySlug: data.entitySlug,
-            entityId: data.school.entityId || null,
-            entityType: (data.school.entityId ? 'institution' : null) as 'institution' | null,
-            workspaceIds: data.school.workspaceIds || [activeWorkspaceId], 
+            entityType: data.entity.entityType || 'institution',
+            workspaceIds: data.entity.workspaceIds || [activeWorkspaceId], 
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -261,30 +261,30 @@ export default function NewMeetingPage() {
 
         const docRef = await addDoc(meetingsRef, meetingData);
         
-        toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
+        toast({ title: 'Meeting Scheduled', description: `Session for ${data.entity.displayName} created.` });
         
         logActivity({
             organizationId: activeOrganizationId,
-            entityId: data.school.entityId || null,
-            entityType: data.school.entityId ? 'institution' : null,
+            entityId: data.entity.id,
+            entityType: data.entity.entityType || 'institution',
             userId: user.uid,
             workspaceId: activeWorkspaceId,
             type: 'meeting_created',
             source: 'user_action',
-            description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
+            description: `scheduled a ${data.type.name} session for "${data.entity.displayName}".`,
             metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
         if (data.adminAlertsEnabled) {
             triggerInternalNotification({
-                entityId: data.school.id,
+                entityId: data.entity.id,
                 notifyManager: data.adminAlertNotifyManager,
                 specificUserIds: data.adminAlertSpecificUserIds,
                 emailTemplateId: data.adminAlertEmailTemplateId,
                 smsTemplateId: data.adminAlertSmsTemplateId,
                 channel: data.adminAlertChannel,
                 variables: {
-                    school_name: data.school.name,
+                    school_name: data.entity.displayName,
                     meeting_type: data.type.name,
                     date: format(data.meetingTime, 'PPPP'),
                     time: format(data.meetingTime, 'p'),
@@ -307,7 +307,7 @@ export default function NewMeetingPage() {
     
     // Validate current step before proceeding
     if (currentStep === 0) {
-      isValid = await form.trigger(['school', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
+      isValid = await form.trigger(['entity', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
     } else if (currentStep === 1) {
       isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
     } else if (currentStep === 2) {
@@ -325,7 +325,7 @@ export default function NewMeetingPage() {
     }
   };
 
-  if (isLoadingSchools) {
+  if (isLoadingEntities) {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 bg-muted/5">
             <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
@@ -424,28 +424,28 @@ export default function NewMeetingPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
-                                    name="school"
+                                    name="entity"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context School</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
                                         <Select
                                             onValueChange={(entityId: string) => {
-                                                const school = schools?.find((s) => s.id === entityId);
-                                                field.onChange(school);
-                                                if (school && !form.getValues('entitySlug')) {
-                                                    form.setValue('entitySlug', school.slug, { shouldValidate: true });
+                                                const entity = entities?.find((s) => s.id === entityId);
+                                                field.onChange(entity);
+                                                if (entity && !form.getValues('entitySlug')) {
+                                                    form.setValue('entitySlug', entity.slug, { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                                    <SelectValue placeholder="Select institution..." />
+                                                    <SelectValue placeholder={`Select ${singular.toLowerCase()}...`} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl">
-                                                {schools?.map((school) => (
-                                                    <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                {entities?.map((entity) => (
+                                                    <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>

@@ -3,8 +3,9 @@
 import * as React from 'react';
 import { collection, query, orderBy, doc, updateDoc, getDocs, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { School, Pipeline, OnboardingStage } from '@/lib/types';
+import type { WorkspaceEntity, Pipeline, OnboardingStage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
     Dialog, 
     DialogContent, 
@@ -21,7 +22,8 @@ import {
     ShieldCheck,
     Building,
     Check,
-    Zap
+    Zap,
+    Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
@@ -29,19 +31,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface TransferPipelineModalProps {
-  school: School | null;
+  entity: WorkspaceEntity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function TransferPipelineModal({ school, open, onOpenChange }: TransferPipelineModalProps) {
+export default function TransferPipelineModal({ entity, open, onOpenChange }: TransferPipelineModalProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular } = useTerminology();
   
   const [targetPipelineId, setTargetPipelineId] = React.useState<string | null>(null);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -57,7 +61,7 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
   const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   const handleTransfer = async () => {
-    if (!firestore || !school || !user || !targetPipelineId || isUpdating) return;
+    if (!firestore || !entity || !user || !targetPipelineId || isUpdating) return;
 
     setIsUpdating(true);
     try {
@@ -76,34 +80,30 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
         const firstStageDoc = stagesSnap.docs[0];
         const firstStage = { id: firstStageDoc.id, ...firstStageDoc.data() } as OnboardingStage;
 
-        // 3. Update School Record
-        const schoolRef = doc(firestore, 'schools', school.id);
+        // 3. Update Workspace Entity Record
+        const weRef = doc(firestore, 'workspace_entities', entity.id);
         const targetPipeline = pipelines?.find(p => p.id === targetPipelineId);
 
-        await updateDoc(schoolRef, {
+        await updateDoc(weRef, {
             pipelineId: targetPipelineId,
-            stage: { 
-                id: firstStage.id, 
-                name: firstStage.name, 
-                order: firstStage.order, 
-                color: firstStage.color 
-            },
+            stageId: firstStage.id,
+            currentStageName: firstStage.name,
             updatedAt: new Date().toISOString()
         });
 
         toast({ 
             title: 'Protocol Transfer Complete', 
-            description: `"${school.name}" moved to ${targetPipeline?.name}.` 
+            description: `"${entity.displayName}" moved to ${targetPipeline?.name}.` 
         });
 
         logActivity({
-            entityId: school.id,
+            entityId: entity.entityId,
             userId: user.uid,
             organizationId: activeOrganizationId,
             type: 'pipeline_stage_changed',
             workspaceId: activeWorkspaceId,
             source: 'user_action',
-            description: `transferred "${school.name}" to the "${targetPipeline?.name}" workflow`,
+            description: `transferred ${singular.toLowerCase()} "${entity.displayName}" to the "${targetPipeline?.name}" workflow`,
             metadata: { pipelineId: targetPipelineId, stageId: firstStage.id }
         });
 
@@ -115,7 +115,7 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
     }
   };
 
-  if (!school) return null;
+  if (!entity) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,8 +126,8 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
                     <Zap className="h-6 w-6" />
                 </div>
                 <div className="text-left">
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-emerald-500">Lead Conversion</DialogTitle>
-                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-emerald-400 opacity-70">Elevate {school.name} to Onboarding</DialogDescription>
+                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-emerald-500">Pipeline Transfer</DialogTitle>
+                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-emerald-400 opacity-70">Elevate {entity.displayName} to new workflow</DialogDescription>
                 </div>
             </div>
         </DialogHeader>
@@ -138,8 +138,8 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
                     <Building className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Target Institution</p>
-                    <p className="text-base font-black uppercase text-foreground truncate">{school.name}</p>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Target Record</p>
+                    <p className="text-base font-black uppercase text-foreground truncate">{entity.displayName}</p>
                 </div>
             </div>
 
@@ -149,9 +149,9 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
                 </Label>
                 
                 <div className="space-y-2">
-                    {isLoading ? (
+                    {isLoadingPipelines ? (
                         <Skeleton className="h-12 w-full rounded-xl" />
-                    ) : pipelines?.filter(p => p.id !== school.pipelineId).map(p => (
+                    ) : pipelines?.filter(p => p.id !== entity.pipelineId).map(p => (
                         <button
                             key={p.id}
                             type="button"
@@ -168,13 +168,16 @@ export default function TransferPipelineModal({ school, open, onOpenChange }: Tr
                             <p className="text-[10px] text-muted-foreground font-medium line-clamp-1">{p.description}</p>
                         </button>
                     ))}
+                    {!isLoadingPipelines && (!pipelines || pipelines.length <= 1) && (
+                        <p className="text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground p-10 opacity-30 italic">No alternative pipelines available.</p>
+                    )}
                 </div>
             </div>
 
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 mt-4">
                 <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-[9px] font-bold text-blue-500 leading-relaxed uppercase tracking-tighter text-left">
-                    "School Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
+                    Pipeline structures are specific to this workspace. Workflow state is tracked independently per hub.
                 </p>
             </div>
         </div>

@@ -30,7 +30,7 @@ import {
 } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { OnboardingStage, School } from '@/lib/types';
+import type { OnboardingStage, WorkspaceEntity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -158,18 +158,18 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     );
   }, [firestore, pipelineId]);
   
-  // 2. Fetch Schools to calculate density
-  const schoolsQuery = useMemoFirebase(() => {
+  // 2. Entities to calculate density
+  const entitiesQuery = useMemoFirebase(() => {
     if (!firestore || !pipelineId) return null;
     return query(
-        collection(firestore, 'schools'),
+        collection(firestore, 'workspace_entities'),
         where('workspaceId', '==', activeWorkspaceId),
         where('pipelineId', '==', pipelineId)
     );
   }, [firestore, pipelineId, activeWorkspaceId]);
 
   const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
-  const { data: schools } = useCollection<School>(schoolsQuery);
+  const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
   
   const [localStages, setLocalStages] = React.useState<OnboardingStage[]>([]);
   const [newStageName, setNewStageName] = React.useState('');
@@ -188,15 +188,15 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
   // Calculate lead counts per stage
   const stageCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    if (schools) {
-        schools.forEach(s => {
-            if (s.stage?.id) {
-                counts[s.stage.id] = (counts[s.stage.id] || 0) + 1;
+    if (entities) {
+        entities.forEach(s => {
+            if (s.stageId) {
+                counts[s.stageId] = (counts[s.stageId] || 0) + 1;
             }
         });
     }
     return counts;
-  }, [schools]);
+  }, [entities]);
   
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -248,14 +248,20 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     if (!stageToDelete || !firestore) return;
 
     const batch = writeBatch(firestore);
-    const schoolsRef = collection(firestore, 'schools');
-    const q = query(schoolsRef, where('stage.id', '==', stageToDelete.id));
+    const entitiesRef = collection(firestore, 'workspace_entities');
+    const q = query(entitiesRef, where('workspaceId', '==', activeWorkspaceId), where('stageId', '==', stageToDelete.id));
     
     try {
-      const schoolsToUpdateSnap = await getDocs(q);
-      const welcomeStage = localStages.find(s => s.order === 1) || { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' };
-      schoolsToUpdateSnap.forEach(schoolDoc => {
-        batch.update(schoolDoc.ref, { stage: welcomeStage });
+      const entitiesToUpdateSnap = await getDocs(q);
+      const welcomeStageId = localStages.find(s => s.order === 1)?.id || 'welcome';
+      const welcomeStageName = localStages.find(s => s.order === 1)?.name || 'Welcome';
+      
+      entitiesToUpdateSnap.forEach(entityDoc => {
+        batch.update(entityDoc.ref, { 
+            stageId: welcomeStageId, 
+            currentStageName: welcomeStageName,
+            updatedAt: new Date().toISOString() 
+        });
       });
       
       const stageRef = doc(firestore, 'onboardingStages', stageToDelete.id);
@@ -295,14 +301,16 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     const stageRef = doc(firestore, 'onboardingStages', editingStageId);
     batch.update(stageRef, { name: newName });
     
-    const schoolsRef = collection(firestore, 'schools');
-    const q = query(schoolsRef, where('stage.id', '==', editingStageId));
+    const entitiesRef = collection(firestore, 'workspace_entities');
+    const q = query(entitiesRef, where('workspaceId', '==', activeWorkspaceId), where('stageId', '==', editingStageId));
     
     try {
-        const schoolsToUpdateSnap = await getDocs(q);
-        schoolsToUpdateSnap.forEach(schoolDoc => {
-            const currentStage = schoolDoc.data().stage;
-            batch.update(schoolDoc.ref, { stage: { ...currentStage, name: newName } });
+        const entitiesToUpdateSnap = await getDocs(q);
+        entitiesToUpdateSnap.forEach(entityDoc => {
+            batch.update(entityDoc.ref, { 
+                currentStageName: newName,
+                updatedAt: new Date().toISOString()
+            });
         });
         
         await batch.commit();

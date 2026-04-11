@@ -617,14 +617,18 @@ export interface WorkspaceEntity {
     email: string | null;
   } | null;
   status: 'active' | 'archived';
+  lifecycleStatus?: string; // Dynamic workspace-defined status (e.g., "Onboarding", "Active", "Churned")
   workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
   lastContactedAt?: string;
   addedAt: string;
   updatedAt: string;
   // Denormalized read-model fields for performance
   displayName: string;
+  primaryContactName?: string;
   primaryEmail?: string;
   primaryPhone?: string;
+  focalPersons?: Partial<FocalPerson>[];
+  interests?: Partial<Module>[];
   currentStageName?: string;
 }
 

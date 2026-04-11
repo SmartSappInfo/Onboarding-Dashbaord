@@ -4,11 +4,11 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Target as ProspectIcon, Layout } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Layout, Camera } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
-import type { School, UserProfile, SubscriptionPackage } from '@/lib/types';
+import type { Entity, WorkspaceEntity, UserProfile, SubscriptionPackage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useCollection } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
@@ -31,48 +31,43 @@ import { FocalPersonManager } from '../../components/FocalPersonManager';
 import { ManagerSelect } from '../../components/ManagerSelect';
 import { PackageSelect } from '../../components/PackageSelect';
 import { MediaSelect } from '../../components/media-select';
-import { logActivity } from '@/lib/activity-logger';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
-import { resolveContact } from '@/lib/contact-adapter';
 import { updateEntityAction } from '@/lib/entity-actions';
+import { useTerminology } from '@/hooks/use-terminology';
 
-const schoolEditSchema = z.object({
+const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   initials: z.string().optional(),
   slogan: z.string().optional(),
-  workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
-  status: z.enum(['Active', 'Inactive', 'Archived']),
-  schoolStatus: z.string().min(1, 'Status is required.'),
+  status: z.enum(['active', 'inactive', 'archived']),
+  lifecycleStatus: z.string().min(1, 'Status is required.'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
     id: z.string().min(1, 'Please select a zone.'),
     name: z.string(),
   }, { required_error: 'Please assign a geographic zone.' }),
-  location: z.string().optional(),
+  locationString: z.string().optional(),
   nominalRoll: z.coerce.number().optional(),
-  focalPersons: z.array(z.object({
+  contacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
-    email: z.string().email('Invalid email.'),
-    phone: z.string().min(10, 'Invalid phone.'),
+    email: z.string().email('Invalid email.').optional().or(z.literal('')),
+    phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
     type: z.string().min(1, 'Role required.'),
     isSignatory: z.boolean().default(false),
   })).min(1, 'At least one focal person is required.')
-    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one signatory must be selected.' }),
+    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one focal person must be selected.' }),
   modules: z.array(z.object({
     id: z.string(),
     name: z.string(),
     abbreviation: z.string(),
     color: z.string(),
   })).optional(),
-  implementationDate: z.date().optional().nullable(),
-  referee: z.string().optional(),
-  includeDroneFootage: z.boolean().default(false),
   assignedToId: z.string().min(1, 'Please select an account manager.'),
   // Billing Fields
   billingAddress: z.string().optional(),
@@ -84,54 +79,40 @@ const schoolEditSchema = z.object({
   creditBalance: z.coerce.number().default(0),
 });
 
-type SchoolEditValues = z.infer<typeof schoolEditSchema>;
+type EntityEditValues = z.infer<typeof entityEditSchema>;
 
 interface EditFormProps {
   entityId: string;
 }
 
-function EditSchoolForm({ entityId }: EditFormProps) {
+function EditEntityForm({ entityId }: EditFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspace, activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { activeOrganizationId } = useTenant();
+  const { singular, updateStatus, termStatus } = useTerminology();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
-  const [unifiedData, setUnifiedData] = React.useState<any>(null);
-  const [isSchoolLoading, setIsSchoolLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    async function loadData() {
-        if (!entityId || !activeWorkspaceId) return;
-        setIsSchoolLoading(true);
-        try {
-            const contact = await resolveContact(entityId, activeWorkspaceId);
-            
-            // If contact is found, build a unified object merging legacy schoolData and new fields
-            if (contact) {
-                const merged = {
-                    ...contact.schoolData,
-                    name: contact.name,
-                    status: contact.status || 'Active',
-                    focalPersons: contact.contacts?.length > 0 ? contact.contacts : contact.schoolData?.focalPersons,
-                    assignedTo: contact.assignedTo || contact.schoolData?.assignedTo,
-                    workspaceIds: contact.schoolData?.workspaceIds || [activeWorkspaceId],
-                };
-                setUnifiedData(merged);
-            }
-        } catch (error) {
-            console.error('Error loading entity data:', error);
-        } finally {
-            setIsSchoolLoading(false);
-        }
-    }
-    loadData();
-  }, [entityId, activeWorkspaceId]);
+  // 1. Subscribe to Global Entity
+  const entityDocRef = useMemoFirebase(() => {
+    if (!firestore || !entityId) return null;
+    return doc(firestore, 'entities', entityId);
+  }, [firestore, entityId]);
+  const { data: entityData, isLoading: isLoadingEntity } = useDoc<Entity>(entityDocRef);
 
-  useSetBreadcrumb(unifiedData?.name, pathname.replace('/edit', ''));
+  // 2. Subscribe to Workspace Entity
+  const workspaceEntityId = `${activeWorkspaceId}_${entityId}`;
+  const weDocRef = useMemoFirebase(() => {
+      if (!firestore || !activeWorkspaceId || !entityId) return null;
+      return doc(firestore, 'workspace_entities', workspaceEntityId);
+  }, [firestore, activeWorkspaceId, entityId]);
+  const { data: weData, isLoading: isLoadingWE } = useDoc<WorkspaceEntity>(weDocRef);
+
+  useSetBreadcrumb(entityData?.name || weData?.displayName, pathname.replace('/edit', ''));
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
@@ -155,54 +136,48 @@ function EditSchoolForm({ entityId }: EditFormProps) {
   }, [firestore, activeWorkspaceId]);
   const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
 
-  const methods = useForm<SchoolEditValues>({
-    resolver: zodResolver(schoolEditSchema),
+  const methods = useForm<EntityEditValues>({
+    resolver: zodResolver(entityEditSchema),
     defaultValues: {
-      name: '', initials: '', slogan: '', workspaceIds: [], status: 'Active', schoolStatus: 'Onboarding',
-      location: '', nominalRoll: 0, focalPersons: [], modules: [],
-      referee: '', includeDroneFootage: false, assignedToId: 'unassigned',
+      name: '', initials: '', slogan: '', status: 'active', lifecycleStatus: 'Onboarding',
+      nominalRoll: 0, contacts: [], modules: [],
+      assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
       subscriptionPackageId: 'none'
     }
   });
 
   const watchPackageId = methods.watch("subscriptionPackageId");
-  const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   React.useEffect(() => {
-    if (unifiedData && !hasInitialized) {
-      // Normalize status to capitalized form for form schema
-      const normalizedStatus = unifiedData.status === 'archived' ? 'Archived' : unifiedData.status || 'Active';
+    if (entityData && weData && !hasInitialized) {
+      const institutionData = entityData.institutionData;
       
       methods.reset({
-        name: unifiedData.name || '',
-        initials: unifiedData.initials || '',
-        slogan: unifiedData.slogan || '',
-        workspaceIds: unifiedData.workspaceIds || ['onboarding'],
-        status: normalizedStatus as 'Active' | 'Inactive' | 'Archived',
-        schoolStatus: unifiedData.schoolStatus || 'Onboarding',
-        logoUrl: unifiedData.logoUrl || '',
-        heroImageUrl: unifiedData.heroImageUrl || '',
-        zone: unifiedData.zone || undefined,
-        location: unifiedData.location || '',
-        nominalRoll: unifiedData.nominalRoll || 0,
-        focalPersons: (unifiedData.focalPersons as any) || [],
-        modules: unifiedData.modules || [],
-        implementationDate: unifiedData.implementationDate ? new Date(unifiedData.implementationDate) : null,
-        referee: unifiedData.referee || '',
-        includeDroneFootage: unifiedData.includeDroneFootage || false,
-        assignedToId: unifiedData.assignedTo?.userId || 'unassigned',
-        billingAddress: unifiedData.billingAddress || '',
-        currency: unifiedData.currency || 'GHS',
-        subscriptionPackageId: unifiedData.subscriptionPackageId || 'none',
-        subscriptionRate: unifiedData.subscriptionRate || 0,
-        discountPercentage: unifiedData.discountPercentage || 0,
-        arrearsBalance: unifiedData.arrearsBalance || 0,
-        creditBalance: unifiedData.creditBalance || 0,
+        name: entityData.name || weData.displayName || '',
+        initials: institutionData?.initials || '',
+        slogan: institutionData?.slogan || '',
+        status: (weData.status as any) || 'active',
+        lifecycleStatus: weData.lifecycleStatus || 'Onboarding',
+        logoUrl: institutionData?.logoUrl || '',
+        heroImageUrl: institutionData?.heroImageUrl || '',
+        zone: institutionData?.location?.zone || undefined,
+        locationString: institutionData?.location?.locationString || '',
+        nominalRoll: institutionData?.nominalRoll || 0,
+        contacts: (entityData.contacts && entityData.contacts.length > 0) ? entityData.contacts : (institutionData?.focalPersons || []),
+        modules: weData.interests || institutionData?.modules || [],
+        assignedToId: weData.assignedTo?.userId || 'unassigned',
+        billingAddress: institutionData?.billingAddress || '',
+        currency: institutionData?.currency || 'GHS',
+        subscriptionPackageId: institutionData?.subscriptionPackageId || 'none',
+        subscriptionRate: institutionData?.subscriptionRate || 0,
+        discountPercentage: institutionData?.discountPercentage || 0,
+        arrearsBalance: institutionData?.arrearsBalance || 0,
+        creditBalance: institutionData?.creditBalance || 0,
       });
       setHasInitialized(true);
     }
-  }, [unifiedData, methods, hasInitialized]);
+  }, [entityData, weData, methods, hasInitialized]);
 
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
@@ -218,7 +193,7 @@ function EditSchoolForm({ entityId }: EditFormProps) {
     methods.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
   };
 
-  const handleFormSubmit = async (data: SchoolEditValues) => {
+  const handleFormSubmit = async (data: EntityEditValues) => {
     if (!firestore || !user || !users) return;
 
     const selectedManager = users.find(u => u.id === data.assignedToId);
@@ -228,20 +203,39 @@ function EditSchoolForm({ entityId }: EditFormProps) {
 
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    const { assignedToId, ...rest } = data;
-    const updateData = { 
-        ...rest, 
-        assignedTo, 
-        subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
-        subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
-        implementationDate: data.implementationDate?.toISOString() || null,
-        updatedAt: new Date().toISOString()
+    // Structural Mapping for new architecture
+    const updatePayload = {
+        name: data.name,
+        status: data.status,
+        lifecycleStatus: data.lifecycleStatus,
+        contacts: data.contacts,
+        assignedTo,
+        institutionData: {
+            initials: data.initials,
+            slogan: data.slogan,
+            logoUrl: data.logoUrl,
+            heroImageUrl: data.heroImageUrl,
+            nominalRoll: data.nominalRoll,
+            modules: data.modules,
+            location: {
+                zone: data.zone,
+                locationString: data.locationString
+            },
+            billingAddress: data.billingAddress,
+            currency: data.currency,
+            subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
+            subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
+            subscriptionRate: data.subscriptionRate,
+            discountPercentage: data.discountPercentage,
+            arrearsBalance: data.arrearsBalance,
+            creditBalance: data.creditBalance
+        }
     };
 
     try {
         const result = await updateEntityAction(
             entityId, 
-            updateData, 
+            updatePayload, 
             user.uid, 
             activeWorkspaceId, 
             activeOrganizationId || 'smartsapp-hq'
@@ -249,7 +243,7 @@ function EditSchoolForm({ entityId }: EditFormProps) {
 
         if (result.success) {
             toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved successfully.` });
-            router.push('/admin/entities');
+            router.push(`/admin/entities/${entityId}`);
         } else {
             throw new Error(result.error);
         }
@@ -263,7 +257,7 @@ function EditSchoolForm({ entityId }: EditFormProps) {
     }
   };
 
-  const isGlobalLoading = isSchoolLoading || isUsersLoading || !hasInitialized;
+  const isGlobalLoading = isLoadingEntity || isLoadingWE || isUsersLoading || !hasInitialized;
 
   if (isGlobalLoading) {
     return (
@@ -279,57 +273,27 @@ function EditSchoolForm({ entityId }: EditFormProps) {
       <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            {/* Hub Authorization Card */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
-                <CardHeader className="bg-primary/5 border-b p-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Layout className="h-4 w-4" /></div>
-                        <CardTitle className="text-sm font-black uppercase tracking-tight">Hub Authorization</CardTitle>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
-                        <Zap className="h-3 w-3" /> Targeted Workspaces
-                    </Label>
-                    <Controller 
-                        name="workspaceIds"
-                        control={methods.control}
-                        render={({ field }) => (
-                            <MultiSelect 
-                                options={workspaceOptions}
-                                value={field.value}
-                                onChange={field.onChange}
-                                placeholder="Map to workspaces..."
-                            />
-                        )}
-                    />
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight leading-relaxed">
-                        Determines which pipelines and directories this record is shared with.
-                    </p>
-                </CardContent>
-            </Card>
-
             {/* Identity Card */}
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b pb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-xl">
+              <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                <div className="flex items-center gap-3 text-left">
+                    <div className="p-2 bg-primary/10 rounded-xl text-left">
                         <Building className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Identity & Status</CardTitle>
-                        <CardDescription className="text-xs font-medium">Core institutional metadata.</CardDescription>
+                    <div className="text-left">
+                        <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Identity & Status</CardTitle>
+                        <CardDescription className="text-xs font-medium text-left">Core institutional metadata.</CardDescription>
                     </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-6 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="p-6 space-y-8 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                   <FormField 
                     control={methods.control} 
                     name="name" 
                     render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official School Name</FormLabel>
+                        <FormItem className="md:col-span-2 text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official {singular} Name</FormLabel>
                             <FormControl>
                                 <Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" />
                             </FormControl>
@@ -341,8 +305,8 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                     control={methods.control} 
                     name="status" 
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational State</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">{termStatus}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
@@ -350,9 +314,9 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent className="rounded-xl shadow-2xl border-none">
-                                    <SelectItem value="Active" className="font-bold">Active</SelectItem>
-                                    <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
-                                    <SelectItem value="Archived" className="font-bold">Archived</SelectItem>
+                                    <SelectItem value="active" className="font-bold">Active</SelectItem>
+                                    <SelectItem value="inactive" className="font-bold">Inactive</SelectItem>
+                                    <SelectItem value="archived" className="font-bold">Archived</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -361,13 +325,13 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                     <FormField 
                         control={methods.control} 
-                        name="schoolStatus" 
+                        name="lifecycleStatus" 
                         render={({ field }) => (
-                            <FormItem className="md:col-span-1">
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Lifecycle Status</FormLabel>
+                            <FormItem className="md:col-span-1 text-left">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Operational State</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 shadow-sm font-black uppercase text-xs text-primary">
@@ -384,15 +348,15 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                             </FormItem>
                         )} 
                     />
-                    <div className="md:col-span-2 pt-2">
-                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic">
-                            Changing the lifecycle status affects reporting and priorities in the Task Manager for the active hub.
+                    <div className="md:col-span-2 pt-2 text-left">
+                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed italic text-left">
+                            Resolution cycle: {activeWorkspace?.name}. Updating this affects pipeline categorization.
                         </p>
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Institutional Logo</Label>
+                <div className="space-y-2 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left flex items-center gap-2"><Camera className="h-3 w-3" /> {singular} Logo</Label>
                     <Controller 
                         name="logoUrl"
                         control={methods.control}
@@ -402,10 +366,10 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50 text-left">
                     <FormField control={methods.control} name="initials" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">{singular} Initials</FormLabel>
                             <FormControl>
                                 <Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" />
                             </FormControl>
@@ -413,8 +377,8 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                         </FormItem>
                     )} />
                     <FormField control={methods.control} name="slogan" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Motto</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Vision/Motto</FormLabel>
                             <FormControl>
                                 <Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" />
                             </FormControl>
@@ -426,21 +390,21 @@ function EditSchoolForm({ entityId }: EditFormProps) {
             </Card>
 
             {/* Financial Profile Card */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><Banknote className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Financial Profile</CardTitle>
-                            <CardDescription className="text-xs font-medium">Configure billing preferences and effective rates.</CardDescription>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><Banknote className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Financial Configuration</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Billing rules and effective termly rates.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="p-6 space-y-8 text-left">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                         <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Subscription Tier</FormLabel>
                                 <FormControl>
                                     <PackageSelect 
                                         value={field.value} 
@@ -458,8 +422,8 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                             </FormItem>
                         )} />
                         <FormField control={methods.control} name="currency" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Default Currency</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
@@ -477,18 +441,18 @@ function EditSchoolForm({ entityId }: EditFormProps) {
 
                     {/* Rate and Discount Adjustment */}
                     <div className={cn(
-                        "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500",
+                        "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500 text-left",
                         watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border opacity-40 pointer-events-none"
                     )}>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
-                            <p className="text-[10px] font-black uppercase tracking-widest">Rate Optimization Engine</p>
+                        <div className="flex items-center gap-3 mb-6 text-left">
+                            <div className="p-2 bg-primary text-white rounded-lg shadow-sm text-left"><Target className="h-4 w-4" /></div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-left">Rate Optimization Engine</p>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                             <FormField control={methods.control} name="discountPercentage" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Percentage Grant</FormLabel>
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5 text-left"><Percent className="h-3 w-3" /> Grant Factor</FormLabel>
                                     <FormControl>
                                         <Input 
                                             type="number" 
@@ -502,12 +466,12 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                                             className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
                                         />
                                     </FormControl>
-                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Grant a school-specific reduction</FormDescription>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Specific fee reduction percentage</FormDescription>
                                 </FormItem>
                             )} />
                             <FormField control={methods.control} name="subscriptionRate" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Effective Unit Rate</FormLabel>
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5 text-left"><Banknote className="h-3 w-3" /> Net Unit Rate</FormLabel>
                                     <FormControl>
                                         <Input 
                                             type="number" 
@@ -521,39 +485,39 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                                             className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
                                         />
                                     </FormControl>
-                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Final amount billed per student</FormDescription>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Final billed unit cost</FormDescription>
                                 </FormItem>
                             )} />
                         </div>
                     </div>
 
                     <FormField control={methods.control} name="billingAddress" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Service Address</FormLabel>
                             <FormControl>
-                                <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                                <Textarea {...field} placeholder="If different from primary location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50 text-left">
                         <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Arrears Adjustment</FormLabel>
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5 text-left"><CreditCard className="h-3 w-3" /> Arrears Balance</FormLabel>
                                 <FormControl>
                                     <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
                                 </FormControl>
-                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Manual adjustment for unpaid balance</FormDescription>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Initial outstanding debt</FormDescription>
                             </FormItem>
                         )} />
                         <FormField control={methods.control} name="creditBalance" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Credit Deduction</FormLabel>
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5 text-left"><Wallet className="h-3 w-3" /> Credit Limit</FormLabel>
                                 <FormControl>
                                     <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
                                 </FormControl>
-                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Manual adjustment for overpayments</FormDescription>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Initial overpayment credit</FormDescription>
                             </FormItem>
                         )} />
                     </div>
@@ -561,20 +525,20 @@ function EditSchoolForm({ entityId }: EditFormProps) {
             </Card>
             
             {/* Account Assignment Card */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><UserCheck className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Account Assignment</CardTitle>
-                            <CardDescription className="text-xs font-medium">Internal owner responsible for this account.</CardDescription>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><UserCheck className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Account Ownership</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Internal manager responsible for this record.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-6 text-left">
                     <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Account Manager</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Account Manager</FormLabel>
                             <FormControl>
                                 <ManagerSelect 
                                     value={field.value} 
@@ -589,34 +553,34 @@ function EditSchoolForm({ entityId }: EditFormProps) {
             </Card>
 
             {/* Contacts & Modules Section */}
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Staff focal persons</CardTitle>
-                            <CardDescription className="text-xs font-medium">Primary directory of stakeholders.</CardDescription>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Administrative stakeholders</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Primary directory of focal persons.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-6 text-left">
                     <FocalPersonManager />
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><Plus className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Requested Modules</CardTitle>
-                            <CardDescription className="text-xs font-medium">Select activated SmartSapp features.</CardDescription>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><Plus className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Requested Capabilities</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Features activated for this institution.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-6 text-left">
                     <FormField control={methods.control} name="modules" render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="text-left">
                             <FormControl>
                                 <ModuleSelect {...field} />
                             </FormControl>
@@ -628,30 +592,30 @@ function EditSchoolForm({ entityId }: EditFormProps) {
           </div>
 
           {/* Right Sidebar: Operations */}
-          <div className="space-y-8">
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div>
-                        <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Regional Settings</CardTitle>
-                            <CardDescription className="text-xs font-medium">Geographic classification.</CardDescription>
+          <div className="space-y-8 text-left">
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><MapPin className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Regional Metadata</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Geographic and scale classification.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-6">
+                <CardContent className="p-6 space-y-6 text-left">
                     <FormField control={methods.control} name="zone" render={({ field, fieldState }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Geographic Zone</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Geographic Zone</FormLabel>
                             <FormControl>
                                 <ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} /> 
-                    <FormField control={methods.control} name="location" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Physical Address</FormLabel>
+                    <FormField control={methods.control} name="locationString" render={({ field }) => (
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Physical Hub</FormLabel>
                             <FormControl>
                                 <Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
                             </FormControl>
@@ -659,8 +623,8 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                         </FormItem>
                     )} /> 
                     <FormField control={methods.control} name="nominalRoll" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Nominal Roll</FormLabel>
+                        <FormItem className="text-left">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">Nominal Strength</FormLabel>
                             <FormControl>
                                 <Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                             </FormControl>
@@ -670,14 +634,14 @@ function EditSchoolForm({ entityId }: EditFormProps) {
                 </CardContent>
             </Card>
 
-            <div className="pt-4 sticky top-24">
+            <div className="pt-4 sticky top-24 text-left">
                 <Button 
                     type="submit" 
                     className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" 
                     disabled={methods.formState.isSubmitting}
                 >
                     {methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} 
-                    Commit Changes
+                    Update Profile
                 </Button>
             </div>
           </div>
@@ -687,14 +651,15 @@ function EditSchoolForm({ entityId }: EditFormProps) {
   );
 }
 
-export default function EditSchoolPage() {
+export default function EditEntityPage() {
   const params = useParams();
   const entityId = params.id as string;
+  const { singular } = useTerminology();
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8">
-        {entityId ? <EditSchoolForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">School context not found.</p>}
+        {entityId ? <EditEntityForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">{singular} context not found.</p>}
       </div>
     </div>
   );

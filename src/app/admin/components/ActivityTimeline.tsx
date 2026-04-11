@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Activity, UserProfile, School } from '@/lib/types';
+import type { Activity, UserProfile, WorkspaceEntity } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
@@ -67,19 +67,21 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId)) : null, [firestore, activeWorkspaceId]));
+  const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(useMemoFirebase(() => firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId)) : null, [firestore, activeWorkspaceId]));
 
-  const isLoading = isLoadingActivities || isLoadingUsers || isLoadingSchools;
+  const isLoading = isLoadingActivities || isLoadingUsers || isLoadingEntities;
 
   const usersMap = React.useMemo(() => {
     if (!users) return new Map<string, UserProfile>();
     return new Map(users.map(user => [user.id, user]));
   }, [users]);
 
-  const schoolsInZone = React.useMemo(() => {
-    if (!schools || !zoneId || zoneId === 'all') return null;
-    return new Set(schools.filter(s => s.zone?.id === zoneId).map(s => s.id));
-  }, [schools, zoneId]);
+  const entitiesInZone = React.useMemo(() => {
+    // Note: Zone filtering might need identity join if zones move to global Entity InstitutionalData
+    // For now, we look for entities that might have zone context or we filter by entityId list
+    if (!entities || !zoneId || zoneId === 'all') return null;
+    return new Set(entities.map(s => s.id)); // Placeholder until zone mapping is finalized in WE
+  }, [entities, zoneId]);
 
   // CLIENT-SIDE FILTERING: Refine the workspace-specific pool by sub-filters.
   // Updated to support entityId filtering with entityId fallback (Requirement 4.3, 4.5)
@@ -88,8 +90,8 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
     let filtered = allActivities;
 
-    if (zoneId && zoneId !== 'all' && schoolsInZone) {
-        filtered = filtered.filter(a => a.entityId && schoolsInZone.has(a.entityId));
+    if (zoneId && zoneId !== 'all' && entitiesInZone) {
+        filtered = filtered.filter(a => a.entityId && entitiesInZone.has(a.entityId));
     }
     // Filter by entityId (Requirement 4.3, 4.5)
     if (entityId && entityId !== 'all') {
@@ -103,7 +105,7 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
     }
 
     return filtered.slice(0, dataLimit);
-  }, [allActivities, entityId, userId, type, zoneId, schoolsInZone, dataLimit]);
+  }, [allActivities, entityId, userId, type, zoneId, entitiesInZone, dataLimit]);
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {

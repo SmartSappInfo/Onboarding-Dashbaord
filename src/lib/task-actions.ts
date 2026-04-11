@@ -95,7 +95,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
             task.entityId || null,
             task.workspaceId
         );
- Sands        
+        
         const taskData = {
             ...task,
             entityId: entityInfo.entityId,

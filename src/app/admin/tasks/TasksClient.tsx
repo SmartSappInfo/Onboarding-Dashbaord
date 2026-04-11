@@ -108,9 +108,9 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon
 
 const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
     call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-500/10' },
-    visit: { label: 'Campus Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
+    visit: { label: 'Site Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
     document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
-    training: { label: 'Staff Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
+    training: { label: 'Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
     follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-500/10' },
     general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-slate-500/10' }
 };
@@ -174,14 +174,14 @@ export default function TasksClient() {
         );
     }, [firestore, activeOrganizationId]);
 
-    const schoolsQuery = useMemoFirebase(() => {
+    const entitiesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'schools'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
     }, [firestore, activeWorkspaceId]);
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
 
     const isLoading = isLoadingTasks || isLoadingFilter;
 

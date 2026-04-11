@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { PDFForm, School, MessageTemplate, SenderProfile } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity, Entity, MessageTemplate, SenderProfile } from '@/lib/types';
 import { upsertContractAction, sendContractAction } from '@/lib/contract-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -59,7 +59,7 @@ const wizardSchema = z.object({
 type WizardData = z.infer<typeof wizardSchema>;
 
 interface ContractWizardProps {
-    schools: School[];
+    entities: (WorkspaceEntity & { identity?: Entity })[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -71,7 +71,7 @@ const stepTransition = {
     transition: { type: 'spring' as const, damping: 25, stiffness: 200 }
 };
 
-export default function ContractWizard({ schools, open, onOpenChange }: ContractWizardProps) {
+export default function ContractWizard({ entities, open, onOpenChange }: ContractWizardProps) {
     const { toast } = useToast();
     const { user } = useUser();
     const firestore = useFirestore();
@@ -80,9 +80,9 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
     const [previewIndex, setPreviewIndex] = React.useState(0);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
-    const [progress, setProgress] = React.useState({ current: 0, total: schools.length });
+    const [progress, setProgress] = React.useState({ current: 0, total: entities.length });
 
-    const currentSchool = schools[previewIndex];
+    const currentEntity = entities[previewIndex];
 
     // Form Initialization
     const methods = useForm<WizardData>({
@@ -117,10 +117,10 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
         pdfTemplates?.find(p => p.id === watchedPdfId),
     [pdfTemplates, watchedPdfId]);
 
-    const getPublicUrl = (school: School) => {
+    const getPublicUrl = (entity: WorkspaceEntity) => {
         if (!selectedPdf) return '';
         const base = typeof window !== 'undefined' ? window.location.origin : '';
-        return `${base}/forms/${selectedPdf.slug || selectedPdf.id}?entityId=${school.id}`;
+        return `${base}/forms/${selectedPdf.slug || selectedPdf.id}?entityId=${entity.entityId}`;
     };
 
     const handleNext = () => setStep(s => s + 1);
@@ -139,35 +139,35 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
         setIsSaving(true);
         let successCount = 0;
 
-        for (let i = 0; i < schools.length; i++) {
-            const school = schools[i];
-            setProgress({ current: i + 1, total: schools.length });
+        for (let i = 0; i < entities.length; i++) {
+            const entity = entities[i];
+            setProgress({ current: i + 1, total: entities.length });
 
             try {
                 // 1. Initialize/Update Contract Draft
                 const upsertRes = await upsertContractAction({
-                    entityId: school.id,
-                    entityName: school.name,
+                    entityId: entity.entityId,
+                    entityName: entity.displayName,
                     pdfId: data.pdfId,
                     pdfName: selectedPdf.name,
                     status: 'sent', // Mark as sent even if handled manually
                     userId: user.uid,
-                    workspaceId: school.workspaceIds[0] || ''
+                    workspaceId: entity.workspaceId || ''
                 });
 
                 if (upsertRes.success && upsertRes.id && !data.skipMessaging && !noMessagingSelected) {
-                    // 2. Identify designated signatory for this school
-                    const signatory = school.focalPersons?.find(p => p.isSignatory) || school.focalPersons?.[0];
+                    // 2. Identify designated signatory for this entity
+                    const signatory = entity.identity?.contacts?.find(p => p.isSignatory) || entity.identity?.contacts?.[0];
                     if (signatory) {
                         await sendContractAction({
                             contractId: upsertRes.id,
-                            entityId: school.id,
-                            entityName: school.name,
+                            entityId: entity.entityId,
+                            entityName: entity.displayName,
                             emailTemplateId: data.emailTemplateId,
                             smsTemplateId: data.smsTemplateId,
                             recipients: [{ name: signatory.name, email: signatory.email, phone: signatory.phone, type: signatory.type }],
                             userId: user.uid,
-                            publicUrl: getPublicUrl(school)
+                            publicUrl: getPublicUrl(entity)
                         });
                     }
                 }
@@ -176,7 +176,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                     successCount++;
                 }
             } catch (err) {
-                console.error(`Failed to process ${school.name}:`, err);
+                console.error(`Failed to process ${entity.displayName}:`, err);
             }
         }
 
@@ -211,7 +211,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tight">Legal Execution Hub</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Initializing {schools.length} Institutional Agreements</DialogDescription>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Initializing {entities.length} Institutional Agreements</DialogDescription>
                             </div>
                         </div>
                         <div className="flex items-center gap-6">
@@ -283,7 +283,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                                     <ChevronLeft className="h-4 w-4" />
                                                 </Button>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground tabular-nums">
-                                                    Record {previewIndex + 1} of {schools.length}
+                                                    Record {previewIndex + 1} of {entities.length}
                                                 </span>
                                                 <Button 
                                                     variant="ghost" 
@@ -298,7 +298,7 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                         </div>
                                         <div className="flex items-center gap-2 text-primary">
                                             <Building className="h-3.5 w-3.5" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest">{currentSchool.name}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest">{currentEntity.displayName}</p>
                                         </div>
                                     </div>
                                     <ScrollArea className="flex-1">
@@ -307,7 +307,8 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                                 {selectedPdf && (
                                                     <PdfFormRenderer 
                                                         pdfForm={selectedPdf} 
-                                                        school={currentSchool} 
+                                                        entity={currentEntity}
+                                                        identity={currentEntity.identity} 
                                                         isPreview={true} 
                                                     />
                                                 )}
@@ -349,11 +350,11 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                                                             </div>
                                                             <ScrollArea className="h-64 border rounded-2xl bg-muted/10 p-4">
                                                                 <div className="space-y-2">
-                                                                    {schools.map(s => (
+                                                                    {entities.map(s => (
                                                                         <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-border/50 shadow-sm">
-                                                                            <span className="text-xs font-black uppercase truncate pr-4">{s.name}</span>
+                                                                            <span className="text-xs font-black uppercase truncate pr-4">{s.displayName}</span>
                                                                             <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase tracking-tighter shrink-0 bg-slate-50">
-                                                                                {s.focalPersons?.find(p => p.isSignatory)?.name.split(' ')[0] || 'Unassigned'}
+                                                                                {s.identity?.contacts?.find(p => p.isSignatory)?.name.split(' ')[0] || 'Unassigned'}
                                                                             </Badge>
                                                                         </div>
                                                                     ))}
@@ -504,21 +505,21 @@ export default function ContractWizard({ schools, open, onOpenChange }: Contract
                 </DialogFooter>
             </DialogContent>
 
-            {currentSchool && (
+            {currentEntity && (
                 <TestDispatchDialog 
                     open={isTestModalOpen}
                     onOpenChange={setIsTestModalOpen}
                     channel={watchedEmailId !== 'none' ? 'email' : 'sms'}
                     templateId={watchedEmailId !== 'none' ? watchedEmailId : watchedSmsId}
                     variables={{
-                        school_name: currentSchool.name,
+                        school_name: currentEntity.displayName,
                         contact_name: 'Test Recipient',
-                        contract_link: getPublicUrl(currentSchool),
-                        agreement_url: getPublicUrl(currentSchool),
-                        link: getPublicUrl(currentSchool),
+                        contract_link: getPublicUrl(currentEntity),
+                        agreement_url: getPublicUrl(currentEntity),
+                        link: getPublicUrl(currentEntity),
                         event_type: 'Agreement Signature Required (Test)'
                     }}
-                    entityId={currentSchool.id}
+                    entityId={currentEntity.entityId}
                 />
             )}
         </Dialog>

@@ -7,18 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-    Trash2, Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, 
-    ChevronDown, ChevronUp, StickyNote, Paperclip, FileText, PlusCircle
+    Trash2, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Plus
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
-import { MediaSelect } from './media-select';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
 
 const STANDARD_ROLES = ['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner'] as const;
 
@@ -33,39 +28,12 @@ function FocalPersonItem({
     handleSetSignatory: (i: number) => void;
     fieldsCount: number;
 }) {
-    const { control, register, watch, formState: { errors }, setValue } = useFormContext();
-    const isSignatory = watch(`focalPersons.${index}.isSignatory`);
-    const currentRole = watch(`focalPersons.${index}.type`);
+    const { control, register, watch, formState: { errors } } = useFormContext();
+    const isSignatory = watch(`contacts.${index}.isSignatory`);
+    const currentRole = watch(`contacts.${index}.type`);
     const [isCustomRole, setIsCustomRole] = React.useState(!STANDARD_ROLES.includes(currentRole as any) && !!currentRole);
-    const [isExpanded, setIsExpanded] = React.useState(false);
 
-    const personErrors = (errors.focalPersons as any)?.[index];
-
-    // Nested Field Arrays for Notes & Attachments
-    const { fields: notes, append: appendNote, remove: removeNote } = useFieldArray({
-        control,
-        name: `focalPersons.${index}.notes`
-    });
-
-    const { fields: attachments, append: appendAttachment, remove: removeAttachment } = useFieldArray({
-        control,
-        name: `focalPersons.${index}.attachments`
-    });
-
-    const [newNote, setNewNote] = React.useState('');
-
-    const handleAddAttachment = (url: string) => {
-        if (!url) return;
-        const fileName = url.split('/').pop()?.split('?')[0] || 'document';
-        const decodedName = decodeURIComponent(fileName).substring(fileName.indexOf('-') + 1);
-        appendAttachment({
-            id: `att_${Date.now()}`,
-            name: decodedName,
-            url,
-            type: 'document',
-            createdAt: new Date().toISOString()
-        });
-    };
+    const personErrors = (errors.contacts as any)?.[index];
 
     return (
         <Card
@@ -100,67 +68,67 @@ function FocalPersonItem({
                     <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
                         <User className="h-3 w-3 text-primary" /> Full Name
                     </Label>
+                    <Input
+                        {...register(`contacts.${index}.name`)}
+                        placeholder="e.g. Ama Serwaa"
+                        className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                            <Mail className="h-3 w-3" /> Email
+                        </Label>
                         <Input
-                            {...register(`focalPersons.${index}.name`)}
-                            placeholder="e.g. Ama Serwaa"
+                            {...register(`contacts.${index}.email`)}
+                            type="email"
+                            placeholder="ama@school.edu"
+                            className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                            <Phone className="h-3 w-3" /> Phone
+                        </Label>
+                        <Input
+                            {...register(`contacts.${index}.phone`)}
+                            placeholder="+233..."
                             className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
                         />
                     </div>
+                </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                                <Mail className="h-3 w-3" /> Email
-                            </Label>
-                            <Input
-                                {...register(`focalPersons.${index}.email`)}
-                                type="email"
-                                placeholder="ama@school.edu"
-                                className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                                <Phone className="h-3 w-3" /> Phone
-                            </Label>
-                            <Input
-                                {...register(`focalPersons.${index}.phone`)}
-                                placeholder="+233..."
-                                className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
-                        <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
-                                <ShieldCheck className="h-3 w-3" /> Authority Role
-                            </Label>
-                            {isCustomRole ? (
-                                <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
-                                    <Input 
-                                        {...register(`focalPersons.${index}.type`)}
-                                        placeholder="Enter custom role..."
-                                        className="h-10 rounded-xl bg-muted/10 border-none font-bold"
-                                        autoFocus
-                                    />
-                                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
-                                </div>
-                            ) : (
-                                <Controller
-                                    name={`focalPersons.${index}.type`}
-                                    control={control}
-                                    render={({ field: selectField }) => (
-                                        <Select 
-                                            onValueChange={(val) => {
-                                                if (val === 'CUSTOM') setIsCustomRole(true);
-                                                else selectField.onChange(val);
-                                            }} 
-                                            value={selectField.value}
-                                        >
-                                            <SelectTrigger className="h-10 rounded-xl bg-muted/10 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                                <SelectValue />
-                                            </SelectTrigger>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                    <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-muted-foreground/60 flex items-center gap-1.5 ml-1">
+                            <ShieldCheck className="h-3 w-3" /> Authority Role
+                        </Label>
+                        {isCustomRole ? (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                                <Input 
+                                    {...register(`contacts.${index}.type`)}
+                                    placeholder="Enter custom role..."
+                                    className="h-10 rounded-xl bg-muted/10 border-none font-bold"
+                                    autoFocus
+                                />
+                                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
+                            </div>
+                        ) : (
+                            <Controller
+                                name={`contacts.${index}.type`}
+                                control={control}
+                                render={({ field: selectField }) => (
+                                    <Select 
+                                        onValueChange={(val) => {
+                                            if (val === 'CUSTOM') setIsCustomRole(true);
+                                            else selectField.onChange(val);
+                                        }} 
+                                        value={selectField.value}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl bg-muted/10 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
                                         <SelectContent className="rounded-xl shadow-2xl border-none">
                                             {STANDARD_ROLES.map((t) => (
                                                 <SelectItem key={t} value={t} className="font-bold">
@@ -188,88 +156,6 @@ function FocalPersonItem({
                         </div>
                     </div>
                 </div>
-
-                {/* Ledger & Assets Toggle */}
-                <div className="pt-2">
-                    <Button 
-                        type="button" 
-                        variant="ghost" 
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="w-full h-10 rounded-xl font-black uppercase text-[9px] tracking-widest gap-2 bg-muted/10 hover:bg-muted/30"
-                    >
-                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        {isExpanded ? 'Hide Ledger & Assets' : `Manage History (${notes.length + attachments.length})`}
-                    </Button>
-                </div>
-
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden space-y-8 pt-4 border-t border-dashed"
-                        >
-                            {/* Notes Sub-section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between px-1">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                        <StickyNote className="h-3 w-3" /> Internal Ledger
-                                    </Label>
-                                    <Badge variant="outline" className="text-[8px] font-black">{notes.length}</Badge>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Input 
-                                        value={newNote} 
-                                        onChange={e => setNewNote(e.target.value)}
-                                        placeholder="Quick context note..."
-                                        className="h-9 rounded-lg bg-muted/20 border-none shadow-inner text-xs"
-                                        onKeyDown={e => { if(e.key === 'Enter') { e.preventDefault(); if(newNote.trim()) { appendNote({ id: `n_${Date.now()}`, content: newNote.trim(), createdAt: new Date().toISOString() }); setNewNote(''); } } }}
-                                    />
-                                    <Button type="button" size="icon" className="h-9 w-9 rounded-lg bg-primary text-white shadow-md" onClick={() => { if(newNote.trim()) { appendNote({ id: `n_${Date.now()}`, content: newNote.trim(), createdAt: new Date().toISOString() }); setNewNote(''); } }}>
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <div className="space-y-2">
-                                    {notes.map((note: any, nIdx: number) => (
-                                        <div key={note.id} className="p-3 rounded-xl bg-muted/10 border relative group/note">
-                                            <p className="text-[10px] font-medium leading-relaxed pr-6">{note.content}</p>
-                                            <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1 opacity-40">{format(new Date(note.createdAt), 'MMM d, HH:mm')}</p>
-                                            <button type="button" onClick={() => removeNote(nIdx)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover/note:opacity-100 transition-opacity"><X size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Attachments Sub-section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between px-1">
-                                    <Label className="text-[9px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                        <Paperclip className="h-3 w-3" /> Credentials
-                                    </Label>
-                                    <Badge variant="outline" className="text-[8px] font-black">{attachments.length}</Badge>
-                                </div>
-                                <div className="p-1 border-2 border-dashed border-primary/10 rounded-xl">
-                                    <MediaSelect 
-                                        onValueChange={handleAddAttachment}
-                                        className="border-none shadow-none bg-transparent"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {attachments.map((att: any, aIdx: number) => (
-                                        <div key={att.id} className="flex items-center justify-between p-2 rounded-lg bg-card border shadow-sm group/att">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <FileText className="h-3 w-3 text-primary" />
-                                                <span className="text-[10px] font-bold uppercase truncate max-w-[150px]">{att.name}</span>
-                                            </div>
-                                            <button type="button" onClick={() => removeAttachment(aIdx)} className="text-destructive opacity-0 group-hover/att:opacity-100 transition-opacity"><X size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </CardContent>
         </Card>
     );
@@ -279,14 +165,14 @@ export function FocalPersonManager() {
   const { control, setValue, watch, formState: { errors } } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: 'focalPersons',
+    name: 'contacts',
   });
 
-  const focalPersons = watch('focalPersons') || [];
+  const contacts = watch('contacts') || [];
 
   const handleSetSignatory = (index: number) => {
-    focalPersons.forEach((_: any, i: number) => {
-      setValue(`focalPersons.${i}.isSignatory`, i === index, { shouldDirty: true });
+    contacts.forEach((_: any, i: number) => {
+      setValue(`contacts.${i}.isSignatory`, i === index, { shouldDirty: true });
     });
   };
 
@@ -297,9 +183,7 @@ export function FocalPersonManager() {
         email: '', 
         phone: '', 
         type: 'Administrator', 
-        isSignatory: isFirst,
-        notes: [],
-        attachments: []
+        isSignatory: isFirst
     });
   };
 
@@ -335,11 +219,11 @@ export function FocalPersonManager() {
         ))}
       </div>
       
-      {errors.focalPersons?.message && (
+      {errors.contacts?.message && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse">
             <AlertCircle className="h-5 w-5 text-rose-500" />
             <p className="text-[10px] font-black uppercase text-rose-500 tracking-widest leading-tight">
-                Logic Integrity Failure: {String(errors.focalPersons.message)}
+                Logic Integrity Failure: {String(errors.contacts.message)}
             </p>
         </div>
       )}

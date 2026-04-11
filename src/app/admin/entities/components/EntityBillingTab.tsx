@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { School, Invoice, SubscriptionPackage } from '@/lib/types';
+import type { Entity, WorkspaceEntity, Invoice, SubscriptionPackage } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,35 +29,45 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTerminology } from '@/hooks/use-terminology';
 
 interface EntityBillingTabProps {
-    school: School;
+    entity: Entity;
+    workspaceEntity: WorkspaceEntity;
 }
 
-export default function EntityBillingTab({ school }: EntityBillingTabProps) {
+export default function EntityBillingTab({ entity, workspaceEntity }: EntityBillingTabProps) {
     const firestore = useFirestore();
+    const { singular } = useTerminology();
 
-    // 1. Fetch Invoices for this school
+    // 1. Fetch Invoices for this entity
     const invoicesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !entity.id) return null;
         return query(
             collection(firestore, 'invoices'),
-            where('entityId', '==', school.id),
+            where('entityId', '==', entity.id),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, school.id]);
+    }, [firestore, entity.id]);
 
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
 
+    const institutionData = entity.institutionData;
+    const subscriptionPackageId = institutionData?.subscriptionPackageId;
+
     // 2. Fetch Subscription Package Details
     const pkgRef = useMemoFirebase(() => {
-        if (!firestore || !school.subscriptionPackageId) return null;
-        return doc(firestore, 'subscription_packages', school.subscriptionPackageId);
-    }, [firestore, school.subscriptionPackageId]);
+        if (!firestore || !subscriptionPackageId) return null;
+        return doc(firestore, 'subscription_packages', subscriptionPackageId);
+    }, [firestore, subscriptionPackageId]);
 
     const { data: pkg, isLoading: isLoadingPkg } = useDoc<SubscriptionPackage>(pkgRef);
 
-    const totalOutstanding = (school.arrearsBalance || 0) - (school.creditBalance || 0);
+    const currency = institutionData?.currency || 'USD';
+    const arrearsBalance = institutionData?.arrearsBalance || 0;
+    const creditBalance = institutionData?.creditBalance || 0;
+    const nominalRoll = institutionData?.nominalRoll || 0;
+    const totalOutstanding = arrearsBalance - creditBalance;
 
     return (
         <div className="space-y-10 animate-in fade-in duration-500 text-left">
@@ -65,15 +75,15 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard 
                     label="Outstanding Arrears" 
-                    value={`${school.currency} ${(school.arrearsBalance || 0).toLocaleString()}`} 
-                    sub="Unpaid balance from previous terms"
+                    value={`${currency} ${arrearsBalance.toLocaleString()}`} 
+                    sub="Unpaid balance from previous cycles"
                     icon={CreditCard} 
                     color="text-rose-500" 
                     bg="bg-rose-500/10" 
                 />
                 <StatCard 
                     label="Available Credit" 
-                    value={`${school.currency} ${(school.creditBalance || 0).toLocaleString()}`} 
+                    value={`${currency} ${creditBalance.toLocaleString()}`} 
                     sub="Overpayments and pre-funding"
                     icon={Wallet} 
                     color="text-emerald-500" 
@@ -81,7 +91,7 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                 />
                 <StatCard 
                     label="Total Net Balance" 
-                    value={`${school.currency} ${totalOutstanding.toLocaleString()}`} 
+                    value={`${currency} ${totalOutstanding.toLocaleString()}`} 
                     sub="Consolidated financial standing"
                     icon={Target} 
                     color="text-primary" 
@@ -92,13 +102,13 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Invoice History */}
                 <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card/10 backdrop-blur-md">
-                    <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+                    <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 text-left">
                                 <div className="p-2 bg-primary/10 rounded-xl text-primary"><Receipt className="h-5 w-5" /></div>
-                                <div>
+                                <div className="text-left">
                                     <CardTitle className="text-lg font-black uppercase tracking-tight">Invoicing Log</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest">Historical termly billing records.</CardDescription>
+                                    <CardDescription className="text-xs font-bold uppercase tracking-widest">Historical billing records.</CardDescription>
                                 </div>
                             </div>
                             <Button size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg h-9">
@@ -106,21 +116,21 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                             </Button>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 text-left">
                         {isLoadingInvoices ? (
                             <div className="p-8 space-y-4">
                                 <Skeleton className="h-12 w-full rounded-xl" />
                                 <Skeleton className="h-12 w-full rounded-xl" />
                             </div>
                         ) : invoices && invoices.length > 0 ? (
-                            <div className="divide-y divide-border/50">
+                            <div className="divide-y divide-border/50 text-left">
                                 {invoices.map((invoice) => (
-                                    <div key={invoice.id} className="p-6 flex items-center justify-between group hover:bg-muted/5 transition-colors">
-                                        <div className="flex items-center gap-5">
+                                    <div key={invoice.id} className="p-6 flex items-center justify-between group hover:bg-muted/5 transition-colors text-left">
+                                        <div className="flex items-center gap-5 text-left">
                                             <div className="p-3 bg-muted/10 rounded-2xl border border-border/50 group-hover:bg-card transition-colors">
                                                 <FileText className="h-5 w-5 text-muted-foreground" />
                                             </div>
-                                            <div>
+                                            <div className="text-left">
                                                 <p className="font-black text-sm uppercase tracking-tight">Invoice {invoice.invoiceNumber}</p>
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                                                     {invoice.periodName} · {format(new Date(invoice.createdAt), 'MMM d, yyyy')}
@@ -148,21 +158,21 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                         ) : (
                             <div className="py-24 text-center opacity-20 space-y-3">
                                 <History className="h-12 w-12 mx-auto" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">No invoices generated for this campus</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground">No invoices generated for this {singular.toLowerCase()}</p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Subscription Meta */}
-                <div className="space-y-8">
-                    <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
-                        <CardHeader className="bg-primary/5 border-b pb-6 p-8">
+                <div className="space-y-8 text-left">
+                    <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white text-left">
+                        <CardHeader className="bg-primary/5 border-b pb-6 p-8 text-left">
                             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                 <ShieldCheck className="h-4 w-4" /> Subscription Protocol
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8">
+                        <CardContent className="p-8 space-y-8 text-left">
                             {isLoadingPkg ? (
                                 <div className="space-y-4">
                                     <Skeleton className="h-4 w-1/2" />
@@ -170,17 +180,17 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                                 </div>
                             ) : pkg ? (
                                 <>
-                                    <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border shadow-inner">
-                                        <div className="space-y-1">
+                                    <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border shadow-inner text-left">
+                                        <div className="space-y-1 text-left">
                                             <p className="text-[10px] font-black uppercase text-muted-foreground opacity-60 leading-none">Active Tier</p>
                                             <p className="text-xl font-black uppercase tracking-tight text-foreground">{pkg.name}</p>
                                         </div>
                                         <Badge className="bg-primary text-white border-none font-black text-[8px] h-5 uppercase tracking-widest">PRO</Badge>
                                     </div>
                                     
-                                    <div className="space-y-6 px-1">
-                                        <DetailRow label="Institutional Rate" value={`${pkg.currency} ${pkg.ratePerStudent}`} sub="Per student / term" />
-                                        <DetailRow label="Nominal Target" value={school.nominalRoll?.toLocaleString() || '0'} sub="Total active students" />
+                                    <div className="space-y-6 px-1 text-left">
+                                        <DetailRow label="Billing Rate" value={`${pkg.currency} ${pkg.ratePerStudent}`} sub="Per student / cycle" />
+                                        <DetailRow label="Nominal Target" value={nominalRoll.toLocaleString()} sub="Total active students" />
                                         <DetailRow label="Billing Term" value={pkg.billingTerm} sub="Resolution cycle" />
                                     </div>
                                 </>
@@ -189,23 +199,23 @@ export default function EntityBillingTab({ school }: EntityBillingTabProps) {
                                     <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20">
                                         <AlertCircle className="h-6 w-6 text-orange-500 mx-auto mb-2" />
                                         <p className="text-[10px] font-black uppercase text-orange-500 tracking-tighter">Package Unassigned</p>
-                                        <p className="text-[9px] font-bold text-orange-400/60 uppercase leading-relaxed mt-1">Please update the school profile to enable automated billing.</p>
+                                        <p className="text-[9px] font-bold text-orange-400/60 uppercase leading-relaxed mt-1">Please update the profile to enable automated billing.</p>
                                     </div>
                                     <Button variant="outline" asChild className="rounded-xl font-bold h-9 border-orange-500/20 text-orange-500 hover:bg-orange-500/10 transition-all text-[10px] uppercase tracking-widest">
-                                        <Link href={`/admin/entities/${school.id}/edit`}>Configure Billing Profile</Link>
+                                        <Link href={`/admin/entities/${entity.id}/edit`}>Configure Billing Profile</Link>
                                     </Button>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-slate-900 text-white">
-                        <CardHeader className="p-8 pb-4">
+                    <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-slate-900 text-white text-left">
+                        <CardHeader className="p-8 pb-4 text-left">
                             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                 <TrendingUp className="h-4 w-4" /> Financial Integrity
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 pt-0">
+                        <CardContent className="p-8 pt-0 text-left">
                             <p className="text-[10px] font-bold text-white/40 leading-relaxed uppercase tracking-tighter italic">
                                 "All invoices are snapshotted at the point of creation to ensure historical consistency. Changes to global tax rules or subscription rates will only affect future billing periods."
                             </p>

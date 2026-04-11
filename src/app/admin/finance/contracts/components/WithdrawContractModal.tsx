@@ -32,9 +32,10 @@ import { purgeContractAction } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type { WorkspaceEntity } from '@/lib/types';
 
 interface WithdrawContractModalProps {
-    school: { id: string; name: string };
+    entity: WorkspaceEntity;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -43,7 +44,7 @@ interface WithdrawContractModalProps {
  * @fileOverview Institutional Record Purge Console.
  * Allows selective deletion of signed documents and resetting of contract status.
  */
-export default function WithdrawContractModal({ school, open, onOpenChange }: WithdrawContractModalProps) {
+export default function WithdrawContractModal({ entity, open, onOpenChange }: WithdrawContractModalProps) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -69,7 +70,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                 for (const pdfDoc of pdfsSnap.docs) {
                     const pdfData = pdfDoc.data();
                     const subCol = collection(firestore, `pdfs/${pdfDoc.id}/submissions`);
-                    const subQuery = query(subCol, where('entityId', '==', school.id));
+                    const subQuery = query(subCol, where('entityId', '==', entity.entityId));
                     const subSnap = await getDocs(subQuery);
                     
                     subSnap.forEach(subDoc => {
@@ -93,7 +94,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
         };
 
         auditRecords();
-    }, [open, firestore, school.id]);
+    }, [open, firestore, entity.entityId]);
 
     const handlePurge = async () => {
         if (!firestore) return;
@@ -101,7 +102,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
         
         try {
             // High-fidelity server-side purge
-            const result = await purgeContractAction(school.id, selectedSubIds, user?.uid || 'system');
+            const result = await purgeContractAction(entity.entityId, selectedSubIds, user?.uid || 'system');
             
             if (result.success) {
                 toast({ title: 'Records Purged', description: 'Legal history has been successfully sanitized.' });
@@ -147,7 +148,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                                     <div className="p-3 bg-white rounded-xl shadow-sm shrink-0"><Building className="h-6 w-6 text-rose-600" /></div>
                                     <div className="min-w-0">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Target Institution</p>
-                                        <p className="text-lg font-black uppercase text-foreground truncate">{school.name}</p>
+                                        <p className="text-lg font-black uppercase text-foreground truncate">{entity.displayName}</p>
                                     </div>
                                 </div>
 
@@ -197,7 +198,7 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                                     <div className="space-y-1">
                                         <p className="text-sm font-black text-rose-900 uppercase tracking-tight">Purge Policy Notice</p>
                                         <p className="text-[10px] text-rose-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                            Withdrawing a contract will reset the school's legal status to "Unprepared". Deleting submissions will permanently remove the signed high-fidelity PDFs from the system.
+                                            Withdrawing a contract will reset the record's legal status to "Unprepared". Deleting submissions will permanently remove the signed high-fidelity PDFs from the system.
                                         </p>
                                     </div>
                                 </div>

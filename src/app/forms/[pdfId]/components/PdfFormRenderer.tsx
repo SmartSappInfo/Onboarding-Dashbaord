@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField, School } from '@/lib/types';
+import type { PDFForm, PDFFormField, WorkspaceEntity, Entity } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
 import AlreadySignedGate from './AlreadySignedGate';
@@ -120,7 +120,7 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isLocked = false, isPreview = false, existingSubmissionId }: { pdfForm: PDFForm, school?: School, initialData?: Record<string, any>, isLocked?: boolean, isPreview?: boolean, existingSubmissionId?: string }) {
+export default function PdfFormRenderer({ pdfForm, entity, identity, initialData = {}, isLocked = false, isPreview = false, existingSubmissionId }: { pdfForm: PDFForm, entity?: WorkspaceEntity, identity?: Entity, initialData?: Record<string, any>, isLocked?: boolean, isPreview?: boolean, existingSubmissionId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -261,10 +261,10 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   }, [setZoom]);
 
   const handleSaveProgress = async () => {
-      if (isPreview || !school) return;
+      if (isPreview || !entity) return;
       setIsSubmitting(true);
       const data = getValues();
-      const res = await saveAgreementProgressAction(pdfForm.id, school.id, data);
+      const res = await saveAgreementProgressAction(pdfForm.id, entity.entityId, data);
       if (res.success) toast({ title: 'Progress Saved', description: 'Institutional data cached.' });
       else toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
       setIsSubmitting(false);
@@ -277,7 +277,8 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
         if (field.type === 'static-text' && field.staticText) {
             flattenedData[field.id] = field.staticText;
         } else if (field.type === 'variable' && field.variableKey) {
-            const resolved = resolveVariableValue(field.variableKey, school);
+            // Priority: resolved from identity context, fallback to entity denormalized fields
+            const resolved = resolveVariableValue(field.variableKey, identity || entity);
             if (resolved !== null) flattenedData[field.id] = resolved;
         }
     });
@@ -307,8 +308,8 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     setShowConfirmDialog(false);
 
     try {
-        if (school) {
-            const res = await finalizeAgreementAction(pdfForm.id, school.id, pendingFormData);
+        if (entity) {
+            const res = await finalizeAgreementAction(pdfForm.id, entity.entityId, pendingFormData);
             if (res.success && res.submissionId) {
                 setCreatedSubmissionId(res.submissionId);
                 setIsFinalizedView(true);
@@ -381,8 +382,8 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
           <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
               <AlreadySignedGate 
-                entityName={school?.name} 
-                logoUrl={school?.logoUrl} 
+                entityName={identity?.name || entity?.displayName} 
+                logoUrl={entity?.primaryEmail} // Placeholder for logo until Entity schema handles it
                 pdfName={pdfForm.name} 
                 onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${activeSubmissionId}`)} 
               />
@@ -395,17 +396,17 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
         <div className="light flex flex-col h-[100dvh] overflow-hidden relative" style={{ backgroundColor: pdfForm.backgroundColor || '#F1F5F9' }}>
             <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
             <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0 text-left">
-                {school?.logoUrl ? <div className="relative h-9 w-12 shrink-0"><Image src={school.logoUrl} alt="Logo" fill className="object-contain" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
+                {entity?.primaryEmail ? <div className="relative h-9 w-12 shrink-0"><CheckCircle2 className="text-primary h-6 w-6" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
                 <div className="flex flex-col min-w-0 -ml-1">
                     <h1 className="font-black truncate max-w-[200px] leading-tight text-xs uppercase tracking-tight">
-                        {school?.name || pdfForm.publicTitle}
+                        {identity?.name || entity?.displayName || pdfForm.publicTitle}
                     </h1>
                     <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter leading-none">{pdfForm.publicTitle}</p>
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
                     {!isFormComplete ? (
-                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !school} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95 border-primary/20 text-primary">
+                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !entity} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95 border-primary/20 text-primary">
                             {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
                             {isMobile ? 'Save' : 'Save Progress'}
                         </Button>

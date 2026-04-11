@@ -30,7 +30,7 @@ import {
     Info,
     Target
 } from 'lucide-react';
-import { addDoc, collection, query, getDocs, orderBy, limit, where } from 'firebase/firestore';
+import { addDoc, collection, query, getDocs, orderBy, limit, where, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
@@ -46,7 +46,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function AiSchoolGenerator() {
+export default function AiEntityGenerator() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -111,35 +111,71 @@ export default function AiSchoolGenerator() {
             return match ? { id: match.id, name: match.name, abbreviation: match.abbreviation, color: match.color } : null;
         }).filter(Boolean);
 
-        // 3. Construct Final Payload
-        const schoolData = {
+        // 3. Construct Global Identity Payload
+        const entityId = doc(collection(firestore, 'entities')).id;
+        const globalEntityData = {
+            id: entityId,
             name: result.name,
-            initials: result.initials || result.name.substring(0, 3).toUpperCase(),
-            slug,
-            slogan: result.slogan || '',
-            location: result.location || '',
-            nominalRoll: result.nominalRoll || 0,
-            track: data.track,
-            status: 'Active' as const,
-            lifecycleStatus: data.track === 'prospect' ? 'Onboarding' : 'Onboarding', // Both start in onboarding phase of their respective track
-            focalPersons: result.focalPersons || [],
-            modules: mappedModules,
-            pipelineId: targetPipelineId,
-            stage: defaultStage,
-            assignedTo: { userId: user.uid, name: user.displayName || 'Architect', email: user.email || '' },
+            entityType: 'institution' as const,
+            institutionData: {
+                name: result.name,
+                initials: result.initials || result.name.substring(0, 3).toUpperCase(),
+                slug,
+                slogan: result.slogan || '',
+                location: {
+                    address: result.location || '',
+                    zone: zones?.[0]?.name || 'Unassigned'
+                },
+                nominalRoll: result.nominalRoll || 0,
+                logoUrl: null
+            },
+            contacts: (result.focalPersons || []).map((p: any) => ({
+                name: p.name,
+                type: p.role || 'Contact',
+                email: p.email || '',
+                phone: p.phone || '',
+                isSignatory: true
+            })),
             createdAt: new Date().toISOString(),
-            zone: zones?.[0] || { id: 'unassigned', name: 'Unassigned' }
+            updatedAt: new Date().toISOString()
         };
 
-        const docRef = await addDoc(collection(firestore, 'schools'), schoolData);
+        // 4. Construct Workspace Operational Payload
+        const workspaceId = data.track === 'prospect' ? 'prospects' : activeWorkspaceId || 'onboarding';
+        const workspaceEntityId = `${workspaceId}_${entityId}`;
+        const workspaceEntityData = {
+            id: workspaceEntityId,
+            entityId: entityId,
+            workspaceId: workspaceId,
+            displayName: result.name,
+            status: 'active' as const,
+            lifecycleStatus: 'Onboarding' as const,
+            pipelineId: targetPipelineId,
+            stageId: defaultStage.id,
+            currentStageName: defaultStage.name,
+            assignedTo: { 
+                userId: user.uid, 
+                name: user.displayName || 'Architect', 
+                email: user.email || '' 
+            },
+            addedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            workspaceTags: []
+        };
+
+        // 5. Execute Atomic Persistence
+        const batch = writeBatch(firestore);
+        batch.set(doc(firestore, 'entities', entityId), globalEntityData);
+        batch.set(doc(firestore, 'workspace_entities', workspaceEntityId), workspaceEntityData);
+        await batch.commit();
 
         await logActivity({
             organizationId: activeOrganizationId,
-            entityId: docRef.id,
+            entityId: entityId,
             entityName: result.name,
             entitySlug: slug,
             userId: user.uid,
-            workspaceId: data.track,
+            workspaceId: workspaceId,
             type: 'school_created',
             source: 'user_action',
             description: `AI architected new ${data.track} record for "${result.name}"`,
@@ -147,7 +183,7 @@ export default function AiSchoolGenerator() {
         });
 
         toast({ title: 'Institutional Hub Created', description: `AI has successfully architected ${result.name}.` });
-        router.push(`/admin/entities/${docRef.id}/edit`);
+        router.push(`/admin/entities/${entityId}`);
 
     } catch (error: any) {
         console.error(error);

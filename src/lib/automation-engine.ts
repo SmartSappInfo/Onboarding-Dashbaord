@@ -5,7 +5,7 @@ import type { AutomationRule, AutomationAction, AutomationTrigger, School, Focal
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
-import { getContactPerson } from './school-helpers';
+import { getContactPerson } from './entity-helpers';
 
 /**
  * @fileOverview Global Automation Engine.

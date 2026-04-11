@@ -178,7 +178,7 @@ export default function EditSurveyPage() {
 
     const institutionsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), where('entityType', '==', 'institution'), orderBy('displayName', 'asc'));
+        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
     }, [firestore, activeWorkspaceId]);
     const { data: institutions } = useCollection<WorkspaceEntity>(institutionsQuery);
 

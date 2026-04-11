@@ -30,7 +30,23 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
 
   const options: ModuleOption[] = React.useMemo(() => {
     if (!allModules) return [];
-    return allModules.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Deduplicate by name to prevent confusing duplicates in UI
+    const uniqueMap = new Map<string, ModuleOption>();
+    allModules.forEach(m => {
+        if (!uniqueMap.has(m.name)) {
+            uniqueMap.set(m.name, {
+                id: m.id,
+                name: m.name,
+                abbreviation: m.abbreviation,
+                color: m.color
+            });
+        }
+    });
+
+    const filtered = Array.from(uniqueMap.values());
+    if (!searchTerm) return filtered;
+    return filtered.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [allModules, searchTerm]);
   
   const selectedValues = new Set(value?.map(v => v.id) || []);

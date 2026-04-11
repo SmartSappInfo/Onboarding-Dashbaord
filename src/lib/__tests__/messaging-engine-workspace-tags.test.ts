@@ -50,9 +50,9 @@ vi.mock('../resend-service', () => ({
   sendEmail: vi.fn(),
 }));
 
-vi.mock('../school-helpers', () => ({
-  getSchoolEmail: vi.fn(() => 'school@example.com'),
-  getSchoolPhone: vi.fn(() => '+1234567890'),
+vi.mock('../entity-helpers', () => ({
+  getEntityEmail: vi.fn(() => 'school@example.com'),
+  getEntityPhone: vi.fn(() => '+1234567890'),
   getSignatory: vi.fn(() => ({
     name: 'John Doe',
     email: 'john@example.com',

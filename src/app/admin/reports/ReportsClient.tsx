@@ -48,10 +48,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
-import type { School, Task, UserProfile, Zone, MessageLog, TaskCategory } from '@/lib/types';
+import type { WorkspaceEntity, Task, UserProfile, Zone, MessageLog, TaskCategory } from '@/lib/types';
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTerminology } from '@/hooks/use-terminology';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -61,25 +63,58 @@ const CHART_COLORS = [
   "hsl(var(--chart-5))",
 ];
 
+/**
+ * ReportsClient - Operational Intelligence Registry
+ * 
+ * Updated to consume WorkspaceEntity model for institutional analysis.
+ */
 export default function ReportsClient() {
     const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace();
+    const { singular, plural } = useTerminology();
     
     // Subscriptions
-    const schoolsCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools')) : null, [firestore]);
-    const tasksCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'tasks')) : null, [firestore]);
-    const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones')) : null, [firestore]);
-    const logsCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_logs'), orderBy('sentAt', 'desc'), limit(500)) : null, [firestore]);
+    const entitiesCol = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'workspace_entities'), 
+            where('workspaceId', '==', activeWorkspaceId)
+        );
+    }, [firestore, activeWorkspaceId]);
 
-    const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+    const tasksCol = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'tasks'),
+            where('workspaceId', '==', activeWorkspaceId)
+        );
+    }, [firestore, activeWorkspaceId]);
+
+    const zonesCol = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'zones'));
+    }, [firestore]);
+
+    const logsCol = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'message_logs'), 
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('sentAt', 'desc'), 
+            limit(500)
+        );
+    }, [firestore, activeWorkspaceId]);
+
+    const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksCol);
     const { data: zones, isLoading: isLoadingZones } = useCollection<Zone>(zonesCol);
     const { data: logs, isLoading: isLoadingLogs } = useCollection<MessageLog>(logsCol);
 
-    const isLoading = isLoadingSchools || isLoadingTasks || isLoadingZones || isLoadingLogs;
+    const isLoading = isLoadingEntities || isLoadingTasks || isLoadingZones || isLoadingLogs;
 
     // 1. Onboarding Velocity (Last 6 Months)
     const velocityData = React.useMemo(() => {
-        if (!schools) return [];
+        if (!entities) return [];
         const months = Array.from({ length: 6 }).map((_, i) => {
             const date = subDays(new Date(), i * 30);
             return {
@@ -90,8 +125,8 @@ export default function ReportsClient() {
             };
         }).reverse();
 
-        schools.forEach(school => {
-            const createdDate = new Date(school.createdAt);
+        entities.forEach(entity => {
+            const createdDate = new Date(entity.addedAt);
             months.forEach(m => {
                 if (isWithinInterval(createdDate, { start: m.start, end: m.end })) {
                     m.count++;
@@ -100,21 +135,20 @@ export default function ReportsClient() {
         });
 
         return months;
-    }, [schools]);
+    }, [entities]);
 
     // 2. Zone Health Breakdown
     const zoneHealth = React.useMemo(() => {
-        if (!zones || !schools) return [];
+        if (!zones || !entities) return [];
         return zones.map(zone => {
-            const zoneSchools = schools.filter(s => s.zone?.id === zone.id);
+            const zoneEntities = entities.filter(s => s.zone?.id === zone.id);
             return {
                 name: zone.name,
-                schools: zoneSchools.length,
-                students: zoneSchools.reduce((sum, s) => sum + (s.nominalRoll || 0), 0),
-                avgStage: Math.round(zoneSchools.reduce((sum, s) => sum + (s.stage?.order || 1), 0) / (zoneSchools.length || 1))
+                entities: zoneEntities.length,
+                students: zoneEntities.reduce((sum, s) => sum + (s.nominalRoll || 0), 0),
             };
-        }).sort((a, b) => b.schools - a.schools);
-    }, [zones, schools]);
+        }).sort((a, b) => b.entities - a.entities);
+    }, [zones, entities]);
 
     // 3. Operational Effectiveness (Tasks)
     const taskMetrics = React.useMemo(() => {
@@ -200,42 +234,49 @@ export default function ReportsClient() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
             <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
+                    <div className="text-left">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase text-left">
                             <BarChart3 className="h-10 w-10 text-primary" />
                             Intelligence Hub
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">Cross-regional institutional health and operational CRM performance.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1 text-left">Operational health and CRM performance metrics for your {plural.toLowerCase()}.</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
+                    <div className="flex items-center gap-3 text-left">
+                        <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm text-left">
                             <FileText className="h-4 w-4" /> System Audit
                         </Button>
-                        <Button className="rounded-xl font-black h-11 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs">
+                        <Button className="rounded-xl font-black h-11 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs text-left">
                             Executive Export
                         </Button>
                     </div>
                 </div>
 
                 {/* KPI Tier */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard label="Network Growth" value={`+${velocityData[velocityData.length-1].count}`} sub="New Signups (30D)" icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+                    <StatCard 
+                        label="Network Growth" 
+                        value={`+${velocityData.length > 0 ? velocityData[velocityData.length - 1].count : 0}`} 
+                        sub={`New ${plural} (30D)`} 
+                        icon={TrendingUp} 
+                        color="text-primary" 
+                        bg="bg-primary/10" 
+                    />
                     <StatCard label="Force Multiplier" value={`${taskMetrics.efficiency}%`} sub="Task Closure Velocity" icon={Target} color="text-emerald-500" bg="bg-emerald-500/10" />
                     <StatCard label="Lead-Time Avg" value={`${taskMetrics.avgResolutionDays}d`} sub="Days to Task Closure" icon={Clock} color="text-blue-500" bg="bg-blue-500/10" />
-                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Roll" icon={Users} color="text-purple-500" bg="bg-purple-500/10" />
+                    <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Strength" icon={Users} color="text-purple-500" bg="bg-purple-500/10" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                     {/* CRM Resolution Trend */}
-                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 text-left">
                                 <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Intervention creation vs. successful closure.</CardDescription>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1 text-left">Intervention creation vs. successful closure.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 h-[350px]">
+                        <CardContent className="p-8 h-[350px] text-left">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={taskVelocityData}>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
@@ -253,14 +294,14 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card text-left">
+                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 text-left">
                                 <MapPin className="h-4 w-4" /> Regional Strategic Density
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Campus distribution by geographic zone.</CardDescription>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1 text-left">Strategic distribution by geographic zone.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 h-[350px]">
+                        <CardContent className="p-8 h-[350px] text-left">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={zoneHealth} layout="vertical" margin={{ left: 40 }}>
                                     <XAxis type="number" hide />
@@ -269,7 +310,7 @@ export default function ReportsClient() {
                                         cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' }}
                                     />
-                                    <Bar dataKey="schools" radius={[0, 4, 4, 0]} barSize={20}>
+                                    <Bar dataKey="entities" radius={[0, 4, 4, 0]} barSize={20} name={plural}>
                                         {zoneHealth.map((_, i) => <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                                     </Bar>
                                 </BarChart>
@@ -278,23 +319,23 @@ export default function ReportsClient() {
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
                     {/* Functional Lead-Time Analysis */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
-                        <CardHeader className="bg-primary/10 p-8 border-b border-primary/20">
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Lead-Time Analysis</CardTitle>
-                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Average days to resolution per task category.</CardDescription>
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+                        <CardHeader className="bg-primary/10 p-8 border-b border-primary/20 text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Lead-Time Analysis</CardTitle>
+                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest text-left">Average days to resolution per task category.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-6">
+                        <CardContent className="p-8 space-y-6 text-left">
                             {categoryMetrics.length > 0 ? categoryMetrics.map((cat, i) => (
-                                <div key={cat.name} className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 bg-muted rounded-xl transition-transform group-hover:scale-110">
+                                <div key={cat.name} className="flex items-center justify-between group text-left">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="p-2 bg-muted rounded-xl transition-transform group-hover:scale-110 text-left">
                                             {cat.name.includes('Doc') ? <FileText className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-black uppercase tracking-tight">{cat.name}</p>
-                                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{cat.count} Tasks Resolved</p>
+                                        <div className="text-left">
+                                            <p className="text-sm font-black uppercase tracking-tight text-left">{cat.name}</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase text-left">{cat.count} Tasks Resolved</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -309,16 +350,16 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Operational Insights */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card">
-                        <CardHeader className="bg-muted/10 border-b p-8">
-                            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
-                                <Zap className="h-5 w-5 text-primary" /> Executive Snapshot
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+                        <CardHeader className="bg-muted/10 border-b p-8 text-left">
+                            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3 text-left">
+                                <Zap className="h-5 w-5 text-primary text-left" /> Executive Snapshot
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8">
-                            <InsightRow icon={Target} title="Top Zone Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and task speed." />
-                            <InsightRow icon={CheckCircle2} title="Service Level Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of protocols resolved within institutional targets." />
-                            <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} High Priority`} desc="Tasks requiring immediate cross-regional manager intervention." />
+                        <CardContent className="p-8 space-y-8 text-left">
+                            <InsightRow icon={Target} title="Regional Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and task speed." />
+                            <InsightRow icon={CheckCircle2} title="SLA Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of protocols resolved within institutional targets." />
+                            <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} Backlogged`} desc="Tasks requiring immediate cross-regional manager intervention." />
                         </CardContent>
                     </Card>
                 </div>
@@ -329,15 +370,15 @@ export default function ReportsClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all">
-            <CardContent className="p-6 flex items-center gap-5">
-                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
-                    <Icon className="h-7 w-7" />
+        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
+            <CardContent className="p-6 flex items-center gap-5 text-left">
+                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner text-left", bg, color)}>
+                    <Icon className="h-7 w-7 text-left" />
                 </div>
                 <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none">{value}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1">{sub}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5 text-left">{label}</p>
+                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none text-left">{value}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 text-left">{sub}</p>
                 </div>
             </CardContent>
         </Card>
@@ -347,11 +388,11 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
 function InsightRow({ icon: Icon, title, value, desc }: { icon: any, title: string, value: string, desc: string }) {
     return (
         <div className="flex gap-4 group text-left">
-            <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform"><Icon className="h-4 w-4" /></div>
-            <div className="space-y-0.5 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none">{title}</p>
-                <p className="text-base font-black uppercase tracking-tight text-foreground truncate">{value}</p>
-                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2">{desc}</p>
+            <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform text-left"><Icon className="h-4 w-4" /></div>
+            <div className="space-y-0.5 min-w-0 text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none text-left">{title}</p>
+                <p className="text-base font-black uppercase tracking-tight text-foreground truncate text-left">{value}</p>
+                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
             </div>
         </div>
     );

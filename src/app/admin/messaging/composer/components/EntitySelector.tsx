@@ -69,18 +69,7 @@ export function EntitySelector({
       where('workspaceId', '==', activeWorkspaceId)
     ) : null,
   [firestore, activeWorkspaceId]);
-  const { data: workspaceEntitiesRaw, isLoading: isWelsLoading } = useCollection<any>(weQuery);
-
-  // 2. Fetch Schools (Legacy)
-  const schoolsQuery = useMemoFirebase(() => 
-    firestore && activeWorkspaceId ? query(
-      collection(firestore, 'schools'),
-      where('workspaceIds', 'array-contains', activeWorkspaceId)
-    ) : null,
-  [firestore, activeWorkspaceId]);
-  const { data: schoolsRaw, isLoading: isSchoolsLoading } = useCollection<any>(schoolsQuery);
-
-  const isLoading = isWelsLoading || isSchoolsLoading;
+  const { data: workspaceEntitiesRaw, isLoading: isLoading } = useCollection<any>(weQuery);
 
   // 3. Map to Unified ResolvedContact format
   const workspaceEntities = React.useMemo(() => {
@@ -88,35 +77,12 @@ export function EntitySelector({
 
     const contacts: ResolvedContact[] = [];
 
-    // Map Schools
-    if (schoolsRaw) {
-        schoolsRaw.forEach(school => {
-            // Skip if migrated (will be handled by workspace_entities)
-            if (school.migrationStatus === 'migrated') return;
-
-            contacts.push({
-                id: school.id,
-                name: school.name,
-                slug: school.slug,
-                contacts: school.focalPersons || [],
-                pipelineId: school.pipelineId,
-                stageId: school.stage?.id,
-                stageName: school.stage?.name,
-                assignedTo: school.assignedTo,
-                status: school.status,
-                tags: school.tags || [],
-                migrationStatus: (school.migrationStatus || 'legacy') as any,
-                schoolData: school
-            });
-        });
-    }
-
     // Map Workspace Entities
     if (workspaceEntitiesRaw) {
         workspaceEntitiesRaw.forEach(we => {
             contacts.push({
                 id: we.entityId || we.id,
-                entityId: we.entityId,
+                entityId: we.entityId || we.id,
                 workspaceEntityId: we.id,
                 name: we.displayName,
                 contacts: [], // In entities, we resolve contacts on server during dispatch
@@ -127,13 +93,13 @@ export function EntitySelector({
                 status: we.status,
                 tags: we.workspaceTags || [],
                 migrationStatus: 'migrated',
-                entityType: we.entityType
+                entityType: we.entityType || 'institution'
             });
         });
     }
 
     return contacts;
-  }, [activeWorkspaceId, schoolsRaw, workspaceEntitiesRaw]);
+  }, [activeWorkspaceId, workspaceEntitiesRaw]);
 
   // Debounce search input
   React.useEffect(() => {
