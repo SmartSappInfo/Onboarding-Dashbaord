@@ -14,7 +14,9 @@ import {
     Globe,
     Mail,
     Phone,
-    MapPin
+    MapPin,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,6 +63,9 @@ export default function OrganizationManagementDialog({
     const [openRouterApiKey, setOpenRouterApiKey] = React.useState('');
     const [openaiApiKey, setOpenaiApiKey] = React.useState('');
     const [claudeApiKey, setClaudeApiKey] = React.useState('');
+    
+    // UI State
+    const [showApiKeys, setShowApiKeys] = React.useState(false);
 
     // Settings
     const [defaultCurrency, setDefaultCurrency] = React.useState('USD');
@@ -322,7 +327,19 @@ export default function OrganizationManagementDialog({
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-xs font-black uppercase tracking-widest text-primary">AI Configuration</h4>
-                                        <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
+                                        <div className="flex items-center gap-2">
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => setShowApiKeys(!showApiKeys)}
+                                                className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                                            >
+                                                {showApiKeys ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                                                {showApiKeys ? 'Hide Keys' : 'Show Keys'}
+                                            </Button>
+                                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
+                                        </div>
                                     </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -334,7 +351,7 @@ export default function OrganizationManagementDialog({
                                                 value={geminiApiKey} 
                                                 onChange={e => setGeminiApiKey(e.target.value)} 
                                                 placeholder="AIza..." 
-                                                type="password"
+                                                type={showApiKeys ? "text" : "password"}
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
@@ -347,7 +364,7 @@ export default function OrganizationManagementDialog({
                                                 value={openRouterApiKey} 
                                                 onChange={e => setOpenRouterApiKey(e.target.value)} 
                                                 placeholder="sk-or-v1-..." 
-                                                type="password"
+                                                type={showApiKeys ? "text" : "password"}
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
@@ -360,7 +377,7 @@ export default function OrganizationManagementDialog({
                                                 value={openaiApiKey} 
                                                 onChange={e => setOpenaiApiKey(e.target.value)} 
                                                 placeholder="sk-..." 
-                                                type="password"
+                                                type={showApiKeys ? "text" : "password"}
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
@@ -373,7 +390,7 @@ export default function OrganizationManagementDialog({
                                                 value={claudeApiKey} 
                                                 onChange={e => setClaudeApiKey(e.target.value)} 
                                                 placeholder="sk-ant-..." 
-                                                type="password"
+                                                type={showApiKeys ? "text" : "password"}
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                             <p className="text-[9px] text-muted-foreground ml-1 uppercase font-bold">Recommended: Use OpenRouter for Claude</p>

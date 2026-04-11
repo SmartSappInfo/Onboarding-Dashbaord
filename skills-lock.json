@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "ai-integration": {
+      "source": "mgd34msu/goodvibes-plugin",
+      "sourceType": "github",
+      "computedHash": "7fa6310cfccad240075a73482c4b4c02aa3bb599a61d4614c5c51aa5cc509496"
+    },
     "code-refactoring": {
       "source": "supercent-io/skills-template",
       "sourceType": "github",

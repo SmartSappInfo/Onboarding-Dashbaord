@@ -267,10 +267,30 @@ export default function EditSurveyPage() {
                 await setDoc(doc(pagesCol, page.id), page);
             }
 
-            toast({ title: 'Survey Saved Successfully' });
+            toast({ title: '✓ Changes Committed', description: 'Survey saved. Keep editing or finalize when ready.' });
             if (data.status === 'published') {
                 syncVariableRegistry().catch(console.error);
             }
+            // Don't redirect — let the user continue editing. Only the Publish page button closes the editor.
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Save Failed' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const onPublishAndExit = async (data: FormData) => {
+        setIsSaving(true);
+        const { resultPages, ...mainData } = data;
+        try {
+            const docRef = doc(firestore!, 'surveys', surveyId);
+            await updateDoc(docRef, JSON.parse(JSON.stringify({ ...mainData, updatedAt: new Date().toISOString() })));
+            const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
+            for (const page of resultPages) {
+                await setDoc(doc(pagesCol, page.id), page);
+            }
+            toast({ title: '🚀 Survey Published!', description: 'Your survey is live.' });
+            syncVariableRegistry().catch(console.error);
             router.push('/admin/surveys');
         } catch (error) {
             toast({ variant: 'destructive', title: 'Save Failed' });
@@ -409,9 +429,9 @@ export default function EditSurveyPage() {
                                             Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                         </Button>
                                     ) : (
-                                        <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
+                                        <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onPublishAndExit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
                                             {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
-                                            Finalize & Save
+                                            Finalize &amp; Publish
                                         </Button>
                                     )}
                                 </div>

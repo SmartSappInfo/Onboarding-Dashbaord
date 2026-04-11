@@ -6,11 +6,15 @@ import ZoneEditor from './components/ZoneEditor';
 import RoleEditor from './components/RoleEditor';
 import WorkspaceEditor from './components/WorkspaceEditor';
 import { useTenant } from '@/context/TenantContext';
-import { Building, Globe, Mail, Phone, MapPin } from 'lucide-react';
+import { Building, Globe, Mail, Phone, MapPin, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import * as React from 'react';
+import OrganizationManagementDialog from '../components/OrganizationManagementDialog';
 
 export default function SettingsClient() {
   const { activeOrganization } = useTenant();
+  const [isOrgDialogOpen, setIsOrgDialogOpen] = React.useState(false);
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
@@ -38,9 +42,17 @@ export default function SettingsClient() {
               {/* Info Section */}
               <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
                 <div className="space-y-2">
-                  <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-foreground leading-none">
-                    {activeOrganization?.name || 'Organization Settings'}
-                  </h1>
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-foreground leading-none">
+                      {activeOrganization?.name || 'Organization Settings'}
+                    </h1>
+                    {activeOrganization && (
+                      <Button variant="outline" size="sm" onClick={() => setIsOrgDialogOpen(true)} className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-8 shrink-0">
+                        <Pencil className="w-3 h-3 mr-2" />
+                        Edit Organization
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-sm md:text-lg font-medium text-muted-foreground leading-relaxed max-w-2xl">
                     {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
                   </p>
@@ -92,6 +104,12 @@ export default function SettingsClient() {
           </div>
         </div>
       </div>
+
+      <OrganizationManagementDialog 
+        open={isOrgDialogOpen} 
+        onOpenChange={setIsOrgDialogOpen} 
+        organization={activeOrganization} 
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@
  */
 
 import { ai, getModel } from '@/ai/genkit';
+import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
 
 // ------ Zod Schemas for the Result Structure ------
@@ -100,8 +101,8 @@ const GenerateSurveyInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-1.5-flash'),
+  provider: z.string().optional().default('openrouter'),
+  modelId: z.string().optional().default('openrouter/free'),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
@@ -109,23 +110,19 @@ const GenerateSurveyOutputSchema = z.object({
     title: z.string().describe('A concise and engaging title for the survey.'),
     description: z.string().describe('A brief introduction for the survey respondents.'),
     elements: z.array(elementSchema).describe("Questions and layout blocks. For 'multiple-choice', 'dropdown', 'checkboxes', or 'yes-no', YOU MUST include suggested point values in 'optionScores', 'yesScore', or 'noScore' to enable scoring."),
-    scoringEnabled: z.boolean().describe('True if the survey behaves like an assessment or quiz.'),
-    maxScore: z.number().describe('The total possible points if everything is answered perfectly.'),
-    resultRules: z.array(resultRuleSchema).describe('Logic to map score ranges to specific outcome pages.'),
-    resultPages: z.array(resultPageSchema).describe('Complete landing pages for the outcomes.'),
-    thankYouTitle: z.string(),
-    thankYouDescription: z.string(),
-    bannerImageQuery: z.string(),
+    scoringEnabled: z.boolean().optional().default(false).describe('True if the survey behaves like an assessment or quiz.'),
+    maxScore: z.number().optional().default(0).describe('The total possible points if everything is answered perfectly.'),
+    resultRules: z.array(resultRuleSchema).optional().default([]).describe('Logic to map score ranges to specific outcome pages.'),
+    resultPages: z.array(resultPageSchema).optional().default([]).describe('Complete landing pages for the outcomes.'),
+    thankYouTitle: z.string().optional().default("Thank you!"),
+    thankYouDescription: z.string().optional().default("We appreciate your feedback."),
+    bannerImageQuery: z.string().optional().default("background pattern"),
 });
 export type GenerateSurveyOutput = z.infer<typeof GenerateSurveyOutputSchema>;
 
 // ------ The Genkit Flow ------
 
-const generationPrompt = ai.definePrompt({
-    name: 'surveyGenerationPrompt',
-    input: { schema: z.object({ sourceText: z.string() }) },
-    output: { schema: GenerateSurveyOutputSchema },
-    prompt: `You are an expert at creating high-conversion, intelligent surveys and assessments. 
+const PROMPT_TEMPLATE = `You are an expert at creating high-conversion, intelligent surveys and assessments. 
 Analyze the provided text and convert it into a fully functional, scored survey engine.
 
 ### MISSION:
@@ -152,8 +149,7 @@ Source Text:
 \`\`\`text
 {{{sourceText}}}
 \`\`\`
-`,
-});
+`;
 
 const generateSurveyFlow = ai.defineFlow(
     {
@@ -175,14 +171,63 @@ const generateSurveyFlow = ai.defineFlow(
             }
         }
         
-        // Resolve dynamic model based on organization and user preference
-        const resolvedModel = await getModel({
+        // Bypass genkitx-openai-compatible entirely for OpenRouter due to slash mutation bug
+        if (input.provider === 'openrouter') {
+            // Retrieve OpenRouter API key manually
+            let apiKey = process.env.OPENROUTER_API_KEY;
+            if (!apiKey && input.organizationId) {
+                const orgDoc = await adminDb.collection('organizations').doc(input.organizationId).get();
+                apiKey = orgDoc.data()?.openRouterApiKey;
+            }
+            if (!apiKey) throw new Error("OpenRouter API key is missing. Please add it to your organization settings.");
+
+            const fullPrompt = `${PROMPT_TEMPLATE.replace('{{{sourceText}}}', sourceText)}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
+            
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: input.modelId || 'openrouter/free',
+                    response_format: { type: "json_object" },
+                    messages: [
+                        { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints.' },
+                        { role: 'user', content: fullPrompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) throw new Error(`OpenRouter API refused generation: ${response.statusText}`);
+            const data = await response.json();
+            const contentString = data.choices?.[0]?.message?.content;
+            if (!contentString) throw new Error("OpenRouter returned an empty payload.");
+
+            try {
+                // Manually execute schema validation 
+                let parsedJSON = JSON.parse(contentString.replace(/```json/g, '').replace(/```/g, '').trim());
+                return GenerateSurveyOutputSchema.parse(parsedJSON);
+            } catch (e: any) {
+                console.error("Failed to parse OpenRouter structured output:", e);
+                throw new Error("OpenRouter hallucinated invalid JSON schema payload layout. Generation aborted.");
+            }
+        }
+
+        // --- Native Genkit Path for Gemini and OpenAI ---
+        const aiEngine = await getModel({
             organizationId: input.organizationId,
             provider: input.provider || 'googleai',
-            modelId: input.modelId || 'gemini-1.5-flash',
+            modelId: input.modelId || 'gemini-3-flash-preview',
         });
 
-        const { output } = await generationPrompt({ sourceText }, { model: resolvedModel });
+        const { output } = await aiEngine.generate({
+            model: `${input.provider || 'googleai'}/${input.modelId || 'gemini-3-flash-preview'}`,
+            prompt: PROMPT_TEMPLATE.replace('{{{sourceText}}}', sourceText),
+            output: { schema: GenerateSurveyOutputSchema }
+        });
+
         if (!output) throw new Error("The AI model failed to generate a survey structure.");
 
         return output;

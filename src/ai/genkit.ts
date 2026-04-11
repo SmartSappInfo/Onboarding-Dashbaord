@@ -31,16 +31,17 @@ export async function getModel(params: {
       const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
       if (orgDoc.exists) {
         const data = orgDoc.data();
-        if (provider === 'googleai') apiKey = data?.geminiApiKey;
-        else if (provider === 'openai') apiKey = data?.openaiApiKey;
-        else if (provider === 'openrouter') apiKey = data?.openRouterApiKey;
+        // For safety during testing: if an environment variable exists, force-override the database value!
+        if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY || data?.geminiApiKey;
+        else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY || data?.openaiApiKey;
+        else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY || data?.openRouterApiKey;
       }
     } catch (error) {
       console.error('Error fetching organization AI key:', error);
     }
   }
 
-  // 2. Fallback to environment variables if no org key found
+  // 2. Fallback explicitly to environment variables if still totally missing
   if (!apiKey) {
     if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY;
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
@@ -52,26 +53,24 @@ export async function getModel(params: {
     throw new Error(`AI configuration error: API key for provider "${provider}" is missing. Please configure it in Organization Settings or environment variables.`);
   }
 
-  // Since Genkit plugins are usually registered globally, we use the plugin 
-  // factory directly to create a model instance with the specific API key.
+  // 4. Return an localized Genkit engine tailored correctly for this request
   if (provider === 'googleai') {
-    const plugin = googleAI({ apiKey });
-    return await plugin.model(modelId);
-  }
-
-  if (provider === 'openai' || provider === 'openrouter') {
-    const baseURL = provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : undefined;
-    const plugin = openAICompatible({ 
-      name: provider,
-      apiKey, 
-      configuration: { baseURL } 
+    return genkit({
+      plugins: [googleAI({ apiKey })]
     });
-    return await plugin.model(modelId);
   }
 
-  // Fallback to default ai model using plugins
-  if (provider === 'googleai') {
-    return await googleAI().model(modelId);
-  }
-  return await openAICompatible({ name: 'openai' }).model(modelId);
+  // Handle openrouter and openai with openAICompatible
+  const baseURL = provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : undefined;
+  
+  return genkit({
+      plugins: [
+          openAICompatible({ 
+            name: provider,
+            apiKey, 
+            baseURL,
+            models: [modelId]
+          })
+      ]
+  });
 }

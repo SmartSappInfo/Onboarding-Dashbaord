@@ -26,23 +26,24 @@ const AI_PROVIDERS = [
         color: 'text-blue-500',
         bgColor: 'bg-blue-500/10',
         models: [
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast & Efficient' },
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest Native Model' },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Extremely Fast & Efficient' },
             { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Complex Reasoning' },
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Next-Gen Speed' },
         ]
     },
     {
         id: 'openrouter',
-        name: 'OpenRouter (Claude/Llama)',
+        name: 'OpenRouter (Free Tier)',
         icon: Brain,
         color: 'text-purple-500',
         bgColor: 'bg-purple-500/10',
         models: [
-            { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Best for Coding/Writing' },
-            { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5 (OR)', description: 'Versatile High-Perf' },
-            { id: 'openai/gpt-4o', name: 'GPT-4o (OR)', description: 'Omni Logic' },
-            { id: 'meta-llama/llama-3.1-405b', name: 'Llama 3.1 405B', description: 'Powerful Open Weights' },
-            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super 120B', description: 'NVIDIA Free Model' },
+            { id: 'openrouter/free', name: 'Auto Free Model', description: 'Auto-selects best available free model' },
+            { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', description: 'Best Open Source Logic' },
+            { id: 'google/gemini-2.0-flash-lite-preview-02-05:free', name: 'Gemini 2.0 Flash Lite', description: 'Google Free Tier' },
+            { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B', description: 'Excellent Reasoning' },
+            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 120B', description: 'NVIDIA Optimization' },
+            { id: 'deepseek/deepseek-r1-distill-llama-70b:free', name: 'DeepSeek R1', description: 'Advanced Distillation' },
         ]
     },
     {
@@ -63,8 +64,8 @@ export default function AiModelSelector({ className }: { className?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const [selectedProvider, setSelectedProvider] = React.useState<string>('googleai');
-    const [selectedModel, setSelectedModel] = React.useState<string>('gemini-1.5-flash');
+    const [selectedProvider, setSelectedProvider] = React.useState<string>('openrouter');
+    const [selectedModel, setSelectedModel] = React.useState<string>('meta-llama/llama-3.3-70b-instruct:free');
     const [isLoading, setIsLoading] = React.useState(true);
 
     // Initial load of user preferences
@@ -125,15 +126,33 @@ export default function AiModelSelector({ className }: { className?: string }) {
             <Select value={selectedModel} onValueChange={handleModelChange}>
                 <SelectTrigger className="w-[280px] h-12 rounded-[1.25rem] bg-background border-none shadow-xl ring-1 ring-border/50 hover:ring-primary/20 transition-all font-bold group">
                     <div className="flex items-center gap-2.5">
-                        <div className={cn("p-1.5 rounded-lg transition-colors", currentProvider.bgColor)}>
+                        <div className={cn("p-1.5 rounded-lg transition-colors shrink-0", currentProvider.bgColor)}>
                             <currentProvider.icon className={cn("h-4 w-4", currentProvider.color)} />
                         </div>
-                        <div className="flex flex-col items-start transition-transform group-active:scale-95">
-                            <SelectValue placeholder="Select AI Model" />
+                        <div className="flex flex-col items-start min-w-0">
+                            {(() => {
+                                const allModels = AI_PROVIDERS.flatMap(p => p.models);
+                                const found = allModels.find(m => m.id === selectedModel);
+                                return (
+                                    <>
+                                        <span className="text-sm font-bold text-foreground leading-tight truncate">
+                                            {found?.name || 'Select Model'}
+                                        </span>
+                                        {found?.description && (
+                                            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                                                {found.description}
+                                            </span>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </SelectTrigger>
-                <SelectContent className="rounded-[1.5rem] border-none shadow-2xl p-2 bg-background/95 backdrop-blur-xl">
+                <SelectContent 
+                    className="rounded-[1.5rem] border-none shadow-2xl p-2 bg-background/95 backdrop-blur-xl"
+                    style={{ zIndex: 100000 }}
+                >
                     {AI_PROVIDERS.map((provider) => (
                         <SelectGroup key={provider.id}>
                             <SelectLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
