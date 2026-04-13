@@ -126,16 +126,16 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
-            <div className="flex h-full w-full items-center justify-center p-4 sm:p-6 md:p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+ <div className="flex h-full w-full items-center justify-center p-4 sm:p-6 md:p-8">
+ <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     if (!survey) {
         return (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-4 sm:p-6 md:p-8">
-                <p className="text-lg font-medium">Survey not found.</p>
+ <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-4 sm:p-6 md:p-8">
+ <p className="text-lg font-medium">Survey not found.</p>
             </div>
         );
     }
@@ -144,33 +144,33 @@ export default function SurveyResultsPage() {
         <Tabs
             value={activeTab}
             onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
-            className="flex h-full flex-col"
+ className="flex h-full flex-col"
         >
-            <div className="shrink-0 border-b bg-card/40 backdrop-blur-md p-4 sm:p-6">
-                 <div className="flex items-center justify-between">
-                    <TabsList className="bg-card/20 border-border/50">
-                        <TabsTrigger value="responses" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
-                            <FileText className="mr-2 h-4 w-4" /> Responses
+ <div className="shrink-0 border-b bg-card/40 backdrop-blur-md p-4 sm:p-6">
+ <div className="flex items-center justify-between">
+ <TabsList className="bg-card/20 border-border/50">
+ <TabsTrigger value="responses" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
+ <FileText className="mr-2 h-4 w-4" /> Responses
                         </TabsTrigger>
-                        <TabsTrigger value="analytics" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
-                            <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+ <TabsTrigger value="analytics" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
+ <BarChart3 className="mr-2 h-4 w-4" /> Analytics
                         </TabsTrigger>
-                        <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
-                            <Brain className="mr-2 h-4 w-4" /> AI Summaries
+ <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
+ <Brain className="mr-2 h-4 w-4" /> AI Summaries
                         </TabsTrigger>
                     </TabsList>
-                    <div className="flex shrink-0 items-center gap-2">
+ <div className="flex shrink-0 items-center gap-2">
                         {activeTab === "responses" ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
-                                <Download className="mr-2 h-4 w-4" />
+ <Download className="mr-2 h-4 w-4" />
                                 Export CSV
                             </Button>
                         ) : (
-                            <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest">
+ <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 font-semibold text-[10px] ">
                                 {isGeneratingSummary ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+ <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="mr-2 h-4 w-4" />
+ <Sparkles className="mr-2 h-4 w-4" />
                                 )}
                                 {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
                             </RainbowButton>
@@ -179,8 +179,8 @@ export default function SurveyResultsPage() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto">
-                <TabsContent value="responses" className="m-0 h-full">
+ <div className="flex-1 overflow-x-auto">
+ <TabsContent value="responses" className="m-0 h-full">
                       <ResponsesListView
                           survey={survey}
                           responses={responses || []}
@@ -188,19 +188,19 @@ export default function SurveyResultsPage() {
                       />
                 </TabsContent>
 
-                <TabsContent value="analytics" className="m-0">
-                    <div className="p-4 sm:p-6 lg:p-8">
+ <TabsContent value="analytics" className="m-0">
+ <div className="p-4 sm:p-6 lg:p-8">
                         <AnalyticsView survey={survey} responses={responses || []} />
                     </div>
                 </TabsContent>
 
-                <TabsContent value="ai-summaries" className="m-0">
-                    <div className="p-4 sm:p-6 lg:p-8">
+ <TabsContent value="ai-summaries" className="m-0">
+ <div className="p-4 sm:p-6 lg:p-8">
                         {responses ? (
                             <AISummariesView survey={survey} responses={responses} />
                         ) : (
-                            <div className="flex h-64 items-center justify-center">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+ <div className="flex h-64 items-center justify-center">
+ <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                         )}
                     </div>

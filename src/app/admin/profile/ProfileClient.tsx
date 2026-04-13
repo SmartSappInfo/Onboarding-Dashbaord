@@ -118,19 +118,19 @@ export default function ProfileClient() {
 
   if (isUserLoading || isLoadingProfile) {
     return (
-        <div className="p-4 sm:p-6 md:p-8">
-            <Card className="max-w-2xl mx-auto">
+ <div className="p-4 sm:p-6 md:p-8">
+ <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                     <CardTitle>Account Profile</CardTitle>
                     <CardDescription>Update your personal information.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                    <div className="flex justify-center">
-                        <Skeleton className="w-32 h-32 rounded-full" />
+ <CardContent className="space-y-8">
+ <div className="flex justify-center">
+ <Skeleton className="w-32 h-32 rounded-full" />
                     </div>
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
+ <Skeleton className="h-10 w-full" />
+ <Skeleton className="h-10 w-full" />
+ <Skeleton className="h-10 w-full" />
                 </CardContent>
             </Card>
         </div>
@@ -138,44 +138,44 @@ export default function ProfileClient() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-     <div className="max-w-2xl mx-auto space-y-8">
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b pb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-xl">
-                        <Settings2 className="h-5 w-5 text-primary" />
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="max-w-2xl mx-auto space-y-8">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <Settings2 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Identity Settings</CardTitle>
-                        <CardDescription className="text-xs font-medium">Core account and contact information.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Identity Settings</CardTitle>
+ <CardDescription className="text-xs font-medium">Core account and contact information.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-8">
+ <CardContent className="p-8">
                 <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <FormField
                     control={form.control}
                     name="photoURL"
                     render={({ field }) => (
-                        <FormItem className="flex flex-col items-center">
+ <FormItem className="flex flex-col items-center">
                         <FormControl>
-                            <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-                            <Avatar className="w-32 h-32 text-4xl ring-4 ring-primary/5">
+ <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+ <Avatar className="w-32 h-32 text-4xl ring-4 ring-primary/5">
                                 <AvatarImage src={photoUrl || ''} alt={name} />
-                                <AvatarFallback className="bg-muted">
-                                {isUploading ? <Loader2 className="animate-spin" /> : getInitials(name)}
+ <AvatarFallback className="bg-muted">
+ {isUploading ? <Loader2 className="animate-spin" /> : getInitials(name)}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera className="w-8 h-8 text-white" />
+ <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+ <Camera className="w-8 h-8 text-white" />
                             </div>
                             <input
                                 type="file"
                                 ref={fileInputRef}
                                 onChange={handleFileChange}
-                                className="hidden"
+ className="hidden"
                                 accept="image/png, image/jpeg, image/gif"
                             />
                             </div>
@@ -186,9 +186,9 @@ export default function ProfileClient() {
                     />
 
                     <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Secure Email Identity</FormLabel>
-                    <Input value={user?.email || ''} disabled className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
-                    <FormDescription className="text-[10px] uppercase font-bold tracking-tighter opacity-60">Authentication email cannot be changed.</FormDescription>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Secure Email Identity</FormLabel>
+ <Input value={user?.email || ''} disabled className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+ <FormDescription className="text-[10px] font-bold tracking-tighter opacity-60">Authentication email cannot be changed.</FormDescription>
                     </FormItem>
 
                     <FormField
@@ -196,9 +196,9 @@ export default function ProfileClient() {
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Legal Name</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Full Legal Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="Your full name" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+ <Input placeholder="Your full name" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -210,18 +210,18 @@ export default function ProfileClient() {
                     name="phone"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Mobile Contact</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Mobile Contact</FormLabel>
                         <FormControl>
-                            <Input type="tel" placeholder="Your phone number" {...field} value={field.value ?? ''} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+ <Input type="tel" placeholder="Your phone number" {...field} value={field.value ?? ''} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
                     />
                     
-                    <div className="flex justify-end pt-4">
-                    <Button type="submit" disabled={form.formState.isSubmitting || isUploading} className="rounded-xl font-bold h-11 px-10 shadow-lg">
-                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+ <div className="flex justify-end pt-4">
+ <Button type="submit" disabled={form.formState.isSubmitting || isUploading} className="rounded-xl font-bold h-11 px-10 shadow-lg">
+ {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
                     </Button>
                     </div>

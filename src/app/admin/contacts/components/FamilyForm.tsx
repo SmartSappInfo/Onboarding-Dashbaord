@@ -73,34 +73,34 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8">
+ <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8">
         {/* Family Identity Card */}
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b pb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-xl">
-                <Users className="h-5 w-5 text-primary" />
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Family Identity</CardTitle>
-                <CardDescription className="text-xs font-medium">Core family information</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Family Identity</CardTitle>
+ <CardDescription className="text-xs font-medium">Core family information</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+ <CardContent className="p-6">
             <FormField 
               control={methods.control} 
               name="familyName" 
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">
                     Family Name
                   </FormLabel>
                   <FormControl>
                     <Input 
                       {...field} 
                       placeholder="e.g., The Smith Family"
-                      className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" 
+ className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" 
                     />
                   </FormControl>
                   <FormMessage />
@@ -111,16 +111,16 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
         </Card>
 
         {/* Guardians Card */}
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b pb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                  <UserPlus className="h-5 w-5 text-primary" />
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <UserPlus className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-black uppercase tracking-tight">Guardians</CardTitle>
-                  <CardDescription className="text-xs font-medium">Parents and legal guardians</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Guardians</CardTitle>
+ <CardDescription className="text-xs font-medium">Parents and legal guardians</CardDescription>
                 </div>
               </div>
               <Button
@@ -128,40 +128,40 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                 variant="outline"
                 size="sm"
                 onClick={() => appendGuardian({ name: '', phone: '', email: '', relationship: 'Parent', isPrimary: false })}
-                className="rounded-xl"
+ className="rounded-xl"
               >
-                <Plus className="h-4 w-4 mr-2" />
+ <Plus className="h-4 w-4 mr-2" />
                 Add Guardian
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-6 space-y-6">
+ <CardContent className="p-6 space-y-6">
             {guardianFields.map((field, index) => (
-              <div key={field.id} className="space-y-4 p-4 bg-muted/20 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold">Guardian {index + 1}</h4>
+ <div key={field.id} className="space-y-4 p-4 bg-muted/20 rounded-xl">
+ <div className="flex items-center justify-between">
+ <h4 className="text-sm font-bold">Guardian {index + 1}</h4>
                   {guardianFields.length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeGuardian(index)}
-                      className="text-destructive hover:text-destructive"
+ className="text-destructive hover:text-destructive"
                     >
-                      <Trash2 className="h-4 w-4" />
+ <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={methods.control}
                     name={`guardians.${index}.name`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Name</FormLabel>
+ <FormLabel className="text-xs">Name</FormLabel>
                         <FormControl>
-                          <Input {...field} className="rounded-lg" />
+ <Input {...field} className="rounded-lg" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -173,10 +173,10 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                     name={`guardians.${index}.relationship`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Relationship</FormLabel>
+ <FormLabel className="text-xs">Relationship</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger className="rounded-lg">
+ <SelectTrigger className="rounded-lg">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -194,15 +194,15 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={methods.control}
                     name={`guardians.${index}.email`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Email</FormLabel>
+ <FormLabel className="text-xs">Email</FormLabel>
                         <FormControl>
-                          <Input {...field} type="email" className="rounded-lg" />
+ <Input {...field} type="email" className="rounded-lg" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -214,9 +214,9 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                     name={`guardians.${index}.phone`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs">Phone</FormLabel>
+ <FormLabel className="text-xs">Phone</FormLabel>
                         <FormControl>
-                          <Input {...field} type="tel" className="rounded-lg" />
+ <Input {...field} type="tel" className="rounded-lg" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -228,16 +228,16 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                   control={methods.control}
                   name={`guardians.${index}.isPrimary`}
                   render={({ field }) => (
-                    <FormItem className="flex items-center gap-2">
+ <FormItem className="flex items-center gap-2">
                       <FormControl>
                         <input
                           type="checkbox"
                           checked={field.value}
                           onChange={field.onChange}
-                          className="h-4 w-4 rounded"
+ className="h-4 w-4 rounded"
                         />
                       </FormControl>
-                      <FormLabel className="text-xs font-medium !mt-0">Primary Guardian</FormLabel>
+ <FormLabel className="text-xs font-medium !mt-0">Primary Guardian</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -248,16 +248,16 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
 
         {/* Children Card - Only show if capabilities.children is true */}
         {showChildren && (
-          <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b pb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-xl">
-                    <Baby className="h-5 w-5 text-primary" />
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <Baby className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-black uppercase tracking-tight">Children</CardTitle>
-                    <CardDescription className="text-xs font-medium">Child enrollment information</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Children</CardTitle>
+ <CardDescription className="text-xs font-medium">Child enrollment information</CardDescription>
                   </div>
                 </div>
                 <Button
@@ -265,43 +265,43 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                   variant="outline"
                   size="sm"
                   onClick={() => appendChild({ firstName: '', lastName: '', dateOfBirth: '', gradeLevel: '', enrollmentStatus: '' })}
-                  className="rounded-xl"
+ className="rounded-xl"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+ <Plus className="h-4 w-4 mr-2" />
                   Add Child
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
+ <CardContent className="p-6 space-y-6">
               {childFields.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic text-center py-4">
+ <p className="text-sm text-muted-foreground italic text-center py-4">
                   No children added yet. Click "Add Child" to begin.
                 </p>
               ) : (
                 childFields.map((field, index) => (
-                  <div key={field.id} className="space-y-4 p-4 bg-muted/20 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold">Child {index + 1}</h4>
+ <div key={field.id} className="space-y-4 p-4 bg-muted/20 rounded-xl">
+ <div className="flex items-center justify-between">
+ <h4 className="text-sm font-bold">Child {index + 1}</h4>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeChild(index)}
-                        className="text-destructive hover:text-destructive"
+ className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4" />
+ <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={methods.control}
                         name={`children.${index}.firstName`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">First Name</FormLabel>
+ <FormLabel className="text-xs">First Name</FormLabel>
                             <FormControl>
-                              <Input {...field} className="rounded-lg" />
+ <Input {...field} className="rounded-lg" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -313,9 +313,9 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                         name={`children.${index}.lastName`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Last Name</FormLabel>
+ <FormLabel className="text-xs">Last Name</FormLabel>
                             <FormControl>
-                              <Input {...field} className="rounded-lg" />
+ <Input {...field} className="rounded-lg" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -323,15 +323,15 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={methods.control}
                         name={`children.${index}.dateOfBirth`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Date of Birth</FormLabel>
+ <FormLabel className="text-xs">Date of Birth</FormLabel>
                             <FormControl>
-                              <Input {...field} type="date" className="rounded-lg" />
+ <Input {...field} type="date" className="rounded-lg" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -343,9 +343,9 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                         name={`children.${index}.gradeLevel`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Grade Level</FormLabel>
+ <FormLabel className="text-xs">Grade Level</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g., Grade 5" className="rounded-lg" />
+ <Input {...field} placeholder="e.g., Grade 5" className="rounded-lg" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -357,10 +357,10 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
                         name={`children.${index}.enrollmentStatus`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Enrollment Status</FormLabel>
+ <FormLabel className="text-xs">Enrollment Status</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger className="rounded-lg">
+ <SelectTrigger className="rounded-lg">
                                   <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                               </FormControl>
@@ -383,8 +383,8 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
           </Card>
         )}
 
-        <div className="flex justify-end gap-4">
-          <Button type="submit" disabled={isSubmitting} size="lg" className="rounded-xl">
+ <div className="flex justify-end gap-4">
+ <Button type="submit" disabled={isSubmitting} size="lg" className="rounded-xl">
             {isSubmitting ? 'Saving...' : 'Save Family'}
           </Button>
         </div>

@@ -17,75 +17,75 @@ export default function SettingsClient() {
   const [isOrgDialogOpen, setIsOrgDialogOpen] = React.useState(false);
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
-      <div className="max-w-7xl mx-auto space-y-12">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
+ <div className="max-w-7xl mx-auto space-y-12">
         {/* Organization Profile Header */}
-        <Card className="rounded-[2.5rem] glass-card overflow-hidden">
-          <div className="h-2 w-full bg-primary" />
-          <CardContent className="p-8 md:p-12">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
+ <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+ <div className="h-2 w-full bg-primary" />
+ <CardContent className="p-8 md:p-12">
+ <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
               {/* Logo Section */}
-              <div className="shrink-0">
+ <div className="shrink-0">
                 {activeOrganization?.logoUrl ? (
                   <img 
                     src={activeOrganization.logoUrl} 
                     alt={activeOrganization.name}
-                    className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] object-cover shadow-2xl ring-4 ring-primary/5"
+ className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] object-cover shadow-2xl ring-4 ring-primary/5"
                   />
                 ) : (
-                  <div className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] bg-primary/5 flex items-center justify-center shadow-inner">
-                    <Building className="h-16 w-16 md:h-20 md:w-20 text-primary opacity-20" />
+ <div className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] bg-primary/5 flex items-center justify-center shadow-inner">
+ <Building className="h-16 w-16 md:h-20 md:w-20 text-primary opacity-20" />
                   </div>
                 )}
               </div>
 
               {/* Info Section */}
-              <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
-                <div className="space-y-2">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-foreground leading-none">
+ <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
+ <div className="space-y-2">
+ <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+ <h1 className="text-4xl md:text-5xl font-semibold tracking-tighter text-foreground leading-none">
                       {activeOrganization?.name || 'Organization Settings'}
                     </h1>
                     {activeOrganization && (
-                      <Button variant="outline" size="sm" onClick={() => setIsOrgDialogOpen(true)} className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-8 shrink-0">
-                        <Pencil className="w-3 h-3 mr-2" />
+ <Button variant="outline" size="sm" onClick={() => setIsOrgDialogOpen(true)} className="rounded-xl font-bold text-[10px] h-8 shrink-0">
+ <Pencil className="w-3 h-3 mr-2" />
                         Edit Organization
                       </Button>
                     )}
                   </div>
-                  <p className="text-sm md:text-lg font-medium text-muted-foreground leading-relaxed max-w-2xl">
+ <p className="text-sm md:text-lg font-medium text-muted-foreground leading-relaxed max-w-2xl">
                     {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
                   </p>
                 </div>
 
                 {/* Metadata Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-muted">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-muted">
                   {activeOrganization?.website && (
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      <Globe className="h-4 w-4 text-primary" />
-                      <a href={activeOrganization.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors truncate">
+ <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-muted-foreground">
+ <Globe className="h-4 w-4 text-primary" />
+ <a href={activeOrganization.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors truncate">
                         {activeOrganization.website.replace(/^https?:\/\//, '')}
                       </a>
                     </div>
                   )}
                   {activeOrganization?.email && (
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <a href={`mailto:${activeOrganization.email}`} className="hover:text-primary transition-colors truncate">
+ <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-muted-foreground">
+ <Mail className="h-4 w-4 text-primary" />
+ <a href={`mailto:${activeOrganization.email}`} className="hover:text-primary transition-colors truncate">
                         {activeOrganization.email}
                       </a>
                     </div>
                   )}
                   {activeOrganization?.phone && (
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">
-                      <Phone className="h-4 w-4 text-primary" />
-                      <span className="truncate">{activeOrganization.phone}</span>
+ <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-muted-foreground text-left">
+ <Phone className="h-4 w-4 text-primary" />
+ <span className="truncate">{activeOrganization.phone}</span>
                     </div>
                   )}
                   {activeOrganization?.address && (
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="truncate">{activeOrganization.address}</span>
+ <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-muted-foreground text-left">
+ <MapPin className="h-4 w-4 text-primary" />
+ <span className="truncate">{activeOrganization.address}</span>
                     </div>
                   )}
                 </div>
@@ -96,9 +96,9 @@ export default function SettingsClient() {
 
         <WorkspaceEditor />
 
-        <div className="space-y-8">
+ <div className="space-y-8">
           <RoleEditor />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <ModuleEditor />
             <ZoneEditor />
           </div>

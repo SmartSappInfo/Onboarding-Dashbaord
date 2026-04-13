@@ -145,7 +145,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
 
     if (isMobile) {
         return (
-            <div className="grid grid-cols-1 gap-6">
+ <div className="grid grid-cols-1 gap-6">
                 {orderedComponents.map((id) => {
                     const Component = componentMap[id];
                     if (!Component) return null;
@@ -165,7 +165,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
     return (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <SortableContext items={orderedComponents} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {orderedComponents.map((id) => {
                         const Component = componentMap[id];
                         if (!Component) return null;
@@ -174,7 +174,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
                         const gridClass = componentGridConfig[id] || 'lg:col-span-2';
 
                         return (
-                            <DraggableCard key={id} id={id} className={gridClass}>
+ <DraggableCard key={id} id={id} className={gridClass}>
                                 <Component {...props} />
                             </DraggableCard>
                         );

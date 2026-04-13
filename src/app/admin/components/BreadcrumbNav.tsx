@@ -112,23 +112,23 @@ export function BreadcrumbNav() {
   };
 
   if (pathname === '/admin') {
-    return <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground opacity-40">System Dashboard</span>;
+ return <span className="text-[10px] font-semibold text-foreground opacity-40">System Dashboard</span>;
   }
 
   return (
-    <nav className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+ <nav className="flex items-center gap-2 sm:gap-3 overflow-hidden">
       <Button 
         variant="ghost" 
         size="icon" 
         type="button"
         onClick={handleBack}
-        className="h-8 w-8 rounded-lg shrink-0 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all active:scale-95"
+ className="h-8 w-8 rounded-lg shrink-0 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all active:scale-95"
         aria-label="Go back"
       >
-        <ArrowLeft className="h-4 w-4" />
+ <ArrowLeft className="h-4 w-4" />
       </Button>
       
-      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-widest overflow-hidden">
+ <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-semibold overflow-hidden">
         {displayItems.map((item, index) => {
           // Hide 'admin' segment in breadcrumbs if we're deeper
           if (item.path === '/admin' && breadcrumbItems.length > 1) return null;
@@ -138,19 +138,19 @@ export function BreadcrumbNav() {
           return (
             <React.Fragment key={index}>
               {showSeparator && (
-                <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />
+ <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />
               )}
               
               {item.isLast ? (
-                <span className="truncate text-foreground max-w-[120px] sm:max-w-md">
+ <span className="truncate text-foreground max-w-[120px] sm:max-w-md">
                   {item.label}
                 </span>
               ) : (item as any).isCollapsed ? (
-                <span className="text-muted-foreground/30"><MoreHorizontal className="h-3 w-3" /></span>
+ <span className="text-muted-foreground/30"><MoreHorizontal className="h-3 w-3" /></span>
               ) : (
                 <Link 
                   href={item.path}
-                  className="text-muted-foreground/60 hover:text-primary transition-colors whitespace-nowrap"
+ className="text-muted-foreground/60 hover:text-primary transition-colors whitespace-nowrap"
                 >
                   {item.label}
                 </Link>

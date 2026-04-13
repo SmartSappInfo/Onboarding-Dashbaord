@@ -176,7 +176,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       style={style}
       {...attributes}
       data-field-id={field.id}
-      className={cn(
+ className={cn(
         "absolute border-2 transition-colors cursor-default select-none overflow-hidden",
         isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
         isMediaField ? "flex items-center justify-center p-0" : "p-1",
@@ -191,12 +191,12 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         if (!isMulti && field.type !== 'variable') setIsEditingLabel(true); 
       }}
     >
-      <div {...listeners} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing" />
+ <div {...listeners} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing" />
 
       {isEditingLabel ? (
         <textarea
           autoFocus
-          className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 z-20 overflow-hidden"
+ className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 z-20 overflow-hidden"
           style={{ 
             fontSize: 'inherit',
             textAlign: 'inherit',
@@ -218,7 +218,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         />
       ) : (
         <div 
-            className={cn("z-10 pointer-events-none truncate block w-full px-1", (field.type === 'static-text' || field.type === 'variable') ? "font-bold" : "italic")}
+ className={cn("z-10 pointer-events-none truncate block w-full px-1", (field.type === 'static-text' || field.type === 'variable') ? "font-bold" : "italic")}
             style={{ fontSize: 'inherit', color: field.color || 'inherit' }}
         >
             {displayText}
@@ -226,27 +226,27 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       )}
 
       {(field.type === 'dropdown' || field.type === 'time') && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-40">
-          {field.type === 'dropdown' ? <ChevronDown className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+ <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-40">
+ {field.type === 'dropdown' ? <ChevronDown className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
         </div>
       )}
 
       {isNaming && !isSelected && (
-        <div className="absolute -top-5 -right-1 bg-primary text-white p-0.5 rounded-full shadow-sm z-30">
-          <Key className="h-2.5 w-2.5" />
+ <div className="absolute -top-5 -right-1 bg-primary text-white p-0.5 rounded-full shadow-sm z-30">
+ <Key className="h-2.5 w-2.5" />
         </div>
       )}
 
       {isSelected && !isMulti && (
         <>
-          <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
+ <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
             <TooltipProvider>
-              <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                 {field.type !== 'variable' && (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingLabel(true)}>
-                            <ALargeSmall className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingLabel(true)}>
+ <ALargeSmall className="h-4 w-4" />
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>Edit Content</TooltipContent>
@@ -257,16 +257,16 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                          <Replace className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+ <Replace className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>Change Field Type</TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent className="w-40 p-1" side="top">
+ <DropdownMenuContent className="w-40 p-1" side="top">
                     {(Object.keys(fieldIcons) as Array<keyof typeof fieldIcons>).map(type => (
-                      <DropdownMenuItem key={type} className="text-xs capitalize gap-2" onClick={() => updateField(field.id, { type })}>
+ <DropdownMenuItem key={type} className="text-xs capitalize gap-2" onClick={() => updateField(field.id, { type })}>
                         {React.createElement(fieldIcons[type], { className: "h-3.5 w-3.5" })}
                         {type}
                       </DropdownMenuItem>
@@ -275,36 +275,36 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                 </DropdownMenu>
               </div>
 
-              <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+ <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
               {isTextType && (
                 <>
-                  <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                     <DropdownMenu>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                                        <Pipette className="h-4 w-4" style={{ color: field.color || 'inherit' }} />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+ <Pipette className="h-4 w-4" style={{ color: field.color || 'inherit' }} />
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
                             <TooltipContent>Font Color</TooltipContent>
                         </Tooltip>
-                        <DropdownMenuContent className="p-3 w-48 rounded-xl" side="top">
-                            <div className="space-y-3">
-                                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Custom HEX</Label>
-                                <div className="flex gap-2">
+ <DropdownMenuContent className="p-3 w-48 rounded-xl" side="top">
+ <div className="space-y-3">
+ <Label className="text-[10px] font-semibold opacity-60">Custom HEX</Label>
+ <div className="flex gap-2">
                                     <Input 
                                         type="color" 
                                         value={field.color || '#000000'} 
                                         onChange={e => updateField(field.id, { color: e.target.value })} 
-                                        className="w-8 h-8 p-0 border-none rounded-lg"
+ className="w-8 h-8 p-0 border-none rounded-lg"
                                     />
                                     <Input 
                                         value={field.color || '#000000'} 
                                         onChange={e => updateField(field.id, { color: e.target.value })}
-                                        className="h-8 text-[10px] font-mono p-1 uppercase"
+ className="h-8 text-[10px] font-mono p-1 "
                                     />
                                 </div>
                             </div>
@@ -317,10 +317,10 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                           type="button"
                           variant={field.bold ? "secondary" : "ghost"} 
                           size="icon" 
-                          className={cn("h-8 w-8 rounded-lg", field.bold && "text-primary bg-primary/10")} 
+ className={cn("h-8 w-8 rounded-lg", field.bold && "text-primary bg-primary/10")} 
                           onClick={() => updateField(field.id, { bold: !field.bold })}
                         >
-                          <Bold className="h-4 w-4" />
+ <Bold className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Bold</TooltipContent>
@@ -332,10 +332,10 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                           type="button"
                           variant={field.italic ? "secondary" : "ghost"} 
                           size="icon" 
-                          className={cn("h-8 w-8 rounded-lg", field.italic && "text-primary bg-primary/10")} 
+ className={cn("h-8 w-8 rounded-lg", field.italic && "text-primary bg-primary/10")} 
                           onClick={() => updateField(field.id, { italic: !field.italic })}
                         >
-                          <Italic className="h-4 w-4" />
+ <Italic className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Italic</TooltipContent>
@@ -347,63 +347,63 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                           type="button"
                           variant={field.underline ? "secondary" : "ghost"} 
                           size="icon" 
-                          className={cn("h-8 w-8 rounded-lg", field.underline && "text-primary bg-primary/10")} 
+ className={cn("h-8 w-8 rounded-lg", field.underline && "text-primary bg-primary/10")} 
                           onClick={() => updateField(field.id, { underline: !field.underline })}
                         >
-                          <Underline className="h-4 w-4" />
+ <Underline className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Underline</TooltipContent>
                     </Tooltip>
                   </div>
 
-                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+ <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-                  <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                     <DropdownMenu>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
-                                    <Button type="button" variant={field.textTransform && field.textTransform !== 'none' ? 'secondary' : 'ghost'} size="icon" className={cn("h-8 w-8 rounded-lg", field.textTransform && field.textTransform !== 'none' && "text-primary bg-primary/10")}>
-                                        {field.textTransform === 'uppercase' ? <CaseUpper className="h-4 w-4" /> : field.textTransform === 'capitalize' ? <CaseSensitive className="h-4 w-4" /> : <Baseline className="h-4 w-4" />}
+ <Button type="button" variant={field.textTransform && field.textTransform !== 'none' ? 'secondary' : 'ghost'} size="icon" className={cn("h-8 w-8 rounded-lg", field.textTransform && field.textTransform !== 'none' && "text-primary bg-primary/10")}>
+ {field.textTransform === '' ? <CaseUpper className="h-4 w-4" /> : field.textTransform === 'capitalize' ? <CaseSensitive className="h-4 w-4" /> : <Baseline className="h-4 w-4" />}
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
                             <TooltipContent>Text Case</TooltipContent>
                         </Tooltip>
-                        <DropdownMenuContent className="w-40 p-1" side="top">
-                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'none' })}>
-                                <Baseline className="h-3.5 w-3.5" /> Normal
+ <DropdownMenuContent className="w-40 p-1" side="top">
+ <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'none' })}>
+ <Baseline className="h-3.5 w-3.5" /> Normal
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'uppercase' })}>
-                                <CaseUpper className="h-3.5 w-3.5" /> UPPERCASE
+ <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: '' })}>
+ <CaseUpper className="h-3.5 w-3.5" /> UPPERCASE
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'capitalize' })}>
-                                <CaseSensitive className="h-3.5 w-3.5" /> Title Case
+ <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'capitalize' })}>
+ <CaseSensitive className="h-3.5 w-3.5" /> Title Case
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
 
-                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+ <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-                  <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
                           type="button"
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 rounded-lg" 
+ className="h-8 w-8 rounded-lg" 
                           onClick={() => updateField(field.id, { fontSize: Math.max(8, (field.fontSize || 11) - 1) })}
                         >
-                          <ChevronDownIcon className="h-4 w-4" />
+ <ChevronDownIcon className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Decrease Font Size</TooltipContent>
                     </Tooltip>
                     
-                    <span className="text-[10px] font-black w-6 text-center tabular-nums">{field.fontSize || 11}</span>
+ <span className="text-[10px] font-semibold w-6 text-center tabular-nums">{field.fontSize || 11}</span>
                     
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -411,34 +411,34 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                           type="button"
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 rounded-lg" 
+ className="h-8 w-8 rounded-lg" 
                           onClick={() => updateField(field.id, { fontSize: Math.min(36, (field.fontSize || 11) + 1) })}
                         >
-                          <ChevronUp className="h-4 w-4" />
+ <ChevronUp className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Increase Font Size</TooltipContent>
                     </Tooltip>
                   </div>
 
-                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+ <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-                  <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                     <DropdownMenu>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {hAlign === 'center' ? <AlignCenter className="h-4 w-4" /> : hAlign === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignLeft className="h-4 w-4" />}
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+ {hAlign === 'center' ? <AlignCenter className="h-4 w-4" /> : hAlign === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignLeft className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
                         <TooltipContent>Horizontal Alignment</TooltipContent>
                       </Tooltip>
-                      <DropdownMenuContent className="w-12 p-1" side="top">
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'left' })}><AlignLeft className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'center' })}><AlignCenter className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'right' })}><AlignRight className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuContent className="w-12 p-1" side="top">
+ <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'left' })}><AlignLeft className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'center' })}><AlignCenter className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'right' })}><AlignRight className="h-4 w-4" /></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -446,38 +446,38 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {vAlign === 'center' ? <AlignVerticalJustifyCenter className="h-4 w-4" /> : vAlign === 'bottom' ? <AlignVerticalJustifyEnd className="h-4 w-4" /> : <AlignVerticalJustifyStart className="h-4 w-4" />}
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+ {vAlign === 'center' ? <AlignVerticalJustifyCenter className="h-4 w-4" /> : vAlign === 'bottom' ? <AlignVerticalJustifyEnd className="h-4 w-4" /> : <AlignVerticalJustifyStart className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
                         <TooltipContent>Vertical Alignment</TooltipContent>
                       </Tooltip>
-                      <DropdownMenuContent className="w-12 p-1" side="top">
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'top' })}><AlignVerticalJustifyStart className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'center' })}><AlignVerticalJustifyCenter className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'bottom' })}><AlignVerticalJustifyEnd className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuContent className="w-12 p-1" side="top">
+ <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'top' })}><AlignVerticalJustifyStart className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'center' })}><AlignVerticalJustifyCenter className="h-4 w-4" /></DropdownMenuItem>
+ <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'bottom' })}><AlignVerticalJustifyEnd className="h-4 w-4" /></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
 
-                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+ <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
                 </>
               )}
 
-              <div className="flex items-center gap-0.5 px-1">
+ <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}>
-                      <Copy className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}>
+ <Copy className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Duplicate</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
-                      <Trash2 className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
+ <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Delete</TooltipContent>
@@ -488,7 +488,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
           {resizeHandles.map(h => (
             <div key={h}
               onMouseDown={(e) => handleResizeStart(e, h)}
-              className={cn(
+ className={cn(
                 'absolute bg-primary border border-white rounded-full w-2.5 h-2.5 z-50 -translate-x-1/2 -translate-y-1/2 shadow-sm transition-transform hover:scale-125',
                 h.includes('top') ? 'top-0' : h.includes('bottom') ? 'top-full' : 'top-1/2',
                 h.includes('left') ? 'left-0' : h.includes('right') ? 'left-full' : 'left-1/2',
@@ -501,7 +501,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
           ))}
         </>
       )}
-      {field.isSuggestion && <span className="absolute -top-6 left-0 text-[10px] font-black uppercase tracking-wider bg-green-500 text-white px-2 py-0.5 rounded-full shadow-lg">AI Suggestion</span>}
+ {field.isSuggestion && <span className="absolute -top-6 left-0 text-[10px] font-semibold tracking-wider bg-green-500 text-white px-2 py-0.5 rounded-full shadow-lg">AI Suggestion</span>}
     </div>
   );
 });

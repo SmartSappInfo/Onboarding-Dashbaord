@@ -66,37 +66,37 @@ export default function UploadPDFButton() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button className="gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg h-11 px-6">
-            <Plus className="h-4 w-4" />
+ <Button className="gap-2 rounded-xl font-semibold text-[10px] shadow-lg h-11 px-6">
+ <Plus className="h-4 w-4" />
             Add Document
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-          <DropdownMenuItem onClick={() => setIsSheetOpen(true)} className="rounded-xl p-2.5 gap-3">
-            <Upload className="mr-2 h-4 w-4 text-primary" />
-            <span className="font-bold text-sm">Upload from Computer</span>
+ <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
+ <DropdownMenuItem onClick={() => setIsSheetOpen(true)} className="rounded-xl p-2.5 gap-3">
+ <Upload className="mr-2 h-4 w-4 text-primary" />
+ <span className="font-bold text-sm">Upload from Computer</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsMediaDialogOpen(true)} className="rounded-xl p-2.5 gap-3">
-            <Library className="mr-2 h-4 w-4 text-primary" />
-            <span className="font-bold text-sm">Choose from Media</span>
+ <DropdownMenuItem onClick={() => setIsMediaDialogOpen(true)} className="rounded-xl p-2.5 gap-3">
+ <Library className="mr-2 h-4 w-4 text-primary" />
+ <span className="font-bold text-sm">Choose from Media</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full border-none shadow-2xl rounded-l-[3rem]">
-          <SheetHeader className="p-8 border-b bg-muted/30 shrink-0">
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                    <FileText className="h-6 w-6" />
+ <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full border-none shadow-2xl rounded-l-[3rem]">
+ <SheetHeader className="p-8 border-b bg-muted/30 shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <FileText className="h-6 w-6" />
                 </div>
-                <div className="text-left">
-                    <SheetTitle className="text-2xl font-black uppercase tracking-tight">Import Document</SheetTitle>
-                    <SheetDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Initializing record for {activeWorkspaceId}.</SheetDescription>
+ <div className="text-left">
+ <SheetTitle className="text-2xl font-semibold tracking-tight">Import Document</SheetTitle>
+ <SheetDescription className="text-xs font-bold text-muted-foreground">Initializing record for {activeWorkspaceId}.</SheetDescription>
                 </div>
             </div>
           </SheetHeader>
-          <div className="flex-grow p-8 overflow-y-auto bg-background">
+ <div className="flex-grow p-8 overflow-y-auto bg-background">
             <PdfUploader onUploadSuccess={handleUploadSuccess} />
           </div>
         </SheetContent>

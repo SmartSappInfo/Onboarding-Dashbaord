@@ -76,44 +76,44 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl">
+ <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Add a New Element</DialogTitle>
                     <DialogDescription>
                         Select the type of element you want to add to your survey.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh] -mx-6">
-                    <div className="space-y-6 px-6 py-4">
+ <ScrollArea className="max-h-[70vh] -mx-6">
+ <div className="space-y-6 px-6 py-4">
                         <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Question Elements</h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+ <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Question Elements</h3>
+ <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {questionTypes.map(({ type, label, icon: Icon }) => (
                                     <Button
                                         key={type}
                                         variant="outline"
-                                        className="h-28 flex-col gap-2 p-4"
+ className="h-28 flex-col gap-2 p-4"
                                         onClick={() => handleSelect(type)}
                                     >
-                                        <Icon className="h-8 w-8 text-primary" />
-                                        <span className="text-center text-xs font-normal">{label}</span>
+ <Icon className="h-8 w-8 text-primary" />
+ <span className="text-center text-xs font-normal">{label}</span>
                                     </Button>
                                 ))}
                             </div>
                         </div>
                         <Separator />
                         <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Layout & Logic Blocks</h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+ <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Layout & Logic Blocks</h3>
+ <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                             {layoutTypes.map(({ type, label, icon: Icon }) => (
                                     <Button
                                         key={type}
                                         variant="outline"
-                                        className="h-28 flex-col gap-2 p-4"
+ className="h-28 flex-col gap-2 p-4"
                                         onClick={() => handleSelect(type)}
                                     >
-                                        <Icon className="h-8 w-8 text-primary" />
-                                        <span className="text-center text-xs font-normal">{label}</span>
+ <Icon className="h-8 w-8 text-primary" />
+ <span className="text-center text-xs font-normal">{label}</span>
                                     </Button>
                                 ))}
                             </div>

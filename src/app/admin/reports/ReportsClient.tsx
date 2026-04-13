@@ -218,42 +218,42 @@ export default function ReportsClient() {
 
     if (isLoading) {
         return (
-            <div className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
+ <div className="p-8 space-y-8">
+ <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+ {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <Skeleton className="h-[400px] rounded-[2.5rem]" />
-                    <Skeleton className="h-[400px] rounded-[2.5rem]" />
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+ <Skeleton className="h-[400px] rounded-[2.5rem]" />
+ <Skeleton className="h-[400px] rounded-[2.5rem]" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-            <div className="max-w-7xl mx-auto space-y-12 pb-32">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
-                    <div className="text-left">
-                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase text-left">
-                            <BarChart3 className="h-10 w-10 text-primary" />
+ <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
+ <div className="text-left">
+ <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground text-left">
+ <BarChart3 className="h-10 w-10 text-primary" />
                             Intelligence Hub
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1 text-left">Operational health and CRM performance metrics for your {plural.toLowerCase()}.</p>
+ <p className="text-muted-foreground font-medium text-lg mt-1 text-left">Operational health and CRM performance metrics for your {plural.toLowerCase()}.</p>
                     </div>
-                    <div className="flex items-center gap-3 text-left">
-                        <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm text-left">
-                            <FileText className="h-4 w-4" /> System Audit
+ <div className="flex items-center gap-3 text-left">
+ <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm text-left">
+ <FileText className="h-4 w-4" /> System Audit
                         </Button>
-                        <Button className="rounded-xl font-black h-11 px-8 shadow-xl shadow-primary/20 uppercase tracking-widest text-xs text-left">
+ <Button className="rounded-xl font-semibold h-11 px-8 shadow-xl shadow-primary/20 text-xs text-left">
                             Executive Export
                         </Button>
                     </div>
                 </div>
 
                 {/* KPI Tier */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
                     <StatCard 
                         label="Network Growth" 
                         value={`+${velocityData.length > 0 ? velocityData[velocityData.length - 1].count : 0}`} 
@@ -267,16 +267,16 @@ export default function ReportsClient() {
                     <StatCard label="Network Density" value={zoneHealth.reduce((a,c) => a + c.students, 0).toLocaleString()} sub="Total Active Strength" icon={Users} color="text-purple-500" bg="bg-purple-500/10" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                     {/* CRM Resolution Trend */}
-                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 text-left">
-                                <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
+ <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
+ <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1 text-left">Intervention creation vs. successful closure.</CardDescription>
+ <CardDescription className="text-xs font-bold mt-1 text-left">Intervention creation vs. successful closure.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 h-[350px] text-left">
+ <CardContent className="p-8 h-[350px] text-left">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={taskVelocityData}>
                                     <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
@@ -294,14 +294,14 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card text-left">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 text-left">
-                                <MapPin className="h-4 w-4" /> Regional Strategic Density
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card text-left">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
+ <MapPin className="h-4 w-4" /> Regional Strategic Density
                             </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1 text-left">Strategic distribution by geographic zone.</CardDescription>
+ <CardDescription className="text-xs font-bold mt-1 text-left">Strategic distribution by geographic zone.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 h-[350px] text-left">
+ <CardContent className="p-8 h-[350px] text-left">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={zoneHealth} layout="vertical" margin={{ left: 40 }}>
                                     <XAxis type="number" hide />
@@ -319,44 +319,44 @@ export default function ReportsClient() {
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
                     {/* Functional Lead-Time Analysis */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
-                        <CardHeader className="bg-primary/10 p-8 border-b border-primary/20 text-left">
-                            <CardTitle className="text-lg font-black uppercase tracking-tight text-left">Lead-Time Analysis</CardTitle>
-                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest text-left">Average days to resolution per task category.</CardDescription>
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <CardHeader className="bg-primary/10 p-8 border-b border-primary/20 text-left">
+ <CardTitle className="text-lg font-semibold tracking-tight text-left">Lead-Time Analysis</CardTitle>
+ <CardDescription className="text-xs font-bold text-primary/60 text-left">Average days to resolution per task category.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-6 text-left">
+ <CardContent className="p-8 space-y-6 text-left">
                             {categoryMetrics.length > 0 ? categoryMetrics.map((cat, i) => (
-                                <div key={cat.name} className="flex items-center justify-between group text-left">
-                                    <div className="flex items-center gap-4 text-left">
-                                        <div className="p-2 bg-muted rounded-xl transition-transform group-hover:scale-110 text-left">
-                                            {cat.name.includes('Doc') ? <FileText className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+ <div key={cat.name} className="flex items-center justify-between group text-left">
+ <div className="flex items-center gap-4 text-left">
+ <div className="p-2 bg-muted rounded-xl transition-transform group-hover:scale-110 text-left">
+ {cat.name.includes('Doc') ? <FileText className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                                         </div>
-                                        <div className="text-left">
-                                            <p className="text-sm font-black uppercase tracking-tight text-left">{cat.name}</p>
-                                            <p className="text-[9px] font-bold text-muted-foreground uppercase text-left">{cat.count} Tasks Resolved</p>
+ <div className="text-left">
+ <p className="text-sm font-semibold tracking-tight text-left">{cat.name}</p>
+ <p className="text-[9px] font-bold text-muted-foreground text-left">{cat.count} Tasks Resolved</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-black text-primary tabular-nums">{cat.avgDays}d</p>
-                                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Mean Duration</p>
+ <div className="text-right">
+ <p className="text-xl font-semibold text-primary tabular-nums">{cat.avgDays}d</p>
+ <p className="text-[8px] font-bold text-muted-foreground ">Mean Duration</p>
                                     </div>
                                 </div>
                             )) : (
-                                <div className="py-20 text-center opacity-20 italic text-sm">Insufficent historical data for analysis.</div>
+ <div className="py-20 text-center opacity-20 italic text-sm">Insufficent historical data for analysis.</div>
                             )}
                         </CardContent>
                     </Card>
 
                     {/* Operational Insights */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
-                        <CardHeader className="bg-muted/10 border-b p-8 text-left">
-                            <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3 text-left">
-                                <Zap className="h-5 w-5 text-primary text-left" /> Executive Snapshot
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <CardHeader className="bg-muted/10 border-b p-8 text-left">
+ <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-3 text-left">
+ <Zap className="h-5 w-5 text-primary text-left" /> Executive Snapshot
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8 text-left">
+ <CardContent className="p-8 space-y-8 text-left">
                             <InsightRow icon={Target} title="Regional Efficiency" value={zoneHealth[0]?.name || 'N/A'} desc="Highest regional onboarding density and task speed." />
                             <InsightRow icon={CheckCircle2} title="SLA Compliance" value={`${taskMetrics.efficiency}%`} desc="Percentage of protocols resolved within institutional targets." />
                             <InsightRow icon={AlertCircle} title="Bottleneck Alert" value={`${taskMetrics.overdue} Backlogged`} desc="Tasks requiring immediate cross-regional manager intervention." />
@@ -370,15 +370,15 @@ export default function ReportsClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
-            <CardContent className="p-6 flex items-center gap-5 text-left">
-                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner text-left", bg, color)}>
-                    <Icon className="h-7 w-7 text-left" />
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
+ <CardContent className="p-6 flex items-center gap-5 text-left">
+ <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner text-left", bg, color)}>
+ <Icon className="h-7 w-7 text-left" />
                 </div>
-                <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5 text-left">{label}</p>
-                    <p className="text-3xl font-black tabular-nums tracking-tighter leading-none text-left">{value}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 text-left">{sub}</p>
+ <div className="text-left">
+ <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5 text-left">{label}</p>
+ <p className="text-3xl font-semibold tabular-nums tracking-tighter leading-none text-left">{value}</p>
+ <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter mt-1 text-left">{sub}</p>
                 </div>
             </CardContent>
         </Card>
@@ -387,12 +387,12 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
 
 function InsightRow({ icon: Icon, title, value, desc }: { icon: any, title: string, value: string, desc: string }) {
     return (
-        <div className="flex gap-4 group text-left">
-            <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform text-left"><Icon className="h-4 w-4" /></div>
-            <div className="space-y-0.5 min-w-0 text-left">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none text-left">{title}</p>
-                <p className="text-base font-black uppercase tracking-tight text-foreground truncate text-left">{value}</p>
-                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
+ <div className="flex gap-4 group text-left">
+ <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 h-fit mt-1 shadow-inner group-hover:scale-110 transition-transform text-left"><Icon className="h-4 w-4" /></div>
+ <div className="space-y-0.5 min-w-0 text-left">
+ <p className="text-[10px] font-semibold text-primary/60 leading-none text-left">{title}</p>
+ <p className="text-base font-semibold tracking-tight text-foreground truncate text-left">{value}</p>
+ <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
             </div>
         </div>
     );

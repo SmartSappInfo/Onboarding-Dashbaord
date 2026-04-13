@@ -284,12 +284,12 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
 
   if (isLoading) {
     return (
-      <div className="flex h-full gap-8 px-8 py-10 overflow-hidden">
+ <div className="flex h-full gap-8 px-8 py-10 overflow-hidden">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="w-80 space-y-8 shrink-0">
-            <Skeleton className="h-14 w-full rounded-[1.25rem]" />
-            <Skeleton className="h-48 w-full rounded-[2.25rem]" />
-            <Skeleton className="h-48 w-full rounded-[2.25rem]" />
+ <div key={i} className="w-80 space-y-8 shrink-0">
+ <Skeleton className="h-14 w-full rounded-[1.25rem]" />
+ <Skeleton className="h-48 w-full rounded-[2.25rem]" />
+ <Skeleton className="h-48 w-full rounded-[2.25rem]" />
           </div>
         ))}
       </div>
@@ -298,11 +298,11 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
 
   if (!stages || stages.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 opacity-10 gap-6">
-        <div className="p-10 bg-muted rounded-[3rem] shadow-inner border"><Workflow size={80} /></div>
-        <div className="text-center space-y-2">
-            <p className="font-black uppercase tracking-[0.3em] text-xl">Empty Architecture</p>
-            <p className="text-xs font-bold uppercase tracking-widest opacity-60">Please define stages in Configuration Hub.</p>
+ <div className="h-full flex flex-col items-center justify-center p-8 opacity-10 gap-6">
+ <div className="p-10 bg-muted rounded-[3rem] shadow-inner border"><Workflow size={80} /></div>
+ <div className="text-center space-y-2">
+ <p className="font-semibold tracking-[0.3em] text-xl">Empty Architecture</p>
+ <p className="text-xs font-bold opacity-60">Please define stages in Configuration Hub.</p>
         </div>
       </div>
     );
@@ -317,8 +317,8 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
       onDragCancel={() => { setActiveElement(null); setEntitiesByStage(initialEntitiesByStage.current); }}
       collisionDetection={closestCorners}
     >
-      <ScrollArea className="h-full whitespace-nowrap">
-        <div className="flex h-full gap-8 p-10">
+ <ScrollArea className="h-full whitespace-nowrap">
+ <div className="flex h-full gap-8 p-10">
           {stages.map((stage) => (
             <StageColumn
               key={stage.id}
@@ -340,7 +340,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
               isOverlay
             />
           ) : (
-            <div className="w-72 pointer-events-none">
+ <div className="w-72 pointer-events-none">
               <EntityCard entity={activeElement as WorkspaceEntity} isOverlay />
             </div>
           )

@@ -219,9 +219,9 @@ export function DocumentCanvas() {
       onDragEnd={handleDragEnd}
     >
       <EditorContextMenu>
-        <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
+ <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
           <div 
-            className="p-8 sm:p-16 pb-64 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
+ className="p-8 sm:p-16 pb-64 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
             style={{ minWidth: 'fit-content' }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
@@ -230,7 +230,7 @@ export function DocumentCanvas() {
           >
             {!pdfDoc ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" key={i} />
+ <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" key={i} />
               ))
             ) : (
               Array.from({ length: pdfDoc.numPages }).map((_, i) => (
@@ -240,7 +240,7 @@ export function DocumentCanvas() {
 
             {marquee && (
               <div 
-                className="absolute border border-primary bg-primary/10 pointer-events-none z-[100] rounded-sm"
+ className="absolute border border-primary bg-primary/10 pointer-events-none z-[100] rounded-sm"
                 style={{
                   left: Math.min(marquee.startX, marquee.endX),
                   top: Math.min(marquee.startY, marquee.endY),

@@ -121,38 +121,38 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
   };
 
   return (
-    <div className="space-y-6">
+ <div className="space-y-6">
       {!stagedFile && (
-        <div onDragEnter={handleDrag} className="relative">
-          <Input ref={inputRef} id="pdf-upload" type="file" accept="application/pdf" onChange={(e) => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
-          <label htmlFor="pdf-upload" className={cn("flex min-h-[250px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/30 hover:bg-muted/50', isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
-            <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">Drag & drop your PDF here</p>
-            <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
-            <p className="text-xs text-muted-foreground mt-4">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
+ <div onDragEnter={handleDrag} className="relative">
+ <Input ref={inputRef} id="pdf-upload" type="file" accept="application/pdf" onChange={(e) => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
+ <label htmlFor="pdf-upload" className={cn("flex min-h-[250px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/30 hover:bg-muted/50', isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
+ <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+ <p className="text-lg font-medium">Drag & drop your PDF here</p>
+ <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
+ <p className="text-xs text-muted-foreground mt-4">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
           </label>
-          {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
+ {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
         </div>
       )}
 
       {stagedFile && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-4 border rounded-lg bg-secondary/50">
-            <FileIcon className="h-8 w-8 text-secondary-foreground" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{stagedFile.name}</p>
-              <p className="text-xs text-muted-foreground">{Math.round(stagedFile.size / 1024)} KB</p>
+ <div className="space-y-4">
+ <div className="flex items-center gap-4 p-4 border rounded-lg bg-secondary/50">
+ <FileIcon className="h-8 w-8 text-secondary-foreground" />
+ <div className="flex-1 min-w-0">
+ <p className="text-sm font-medium truncate">{stagedFile.name}</p>
+ <p className="text-xs text-muted-foreground">{Math.round(stagedFile.size / 1024)} KB</p>
             </div>
             {!isUploading && (
               <Button variant="ghost" size="sm" onClick={() => setStagedFile(null)}>Change File</Button>
             )}
           </div>
           
-          {isUploading && <Progress value={progress} className="w-full" />}
+ {isUploading && <Progress value={progress} className="w-full" />}
 
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleUpload} disabled={isUploading || !stagedFile} className="w-full sm:w-auto" size="lg">
-              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+ <div className="flex justify-end pt-4">
+ <Button onClick={handleUpload} disabled={isUploading || !stagedFile} className="w-full sm:w-auto" size="lg">
+ {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
               {isUploading ? `Uploading... ${Math.round(progress)}%` : 'Upload & Continue'}
             </Button>
           </div>

@@ -6,9 +6,9 @@ export default async function RegistrantsPage({ params }: { params: Promise<{ id
   const { id } = await params;
   return (
     <Suspense fallback={
-      <div className="h-full w-full p-8 space-y-4">
-        <Skeleton className="h-10 w-[250px]" />
-        <Skeleton className="h-[500px] w-full rounded-2xl" />
+ <div className="h-full w-full p-8 space-y-4">
+ <Skeleton className="h-10 w-[250px]" />
+ <Skeleton className="h-[500px] w-full rounded-2xl" />
       </div>
     }>
       <RegistrantsClient meetingId={id} />

@@ -51,8 +51,8 @@ export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRe
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div ref={setNodeRef} style={style} className={cn("flex items-center justify-center p-2 rounded-md hover:bg-muted cursor-pointer transition-all", isSelected && 'bg-primary/10 ring-1 ring-primary')} onClick={onSelect}>
-              <Icon className={cn("h-5 w-5", isSelected ? 'text-primary' : 'text-muted-foreground')} />
+ <div ref={setNodeRef} style={style} className={cn("flex items-center justify-center p-2 rounded-md hover:bg-muted cursor-pointer transition-all", isSelected && 'bg-primary/10 ring-1 ring-primary')} onClick={onSelect}>
+ <Icon className={cn("h-5 w-5", isSelected ? 'text-primary' : 'text-muted-foreground')} />
             </div>
           </TooltipTrigger>
           <TooltipContent side="right"><p>{field.label || field.id}</p></TooltipContent>
@@ -62,23 +62,23 @@ export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRe
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-1 group">
-      <button {...attributes} {...listeners} type="button" className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-3 w-3" /></button>
+ <div ref={setNodeRef} style={style} className="flex items-center gap-1 group">
+ <button {...attributes} {...listeners} type="button" className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-3 w-3" /></button>
       <div 
-        className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors cursor-pointer", isSelected && 'bg-muted ring-1 ring-primary')}
+ className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors cursor-pointer", isSelected && 'bg-muted ring-1 ring-primary')}
         onClick={onSelect}
         onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
       >
-        <Icon className="h-4 w-4 text-muted-foreground" />
+ <Icon className="h-4 w-4 text-muted-foreground" />
         {isEditing ? (
-          <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} className="h-6 text-sm px-1 py-0 flex-1" onClick={(e) => e.stopPropagation()} />
+ <Input autoFocus value={editValue} onChange={(e) => setEditValue(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown} className="h-6 text-sm px-1 py-0 flex-1" onClick={(e) => e.stopPropagation()} />
         ) : (
-          <span className="truncate text-sm flex-1">{field.label || field.id}</span>
+ <span className="truncate text-sm flex-1">{field.label || field.id}</span>
         )}
-        {isNamingField && <Key className="h-3 w-3 text-primary shrink-0" />}
-        {field.required && <span className="text-destructive font-bold">*</span>}
+ {isNamingField && <Key className="h-3 w-3 text-primary shrink-0" />}
+ {field.required && <span className="text-destructive font-bold">*</span>}
       </div>
-      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
     </div>
   );
 }

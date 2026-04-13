@@ -62,40 +62,40 @@ export default function EditAutomationPage() {
 
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
+ <div className="h-full flex items-center justify-center">
+ <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
             </div>
         );
     }
 
     if (!automation) {
         return (
-            <div className="p-20 text-center">
-                <p className="text-muted-foreground font-black uppercase tracking-widest">Blueprint not found.</p>
+ <div className="p-20 text-center">
+ <p className="text-muted-foreground font-semibold ">Blueprint not found.</p>
             </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-muted/10">
+ <div className="h-full flex flex-col overflow-hidden bg-muted/10">
             {/* Executive Canvas Header */}
-            <header className="h-16 shrink-0 bg-background border-b px-6 flex items-center justify-between z-30 shadow-sm">
-                <div className="flex items-center gap-4 min-w-0">
-                    <Button variant="ghost" size="icon" onClick={() => router.push('/admin/automations')} className="rounded-xl h-10 w-10">
-                        <ArrowLeft className="h-5 w-5" />
+ <header className="h-16 shrink-0 bg-background border-b px-6 flex items-center justify-between z-30 shadow-sm">
+ <div className="flex items-center gap-4 min-w-0">
+ <Button variant="ghost" size="icon" onClick={() => router.push('/admin/automations')} className="rounded-xl h-10 w-10">
+ <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <div className="min-w-0 text-left">
-                        <h1 className="text-sm font-black uppercase tracking-tight truncate pr-4">{automation.name}</h1>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-0.5">Editing Workflow Blueprint</p>
+ <div className="min-w-0 text-left">
+ <h1 className="text-sm font-semibold tracking-tight truncate pr-4">{automation.name}</h1>
+ <p className="text-[9px] font-bold text-muted-foreground leading-none mt-0.5">Editing Workflow Blueprint</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary">
-                        <Play className="h-4 w-4" /> Test Flow
+ <div className="flex items-center gap-3">
+ <Button variant="outline" className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary">
+ <Play className="h-4 w-4" /> Test Flow
                     </Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-black h-10 px-8 shadow-xl shadow-primary/20 gap-2 uppercase tracking-widest text-[10px]">
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+ <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-semibold h-10 px-8 shadow-xl shadow-primary/20 gap-2 text-[10px]">
+ {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         Commit Logic
                     </Button>
                 </div>
@@ -103,15 +103,15 @@ export default function EditAutomationPage() {
 
             {/* Workspace scope warning (Requirement 10.5) */}
             {(!automation.workspaceIds || automation.workspaceIds.length === 0) && (
-                <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 z-20">
-                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                    <p className="text-xs font-bold text-amber-900">
-                        <span className="font-black uppercase">Warning:</span> This automation has no workspace constraint and will trigger across all workspaces. Consider adding workspace scope for better isolation.
+ <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 z-20">
+ <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+ <p className="text-xs font-bold text-amber-900">
+ <span className="font-semibold ">Warning:</span> This automation has no workspace constraint and will trigger across all workspaces. Consider adding workspace scope for better isolation.
                     </p>
                 </div>
             )}
 
-            <div className="flex-1 relative overflow-hidden">
+ <div className="flex-1 relative overflow-hidden">
                 <AutomationBuilder 
                     initialNodes={automation.nodes} 
                     initialEdges={automation.edges} 

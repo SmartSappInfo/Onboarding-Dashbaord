@@ -20,9 +20,9 @@ interface ActivityTimelineProps {
 
 const DateSeparator = ({ date }: { date: string }) => {
     return (
-        <div className="flex items-center pl-10 my-4 text-left">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{date}</div>
-            <div className="flex-grow border-t ml-4"></div>
+ <div className="flex items-center pl-10 my-4 text-left">
+ <div className="text-xs font-semibold text-muted-foreground tracking-wider">{date}</div>
+ <div className="flex-grow border-t ml-4"></div>
         </div>
     );
 };
@@ -136,15 +136,15 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
 
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        <Skeleton className="h-4 w-24 ml-10 my-4" />
-        <div className="space-y-6">
+ <div className="space-y-8">
+ <Skeleton className="h-4 w-24 ml-10 my-4" />
+ <div className="space-y-6">
             {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex gap-4 pl-4">
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-10 w-full" />
+ <div key={i} className="flex gap-4 pl-4">
+ <Skeleton className="h-8 w-8 rounded-full" />
+ <div className="flex-1 space-y-2">
+ <Skeleton className="h-4 w-3/4" />
+ <Skeleton className="h-10 w-full" />
                     </div>
                 </div>
             ))}
@@ -155,20 +155,20 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
   
   if (filteredActivities.length === 0) {
       return (
-          <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
-              <p className="text-muted-foreground font-medium italic">No activity matching your criteria in this workspace.</p>
+ <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
+ <p className="text-muted-foreground font-medium italic">No activity matching your criteria in this workspace.</p>
           </div>
       );
   }
 
   return (
-    <div className="relative">
-       <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
-       <div className="space-y-6">
+ <div className="relative">
+ <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
+ <div className="space-y-6">
             {groupedActivities.map((group) => (
                 <div key={group.date}>
                     <DateSeparator date={group.date} />
-                    <div className="space-y-8">
+ <div className="space-y-8">
                       {group.activities.map(activity => (
                            <ActivityItem
                               key={activity.id}

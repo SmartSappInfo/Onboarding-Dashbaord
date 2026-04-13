@@ -25,18 +25,18 @@ const BrochureSelect = React.forwardRef<HTMLInputElement, BrochureSelectProps>(
 
   return (
     <>
-      <div className={cn("flex items-start gap-2", className)}>
-        <div className="relative w-24 h-24 border rounded-md flex items-center justify-center bg-muted shrink-0">
+ <div className={cn("flex items-start gap-2", className)}>
+ <div className="relative w-24 h-24 border rounded-md flex items-center justify-center bg-muted shrink-0">
           {value ? (
-             <a href={value} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-center">
-                <FileText className="w-8 h-8 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground underline">View File</span>
+ <a href={value} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-center">
+ <FileText className="w-8 h-8 text-muted-foreground" />
+ <span className="text-xs text-muted-foreground underline">View File</span>
             </a>
           ) : (
-            <FileText className="w-8 h-8 text-muted-foreground" />
+ <FileText className="w-8 h-8 text-muted-foreground" />
           )}
         </div>
-        <div className="flex-grow space-y-2">
+ <div className="flex-grow space-y-2">
           <Input 
             value={value || ''}
             onChange={(e) => onValueChange?.(e.target.value)}

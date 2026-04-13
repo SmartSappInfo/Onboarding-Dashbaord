@@ -188,43 +188,43 @@ export function EntitySelector({
   };
 
   return (
-    <div className="space-y-4">
+ <div className="space-y-4">
       {/* Search and Controls */}
-      <div className="space-y-2">
+ <div className="space-y-2">
         <Label htmlFor="entity-search">Search Contacts</Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+ <div className="relative">
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="entity-search"
             placeholder="Search by name, email, phone, type, or stage..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+ className="pl-10"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+ className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <X className="h-4 w-4" />
+ <X className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
       {/* Selection Summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-2">
           <Badge variant="secondary">
             {selectedEntityIds.length} selected
           </Badge>
           {filteredEntities.length > 0 && (
-            <span className="text-sm text-muted-foreground">
+ <span className="text-sm text-muted-foreground">
               ({filteredEntities.length} contacts found)
             </span>
           )}
         </div>
-        <div className="flex gap-2">
+ <div className="flex gap-2">
           {selectedEntityIds.length > 0 && (
             <Button
               variant="outline"
@@ -251,27 +251,27 @@ export function EntitySelector({
       {/* Selected Entities Display (Requirement 23.2) */}
       {selectedEntities.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Selected Contacts</CardTitle>
+ <CardHeader className="pb-3">
+ <CardTitle className="text-sm font-medium">Selected Contacts</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-32">
-              <div className="space-y-2">
+ <ScrollArea className="h-32">
+ <div className="space-y-2">
                 {selectedEntities.map((entity) => {
                   const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType as keyof typeof ENTITY_TYPE_ICONS] || Building;
                   return (
                     <div
                       key={entity.entityId || entity.id}
-                      className="flex items-center justify-between p-2 bg-muted rounded-md"
+ className="flex items-center justify-between p-2 bg-muted rounded-md"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-sm truncate">{entity.name}</span>
+ <div className="flex items-center gap-2 flex-1 min-w-0">
+ <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+ <span className="text-sm truncate">{entity.name}</span>
                         <Badge variant="outline" className="text-xs">
                           {entity.entityType || 'Unknown'}
                         </Badge>
                         {entity.stageName && (
-                          <span className="text-xs text-muted-foreground truncate">
+ <span className="text-xs text-muted-foreground truncate">
                             {entity.stageName}
                           </span>
                         )}
@@ -280,9 +280,9 @@ export function EntitySelector({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveEntity(entity.entityId || entity.id)}
-                        className="h-6 w-6 p-0"
+ className="h-6 w-6 p-0"
                       >
-                        <X className="h-3 w-3" />
+ <X className="h-3 w-3" />
                       </Button>
                     </div>
                   );
@@ -295,27 +295,27 @@ export function EntitySelector({
 
       {/* Entity List (Requirement 23.2 - Display entity information) */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Available Contacts</CardTitle>
+ <CardHeader className="pb-3">
+ <CardTitle className="text-sm font-medium">Available Contacts</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
+ <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
+ <div key={i} className="h-12 bg-muted animate-pulse rounded-md" />
               ))}
             </div>
           ) : paginatedEntities.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Building className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">
+ <div className="text-center py-8 text-muted-foreground">
+ <Building className="h-8 w-8 mx-auto mb-2 opacity-50" />
+ <p className="text-sm">
                 {searchTerm ? 'No contacts found matching your search' : 'No contacts available'}
               </p>
             </div>
           ) : (
             <>
-              <ScrollArea className="h-96">
-                <div className="space-y-1">
+ <ScrollArea className="h-96">
+ <div className="space-y-1">
                   {paginatedEntities.map((entity) => {
                     const mappedEntityId = entity.entityId || entity.id;
                     const isSelected = selectedEntityIds.includes(mappedEntityId);
@@ -324,7 +324,7 @@ export function EntitySelector({
                     return (
                       <div
                         key={mappedEntityId}
-                        className={cn(
+ className={cn(
                           "flex items-center gap-3 p-3 rounded-md border transition-colors",
                           isSelected && "bg-primary/5 border-primary",
                           !isSelected && "hover:bg-muted"
@@ -337,23 +337,23 @@ export function EntitySelector({
                         />
                         <label
                           htmlFor={`entity-${mappedEntityId}`}
-                          className="flex-1 cursor-pointer"
+ className="flex-1 cursor-pointer"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <p className="text-sm font-medium truncate">{entity.name}</p>
+ <div className="flex items-center justify-between">
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center gap-2">
+ <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+ <p className="text-sm font-medium truncate">{entity.name}</p>
                                 <Badge variant="outline" className="text-xs">
                                   {entity.entityType || 'Unknown'}
                                 </Badge>
                               </div>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+ <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                 {getContactEmail(entity) && (
-                                  <span className="truncate">{getContactEmail(entity)}</span>
+ <span className="truncate">{getContactEmail(entity)}</span>
                                 )}
                                 {getContactPhone(entity) && (
-                                  <span className="truncate">{getContactPhone(entity)}</span>
+ <span className="truncate">{getContactPhone(entity)}</span>
                                 )}
                                 {entity.stageName && (
                                   <Badge variant="secondary" className="text-xs">
@@ -372,18 +372,18 @@ export function EntitySelector({
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <div className="text-sm text-muted-foreground">
+ <div className="flex items-center justify-between mt-4 pt-4 border-t">
+ <div className="text-sm text-muted-foreground">
                     Page {currentPage} of {totalPages}
                   </div>
-                  <div className="flex gap-2">
+ <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handlePreviousPage}
                       disabled={currentPage === 1}
                     >
-                      <ChevronLeft className="h-4 w-4" />
+ <ChevronLeft className="h-4 w-4" />
                       Previous
                     </Button>
                     <Button
@@ -393,7 +393,7 @@ export function EntitySelector({
                       disabled={currentPage === totalPages}
                     >
                       Next
-                      <ChevronRight className="h-4 w-4" />
+ <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

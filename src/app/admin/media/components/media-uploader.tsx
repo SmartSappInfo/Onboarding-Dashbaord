@@ -318,42 +318,42 @@ export default function MediaUploader({
   }, [activeFileId]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-dashed text-left">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-              <Layout className="h-3 w-3" /> Targeted Workspaces {isSuperAdmin && <span className="text-muted-foreground font-normal">(Optional for Admins)</span>}
+ <div className="space-y-6">
+ <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-dashed text-left">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Layout className="h-3 w-3" /> Targeted Workspaces {isSuperAdmin && <span className="text-muted-foreground font-normal">(Optional for Admins)</span>}
           </Label>
           <MultiSelect 
               options={workspaceOptions}
               value={selectedWorkspaces}
               onChange={setSelectedWorkspaces}
               placeholder={isSuperAdmin ? "Global Asset (No hubs selected)" : "Select destination hubs..."}
-              className="bg-white border-primary/10 rounded-xl shadow-sm h-11"
+ className="bg-white border-primary/10 rounded-xl shadow-sm h-11"
           />
-          <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 px-1">
+ <p className="text-[9px] font-bold text-muted-foreground mt-1 px-1">
             {selectedWorkspaces.length > 0 ? "Asset will be shared across all selected hubs." : "Asset will be stored globally."}
           </p>
       </div>
 
       {!activeFileState && (
-        <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative">
-          <Input ref={inputRef} id="file-upload" type="file" multiple onChange={e => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
-          <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-muted/50", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
-            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">Drag & drop files here or browse</p>
-            <p className="text-xs text-muted-foreground mt-2">GIF support included (Animations preserved)</p>
-            <p className="text-xs text-muted-foreground mt-1">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
+ <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative">
+ <Input ref={inputRef} id="file-upload" type="file" multiple onChange={e => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
+ <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-muted/50", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+ <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+ <p className="text-lg font-medium">Drag & drop files here or browse</p>
+ <p className="text-xs text-muted-foreground mt-2">GIF support included (Animations preserved)</p>
+ <p className="text-xs text-muted-foreground mt-1">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
           </label>
-          {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
+ {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
         </form>
       )}
 
       {activeFileState && isImageActive && activeFileState.dimensions && activeFileState.dataUrl && (
-        <div className="space-y-4">
+ <div className="space-y-4">
             {isGifActive && (
-                <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3 animate-in fade-in duration-500">
-                    <Info className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                    <p className="text-xs font-bold text-orange-800 uppercase tracking-tight leading-relaxed">
+ <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3 animate-in fade-in duration-500">
+ <Info className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+ <p className="text-xs font-bold text-orange-800 tracking-tight leading-relaxed">
                         GIF Animation Preservation active. Resizing and cropping are disabled for GIFs to maintain frame integrity.
                     </p>
                 </div>
@@ -371,37 +371,37 @@ export default function MediaUploader({
       )}
       
       {activeFileState && !isImageActive && (
-          <div className="flex items-center justify-center h-48 bg-muted rounded-lg flex-col gap-2 text-muted-foreground">
-            <FileIcon className="h-12 w-12"/>
-            <p className="font-medium">{activeFileState.file.name}</p>
-            <p className="text-sm">This file type cannot be edited.</p>
+ <div className="flex items-center justify-center h-48 bg-muted rounded-lg flex-col gap-2 text-muted-foreground">
+ <FileIcon className="h-12 w-12"/>
+ <p className="font-medium">{activeFileState.file.name}</p>
+ <p className="text-sm">This file type cannot be edited.</p>
           </div>
       )}
 
       {stagedFiles.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="font-medium">Staged Files ({stagedFiles.length})</h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2 text-left">
+ <div className="space-y-2">
+ <h4 className="font-medium">Staged Files ({stagedFiles.length})</h4>
+ <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2 text-left">
             {stagedFiles.map((fileState) => (
               <div 
                 key={fileState.id} 
-                className={cn("flex items-center gap-2 p-2 border rounded-lg bg-background cursor-pointer", activeFileId === fileState.id && "ring-2 ring-primary")}
+ className={cn("flex items-center gap-2 p-2 border rounded-lg bg-background cursor-pointer", activeFileId === fileState.id && "ring-2 ring-primary")}
                 role="button"
                 tabIndex={0}
                 onClick={() => setActiveFileId(fileState.id)}
                 onKeyDown={(e) => e.key === 'Enter' && setActiveFileId(fileState.id)}
               >
-                <FileIcon className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{fileState.file.name}</p>
-                  {fileState.status === 'pending' && <p className="text-xs text-muted-foreground">{(fileState.file.size / 1024).toFixed(2)} KB</p>}
-                  {fileState.status === 'processing' && <Progress value={fileState.progress} className="h-2 mt-1" />}
-                  {fileState.status === 'completed' && <div className="flex items-center gap-1 text-sm text-green-600"><CheckCircle className="h-4 w-4" /><span>Completed</span></div>}
-                  {fileState.status === 'error' && <p className="text-xs text-destructive">Upload failed</p>}
+ <FileIcon className="h-5 w-5 text-muted-foreground" />
+ <div className="flex-1 min-w-0">
+ <p className="text-sm font-medium truncate">{fileState.file.name}</p>
+ {fileState.status === 'pending' && <p className="text-xs text-muted-foreground">{(fileState.file.size / 1024).toFixed(2)} KB</p>}
+ {fileState.status === 'processing' && <Progress value={fileState.progress} className="h-2 mt-1" />}
+ {fileState.status === 'completed' && <div className="flex items-center gap-1 text-sm text-green-600"><CheckCircle className="h-4 w-4" /><span>Completed</span></div>}
+ {fileState.status === 'error' && <p className="text-xs text-destructive">Upload failed</p>}
                 </div>
                 {!isUploading && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => removeFile(e, fileState.id)}>
-                    <X className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => removeFile(e, fileState.id)}>
+ <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
@@ -411,9 +411,9 @@ export default function MediaUploader({
       )}
       
       {stagedFiles.length > 0 && (
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto h-12 rounded-xl font-black uppercase text-xs shadow-lg">
-            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+ <div className="flex justify-end pt-4">
+ <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto h-12 rounded-xl font-semibold text-xs shadow-lg">
+ {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
             {isUploading ? 'Uploading...' : `Upload to ${selectedWorkspaces.length} Hubs`}
           </Button>
         </div>

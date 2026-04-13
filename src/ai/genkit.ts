@@ -53,19 +53,20 @@ export async function getModel(params: {
     throw new Error(`AI configuration error: API key for provider "${provider}" is missing. Please configure it in Organization Settings or environment variables.`);
   }
 
-  // 4. Return an localized Genkit engine tailored correctly for this request
+  // 4. Return a localized model action tailored correctly for this request
   if (provider === 'googleai') {
-    return genkit({
+    const instance = genkit({
       plugins: [googleAI({ apiKey })]
     });
+    return (instance as any).model(`googleai/${modelId}`);
   }
 
   // Handle openrouter and openai with openAICompatible
   const baseURL = provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : undefined;
   
-  return genkit({
+  const instance = genkit({
       plugins: [
-          openAICompatible({ 
+          (openAICompatible as any)({ 
             name: provider,
             apiKey, 
             baseURL,
@@ -73,4 +74,6 @@ export async function getModel(params: {
           })
       ]
   });
+
+  return (instance as any).model(`${provider}/${modelId}`);
 }

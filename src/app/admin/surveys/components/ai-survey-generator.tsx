@@ -168,48 +168,48 @@ export default function AiSurveyGenerator() {
   };
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl border bg-card/40 backdrop-blur-md rounded-[2rem] overflow-hidden">
-        <CardHeader className="p-8 pb-8 border-b border-border/50 bg-transparent text-left relative">
-            <div className="flex items-center justify-between mb-6">
-                <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center border border-primary/20 shadow-inner">
-                    <Sparkles className="h-6 w-6 text-primary" />
+ <Card className="max-w-3xl mx-auto shadow-2xl border bg-card/40 backdrop-blur-md rounded-[2rem] overflow-hidden">
+ <CardHeader className="p-8 pb-8 border-b border-border/50 bg-transparent text-left relative">
+ <div className="flex items-center justify-between mb-6">
+ <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center border border-primary/20 shadow-inner">
+ <Sparkles className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle className="text-2xl font-black tracking-tight">AI Survey Architect</CardTitle>
+ <CardTitle className="text-2xl font-semibold tracking-tight">AI Survey Architect</CardTitle>
             </div>
-            <CardDescription className="text-sm font-medium text-muted-foreground">Provide your source material and the AI will build a complete, scored assessment flow for you.</CardDescription>
+ <CardDescription className="text-sm font-medium text-muted-foreground">Provide your source material and the AI will build a complete, scored assessment flow for you.</CardDescription>
             
-            <div className="mt-8 flex flex-col items-start">
-                <AiModelSelector className="items-start" />
+ <div className="mt-8 flex flex-col items-start">
+ <AiModelSelector className="items-start" />
             </div>
         </CardHeader>
-        <CardContent className="p-8 pt-8">
+ <CardContent className="p-8 pt-8">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                     <Tabs
                         defaultValue="text"
-                        className="w-full"
+ className="w-full"
                         onValueChange={(value) => form.setValue('sourceType', value as 'text' | 'url' | 'file')}
                     >
-                        <TabsList className="grid w-full grid-cols-3 h-12 bg-background/50 border shadow-inner p-1 rounded-2xl mb-8">
-                            <TabsTrigger value="text" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Paste Text</TabsTrigger>
-                            <TabsTrigger value="url" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">From URL</TabsTrigger>
-                            <TabsTrigger value="file" disabled className="font-bold rounded-xl opacity-50">Upload File (Soon)</TabsTrigger>
+ <TabsList className="grid w-full grid-cols-3 h-12 bg-background/50 border shadow-inner p-1 rounded-2xl mb-8">
+ <TabsTrigger value="text" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Paste Text</TabsTrigger>
+ <TabsTrigger value="url" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">From URL</TabsTrigger>
+ <TabsTrigger value="file" disabled className="font-bold rounded-xl opacity-50">Upload File (Soon)</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="text" className="mt-0">
+ <TabsContent value="text" className="mt-0">
                             <FormField
                                 control={form.control}
                                 name="text"
                                 render={({ field }) => (
-                                    <FormItem className="space-y-4">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Source Material</FormLabel>
+ <FormItem className="space-y-4">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Source Material</FormLabel>
                                         <FormControl>
                                             <Textarea
                                                 placeholder="Paste a document outline, a list of requirements, or a quiz draft here..."
-                                                className="min-h-[250px] text-sm leading-relaxed p-6 rounded-[2rem] bg-background/30 border-border/50 shadow-inner resize-none focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="min-h-[250px] text-sm leading-relaxed p-6 rounded-[2rem] bg-background/30 border-border/50 shadow-inner resize-none focus-visible:ring-1 focus-visible:ring-primary/20"
                                                 {...field}
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-xs font-medium ml-1">
+ <FormDescription className="text-xs font-medium ml-1">
                                             The AI will identify questions, sections, and logic rules based on your text.
                                         </FormDescription>
                                         <FormMessage />
@@ -217,17 +217,17 @@ export default function AiSurveyGenerator() {
                                 )}
                             />
                         </TabsContent>
-                        <TabsContent value="url" className="mt-0">
+ <TabsContent value="url" className="mt-0">
                             <FormField
                                 control={form.control}
                                 name="url"
                                 render={({ field }) => (
-                                    <FormItem className="space-y-4">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target URL</FormLabel>
+ <FormItem className="space-y-4">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Target URL</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="https://..." {...field} value={field.value ?? ''} className="h-14 text-base rounded-2xl bg-background/30 border-border/50 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 px-6" />
+ <Input placeholder="https://..." {...field} value={field.value ?? ''} className="h-14 text-base rounded-2xl bg-background/30 border-border/50 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 px-6" />
                                         </FormControl>
-                                        <FormDescription className="text-xs font-medium ml-1">
+ <FormDescription className="text-xs font-medium ml-1">
                                             Link to a public article, Google Doc, or webpage to parse for content.
                                         </FormDescription>
                                         <FormMessage />
@@ -236,13 +236,13 @@ export default function AiSurveyGenerator() {
                             />
                         </TabsContent>
                     </Tabs>
-                    <div className="flex justify-between items-center mt-12 border-t border-border/50 pt-8">
+ <div className="flex justify-between items-center mt-12 border-t border-border/50 pt-8">
                         <Button
                           type="button"
                           variant="ghost"
                           onClick={() => router.push('/admin/surveys')}
                           disabled={isGenerating}
-                          className="font-bold rounded-xl px-6 h-12 text-muted-foreground hover:text-foreground"
+ className="font-bold rounded-xl px-6 h-12 text-muted-foreground hover:text-foreground"
                         >
                             Cancel
                         </Button>
@@ -250,9 +250,9 @@ export default function AiSurveyGenerator() {
                             type="submit" 
                             disabled={isGenerating} 
                             containerClassName="h-14 px-8 rounded-full"
-                            className="h-full w-full font-black text-sm gap-3 bg-[#0f172a] text-white hover:bg-[#0f172a]/90 border border-slate-700 shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.1)]"
+ className="h-full w-full font-semibold text-sm gap-3 bg-[#0f172a] text-white hover:bg-[#0f172a]/90 border border-slate-700 shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.1)]"
                         >
-                            {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+ {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
                             {isGenerating ? 'Building Engine...' : 'Generate Intelligent Survey'}
                         </MovingButton>
                     </div>

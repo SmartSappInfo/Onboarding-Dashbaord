@@ -8,7 +8,7 @@ import AdminLayoutClient from './layout-client';
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<div className="min-h-screen w-full bg-background" />}>
+ <Suspense fallback={<div className="min-h-screen w-full bg-background" />}>
       <AdminLayoutClient>{children}</AdminLayoutClient>
     </Suspense>
   );

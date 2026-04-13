@@ -536,79 +536,79 @@ export default function ComposerWizard() {
     };
 
     const stepLabel = (num: number, label: string) => (
-        <div className={cn(
-            "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors",
+ <div className={cn(
+            "flex items-center gap-2 text-[10px] font-semibold uppercase  transition-colors",
             step >= num ? "text-primary" : "text-muted-foreground opacity-40"
         )}>
-            <div className={cn(
+ <div className={cn(
                 "w-7 h-7 rounded-2xl border-2 flex items-center justify-center transition-all",
                 step > num ? "bg-primary border-primary text-white" : step === num ? "border-primary text-primary shadow-lg shadow-primary/20 scale-110" : "border-muted-foreground"
             )}>
-                {step > num ? <Check className="w-4 h-4" /> : num}
+ {step > num ? <Check className="w-4 h-4" /> : num}
             </div>
             {label}
         </div>
     );
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-center gap-8 mb-12">
+ <div className="space-y-8">
+ <div className="flex items-center justify-center gap-8 mb-12">
                 {stepLabel(1, "Blueprint")}
                 {stepLabel(2, "Identities")}
                 {stepLabel(3, "Validation")}
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
                 {step === 1 && (
-                    <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
-                        <CardHeader className="bg-muted/30 border-b pb-6 p-8">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                    <Sparkles className="h-6 w-6" />
+ <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <CardHeader className="bg-muted/30 border-b pb-6 p-8">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <Sparkles className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Channel & Logic</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Identify the communication protocol.</CardDescription>
+ <CardTitle className="text-2xl font-semibold tracking-tight">Channel & Logic</CardTitle>
+ <CardDescription className="text-xs font-bold text-muted-foreground/60">Identify the communication protocol.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-12 p-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Communication Medium</Label>
-                                    <div className="grid grid-cols-2 gap-4">
+ <CardContent className="space-y-12 p-8">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1">1. Communication Medium</Label>
+ <div className="grid grid-cols-2 gap-4">
                                         <Button
                                             type="button"
                                             variant={watchedChannel === 'email' ? 'default' : 'outline'}
-                                            className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'email' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
+ className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'email' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'email')}
                                         >
-                                            <Mail className="h-7 w-7" />
-                                            <span className="font-black uppercase text-[10px] tracking-[0.2em]">Email</span>
+ <Mail className="h-7 w-7" />
+ <span className="font-semibold text-[10px] ">Email</span>
                                         </Button>
                                         <Button
                                             type="button"
                                             variant={watchedChannel === 'sms' ? 'default' : 'outline'}
-                                            className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'sms' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
+ className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'sms' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'sms')}
                                         >
-                                            <Smartphone className="h-7 w-7" />
-                                            <span className="font-black uppercase text-[10px] tracking-[0.2em]">SMS</span>
+ <Smartphone className="h-7 w-7" />
+ <span className="font-semibold text-[10px] ">SMS</span>
                                         </Button>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center px-1">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">2. Core Template</Label>
+ <div className="space-y-4">
+ <div className="flex justify-between items-center px-1">
+ <Label className="text-[10px] font-semibold text-primary">2. Core Template</Label>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1"
+ className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1"
                                             onClick={() => setIsQuickCreateOpen(true)}
                                         >
-                                            <PlusCircle className="h-3 w-3" /> New Template
+ <PlusCircle className="h-3 w-3" /> New Template
                                         </Button>
                                     </div>
                                     <Controller
@@ -616,17 +616,17 @@ export default function ComposerWizard() {
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-xl px-6 transition-all">
+ <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
                                                     <SelectValue placeholder="Pick template..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
+ <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
                                                     {isLoadingTemplates ? (
-                                                        <div className="p-8 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+ <div className="p-8 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                                                     ) : templates?.map(t => (
-                                                        <SelectItem key={t.id} value={t.id} className="rounded-xl my-1.5 p-3">
-                                                            <div className="flex items-center gap-4">
-                                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary h-5 bg-primary/5">{t.category}</Badge>
-                                                                <span className="font-black text-foreground">{t.name}</span>
+ <SelectItem key={t.id} value={t.id} className="rounded-xl my-1.5 p-3">
+ <div className="flex items-center gap-4">
+                                                                <Badge variant="outline" className="text-[8px] font-semibold uppercase border-primary/20 text-primary h-5 bg-primary/5">{t.category}</Badge>
+ <span className="font-semibold text-foreground">{t.name}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -638,15 +638,15 @@ export default function ComposerWizard() {
                             </div>
 
                             {selectedTemplate && (
-                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 space-y-8 text-left">
-                                    <div className="flex justify-between items-center px-2">
-                                        <div className="flex items-center gap-3">
-                                            <Zap className="h-5 w-5 text-primary" />
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Content Intelligence</Label>
+ <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 space-y-8 text-left">
+ <div className="flex justify-between items-center px-2">
+ <div className="flex items-center gap-3">
+ <Zap className="h-5 w-5 text-primary" />
+ <Label className="text-[10px] font-semibold text-primary">Content Intelligence</Label>
                                         </div>
-                                        <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                                             <Select value={selectedTone} onValueChange={(v: any) => setSelectedTone(v)}>
-                                                <SelectTrigger className="h-8 w-32 text-[10px] font-black uppercase bg-white border-primary/20">
+ <SelectTrigger className="h-8 w-32 text-[10px] font-semibold bg-white border-primary/20">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -656,59 +656,59 @@ export default function ComposerWizard() {
                                                     <SelectItem value="concise">Concise</SelectItem>
                                                 </SelectContent>
                                             </Select>
-                                            <Button type="button" size="sm" variant="outline" onClick={handleAiRefine} disabled={isRefining} className="h-8 gap-2 font-black text-[10px] uppercase border-primary/20 hover:bg-primary/5">
-                                                {isRefining ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+ <Button type="button" size="sm" variant="outline" onClick={handleAiRefine} disabled={isRefining} className="h-8 gap-2 font-semibold text-[10px] border-primary/20 hover:bg-primary/5">
+ {isRefining ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
                                                 Refine with AI
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-3">
+ <div className="flex flex-wrap gap-3">
                                         {selectedTemplate.variables.map(v => (
-                                            <code key={v} className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-black text-primary shadow-sm uppercase tracking-tighter">{"{{" + v + "}}"}</code>
+ <code key={v} className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-semibold text-primary shadow-sm tracking-tighter">{"{{" + v + "}}"}</code>
                                         ))}
                                     </div>
                                 </motion.div>
                             )}
                         </CardContent>
-                        <CardFooter className="justify-end bg-muted/30 p-8 border-t">
-                            <Button type="button" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-12 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 group">
-                                Next Phase <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
+ <CardFooter className="justify-end bg-muted/30 p-8 border-t">
+ <Button type="button" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-12 rounded-2xl font-semibold shadow-2xl h-16 tracking-[0.1em] active:scale-95 group">
+ Next Phase <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
                 {step === 2 && (
-                    <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
-                        <CardHeader className="bg-muted/30 border-b pb-6 p-8">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                    <Users className="h-6 w-6" />
+ <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <CardHeader className="bg-muted/30 border-b pb-6 p-8">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <Users className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Identities & Resolution</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Select target identities and bind records for variable resolution.</CardDescription>
+ <CardTitle className="text-2xl font-semibold tracking-tight">Identities & Resolution</CardTitle>
+ <CardDescription className="text-xs font-bold text-muted-foreground/60">Select target identities and bind records for variable resolution.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-12 p-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">3. Authorized Sender</Label>
+ <CardContent className="space-y-12 p-8">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1">3. Authorized Sender</Label>
                                     <Controller
                                         name="senderProfileId"
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-xl px-6 transition-all">
+ <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
                                                     <SelectValue placeholder="Sender ID..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
+ <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
                                                     {profiles?.map(p => (
-                                                        <SelectItem key={p.id} value={p.id} className="rounded-xl my-1.5 p-3">
-                                                            <div className="flex items-center gap-4">
-                                                                <span className="font-black text-foreground uppercase tracking-tight">{p.name}</span>
-                                                                <span className="text-[9px] font-black text-muted-foreground tracking-[0.1em] bg-muted px-2.5 py-1 rounded-lg italic">ID: {p.identifier}</span>
+ <SelectItem key={p.id} value={p.id} className="rounded-xl my-1.5 p-3">
+ <div className="flex items-center gap-4">
+ <span className="font-semibold text-foreground tracking-tight">{p.name}</span>
+ <span className="text-[9px] font-semibold text-muted-foreground tracking-[0.1em] bg-muted px-2.5 py-1 rounded-lg italic">ID: {p.identifier}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -718,37 +718,37 @@ export default function ComposerWizard() {
                                     />
                                 </div>
 
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">4. Dispatch Mode</Label>
-                                    <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50 shadow-inner">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1">4. Dispatch Mode</Label>
+ <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50 shadow-inner">
                                         <Button
                                             type="button"
                                             variant={watchedMode === 'single' ? 'secondary' : 'ghost'}
-                                            className={cn("h-12 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all", watchedMode === 'single' && "bg-white shadow-xl text-primary")}
+ className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'single' && "bg-white shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'single')}
                                         >
-                                            <Target className="mr-2 h-4 w-4" /> Targeted
+ <Target className="mr-2 h-4 w-4" /> Targeted
                                         </Button>
                                         <Button
                                             type="button"
                                             variant={watchedMode === 'bulk' ? 'secondary' : 'ghost'}
-                                            className={cn("h-12 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all", watchedMode === 'bulk' && "bg-white shadow-xl text-primary")}
+ className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'bulk' && "bg-white shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'bulk')}
                                         >
-                                            <Layers className="mr-2 h-4 w-4" /> Broadcast
+ <Layers className="mr-2 h-4 w-4" /> Broadcast
                                         </Button>
                                     </div>
                                 </div>
                             </div>
 
-                            <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
-                            <div className="space-y-8">
+ <div className="space-y-8">
                                 {watchedMode === 'single' ? (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                                        <div className="space-y-6">
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
+ <div className="space-y-6">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1">
                                                     Select {getEntityTypeName(true)}
                                                 </Label>
                                                 <EntitySelector
@@ -767,30 +767,30 @@ export default function ComposerWizard() {
 
                                             {/* Validation Error Display */}
                                             {watchedSelectedEntityIds.length === 0 && (
-                                                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-                                                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                                                    <div className="space-y-1">
-                                                        <p className="text-xs font-black text-amber-900 uppercase tracking-tight">No Selection</p>
-                                                        <p className="text-[10px] text-amber-700 font-bold">Please select at least one {getEntityTypeName(false).toLowerCase()} to continue.</p>
+ <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+ <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+ <div className="space-y-1">
+ <p className="text-xs font-semibold text-amber-900 tracking-tight">No Selection</p>
+ <p className="text-[10px] text-amber-700 font-bold">Please select at least one {getEntityTypeName(false).toLowerCase()} to continue.</p>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Contextual Binding Selectors */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                             {/* Contact Scope Binding (Task 35.2) */}
                                             {watchedSelectedEntityIds.length > 0 && (
-                                                <div className="lg:col-span-3 space-y-4 pb-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
-                                                            <Users className="h-3 w-3" /> Target Audience
+ <div className="lg:col-span-3 space-y-4 pb-4">
+ <div className="flex items-center justify-between">
+ <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+ <Users className="h-3 w-3" /> Target Audience
                                                         </Label>
-                                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-50">
+                                                        <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter opacity-50">
                                                             Server-Side Resolution Enabled
                                                         </Badge>
                                                     </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                         {[
                                                             { id: 'primary', label: 'Primary Context', desc: 'Sends to the main email/phone recorded for the entity.' },
                                                             { id: 'signatories', label: 'Signatories', desc: 'Broadcasts exclusively to Decision Makers (Signatories).' },
@@ -799,20 +799,20 @@ export default function ComposerWizard() {
                                                             <div 
                                                                 key={scope.id}
                                                                 onClick={() => setValue('contactScope', scope.id as any)}
-                                                                className={cn(
+ className={cn(
                                                                     "cursor-pointer border-2 rounded-2xl p-5 transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group",
                                                                     watchedContactScope === scope.id ? "bg-primary/[0.03] border-primary shadow-lg ring-1 ring-primary/20" : "bg-white border-primary/5 hover:border-primary/20 shadow-sm"
                                                                 )}
                                                             >
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <p className="font-black text-xs uppercase tracking-widest text-foreground group-hover:text-primary transition-colors">{scope.label}</p>
+ <div className="flex items-center justify-between mb-2">
+ <p className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors">{scope.label}</p>
                                                                     {watchedContactScope === scope.id && (
-                                                                        <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in-50 duration-300" />
+ <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in-50 duration-300" />
                                                                     )}
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">{scope.desc}</p>
+ <p className="text-[10px] font-bold text-muted-foreground leading-relaxed">{scope.desc}</p>
                                                                 {watchedContactScope === scope.id && (
-                                                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary/20 animate-in slide-in-from-left duration-500" />
+ <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary/20 animate-in slide-in-from-left duration-500" />
                                                                 )}
                                                             </div>
                                                         ))}
@@ -822,19 +822,19 @@ export default function ComposerWizard() {
 
                                             {/* Meeting Binder */}
                                             {selectedTemplate?.category === 'meetings' && (
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                        <Calendar className="h-3 w-3" /> Bind Session
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Calendar className="h-3 w-3" /> Bind Session
                                                     </Label>
                                                     <Controller
                                                         name="sourceMeetingId"
                                                         control={control}
                                                         render={({ field }) => (
                                                             <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+ <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold">
                                                                     <SelectValue placeholder="Pick meeting..." />
                                                                 </SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                     <SelectItem value="none">No Binding</SelectItem>
                                                                     {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.entityName} - {m.type.name}</SelectItem>)}
                                                                 </SelectContent>
@@ -847,19 +847,19 @@ export default function ComposerWizard() {
                                             {/* Survey Binder */}
                                             {selectedTemplate?.category === 'surveys' && (
                                                 <>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                            <ClipboardList className="h-3 w-3" /> Bind Survey
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <ClipboardList className="h-3 w-3" /> Bind Survey
                                                         </Label>
                                                         <Controller
                                                             name="sourceSurveyId"
                                                             control={control}
                                                             render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+ <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold">
                                                                         <SelectValue placeholder="Pick survey..." />
                                                                     </SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                         <SelectItem value="none">No Binding</SelectItem>
                                                                         {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
                                                                     </SelectContent>
@@ -868,19 +868,19 @@ export default function ComposerWizard() {
                                                         />
                                                     </div>
                                                     {watchedSourceSurveyId && (
-                                                        <div className="space-y-2">
-                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                                <Database className="h-3 w-3" /> Select Record
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Database className="h-3 w-3" /> Select Record
                                                             </Label>
                                                             <Controller
                                                                 name="sourceResponseId"
                                                                 control={control}
                                                                 render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                        <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+ <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold">
                                                                             <SelectValue placeholder="Pick response..." />
                                                                         </SelectTrigger>
-                                                                        <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                             <SelectItem value="none">None</SelectItem>
                                                                             {responses?.map(r => (
                                                                                 <SelectItem key={r.id} value={r.id}>
@@ -899,19 +899,19 @@ export default function ComposerWizard() {
                                             {/* PDF Binder */}
                                             {selectedTemplate?.category === 'forms' && (
                                                 <>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                            <FileText className="h-3 w-3" /> Bind Document
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <FileText className="h-3 w-3" /> Bind Document
                                                         </Label>
                                                         <Controller
                                                             name="sourcePdfId"
                                                             control={control}
                                                             render={({ field }) => (
                                                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+ <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold">
                                                                         <SelectValue placeholder="Pick PDF..." />
                                                                     </SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                         <SelectItem value="none">No Binding</SelectItem>
                                                                         {pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                                                     </SelectContent>
@@ -920,19 +920,19 @@ export default function ComposerWizard() {
                                                         />
                                                     </div>
                                                     {watchedSourcePdfId && (
-                                                        <div className="space-y-2">
-                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                                <Database className="h-3 w-3" /> Select Submission
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Database className="h-3 w-3" /> Select Submission
                                                             </Label>
                                                             <Controller
                                                                 name="sourceSubmissionId"
                                                                 control={control}
                                                                 render={({ field }) => (
                                                                     <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                        <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+ <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-semibold">
                                                                             <SelectValue placeholder="Pick submission..." />
                                                                         </SelectTrigger>
-                                                                        <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                             <SelectItem value="none">None</SelectItem>
                                                                             {submissions?.map(s => (
                                                                                 <SelectItem key={s.id} value={s.id}>
@@ -949,16 +949,16 @@ export default function ComposerWizard() {
                                             )}
                                         </div>
 
-                                        <div className="space-y-4 pt-4 border-t border-border/50">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
+ <div className="space-y-4 pt-4 border-t border-border/50">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
                                             <Controller
                                                 name="isScheduled"
                                                 control={control}
                                                 render={({ field }) => (
-                                                    <div className="flex items-center justify-between h-16 bg-muted/20 rounded-[1.25rem] px-6 shadow-inner">
-                                                        <div className="flex items-center gap-3">
-                                                            <CalendarClock className="h-5 w-5 text-muted-foreground" />
-                                                            <span className="text-xs font-bold uppercase tracking-widest">Enable Scheduling</span>
+ <div className="flex items-center justify-between h-16 bg-muted/20 rounded-[1.25rem] px-6 shadow-inner">
+ <div className="flex items-center gap-3">
+ <CalendarClock className="h-5 w-5 text-muted-foreground" />
+ <span className="text-xs font-bold ">Enable Scheduling</span>
                                                         </div>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                     </div>
@@ -978,43 +978,43 @@ export default function ComposerWizard() {
 
                                     </motion.div>
                                 ) : (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
+ <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
                                         {/* Tag-Based Audience Segmentation (FR5.1.1, FR5.1.2, FR5.1.3) */}
-                                        <div className="p-8 rounded-[2.5rem] bg-muted/10 border border-border/50 shadow-inner">
+ <div className="p-8 rounded-[2.5rem] bg-muted/10 border border-border/50 shadow-inner">
                                             <TagAudienceSelector onChange={setTagSegment} />
                                         </div>
 
                                         {!csvData.length ? (
-                                            <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
-                                                <Upload className="h-12 w-12 text-primary" />
-                                                <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
-                                                <Button asChild variant="outline" className="rounded-2xl border-2 font-black h-16 px-16 uppercase tracking-widest text-xs">
-                                                    <label htmlFor="csv-upload" className="cursor-pointer">Identify Data Stream (.CSV)</label>
+ <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
+ <Upload className="h-12 w-12 text-primary" />
+ <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
+ <Button asChild variant="outline" className="rounded-2xl border-2 font-semibold h-16 px-16 text-xs">
+ <label htmlFor="csv-upload" className="cursor-pointer">Identify Data Stream (.CSV)</label>
                                                 </Button>
                                             </div>
                                         ) : (
-                                            <div className="space-y-8 animate-in zoom-in-95 duration-700">
-                                                <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 shadow-inner space-y-8">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-primary text-white rounded-xl shadow-lg"><Layers className="h-4 w-4" /></div>
-                                                            <Label className="text-sm font-black uppercase tracking-tight text-primary">Visual Data Mapper</Label>
+ <div className="space-y-8 animate-in zoom-in-95 duration-700">
+ <div className="p-8 rounded-[2.5rem] bg-primary/5 border border-primary/10 shadow-inner space-y-8">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary text-white rounded-xl shadow-lg"><Layers className="h-4 w-4" /></div>
+ <Label className="text-sm font-semibold tracking-tight text-primary">Visual Data Mapper</Label>
                                                         </div>
-                                                        <Badge className="bg-primary h-7 font-black uppercase text-[10px] px-4 rounded-xl shadow-lg">{csvData.length} Records</Badge>
+                                                        <Badge className="bg-primary h-7 font-semibold uppercase text-[10px] px-4 rounded-xl shadow-lg">{csvData.length} Records</Badge>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                                         {selectedTemplate?.variables.map(v => (
-                                                            <div key={v} className="space-y-2">
-                                                                <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+ <div key={v} className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
+ <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                                                                     Map &#123;&#123;{v}&#125;&#125; to column:
                                                                 </Label>
                                                                 <Select value={columnMapping[v] || ''} onValueChange={(val) => setColumnMapping(prev => ({ ...prev, [v]: val }))}>
-                                                                    <SelectTrigger className="h-12 rounded-xl bg-white border-primary/10 font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-white border-primary/10 font-bold">
                                                                         <SelectValue placeholder="Select CSV column..." />
                                                                     </SelectTrigger>
-                                                                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                         {csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                                                     </SelectContent>
                                                                 </Select>
@@ -1022,9 +1022,9 @@ export default function ComposerWizard() {
                                                         ))}
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-center">
-                                                    <Button variant="ghost" onClick={() => setCsvData([])} className="text-destructive font-black uppercase text-[10px] tracking-[0.2em] gap-2">
-                                                        <X className="h-4 w-4" /> Purge Repository
+ <div className="flex justify-center">
+ <Button variant="ghost" onClick={() => setCsvData([])} className="text-destructive font-semibold text-[10px] gap-2">
+ <X className="h-4 w-4" /> Purge Repository
                                                     </Button>
                                                 </div>
                                             </div>
@@ -1033,9 +1033,9 @@ export default function ComposerWizard() {
                                 )}
                             </div>
                         </CardContent>
-                        <CardFooter className="justify-between bg-muted/30 p-8 border-t">
-                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
-                                <ArrowLeft className="h-4 w-4" /> Back
+ <CardFooter className="justify-between bg-muted/30 p-8 border-t">
+ <Button type="button" variant="ghost" onClick={handlePrev} className="font-semibold rounded-xl text-xs px-8 h-12 gap-2">
+ <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
                             <Button
                                 type="button"
@@ -1046,49 +1046,49 @@ export default function ComposerWizard() {
                                         ? getValues('selectedEntityIds').length === 0
                                         : !csvData.length)
                                 }
-                                className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 transition-all group"
+ className="px-16 rounded-2xl font-semibold shadow-2xl h-16 tracking-[0.1em] active:scale-95 transition-all group"
                             >
-                                Review Blueprint <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
+ Review Blueprint <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
                 {step === 3 && (
-                    <Card className="shadow-2xl border-none ring-1 ring-border rounded-[3rem] overflow-hidden bg-white">
-                        <CardHeader className="bg-muted/30 border-b pb-8 p-10">
-                            <div className="flex items-center gap-5">
-                                <div className="p-4 bg-primary text-white rounded-[1.5rem] shadow-2xl shadow-primary/20 rotate-3">
-                                    <CheckCircle2 className="h-8 w-8" />
+ <Card className="shadow-2xl border-none ring-1 ring-border rounded-[3rem] overflow-hidden bg-white">
+ <CardHeader className="bg-muted/30 border-b pb-8 p-10">
+ <div className="flex items-center gap-5">
+ <div className="p-4 bg-primary text-white rounded-[1.5rem] shadow-2xl shadow-primary/20 rotate-3">
+ <CheckCircle2 className="h-8 w-8" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-3xl font-black uppercase tracking-tight">Final Verification</CardTitle>
-                                    <CardDescription className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">Validate payload and confirm operational metrics.</CardDescription>
+ <CardTitle className="text-3xl font-semibold tracking-tight">Final Verification</CardTitle>
+ <CardDescription className="text-sm font-bold text-muted-foreground/60">Validate payload and confirm operational metrics.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-12 p-10 pt-12">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                                <div className="space-y-10">
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div className="space-y-2 p-6 rounded-3xl bg-muted/20 border border-border/50 shadow-inner">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Authority ID</Label>
-                                            <p className="font-black text-primary uppercase text-lg leading-tight">{profiles?.find(p => p.id === getValues('senderProfileId'))?.name}</p>
+ <CardContent className="space-y-12 p-10 pt-12">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+ <div className="space-y-10">
+ <div className="grid grid-cols-2 gap-8">
+ <div className="space-y-2 p-6 rounded-3xl bg-muted/20 border border-border/50 shadow-inner">
+ <Label className="text-[10px] font-semibold text-muted-foreground ">Authority ID</Label>
+ <p className="font-semibold text-primary text-lg leading-tight">{profiles?.find(p => p.id === getValues('senderProfileId'))?.name}</p>
                                         </div>
-                                        <div className="space-y-2 p-6 rounded-3xl bg-muted/20 border border-border/50 shadow-inner">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Task Priority</Label>
-                                            <p className={cn("font-black uppercase text-base flex items-center gap-2", watchedIsScheduled ? "text-primary" : "text-emerald-600")}>
-                                                {watchedIsScheduled ? <CalendarClock className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
+ <div className="space-y-2 p-6 rounded-3xl bg-muted/20 border border-border/50 shadow-inner">
+ <Label className="text-[10px] font-semibold text-muted-foreground ">Task Priority</Label>
+ <p className={cn("font-semibold text-base flex items-center gap-2", watchedIsScheduled ? "text-primary" : "text-emerald-600")}>
+ {watchedIsScheduled ? <CalendarClock className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
                                                 {watchedIsScheduled ? 'Queued' : 'Real-time'}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="p-6 rounded-3xl border-2 border-blue-100 bg-blue-50/30 flex items-start gap-5 shadow-inner">
-                                        <div className="p-2.5 bg-blue-100 rounded-xl text-blue-600 shadow-sm"><Info className="h-6 w-6" /></div>
-                                        <div className="space-y-1.5">
-                                            <p className="text-base font-black text-blue-900 uppercase tracking-tight leading-none mb-1">Operational Audit</p>
-                                            <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-[0.1em] opacity-80">
+ <div className="p-6 rounded-3xl border-2 border-blue-100 bg-blue-50/30 flex items-start gap-5 shadow-inner">
+ <div className="p-2.5 bg-blue-100 rounded-xl text-blue-600 shadow-sm"><Info className="h-6 w-6" /></div>
+ <div className="space-y-1.5">
+ <p className="text-base font-semibold text-blue-900 tracking-tight leading-none mb-1">Operational Audit</p>
+ <p className="text-[10px] text-blue-700 leading-relaxed font-bold tracking-[0.1em] opacity-80">
                                                 This task will be logged for regulatory oversight. All dispatches use official organizational gateways.
                                             </p>
                                         </div>
@@ -1098,15 +1098,15 @@ export default function ComposerWizard() {
                                         type="button"
                                         variant="outline"
                                         onClick={() => setIsTestModalOpen(true)}
-                                        className="w-full h-14 rounded-2xl font-black border-primary/20 text-primary hover:bg-primary/5 gap-3 uppercase tracking-widest text-sm shadow-lg"
+ className="w-full h-14 rounded-2xl font-semibold border-primary/20 text-primary hover:bg-primary/5 gap-3 text-sm shadow-lg"
                                     >
-                                        <FlaskConical className="h-5 w-5" /> Send Test Dispatch
+ <FlaskConical className="h-5 w-5" /> Send Test Dispatch
                                     </Button>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-3 ml-1">
-                                        <Eye className="h-4 w-4" /> Live Payload Simulation
+ <div className="space-y-6">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-3 ml-1">
+ <Eye className="h-4 w-4" /> Live Payload Simulation
                                     </Label>
                                     <MessagePreviewer
                                         template={selectedTemplate!}
@@ -1115,37 +1115,37 @@ export default function ComposerWizard() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex-col gap-6 bg-muted/30 p-10 border-t">
+ <CardFooter className="flex-col gap-6 bg-muted/30 p-10 border-t">
                             {/* Message Count Preview (Task 8.2) */}
                             {watchedSelectedEntityIds.length > 0 && (
-                                <div className="w-full space-y-4">
+ <div className="w-full space-y-4">
                                     {/* Message Count Display */}
-                                    <div className={cn(
+ <div className={cn(
                                         "p-6 rounded-2xl border-2 flex items-center justify-between",
                                         watchedSelectedEntityIds.length > 50
                                             ? "bg-amber-50 border-amber-200"
                                             : "bg-blue-50 border-blue-200"
                                     )}>
-                                        <div className="flex items-center gap-4">
-                                            <div className={cn(
+ <div className="flex items-center gap-4">
+ <div className={cn(
                                                 "p-3 rounded-xl",
                                                 watchedSelectedEntityIds.length > 50
                                                     ? "bg-amber-600 text-white"
                                                     : "bg-blue-600 text-white"
                                             )}>
-                                                <Users className="h-5 w-5" />
+ <Users className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <p className={cn(
-                                                    "text-xs font-black uppercase tracking-widest",
+ <p className={cn(
+                                                    "text-xs font-semibold uppercase ",
                                                     watchedSelectedEntityIds.length > 50
                                                         ? "text-amber-900"
                                                         : "text-blue-900"
                                                 )}>
                                                     Estimated Message Count
                                                 </p>
-                                                <p className={cn(
-                                                    "text-3xl font-black tabular-nums",
+ <p className={cn(
+                                                    "text-3xl font-semibold tabular-nums",
                                                     watchedSelectedEntityIds.length > 50
                                                         ? "text-amber-600"
                                                         : "text-blue-600"
@@ -1155,9 +1155,9 @@ export default function ComposerWizard() {
                                             </div>
                                         </div>
                                         {watchedSelectedEntityIds.length > 50 && (
-                                            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100 border border-amber-300">
-                                                <AlertCircle className="h-4 w-4 text-amber-700" />
-                                                <span className="text-xs font-black uppercase text-amber-900 tracking-tight">
+ <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-100 border border-amber-300">
+ <AlertCircle className="h-4 w-4 text-amber-700" />
+ <span className="text-xs font-semibold text-amber-900 tracking-tight">
                                                     High Volume
                                                 </span>
                                             </div>
@@ -1169,14 +1169,14 @@ export default function ComposerWizard() {
                                         <motion.div
                                             initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            className="p-5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
+ className="p-5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3"
                                         >
-                                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-black text-amber-900 uppercase tracking-tight">
+ <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+ <div className="space-y-1">
+ <p className="text-sm font-semibold text-amber-900 tracking-tight">
                                                     High Volume Dispatch
                                                 </p>
-                                                <p className="text-xs text-amber-700 font-bold leading-relaxed">
+ <p className="text-xs text-amber-700 font-bold leading-relaxed">
                                                     You are about to send {watchedSelectedEntityIds.length} messages.
                                                     This operation will be processed sequentially with a delay between messages
                                                     to avoid rate limits. Estimated completion time: ~{Math.ceil(watchedSelectedEntityIds.length * 0.5 / 60)} minutes.
@@ -1187,17 +1187,17 @@ export default function ComposerWizard() {
                                 </div>
                             )}
 
-                            <div className="w-full flex justify-between items-center">
-                                <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
-                                    <ArrowLeft className="h-4 w-4" /> Back
+ <div className="w-full flex justify-between items-center">
+ <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-semibold rounded-xl text-xs px-8 h-12 gap-2">
+ <ArrowLeft className="h-4 w-4" /> Back
                                 </Button>
                                 <Button
                                     type="submit"
                                     size="lg"
                                     disabled={isSubmitting || (watchedSelectedEntityIds.length === 0)}
-                                    className="px-20 font-black shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl uppercase tracking-[0.2em] shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
+ className="px-20 font-semibold shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
+ {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
                                     {watchedMode === 'single' ? 'Launch Dispatch' : 'Execute Broadcast'}
                                 </Button>
                             </div>
@@ -1205,29 +1205,29 @@ export default function ComposerWizard() {
 
                         {/* Progress Tracking UI (Task 6.1) */}
                         {isSending && sendProgress.total > 0 && (
-                            <div className="p-8 bg-muted/30 border-t">
+ <div className="p-8 bg-muted/30 border-t">
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="space-y-4"
+ className="space-y-4"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-black uppercase tracking-tight text-primary">Sending Messages...</p>
-                                            <p className="text-xs text-muted-foreground font-bold">
+ <div className="flex items-center justify-between">
+ <div className="space-y-1">
+ <p className="text-sm font-semibold tracking-tight text-primary">Sending Messages...</p>
+ <p className="text-xs text-muted-foreground font-bold">
                                                 {sendProgress.sent} of {sendProgress.total} messages sent
                                             </p>
                                         </div>
-                                        <Badge className="bg-primary h-8 font-black uppercase text-xs px-4 rounded-xl">
+                                        <Badge className="bg-primary h-8 font-semibold uppercase text-xs px-4 rounded-xl">
                                             {Math.round((sendProgress.sent / sendProgress.total) * 100)}%
                                         </Badge>
                                     </div>
                                     <Progress
                                         value={(sendProgress.sent / sendProgress.total) * 100}
-                                        className="h-3"
+ className="h-3"
                                     />
                                     {sendProgress.currentEntity && (
-                                        <p className="text-xs text-muted-foreground font-medium">
+ <p className="text-xs text-muted-foreground font-medium">
                                             Current: {sendProgress.currentEntity}
                                         </p>
                                     )}
@@ -1238,38 +1238,38 @@ export default function ComposerWizard() {
                 )}
 
                 {step === 4 && (
-                    <Card className="shadow-2xl border-none ring-1 ring-primary/20 rounded-[4rem] overflow-hidden bg-white">
-                        <CardHeader className="text-center pb-12 pt-16 border-b bg-muted/30">
-                            <div className="mx-auto bg-primary/10 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10">
-                                {jobStatus === 'processing' ? <Loader2 className="h-12 w-12 animate-spin text-primary" /> : <Trophy className="h-12 w-12 text-emerald-600" />}
+ <Card className="shadow-2xl border-none ring-1 ring-primary/20 rounded-[4rem] overflow-hidden bg-white">
+ <CardHeader className="text-center pb-12 pt-16 border-b bg-muted/30">
+ <div className="mx-auto bg-primary/10 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10">
+ {jobStatus === 'processing' ? <Loader2 className="h-12 w-12 animate-spin text-primary" /> : <Trophy className="h-12 w-12 text-emerald-600" />}
                             </div>
-                            <CardTitle className="text-4xl font-black tracking-tighter text-foreground uppercase leading-none">Task Execution</CardTitle>
-                            <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-muted-foreground mt-4">Connecting with {csvData.length} identities via secured gateway.</CardDescription>
+ <CardTitle className="text-4xl font-semibold tracking-tighter text-foreground leading-none">Task Execution</CardTitle>
+ <CardDescription className="text-base font-bold tracking-[0.3em] text-muted-foreground mt-4">Connecting with {csvData.length} identities via secured gateway.</CardDescription>
                         </CardHeader>
-                        <CardContent className="py-20 space-y-16">
-                            <div className="space-y-8 max-w-2xl mx-auto px-4">
-                                <div className="flex justify-between items-end mb-2">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Throughput Velocity</p>
-                                    <p className="text-6xl font-black tabular-nums tracking-tighter text-primary">{jobProgress}%</p>
+ <CardContent className="py-20 space-y-16">
+ <div className="space-y-8 max-w-2xl mx-auto px-4">
+ <div className="flex justify-between items-end mb-2">
+ <p className="text-[10px] font-semibold text-muted-foreground opacity-60">Throughput Velocity</p>
+ <p className="text-6xl font-semibold tabular-nums tracking-tighter text-primary">{jobProgress}%</p>
                                 </div>
-                                <div className="h-6 w-full bg-muted/30 rounded-full overflow-hidden border-2 p-1.5 shadow-inner">
+ <div className="h-6 w-full bg-muted/30 rounded-full overflow-hidden border-2 p-1.5 shadow-inner">
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${jobProgress}%` }}
-                                        className="h-full bg-primary rounded-full shadow-[0_0_25px_rgba(59,95,255,0.6)]"
+ className="h-full bg-primary rounded-full shadow-[0_0_25px_rgba(59,95,255,0.6)]"
                                     />
                                 </div>
                             </div>
 
                             {jobStatus === 'completed' && (
-                                <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto">
-                                    <div className="p-8 rounded-[3rem] bg-emerald-50 border-2 border-emerald-100 flex items-center gap-8 shadow-2xl shadow-emerald-500/10">
-                                        <div className="bg-emerald-600 text-white p-5 rounded-[1.5rem] shadow-xl"><Check className="h-8 w-8" /></div>
-                                        <div className="flex-1">
-                                            <p className="font-black text-xl text-emerald-900 uppercase tracking-tight">Task Success</p>
-                                            <p className="text-xs font-bold text-emerald-700 uppercase tracking-widest opacity-80 mt-1">Audit protocols successfully generated.</p>
+ <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto">
+ <div className="p-8 rounded-[3rem] bg-emerald-50 border-2 border-emerald-100 flex items-center gap-8 shadow-2xl shadow-emerald-500/10">
+ <div className="bg-emerald-600 text-white p-5 rounded-[1.5rem] shadow-xl"><Check className="h-8 w-8" /></div>
+ <div className="flex-1">
+ <p className="font-semibold text-xl text-emerald-900 tracking-tight">Task Success</p>
+ <p className="text-xs font-bold text-emerald-700 opacity-80 mt-1">Audit protocols successfully generated.</p>
                                         </div>
-                                        <Button asChild className="rounded-2xl font-black h-14 px-10 shadow-xl bg-emerald-600 hover:bg-emerald-700 uppercase tracking-widest text-xs">
+ <Button asChild className="rounded-2xl font-semibold h-14 px-10 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-xs">
                                             <Link href="/admin/messaging">Acknowledge Hub</Link>
                                         </Button>
                                     </div>
@@ -1300,49 +1300,49 @@ export default function ComposerWizard() {
 
             {/* Summary Report Dialog (Task 6.2) */}
             <AlertDialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
-                <AlertDialogContent className="max-w-2xl">
+ <AlertDialogContent className="max-w-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+ <AlertDialogTitle className="text-2xl font-semibold tracking-tight flex items-center gap-3">
                             {sendSummary?.success ? (
                                 <>
-                                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+ <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                                     Bulk Send Complete
                                 </>
                             ) : (
                                 <>
-                                    <AlertCircle className="h-6 w-6 text-amber-600" />
+ <AlertCircle className="h-6 w-6 text-amber-600" />
                                     Bulk Send Completed with Errors
                                 </>
                             )}
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+ <AlertDialogDescription className="text-sm font-bold text-muted-foreground">
                             Message delivery summary and error report
                         </AlertDialogDescription>
                     </AlertDialogHeader>
 
                     {sendSummary && (
-                        <div className="space-y-6 py-4">
+ <div className="space-y-6 py-4">
                             {/* Success/Failure Counts */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-emerald-600 text-white rounded-lg">
-                                            <Check className="h-4 w-4" />
+ <div className="grid grid-cols-2 gap-4">
+ <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-emerald-600 text-white rounded-lg">
+ <Check className="h-4 w-4" />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black uppercase text-emerald-900 tracking-tight">Successful</p>
-                                            <p className="text-2xl font-black text-emerald-600">{sendSummary.totalSent}</p>
+ <p className="text-xs font-semibold text-emerald-900 tracking-tight">Successful</p>
+ <p className="text-2xl font-semibold text-emerald-600">{sendSummary.totalSent}</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-red-600 text-white rounded-lg">
-                                            <X className="h-4 w-4" />
+ <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-red-600 text-white rounded-lg">
+ <X className="h-4 w-4" />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black uppercase text-red-900 tracking-tight">Failed</p>
-                                            <p className="text-2xl font-black text-red-600">{sendSummary.totalFailed}</p>
+ <p className="text-xs font-semibold text-red-900 tracking-tight">Failed</p>
+ <p className="text-2xl font-semibold text-red-600">{sendSummary.totalFailed}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1350,24 +1350,24 @@ export default function ComposerWizard() {
 
                             {/* Failed Entities List */}
                             {sendSummary.failedEntities.length > 0 && (
-                                <div className="space-y-3">
-                                    <Label className="text-xs font-black uppercase tracking-widest text-red-900">
+ <div className="space-y-3">
+ <Label className="text-xs font-semibold text-red-900">
                                         Failed Messages ({sendSummary.failedEntities.length})
                                     </Label>
-                                    <ScrollArea className="h-48 rounded-xl border border-red-200 bg-red-50/50">
-                                        <div className="p-4 space-y-2">
+ <ScrollArea className="h-48 rounded-xl border border-red-200 bg-red-50/50">
+ <div className="p-4 space-y-2">
                                              {sendSummary.failedEntities.map((failed, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className="p-3 rounded-lg bg-white border border-red-200 space-y-1"
+ className="p-3 rounded-lg bg-white border border-red-200 space-y-1"
                                                     >
-                                                        <div className="flex items-center gap-2">
-                                                            <Building className="h-3 w-3 text-red-600" />
-                                                            <span className="text-sm font-bold text-red-900">
+ <div className="flex items-center gap-2">
+ <Building className="h-3 w-3 text-red-600" />
+ <span className="text-sm font-bold text-red-900">
                                                                 {failed.entityId}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-red-700 font-medium pl-5">
+ <p className="text-xs text-red-700 font-medium pl-5">
                                                             {failed.error}
                                                         </p>
                                                     </div>
@@ -1378,7 +1378,7 @@ export default function ComposerWizard() {
                                     {/* Retry Option */}
                                     <Button
                                         variant="outline"
-                                        className="w-full h-12 rounded-xl font-black border-red-200 text-red-900 hover:bg-red-50 gap-2 uppercase tracking-widest text-xs"
+ className="w-full h-12 rounded-xl font-semibold border-red-200 text-red-900 hover:bg-red-50 gap-2 text-xs"
                                         onClick={() => {
                                             // Set failed entity IDs for retry
                                             const failedIds = sendSummary.failedEntities.map(f => f.entityId);
@@ -1391,7 +1391,7 @@ export default function ComposerWizard() {
                                             });
                                         }}
                                     >
-                                        <TrendingUp className="h-4 w-4" />
+ <TrendingUp className="h-4 w-4" />
                                         Retry Failed Messages
                                     </Button>
                                 </div>
@@ -1405,7 +1405,7 @@ export default function ComposerWizard() {
                                 setShowSummaryDialog(false);
                                 setSendSummary(null);
                             }}
-                            className="rounded-xl font-black uppercase tracking-widest text-xs px-8 h-12"
+ className="rounded-xl font-semibold text-xs px-8 h-12"
                         >
                             Close
                         </AlertDialogAction>
@@ -1420,15 +1420,15 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
     const combinedVars = { ...variables };
     if (variables.ai_refined_body) {
         return (
-            <div className={cn(
+ <div className={cn(
                 "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700 p-8",
                 template.channel === 'email' ? "bg-white border-blue-50" : "bg-white border-slate-200"
             )}>
-                <div className="flex items-center gap-2 mb-4 text-emerald-600">
-                    <Wand2 className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">AI Polished Draft</span>
+ <div className="flex items-center gap-2 mb-4 text-emerald-600">
+ <Wand2 className="h-4 w-4" />
+ <span className="text-[10px] font-semibold ">AI Polished Draft</span>
                 </div>
-                <div className={cn("whitespace-pre-wrap font-medium leading-relaxed", template.channel === 'sms' ? "text-slate-900 text-sm" : "text-slate-700 prose prose-sm max-w-none")} dangerouslySetInnerHTML={{ __html: resolveVariables(variables.ai_refined_body, combinedVars) }} />
+ <div className={cn("whitespace-pre-wrap font-medium leading-relaxed", template.channel === 'sms' ? "text-slate-900 text-sm" : "text-slate-700 prose prose-sm max-w-none")} dangerouslySetInnerHTML={{ __html: resolveVariables(variables.ai_refined_body, combinedVars) }} />
             </div>
         );
     }
@@ -1438,33 +1438,33 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
         : resolveVariables(template.body, combinedVars);
 
     return (
-        <div className={cn(
+ <div className={cn(
             "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700",
             template.channel === 'email' ? "bg-white border-blue-50" : "bg-slate-50 border-slate-200 max-w-sm mx-auto"
         )}>
             {template.channel === 'email' ? (
-                <div className="flex flex-col h-[450px]">
-                    <div className="p-8 border-b bg-muted/20 space-y-2 shrink-0">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">Inbox Perspective</p>
-                        <p className="font-black text-lg truncate text-foreground">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
+ <div className="flex flex-col h-[450px]">
+ <div className="p-8 border-b bg-muted/20 space-y-2 shrink-0">
+ <p className="text-[10px] font-semibold tracking-[0.3em] text-muted-foreground opacity-60">Inbox Perspective</p>
+ <p className="font-semibold text-lg truncate text-foreground">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
                     </div>
-                    <div className="flex-1 overflow-auto p-10 bg-white relative">
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-purple-500 opacity-20" />
-                        <div className="whitespace-pre-wrap font-medium leading-relaxed text-slate-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: resolvedBody }} />
+ <div className="flex-1 overflow-auto p-10 bg-white relative">
+ <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-purple-500 opacity-20" />
+ <div className="whitespace-pre-wrap font-medium leading-relaxed text-slate-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: resolvedBody }} />
                     </div>
                 </div>
             ) : (
-                <div className="p-10 space-y-8">
-                    <div className="flex items-center justify-between">
-                        <SmartSappIcon className="h-8 w-8 text-primary opacity-20" />
-                        <p className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em]">SMS Gateway Simulator</p>
+ <div className="p-10 space-y-8">
+ <div className="flex items-center justify-between">
+ <SmartSappIcon className="h-8 w-8 text-primary opacity-20" />
+ <p className="text-[10px] font-semibold text-primary/40 tracking-[0.3em]">SMS Gateway Simulator</p>
                     </div>
-                    <div className="p-6 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
-                        <div className="absolute -left-2.5 top-8 w-5 h-5 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
-                        <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{resolvedBody}</p>
+ <div className="p-6 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
+ <div className="absolute -left-2.5 top-8 w-5 h-5 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
+ <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{resolvedBody}</p>
                     </div>
-                    <div className="pt-6 text-center border-t border-slate-200">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">~ {Math.ceil(resolvedBody.length / 160)} SMS Segment(s)</span>
+ <div className="pt-6 text-center border-t border-slate-200">
+ <span className="text-[9px] font-semibold text-slate-300">~ {Math.ceil(resolvedBody.length / 160)} SMS Segment(s)</span>
                     </div>
                 </div>
             )}

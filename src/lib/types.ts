@@ -546,6 +546,18 @@ export interface InstitutionData {
   }[];
   implementationDate?: string; // ISO date string
   referee?: string;
+  website?: string;
+  initials?: string;
+  slogan?: string;
+  logoUrl?: string;
+  heroImageUrl?: string;
+  discountPercentage?: number;
+  arrearsBalance?: number;
+  creditBalance?: number;
+  location?: {
+    zone?: { id: string; name: string };
+    locationString?: string;
+  };
 }
 
 /**
@@ -630,6 +642,17 @@ export interface WorkspaceEntity {
   focalPersons?: Partial<FocalPerson>[];
   interests?: Partial<Module>[];
   currentStageName?: string;
+  entityName?: string; // Snapshot for backward compatibility
+  logoUrl?: string;
+  initials?: string;
+  slogan?: string;
+  location?: { locationString?: string; zone?: { id: string; name: string } };
+  locationString?: string; // Legacy/flat location fallback
+  nominalRoll?: number;
+  implementationDate?: string;
+  zone?: { id: string; name: string };
+  modules?: Partial<Module>[];
+  slug?: string;
 }
 
 /**
@@ -709,6 +732,7 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
 
 export interface Invoice {
   id: string;
+  entityName?: string | null;
   invoiceNumber: string;
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType | null; // Type of entity
@@ -742,6 +766,7 @@ export interface Invoice {
 export interface Meeting {
   id: string;
   entityId?: string; // Unified entity reference
+  entityName?: string | null; // Snapshot of entity name
   entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
   meetingTime: string;
@@ -1099,6 +1124,7 @@ export interface Activity {
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType | null; // Type of entity
   displayName?: string; // Denormalized entity name at time of logging
+  entityName?: string | null; // Historical entity name snapshot
   entitySlug?: string; // Denormalized slug for historical readability
   userId?: string | null;
   type: string;
@@ -1111,6 +1137,7 @@ export interface Activity {
 
 export interface Task {
   id: string;
+  entityName?: string | null;
   organizationId?: string; // Organization context for multi-tenant support
   workspaceId: string; // Strictly confined
   title: string;

@@ -43,13 +43,24 @@ export default function MeetingRegisteredState({
         attendedAt: new Date().toISOString(),
       });
 
-      // Dual-write to attendees subcollection for backward compatibility with Results page
-      const attendeesRef = collection(firestore, `meetings/${meeting.id}/attendees`);
+      // Extract children from registration data if available (look for various potential keys)
+      const registrationData = registrant.registrationData || {};
+      const childrenFromData = registrationData.children || 
+                               registrationData.childrenNames || 
+                               registrationData['Children Names'] || 
+                               registrationData['Child Names'] || [];
+      
+      const childrenArray = Array.isArray(childrenFromData) 
+        ? childrenFromData 
+        : typeof childrenFromData === 'string' 
+          ? childrenFromData.split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+
       await addDoc(attendeesRef, {
         meetingId: meeting.id,
         entityId: meeting.entityId || '',
         parentName: registrant.name,
-        childrenNames: [],
+        childrenNames: childrenArray,
         joinedAt: new Date().toISOString(),
         registrantId: registrant.id,
         registrantToken: registrant.token,

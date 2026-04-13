@@ -73,16 +73,16 @@ export function ContactSelector({
   if (filteredContacts.length === 0) {
     return (
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Contact className="h-4 w-4" />
+ <CardHeader className="pb-3">
+ <CardTitle className="text-sm font-medium flex items-center gap-2">
+ <Contact className="h-4 w-4" />
             Select Contacts
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-sm text-amber-900 dark:text-amber-100">
+ <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+ <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+ <span className="text-sm text-amber-900 dark:text-amber-100">
               No contacts with valid {channel === 'email' ? 'email addresses' : 'phone numbers'} found for this school.
             </span>
           </div>
@@ -93,10 +93,10 @@ export function ContactSelector({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Contact className="h-4 w-4" />
+ <CardHeader className="pb-3">
+ <div className="flex items-center justify-between">
+ <CardTitle className="text-sm font-medium flex items-center gap-2">
+ <Contact className="h-4 w-4" />
             Select Contacts
           </CardTitle>
           <Badge variant="secondary">
@@ -107,16 +107,16 @@ export function ContactSelector({
       <CardContent>
         {/* Maximum Selection Warning (Requirement 2.6) */}
         {selectedContactIndices.length >= maxSelections && (
-          <div className="flex items-center gap-2 p-3 mb-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-sm text-amber-900 dark:text-amber-100">
+ <div className="flex items-center gap-2 p-3 mb-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+ <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+ <span className="text-sm text-amber-900 dark:text-amber-100">
               Maximum selection limit of {maxSelections} contacts reached
             </span>
           </div>
         )}
 
-        <ScrollArea className="h-64">
-          <div className="space-y-2">
+ <ScrollArea className="h-64">
+ <div className="space-y-2">
             {filteredContacts.map(({ contact, originalIndex }) => {
               const isSelected = selectedContactIndices.includes(originalIndex);
               const isDisabled = !isSelected && selectedContactIndices.length >= maxSelections;
@@ -125,7 +125,7 @@ export function ContactSelector({
               return (
                 <div
                   key={originalIndex}
-                  className={cn(
+ className={cn(
                     "flex items-start gap-3 p-3 rounded-md border transition-colors",
                     isSelected && "bg-primary/5 border-primary",
                     !isSelected && "hover:bg-muted",
@@ -137,41 +137,41 @@ export function ContactSelector({
                     checked={isSelected}
                     onCheckedChange={() => handleToggleContact(originalIndex)}
                     disabled={isDisabled}
-                    className="mt-1"
+ className="mt-1"
                   />
                   <label
                     htmlFor={`contact-${originalIndex}`}
-                    className="flex-1 cursor-pointer"
+ className="flex-1 cursor-pointer"
                   >
-                    <div className="space-y-1">
+ <div className="space-y-1">
                       {/* Contact Name and Type (Requirement 2.2) */}
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{contact.name}</p>
+ <div className="flex items-center gap-2">
+ <p className="text-sm font-medium">{contact.name}</p>
                         <Badge variant="outline" className="text-xs">
                           {contact.type}
                         </Badge>
                       </div>
                       
                       {/* Contact Details (Requirement 2.2) */}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+ <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         {contact.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
+ <div className="flex items-center gap-1">
+ <Mail className="h-3 w-3" />
                             <span>{contact.email}</span>
                           </div>
                         )}
                         {contact.phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
+ <div className="flex items-center gap-1">
+ <Phone className="h-3 w-3" />
                             <span>{contact.phone}</span>
                           </div>
                         )}
                       </div>
 
                       {/* Channel Indicator */}
-                      <div className="flex items-center gap-1 text-xs">
-                        <ChannelIcon className="h-3 w-3 text-primary" />
-                        <span className="text-primary font-medium">
+ <div className="flex items-center gap-1 text-xs">
+ <ChannelIcon className="h-3 w-3 text-primary" />
+ <span className="text-primary font-medium">
                           Will receive via {channel === 'email' ? 'email' : 'SMS'}: {contactValue}
                         </span>
                       </div>
@@ -184,8 +184,8 @@ export function ContactSelector({
         </ScrollArea>
 
         {/* Selection Summary (Requirement 2.7) */}
-        <div className="mt-4 pt-4 border-t">
-          <p className="text-xs text-muted-foreground">
+ <div className="mt-4 pt-4 border-t">
+ <p className="text-xs text-muted-foreground">
             {filteredContacts.length} contact{filteredContacts.length !== 1 ? 's' : ''} available for {channel === 'email' ? 'email' : 'SMS'}
           </p>
         </div>

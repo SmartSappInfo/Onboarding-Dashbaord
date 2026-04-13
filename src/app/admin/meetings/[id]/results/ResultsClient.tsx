@@ -127,12 +127,12 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
     if (isLoadingMeeting) {
         return (
-            <div className="p-8 space-y-8 animate-pulse">
-                <div className="h-12 w-64 bg-muted rounded-xl" />
-                <div className="grid grid-cols-3 gap-6">
-                    {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-[2rem]" />)}
+ <div className="p-8 space-y-8 animate-pulse">
+ <div className="h-12 w-64 bg-muted rounded-xl" />
+ <div className="grid grid-cols-3 gap-6">
+ {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-[2rem]" />)}
                 </div>
-                <Skeleton className="h-[400px] rounded-[2.5rem]" />
+ <Skeleton className="h-[400px] rounded-[2.5rem]" />
             </div>
         );
     }
@@ -140,14 +140,14 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     if (meetingError || attendeesError) {
         const error = meetingError || attendeesError;
         return (
-            <div className="p-8 max-w-7xl mx-auto">
-                <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle className="font-black uppercase tracking-widest text-[10px]">Intelligence Error</AlertTitle>
-                    <AlertDescription className="text-sm font-medium mt-1">
+ <div className="p-8 max-w-7xl mx-auto">
+ <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
+ <AlertCircle className="h-4 w-4" />
+ <AlertTitle className="font-semibold text-[10px]">Intelligence Error</AlertTitle>
+ <AlertDescription className="text-sm font-medium mt-1">
                         {error?.message || 'Access Denied or Connection Failure. Please verify your permissions.'}
                     </AlertDescription>
-                    <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
+ <Button variant="outline" size="sm" className="mt-4 font-bold rounded-xl" onClick={() => window.location.reload()}>
                         Refresh Intelligence
                     </Button>
                 </Alert>
@@ -155,63 +155,63 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
         );
     }
 
-    if (!meeting) return <div className="p-20 text-center font-black uppercase tracking-widest opacity-20">Session Not Found</div>;
+ if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-            <div className="max-w-7xl mx-auto space-y-10 pb-32">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-10 pb-32">
 
                 {/* Executive Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl bg-card shadow-sm border border-border/50">
-                            <ArrowLeft className="h-5 w-5" />
+ <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+ <div className="flex items-center gap-5">
+ <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl bg-card shadow-sm border border-border/50">
+ <ArrowLeft className="h-5 w-5" />
                         </Button>
-                        <div className="text-left">
-                            <div className="flex items-center gap-3 mb-1">
-                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] uppercase tracking-widest px-2.5 h-5">{meeting.type.name}</Badge>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40">Session Intelligence</span>
+ <div className="text-left">
+ <div className="flex items-center gap-3 mb-1">
+                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold text-[9px] uppercase  px-2.5 h-5">{meeting.type.name}</Badge>
+ <span className="text-[10px] font-bold text-muted-foreground opacity-40">Session Intelligence</span>
                             </div>
-                            <h1 className="text-3xl font-black uppercase tracking-tight text-foreground leading-none">{meeting.entityName}</h1>
+ <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none">{meeting.entityName}</h1>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-card/50 backdrop-blur-sm shadow-sm">
-                            <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
+ <div className="flex items-center gap-3">
+ <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/edit`)} className="rounded-xl font-bold h-11 border-primary/20 text-primary bg-card/50 backdrop-blur-sm shadow-sm">
+ <Settings2 className="mr-2 h-4 w-4" /> Edit Architecture
                         </Button>
                         {meeting.registrationEnabled && (
-                            <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
-                                <Users className="mr-2 h-4 w-4" /> View Registrants
+ <Button variant="outline" onClick={() => router.push(`/admin/meetings/${meetingId}/registrants`)} className="rounded-xl font-bold h-11 border-violet-500/20 text-violet-600 bg-violet-500/5 shadow-sm">
+ <Users className="mr-2 h-4 w-4" /> View Registrants
                             </Button>
                         )}
-                        <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-black shadow-xl shadow-primary/20 h-11 px-8 uppercase tracking-widest text-[10px] gap-2">
-                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+ <Button onClick={handleExport} disabled={isExporting || !attendees?.length} className="rounded-xl font-semibold shadow-xl shadow-primary/20 h-11 px-8 text-[10px] gap-2">
+ {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
                             Export Attendance
                         </Button>
                     </div>
                 </div>
 
                 {/* KPI Tier */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard label="Families Joined" value={metrics.families} sub="Individual parent log-ins" icon={Users} color="text-primary" bg="bg-primary/10" />
                     <StatCard label="Children Represented" value={metrics.children} sub="Total campus enrollment reach" icon={Baby} color="text-emerald-600" bg="bg-emerald-50" />
                     <StatCard label="Capture Density" value={metrics.avgChildren} sub="Mean children per parent" icon={Target} color="text-blue-600" bg="bg-blue-50" />
                     <StatCard label="Protocol Status" value={attendees?.length ? 'SUCCESS' : 'PENDING'} sub={attendees?.length ? "Engagement detected" : "Awaiting session start"} icon={CheckCircle2} color="text-purple-600" bg="bg-purple-50" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Attendance Velocity Chart */}
-                    <Card className="lg:col-span-2 rounded-[2.5rem] glass-card overflow-hidden">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-card rounded-xl shadow-sm border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
-                                    <CardTitle className="text-sm font-black uppercase tracking-tight">Login Velocity</CardTitle>
+ <Card className="lg:col-span-2 rounded-[2.5rem] glass-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-card rounded-xl shadow-sm border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight">Login Velocity</CardTitle>
                                 </div>
-                                <Badge variant="secondary" className="bg-primary/5 text-primary border-none font-black text-[10px] h-6 px-3">Real-time Pulse</Badge>
+                                <Badge variant="secondary" className="bg-primary/5 text-primary border-none font-semibold text-[10px] h-6 px-3">Real-time Pulse</Badge>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-8 h-[350px]">
+ <CardContent className="p-8 h-[350px]">
                             {timelineData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={timelineData}>
@@ -233,29 +233,29 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                                     </LineChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 gap-3">
-                                    <BarChart3 className="h-12 w-12" />
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">Collecting Engagement Data...</p>
+ <div className="h-full flex flex-col items-center justify-center text-center opacity-20 gap-3">
+ <BarChart3 className="h-12 w-12" />
+ <p className="text-[10px] font-semibold tracking-[0.3em]">Collecting Engagement Data...</p>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
                     {/* Operational Details */}
-                    <Card className="rounded-[2.5rem] glass-card overflow-hidden">
-                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                                <CalendarCheck className="h-4 w-4" /> Session Blueprint
+ <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <CalendarCheck className="h-4 w-4" /> Session Blueprint
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8">
+ <CardContent className="p-8 space-y-8">
                             <DetailRow label="Scheduled Implementation" value={format(new Date(meeting.meetingTime), 'PPPP')} sub={format(new Date(meeting.meetingTime), 'p')} icon={Clock} />
                             <DetailRow label="Institutional Binding" value={meeting.entityName || 'N/A'} sub="Active Campus Context" icon={Building} />
                             <Separator />
-                            <div className="pt-2">
-                                <Button asChild variant="outline" className="w-full rounded-xl font-black h-12 uppercase text-[10px] tracking-widest border-primary/20 text-primary gap-2">
+ <div className="pt-2">
+ <Button asChild variant="outline" className="w-full rounded-xl font-semibold h-12 text-[10px] border-primary/20 text-primary gap-2">
                                     <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer">
-                                        Join Active Room <ArrowRight className="h-3.5 w-3.5" />
+ Join Active Room <ArrowRight className="h-3.5 w-3.5" />
                                     </a>
                                 </Button>
                             </div>
@@ -264,70 +264,80 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                 </div>
 
                 {/* Attendee Registry */}
-                <Card className="rounded-[2.5rem] glass-card overflow-hidden">
-                    <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Contact className="h-5 w-5" /></div>
+ <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+ <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Contact className="h-5 w-5" /></div>
                                 <div>
-                                    <CardTitle className="text-xl font-black uppercase tracking-tight">Family Attendance Ledger</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-primary/60">Verified institutional log of session participants.</CardDescription>
+ <CardTitle className="text-xl font-semibold tracking-tight">Family Attendance Ledger</CardTitle>
+ <CardDescription className="text-xs font-bold text-primary/60">Verified institutional log of session participants.</CardDescription>
                                 </div>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-0">
+ <CardContent className="p-0">
                         <Table>
-                            <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/30">
                                 <TableRow>
-                                    <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest">Parent / Guardian Identity</TableHead>
-                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Enrolled Children</TableHead>
-                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Session Ingress</TableHead>
-                                    <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Status</TableHead>
+ <TableHead className="pl-8 py-5 text-[10px] font-semibold ">Parent / Guardian Identity</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Enrolled Children</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Session Ingress</TableHead>
+ <TableHead className="text-right pr-8 text-[10px] font-semibold ">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoadingAttendees ? (
                                     Array.from({ length: 3 }).map((_, i) => (
                                         <TableRow key={i}>
-                                            <TableCell className="pl-8"><Skeleton className="h-4 w-40" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-64" /></TableCell>
-                                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                            <TableCell className="text-right pr-8"><Skeleton className="h-6 w-12 ml-auto rounded-full" /></TableCell>
+ <TableCell className="pl-8"><Skeleton className="h-4 w-40" /></TableCell>
+ <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+ <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+ <TableCell className="text-right pr-8"><Skeleton className="h-6 w-12 ml-auto rounded-full" /></TableCell>
                                         </TableRow>
                                     ))
                                 ) : attendees && attendees.length > 0 ? (
-                                    attendees.map((a) => (
+                                    attendees.map((a) => {
+                                        const parentName = a.parentName || (a as any).name || (a as any).fullName || 'Unknown';
+                                        const children = a.childrenNames || (a as any).children || (a as any).childNames || [];
+                                        
+                                        return (
                                         <TableRow key={a.id} className="group hover:bg-muted/30 transition-colors">
                                             <TableCell className="pl-8 py-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{a.parentName.substring(0, 2).toUpperCase()}</div>
-                                                    <span className="font-black text-sm uppercase tracking-tight text-foreground">{a.parentName}</span>
+                                                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center font-semibold text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{(parentName || '??').substring(0, 2).toUpperCase()}</div>
+                                                    <span className="font-semibold text-sm tracking-tight text-foreground">{parentName}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {a.childrenNames?.map((child, idx) => (
-                                                        <Badge key={idx} variant="secondary" className="bg-muted/50 border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
-                                                            {child}
-                                                        </Badge>
-                                                    ))}
+                                                    {children.length > 0 ? children.map((child: any, idx: number) => {
+                                                        const childName = typeof child === 'string' ? child : child?.value || child?.name || 'Unknown Child';
+                                                        return (
+                                                            <Badge key={idx} variant="secondary" className="bg-muted/50 border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
+                                                                {childName}
+                                                            </Badge>
+                                                        );
+                                                    }) : (
+                                                        <span className="text-[10px] text-muted-foreground italic opacity-50">Not provided</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-[10px] font-black text-muted-foreground uppercase tabular-nums">
+ <TableCell className="text-[10px] font-semibold text-muted-foreground tabular-nums">
                                                 {format(new Date(a.joinedAt), 'MMM d, HH:mm:ss')}
                                             </TableCell>
-                                            <TableCell className="text-right pr-8">
-                                                <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-black gap-1 shadow-sm"><CheckCircle2 size={10} /> Verified</Badge>
+ <TableCell className="text-right pr-8">
+                                                <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1 shadow-sm"><CheckCircle2 size={10} /> Verified</Badge>
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-64 text-center">
-                                            <div className="flex flex-col items-center justify-center gap-3 opacity-20">
-                                                <Users className="h-12 w-12" />
-                                                <p className="text-xs font-black uppercase tracking-widest text-foreground">Waiting for participants...</p>
+ <TableCell colSpan={4} className="h-64 text-center">
+ <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+ <Users className="h-12 w-12" />
+ <p className="text-xs font-semibold text-foreground">Waiting for participants...</p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -343,15 +353,15 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
-            <CardContent className="p-6 flex items-center gap-5">
-                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
-                    <Icon className="h-7 w-7" />
+ <Card className="rounded-[2rem] glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
+ <CardContent className="p-6 flex items-center gap-5">
+ <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
+ <Icon className="h-7 w-7" />
                 </div>
-                <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-2xl font-black tabular-nums tracking-tighter leading-none">{value}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1">{sub}</p>
+ <div className="text-left">
+ <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
+ <p className="text-2xl font-semibold tabular-nums tracking-tighter leading-none">{value}</p>
+ <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter mt-1">{sub}</p>
                 </div>
             </CardContent>
         </Card>
@@ -360,12 +370,12 @@ function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string,
 
 function DetailRow({ label, value, sub, icon: Icon }: { label: string, value: string, sub: string, icon: any }) {
     return (
-        <div className="flex gap-4 group text-left">
-            <div className="p-2.5 bg-muted rounded-xl transition-transform group-hover:scale-110 shrink-0 h-fit mt-1"><Icon className="h-4 w-4 text-muted-foreground" /></div>
-            <div className="space-y-0.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary/60 leading-none">{label}</p>
-                <p className="text-sm font-black uppercase tracking-tight text-foreground leading-tight">{value}</p>
-                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">{sub}</p>
+ <div className="flex gap-4 group text-left">
+ <div className="p-2.5 bg-muted rounded-xl transition-transform group-hover:scale-110 shrink-0 h-fit mt-1"><Icon className="h-4 w-4 text-muted-foreground" /></div>
+ <div className="space-y-0.5">
+ <p className="text-[10px] font-semibold text-primary/60 leading-none">{label}</p>
+ <p className="text-sm font-semibold tracking-tight text-foreground leading-tight">{value}</p>
+ <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter">{sub}</p>
             </div>
         </div>
     );

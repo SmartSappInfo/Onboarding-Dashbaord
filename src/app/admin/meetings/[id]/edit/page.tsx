@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
+import { useTerminology } from '@/hooks/use-terminology';
 import { 
     Loader2, 
     Save, 
@@ -137,7 +138,7 @@ export default function EditMeetingPage() {
 
   const entitiesCol = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('displayName', 'asc'));
+    return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
   }, [firestore, activeWorkspaceId]);
   
   const { data: entities, isLoading: isLoadingEntities } = useCollection<WorkspaceEntity>(entitiesCol);
@@ -180,7 +181,7 @@ export default function EditMeetingPage() {
 
   React.useEffect(() => {
     if (meeting && entities && !hasInitialized) {
-      const selectedEntity = entities.find(s => s.id === meeting.entityId);
+      const selectedEntity = entities.find(s => s.entityId === meeting.entityId);
       const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || 
                           MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
                           MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
@@ -237,11 +238,11 @@ export default function EditMeetingPage() {
         }
 
         const meetingData = {
-            entityId: data.entity.id,
+            entityId: data.entity.entityId, // Store Global Entity ID instead of WorkspaceEntity ID
             entityName: data.entity.displayName,
             entitySlug: data.entitySlug,
             entityType: data.entity.entityType || 'institution',
-            workspaceIds: data.entity.workspaceIds || [activeWorkspaceId],
+            workspaceIds: [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
@@ -341,13 +342,13 @@ export default function EditMeetingPage() {
 
   if (isLoadingMeeting || isLoadingEntities) {
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 bg-muted/5">
-            <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
-                <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
-                <CardContent className="space-y-8">
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
-                    <Skeleton className="h-12 w-full rounded-xl" />
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 bg-muted/5">
+ <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
+ <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
+ <CardContent className="space-y-8">
+ <Skeleton className="h-12 w-full rounded-xl" />
+ <Skeleton className="h-12 w-full rounded-xl" />
+ <Skeleton className="h-12 w-full rounded-xl" />
                 </CardContent>
             </Card>
         </div>
@@ -355,31 +356,31 @@ export default function EditMeetingPage() {
   }
 
   return (
-    <div className="h-full flex flex-col items-center bg-muted/5">
-      <div className="w-full max-w-5xl px-4 sm:px-6 md:px-8 py-8 space-y-8 flex-1 text-left">
+ <div className="h-full flex flex-col items-center bg-muted/5">
+ <div className="w-full max-w-5xl px-4 sm:px-6 md:px-8 py-8 space-y-8 flex-1 text-left">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+ <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <div>
-                <h1 className="text-3xl font-black uppercase tracking-tight text-foreground leading-none mb-1 text-left">Edit Session</h1>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] text-left">Meeting & Webinar Configuration</p>
+ <h1 className="text-3xl font-semibold tracking-tight text-foreground leading-none mb-1 text-left">Edit Session</h1>
+ <p className="text-[10px] font-bold text-muted-foreground text-left">Meeting & Webinar Configuration</p>
             </div>
-            <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                 {publicUrl && (
-                    <Button asChild variant="outline" size="sm" className="h-9 px-4 rounded-full font-bold gap-2 text-[10px] uppercase tracking-widest bg-background">
+ <Button asChild variant="outline" size="sm" className="h-9 px-4 rounded-full font-bold gap-2 text-[10px] bg-background">
                         <Link href={publicUrl} target="_blank">
-                            <ExternalLink className="h-3.5 w-3.5" /> View Public Page
+ <ExternalLink className="h-3.5 w-3.5" /> View Public Page
                         </Link>
                     </Button>
                 )}
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
-                    <Settings2 className="h-3 w-3" /> Wizard Mode
+ <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm w-fit">
+ <Settings2 className="h-3 w-3" /> Wizard Mode
                 </div>
             </div>
         </div>
 
         {/* Step Indicator */}
-        <div className="flex items-center gap-2 p-2 bg-background rounded-2xl border shadow-sm overflow-x-auto">
+ <div className="flex items-center gap-2 p-2 bg-background rounded-2xl border shadow-sm overflow-x-auto">
           {WIZARD_STEPS.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = index === currentStep;
@@ -389,32 +390,32 @@ export default function EditMeetingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(index)}
-                  className={cn(
+ className={cn(
                     "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px]",
                     isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
                     isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
                     !isActive && !isCompleted && "hover:bg-muted/50 opacity-60"
                   )}
                 >
-                  <div className={cn(
+ <div className={cn(
                     "p-2 rounded-lg shrink-0 transition-colors",
                     isActive && "bg-primary text-white",
                     isCompleted && "bg-emerald-500 text-white",
                     !isActive && !isCompleted && "bg-muted text-muted-foreground"
                   )}>
-                    {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+ {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
                   </div>
-                  <div className="hidden lg:block min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest truncate">
+ <div className="hidden lg:block min-w-0">
+ <p className="text-[10px] font-semibold truncate">
                       {step.label}
                     </p>
-                    <p className="text-[9px] font-medium text-muted-foreground truncate">
+ <p className="text-[9px] font-medium text-muted-foreground truncate">
                       {step.description}
                     </p>
                   </div>
                 </button>
                 {index < WIZARD_STEPS.length - 1 && (
-                  <ChevronRight className={cn(
+ <ChevronRight className={cn(
                     "h-4 w-4 shrink-0 transition-colors",
                     index < currentStep ? "text-emerald-500" : "text-muted-foreground/30"
                   )} />
@@ -425,30 +426,30 @@ export default function EditMeetingPage() {
         </div>
 
         <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
 
             {/* ──────── STEP 1: Configuration ──────── */}
-            <div className={cn(currentStep !== 0 && "hidden")}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
+ <div className={cn(currentStep !== 0 && "hidden")}>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><Calendar className="h-5 w-5 text-primary" /></div>
                                     <div>
-                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
-                                        <CardDescription className="text-xs font-medium text-left">Core institutional setup and timing.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Session Configuration</CardTitle>
+ <CardDescription className="text-xs font-medium text-left">Core institutional setup and timing.</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-8 bg-background">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <CardContent className="p-6 space-y-8 bg-background">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
                                     name="entity"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
                                         <Select
                                             onValueChange={(entityId: string) => {
                                                 const entity = entities?.find((s) => s.id === entityId);
@@ -460,11 +461,11 @@ export default function EditMeetingPage() {
                                             value={field.value?.id || ""}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+ <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
                                                     <SelectValue placeholder={`Select ${singular.toLowerCase()}...`} />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                 {entities?.map((entity) => (
                                                     <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
                                                 ))}
@@ -480,17 +481,17 @@ export default function EditMeetingPage() {
                                     name="type"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Category</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Session Category</FormLabel>
                                         <Select
                                             onValueChange={(typeId: string) => field.onChange(MEETING_TYPES.find(t => t.id === typeId))}
                                             value={field.value?.id || ""}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+ <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
                                                     <SelectValue placeholder="Select type..." />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                 {MEETING_TYPES.map((type) => (
                                                     <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                                                 ))}
@@ -502,15 +503,15 @@ export default function EditMeetingPage() {
                                 />
                             </div>
 
-                            <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
                                     name="meetingTime"
                                     render={({ field }) => (
-                                    <FormItem className="flex flex-col text-left">
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
+ <FormItem className="flex flex-col text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
                                         <FormControl>
                                             <DateTimePicker value={field.value} onChange={field.onChange} disabled={form.formState.isSubmitting} />
                                         </FormControl>
@@ -523,11 +524,11 @@ export default function EditMeetingPage() {
                                     name="meetingLink"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Meeting URL (e.g. Google Meet)</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting URL (e.g. Google Meet)</FormLabel>
                                         <FormControl>
-                                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                                <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
-                                                <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
+ <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+ <div className="bg-muted px-3 flex items-center text-[10px] font-semibold tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
+ <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -536,23 +537,23 @@ export default function EditMeetingPage() {
                                 />
                             </div>
 
-                            <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
                             <FormField
                                 control={form.control}
                                 name="entitySlug"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">URL Path Context</FormLabel>
-                                        <div className="flex flex-col sm:flex-row group transition-all">
-                                            <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">URL Path Context</FormLabel>
+ <div className="flex flex-col sm:flex-row group transition-all">
+ <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-semibold tracking-tighter text-muted-foreground/60 shrink-0">
                                                 /meetings/{watchedType?.slug || 'parent-engagement'}/
                                             </div>
                                             <FormControl>
                                                 <Input 
                                                     {...field} 
                                                     placeholder="e.g. school-name" 
-                                                    className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
+ className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
                                                 />
                                             </FormControl>
                                         </div>
@@ -565,16 +566,16 @@ export default function EditMeetingPage() {
                     </div>
 
                     {/* Preview Sidebar */}
-                    <div className="space-y-6">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5 sticky top-24">
-                            <CardHeader className="bg-primary/10 border-b pb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Globe className="h-5 w-5" /></div>
-                                    <CardTitle className="text-sm font-black tracking-tight uppercase">Public URL</CardTitle>
+ <div className="space-y-6">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5 sticky top-24">
+ <CardHeader className="bg-primary/10 border-b pb-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Globe className="h-5 w-5" /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight ">Public URL</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-4">
-                                <div className="p-3 bg-background rounded-xl border font-mono text-xs break-all text-muted-foreground">
+ <CardContent className="p-4">
+ <div className="p-3 bg-background rounded-xl border font-mono text-xs break-all text-muted-foreground">
                                     /meetings/{watchedType?.slug || '...'}/{watchedSlug || '...'}
                                 </div>
                             </CardContent>
@@ -584,25 +585,25 @@ export default function EditMeetingPage() {
             </div>
 
             {/* ──────── STEP 2: Registration ──────── */}
-            <div className={cn(currentStep !== 1 && "hidden")}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-amber-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-amber-600" /></div>
+ <div className={cn(currentStep !== 1 && "hidden")}>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-amber-500/10 rounded-xl"><ClipboardCheck className="h-5 w-5 text-amber-600" /></div>
                                         <div>
-                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Registration Engine</CardTitle>
-                                            <CardDescription className="text-xs font-medium text-left">Control how attendees sign up and reserve a spot.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Registration Engine</CardTitle>
+ <CardDescription className="text-xs font-medium text-left">Control how attendees sign up and reserve a spot.</CardDescription>
                                         </div>
                                     </div>
                                     <FormField
                                         control={form.control}
                                         name="registrationEnabled"
                                         render={({ field }) => (
-                                            <FormItem className="flex items-center gap-2 space-y-0 text-left">
-                                                <Label htmlFor="reg-enable" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Enable Registration</Label>
+ <FormItem className="flex items-center gap-2 space-y-0 text-left">
+ <Label htmlFor="reg-enable" className="text-[10px] font-semibold text-muted-foreground">Enable Registration</Label>
                                                 <FormControl>
                                                     <Switch checked={field.value} onCheckedChange={field.onChange} id="reg-enable" />
                                                 </FormControl>
@@ -613,19 +614,19 @@ export default function EditMeetingPage() {
                             </CardHeader>
 
                             {registrationEnabled ? (
-                                <CardContent className="p-6 space-y-8 bg-background animate-in fade-in slide-in-from-top-2">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/20 p-4 rounded-xl border">
+ <CardContent className="p-6 space-y-8 bg-background animate-in fade-in slide-in-from-top-2">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/20 p-4 rounded-xl border">
                                         <FormField
                                             control={form.control}
                                             name="registrationRequiredToJoin"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 text-left">
+ <FormItem className="flex flex-row items-start space-x-3 space-y-0 text-left">
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                                     </FormControl>
-                                                    <div className="space-y-1 leading-none">
-                                                        <FormLabel className="font-bold">Require Registration to Join</FormLabel>
-                                                        <FormDescription className="text-xs">If off, attendees can bypass registration via the original join form.</FormDescription>
+ <div className="space-y-1 leading-none">
+ <FormLabel className="font-bold">Require Registration to Join</FormLabel>
+ <FormDescription className="text-xs">If off, attendees can bypass registration via the original join form.</FormDescription>
                                                     </div>
                                                 </FormItem>
                                             )}
@@ -634,15 +635,15 @@ export default function EditMeetingPage() {
                                             control={form.control}
                                             name="registrationMode"
                                             render={({ field }) => (
-                                            <FormItem className="text-left">
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Approval Mode</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Approval Mode</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
-                                                        <SelectTrigger className="h-10 rounded-xl bg-white focus:ring-1 focus:ring-primary/20">
+ <SelectTrigger className="h-10 rounded-xl bg-white focus:ring-1 focus:ring-primary/20">
                                                             <SelectValue placeholder="Approval mode..." />
                                                         </SelectTrigger>
                                                     </FormControl>
-                                                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                         <SelectItem value="open">Open (Auto-Approve)</SelectItem>
                                                         <SelectItem value="approval_required">Manual Approval Required</SelectItem>
                                                     </SelectContent>
@@ -652,20 +653,20 @@ export default function EditMeetingPage() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <FormField
                                             control={form.control}
                                             name="capacityLimit"
                                             render={({ field }) => (
-                                            <FormItem className="text-left">
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Capacity Limit (0 for unlimited)</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Capacity Limit (0 for unlimited)</FormLabel>
                                                 <FormControl>
                                                     <Input 
                                                         type="number" 
                                                         min={0}
                                                         onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                                                         value={field.value || 0}
-                                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold tabular-nums" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold tabular-nums" 
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -676,9 +677,9 @@ export default function EditMeetingPage() {
                                             control={form.control}
                                             name="waitlistEnabled"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between p-3 h-11 bg-muted/20 rounded-xl mt-6">
-                                                    <div className="space-y-0.5 text-left">
-                                                        <FormLabel className="text-xs font-bold">Enable Waitlist</FormLabel>
+ <FormItem className="flex flex-row items-center justify-between p-3 h-11 bg-muted/20 rounded-xl mt-6">
+ <div className="space-y-0.5 text-left">
+ <FormLabel className="text-xs font-bold">Enable Waitlist</FormLabel>
                                                     </div>
                                                     <FormControl>
                                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -688,13 +689,13 @@ export default function EditMeetingPage() {
                                         />
                                     </div>
 
-                                    <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
                                     <FormField
                                         control={form.control}
                                         name="registrationFields"
                                         render={({ field }) => (
-                                            <FormItem className="text-left">
+ <FormItem className="text-left">
                                                 <FormControl>
                                                     <RegistrationFieldBuilder value={field.value} onChange={field.onChange} />
                                                 </FormControl>
@@ -703,20 +704,20 @@ export default function EditMeetingPage() {
                                         )}
                                     />
 
-                                    <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
                                     <FormField
                                         control={form.control}
                                         name="registrationSuccessMessage"
                                         render={({ field }) => (
-                                            <FormItem className="text-left">
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Confirmation Message</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Confirmation Message</FormLabel>
                                                 <FormControl>
                                                     <Textarea 
                                                         {...field} 
                                                         placeholder="Message shown after successful registration..."
                                                         rows={2}
-                                                        className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 resize-none font-medium text-sm"
+ className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 resize-none font-medium text-sm"
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -725,10 +726,10 @@ export default function EditMeetingPage() {
                                     />
                                 </CardContent>
                             ) : (
-                                <CardContent className="p-12 flex flex-col items-center justify-center text-center opacity-40">
-                                    <ClipboardCheck className="h-12 w-12 mb-4" />
-                                    <p className="text-sm font-bold uppercase tracking-widest">Registration Disabled</p>
-                                    <p className="text-xs font-medium">Attendees will enter directly without signing up prior.</p>
+ <CardContent className="p-12 flex flex-col items-center justify-center text-center opacity-40">
+ <ClipboardCheck className="h-12 w-12 mb-4" />
+ <p className="text-sm font-bold ">Registration Disabled</p>
+ <p className="text-xs font-medium">Attendees will enter directly without signing up prior.</p>
                                 </CardContent>
                             )}
                         </Card>
@@ -737,28 +738,28 @@ export default function EditMeetingPage() {
             </div>
 
             {/* ──────── STEP 3: Hero Content ──────── */}
-            <div className={cn(currentStep !== 2 && "hidden")}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
+ <div className={cn(currentStep !== 2 && "hidden")}>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
                                     <div>
-                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Hero Content</CardTitle>
-                                        <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
+ <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-8 bg-background">
+ <CardContent className="p-6 space-y-8 bg-background">
                                 <FormField
                                     control={form.control}
                                     name="heroTitle"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Hero Title</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Title</FormLabel>
                                             <FormControl>
-                                                <Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" />
+ <Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -769,24 +770,24 @@ export default function EditMeetingPage() {
                                     name="heroDescription"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Hero Description</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Description</FormLabel>
                                             <FormControl>
-                                                <Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none" />
+ <Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                <Separator className="bg-border/50" />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <Separator className="bg-border/50" />
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="heroTagline"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Tagline</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Tagline</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+ <Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -797,24 +798,24 @@ export default function EditMeetingPage() {
                                         name="heroCtaLabel"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">{registrationEnabled ? 'Register Button Label' : 'CTA Button Label'}</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{registrationEnabled ? 'Register Button Label' : 'CTA Button Label'}</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+ <Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
-                                <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
                                 <FormField
                                     control={form.control}
                                     name="heroImageUrl"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media</FormLabel>
                                             <FormControl>
-                                                <MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-2xl" />
+ <MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-2xl" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -824,22 +825,22 @@ export default function EditMeetingPage() {
                         </Card>
                     </div>
 
-                    <div className="space-y-6">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
-                            <CardHeader className="bg-muted/30 border-b pb-4">
-                                <CardTitle className="text-sm font-black tracking-tight uppercase flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Live Preview</CardTitle>
+ <div className="space-y-6">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
+ <CardHeader className="bg-muted/30 border-b pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Live Preview</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-4 space-y-3">
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+ <CardContent className="p-4 space-y-3">
+ <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
                                     {watchedType?.name || 'Meeting'}
                                 </div>
-                                <h3 className="text-lg font-black uppercase tracking-tight leading-tight">
+ <h3 className="text-lg font-semibold tracking-tight leading-tight">
                                     {form.watch('heroTitle') || 'Hero Title Will Appear Here'}
                                 </h3>
-                                <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-4">
+ <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-4">
                                     {form.watch('heroDescription') || 'Hero description text will appear here...'}
                                 </p>
-                                {form.watch('heroTagline') && <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{form.watch('heroTagline')}</p>}
+ {form.watch('heroTagline') && <p className="text-[10px] font-bold text-primary tracking-wider">{form.watch('heroTagline')}</p>}
                             </CardContent>
                         </Card>
                     </div>
@@ -847,29 +848,29 @@ export default function EditMeetingPage() {
             </div>
 
             {/* ──────── STEP 4: Options ──────── */}
-            <div className={cn(currentStep !== 3 && "hidden")}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-primary/10 rounded-xl"><Settings2 className="h-5 w-5 text-primary" /></div>
+ <div className={cn(currentStep !== 3 && "hidden")}>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><Settings2 className="h-5 w-5 text-primary" /></div>
                                     <div>
-                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Advanced Options</CardTitle>
-                                        <CardDescription className="text-xs font-medium text-left">Recording, brochure, and notifications.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Advanced Options</CardTitle>
+ <CardDescription className="text-xs font-medium text-left">Recording, brochure, and notifications.</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-8 bg-background">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <CardContent className="p-6 space-y-8 bg-background">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="recordingUrl"
                                         render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+ <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -880,9 +881,9 @@ export default function EditMeetingPage() {
                                         name="brochureUrl"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
                                                 <FormControl>
-                                                    <BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" />
+ <BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -894,10 +895,10 @@ export default function EditMeetingPage() {
                         <InternalNotificationConfig prefix="adminAlert" />
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="pt-4 sticky top-24">
-                            <Button type="submit" size="lg" disabled={form.formState.isSubmitting} className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95 uppercase tracking-widest">
-                                {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
+ <div className="space-y-8">
+ <div className="pt-4 sticky top-24">
+ <Button type="submit" size="lg" disabled={form.formState.isSubmitting} className="w-full h-16 rounded-2xl font-semibold text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95 ">
+ {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
                                 Save Changes
                             </Button>
                         </div>
@@ -906,24 +907,24 @@ export default function EditMeetingPage() {
             </div>
 
             {/* ──────── Wizard Navigation ──────── */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0} className="rounded-xl font-bold gap-2 h-12 px-6">
-                <ChevronLeft className="h-4 w-4" /> Previous
+ <div className="flex items-center justify-between pt-4 border-t">
+ <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0} className="rounded-xl font-bold gap-2 h-12 px-6">
+ <ChevronLeft className="h-4 w-4" /> Previous
               </Button>
 
-              <div className="hidden sm:flex items-center gap-1.5">
+ <div className="hidden sm:flex items-center gap-1.5">
                 {WIZARD_STEPS.map((_, index) => (
-                  <div key={index} className={cn("h-1.5 rounded-full transition-all duration-300", index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20")} />
+ <div key={index} className={cn("h-1.5 rounded-full transition-all duration-300", index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20")} />
                 ))}
               </div>
 
               {currentStep < WIZARD_STEPS.length - 1 ? (
-                <Button type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
-                  Next Step <ChevronRight className="h-4 w-4" />
+ <Button type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
+ Next Step <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
-                  {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+ <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
+ {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save Changes
                 </Button>
               )}

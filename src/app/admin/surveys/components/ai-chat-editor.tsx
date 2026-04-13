@@ -292,7 +292,7 @@ function AiChatPanel() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
+ className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm"
                                 onClick={() => setIsFullScreen(false)}
                             />
                         )}
@@ -320,63 +320,63 @@ function AiChatPanel() {
                                 maxWidth: 'calc(100vw - 48px)',
                             }}
                         >
-                            <Card className="shadow-2xl border border-primary/20 flex flex-col h-full w-full overflow-hidden bg-card rounded-[1.5rem]">
+ <Card className="shadow-2xl border border-primary/20 flex flex-col h-full w-full overflow-hidden bg-card rounded-[1.5rem]">
                                 {/* Header */}
-                                <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-3 px-5 shrink-0 flex flex-row items-center justify-between space-y-0 gap-2">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                                            <BrainCircuit className="h-4 w-4" />
+ <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-3 px-5 shrink-0 flex flex-row items-center justify-between space-y-0 gap-2">
+ <div className="flex items-center gap-2.5 min-w-0">
+ <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+ <BrainCircuit className="h-4 w-4" />
                                         </div>
-                                        <div className="min-w-0">
-                                            <CardTitle className="text-xs font-black uppercase tracking-widest leading-none mb-0.5 truncate">AI Design Partner</CardTitle>
-                                            <CardDescription className="text-[9px] text-primary-foreground/60 uppercase font-bold tracking-tight">Survey Architect</CardDescription>
+ <div className="min-w-0">
+ <CardTitle className="text-xs font-semibold leading-none mb-0.5 truncate">AI Design Partner</CardTitle>
+ <CardDescription className="text-[9px] text-primary-foreground/60 font-bold tracking-tight">Survey Architect</CardDescription>
                                         </div>
                                     </div>
 
                                     {/* Model selector — only in fullscreen or mini */}
-                                    <div className="flex-1 flex justify-center px-2">
-                                        <AiModelSelector className={cn("origin-center", isFullScreen ? "scale-90" : "scale-75")} />
+ <div className="flex-1 flex justify-center px-2">
+ <AiModelSelector className={cn("origin-center", isFullScreen ? "scale-90" : "scale-75")} />
                                     </div>
 
-                                    <div className="flex items-center gap-1 shrink-0">
+ <div className="flex items-center gap-1 shrink-0">
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
+ className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
                                             onClick={() => setIsFullScreen(!isFullScreen)}
                                             title={isFullScreen ? 'Minimize' : 'Maximize'}
                                         >
-                                            {isFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+ {isFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                                         </Button>
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
+ className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
                                             onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
                                         >
-                                            <ChevronDown className="h-3.5 w-3.5" />
+ <ChevronDown className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </CardHeader>
 
                                 {/* Messages */}
-                                <CardContent className="flex-1 overflow-hidden p-0 bg-background/30">
-                                    <ScrollArea className="h-full px-4 py-4" viewportRef={scrollRef}>
-                                        <div className={cn("space-y-4 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
+ <CardContent className="flex-1 overflow-hidden p-0 bg-background/30">
+ <ScrollArea className="h-full px-4 py-4" viewportRef={scrollRef}>
+ <div className={cn("space-y-4 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
                                             {messages.map((m, i) => (
-                                                <div key={i} className={cn(
+ <div key={i} className={cn(
                                                     "flex gap-2.5 max-w-[88%]",
                                                     m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
                                                 )}>
-                                                    <div className={cn(
+ <div className={cn(
                                                         "h-7 w-7 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5",
                                                         m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-card border border-border text-primary"
                                                     )}>
-                                                        {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+ {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                                                     </div>
-                                                    <div className={cn(
+ <div className={cn(
                                                         "px-3.5 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
                                                         m.role === 'user'
                                                             ? "bg-primary text-primary-foreground rounded-tr-sm"
@@ -388,15 +388,15 @@ function AiChatPanel() {
                                             ))}
 
                                             {isLoading && (
-                                                <div className="flex gap-2.5 mr-auto max-w-[88%]">
-                                                    <div className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-primary shrink-0 mt-0.5">
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+ <div className="flex gap-2.5 mr-auto max-w-[88%]">
+ <div className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-primary shrink-0 mt-0.5">
+ <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                     </div>
-                                                    <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-card border border-border/60 text-sm text-muted-foreground italic flex items-center gap-2">
-                                                        <span className="flex gap-1">
-                                                            <span className="animate-bounce delay-0 h-1.5 w-1.5 bg-primary/40 rounded-full inline-block" />
-                                                            <span className="animate-bounce delay-100 h-1.5 w-1.5 bg-primary/60 rounded-full inline-block" />
-                                                            <span className="animate-bounce delay-200 h-1.5 w-1.5 bg-primary/80 rounded-full inline-block" />
+ <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-card border border-border/60 text-sm text-muted-foreground italic flex items-center gap-2">
+ <span className="flex gap-1">
+ <span className="animate-bounce delay-0 h-1.5 w-1.5 bg-primary/40 rounded-full inline-block" />
+ <span className="animate-bounce delay-100 h-1.5 w-1.5 bg-primary/60 rounded-full inline-block" />
+ <span className="animate-bounce delay-200 h-1.5 w-1.5 bg-primary/80 rounded-full inline-block" />
                                                         </span>
                                                         Analyzing...
                                                     </div>
@@ -407,24 +407,24 @@ function AiChatPanel() {
                                 </CardContent>
 
                                 {/* Footer */}
-                                <CardFooter className="p-3 border-t bg-card/60 backdrop-blur-md shrink-0">
-                                    <div className={cn("flex flex-col w-full gap-2 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
+ <CardFooter className="p-3 border-t bg-card/60 backdrop-blur-md shrink-0">
+ <div className={cn("flex flex-col w-full gap-2 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
                                         {stagedFile && (
-                                            <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
-                                                <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                <span className="text-[10px] font-bold text-primary truncate max-w-[180px]">{stagedFile.name}</span>
-                                                <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
-                                                    <X className="h-3 w-3" />
+ <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
+ <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+ <span className="text-[10px] font-bold text-primary truncate max-w-[180px]">{stagedFile.name}</span>
+ <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
+ <X className="h-3 w-3" />
                                                 </Button>
                                             </div>
                                         )}
 
-                                        <div className="flex items-end gap-2 w-full">
+ <div className="flex items-end gap-2 w-full">
                                             <input
                                                 type="file"
                                                 ref={fileInputRef}
                                                 onChange={handleFileUpload}
-                                                className="hidden"
+ className="hidden"
                                                 accept=".pdf,.docx,.doc,.txt"
                                             />
                                             <TooltipProvider>
@@ -436,16 +436,16 @@ function AiChatPanel() {
                                                             size="icon"
                                                             disabled={isLoading || isUploadingFile}
                                                             onClick={() => fileInputRef.current?.click()}
-                                                            className="h-10 w-10 rounded-xl shrink-0 border border-border/60 hover:bg-accent/10"
+ className="h-10 w-10 rounded-xl shrink-0 border border-border/60 hover:bg-accent/10"
                                                         >
-                                                            {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
+ {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
                                                         </Button>
                                                     </TooltipTrigger>
                                                     <TooltipContent side="top">Attach Document (PDF, DOCX, TXT)</TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
 
-                                            <div className="flex-1 min-w-0">
+ <div className="flex-1 min-w-0">
                                                 {isFullScreen ? (
                                                     <Textarea
                                                         placeholder="Describe your design, paste a link, or send an attachment..."
@@ -453,7 +453,7 @@ function AiChatPanel() {
                                                         onChange={(e) => setInput(e.target.value)}
                                                         onKeyDown={handleKeyDown}
                                                         disabled={isLoading}
-                                                        className="min-h-[80px] max-h-[200px] rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 p-3 leading-relaxed"
+ className="min-h-[80px] max-h-[200px] rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 p-3 leading-relaxed"
                                                     />
                                                 ) : (
                                                     <Input
@@ -462,7 +462,7 @@ function AiChatPanel() {
                                                         onChange={(e) => setInput(e.target.value)}
                                                         onKeyDown={handleKeyDown}
                                                         disabled={isLoading}
-                                                        className="h-10 rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
+ className="h-10 rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
                                                     />
                                                 )}
                                             </div>
@@ -472,10 +472,10 @@ function AiChatPanel() {
                                                 onClick={handleSend}
                                                 disabled={(!input.trim() && !stagedFile) || isLoading || isUploadingFile}
                                                 containerClassName="h-10 w-10 rounded-xl shrink-0"
-                                                className="h-full w-full bg-slate-900"
+ className="h-full w-full bg-slate-900"
                                             >
-                                                <span className="sr-only">Send</span>
-                                                <Send className="h-3.5 w-3.5" />
+ <span className="sr-only">Send</span>
+ <Send className="h-3.5 w-3.5" />
                                             </MovingButton>
                                         </div>
                                     </div>
@@ -492,11 +492,11 @@ function AiChatPanel() {
                 onClick={isOpen ? () => { setIsOpen(false); setIsFullScreen(false); } : handleOpen}
                 whileHover={{ scale: 1.07 }}
                 whileTap={{ scale: 0.95 }}
-                className={cn(
+ className={cn(
                     "fixed bottom-6 right-6 z-[9999] flex items-center gap-2.5 px-4",
                     "h-14 rounded-full shadow-2xl shadow-primary/30",
                     "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground",
-                    "font-black text-xs uppercase tracking-widest",
+                    "font-semibold text-xs uppercase ",
                     "border border-primary/30",
                     "transition-shadow hover:shadow-primary/50 hover:shadow-2xl"
                 )}
@@ -505,11 +505,11 @@ function AiChatPanel() {
                 <AnimatePresence mode="wait">
                     {isOpen ? (
                         <motion.span key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                            <ChevronDown className="h-5 w-5" />
+ <ChevronDown className="h-5 w-5" />
                         </motion.span>
                     ) : (
                         <motion.span key="open" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                            <Sparkles className="h-5 w-5" />
+ <Sparkles className="h-5 w-5" />
                         </motion.span>
                     )}
                 </AnimatePresence>
@@ -520,7 +520,7 @@ function AiChatPanel() {
                         key="badge"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg shadow-red-500/40"
+ className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center shadow-lg shadow-red-500/40"
                     >
                         {unreadCount}
                     </motion.span>

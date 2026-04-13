@@ -70,17 +70,17 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
     }, [response.entityId, activeWorkspaceId]);
 
     if (isLoading) {
-        return <Skeleton className="h-5 w-24" />;
+ return <Skeleton className="h-5 w-24" />;
     }
 
     if (!contact) {
-        return <span className="text-xs text-muted-foreground">-</span>;
+ return <span className="text-xs text-muted-foreground">-</span>;
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <Building2 className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs font-medium truncate max-w-[150px]" title={contact.name}>
+ <div className="flex items-center gap-2">
+ <Building2 className="h-3 w-3 text-muted-foreground" />
+ <span className="text-xs font-medium truncate max-w-[150px]" title={contact.name}>
                 {contact.name}
             </span>
         </div>
@@ -173,28 +173,28 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     
     if (!survey) {
         return (
-             <div className="p-4">
-                <Skeleton className="h-12 w-full mb-2" />
-                <Skeleton className="h-64 w-full" />
+ <div className="p-4">
+ <Skeleton className="h-12 w-full mb-2" />
+ <Skeleton className="h-64 w-full" />
             </div>
         );
     }
     
     return (
-        <div className="relative">
+ <div className="relative">
             {/* Selection Toolbar */}
             {selectedIds.length > 0 && (
-                <div className="sticky top-0 z-30 flex items-center justify-between bg-primary p-3 shadow-lg rounded-b-xl animate-in slide-in-from-top-4">
-                    <div className="flex items-center gap-3 text-white">
-                        <CheckSquare className="h-5 w-5" />
-                        <span className="font-bold text-sm">{selectedIds.length} responses selected</span>
+ <div className="sticky top-0 z-30 flex items-center justify-between bg-primary p-3 shadow-lg rounded-b-xl animate-in slide-in-from-top-4">
+ <div className="flex items-center gap-3 text-white">
+ <CheckSquare className="h-5 w-5" />
+ <span className="font-bold text-sm">{selectedIds.length} responses selected</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={() => setSelectedIds([])}>
+ <div className="flex items-center gap-2">
+ <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={() => setSelectedIds([])}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => handleDeleteClick()}>
-                            <Trash2 className="h-4 w-4 mr-2" />
+ <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => handleDeleteClick()}>
+ <Trash2 className="h-4 w-4 mr-2" />
                             Delete Selected
                         </Button>
                     </div>
@@ -203,57 +203,57 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
 
             <Table>
                 <TableHeader>
-                    <TableRow className="bg-muted/50 border-b border-border/50">
-                        <TableHead className="w-[50px] pl-6">
+ <TableRow className="bg-muted/50 border-b border-border/50">
+ <TableHead className="w-[50px] pl-6">
                             <Checkbox 
                                 checked={responses?.length ? selectedIds.length === responses.length : false} 
                                 onCheckedChange={toggleSelectAll} 
                             />
                         </TableHead>
-                        <TableHead className="sticky left-[50px] bg-muted z-20 w-[200px] whitespace-nowrap text-[10px] font-bold uppercase tracking-widest py-4">Submitted At</TableHead>
-                        <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest py-4">Contact</TableHead>
+ <TableHead className="sticky left-[50px] bg-muted z-20 w-[200px] whitespace-nowrap text-[10px] font-bold py-4">Submitted At</TableHead>
+ <TableHead className="w-[180px] text-[10px] font-bold py-4">Contact</TableHead>
                         {survey.scoringEnabled && (
-                            <TableHead className="w-[100px] text-center text-[10px] font-bold uppercase tracking-widest py-4">Score</TableHead>
+ <TableHead className="w-[100px] text-center text-[10px] font-bold py-4">Score</TableHead>
                         )}
                         {questions.map(q => (
-                            <TableHead key={q.id} className="min-w-[200px] text-[10px] font-bold uppercase tracking-widest py-4">{q.title}</TableHead>
+ <TableHead key={q.id} className="min-w-[200px] text-[10px] font-bold py-4">{q.title}</TableHead>
                         ))}
-                        <TableHead className="w-[80px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest py-4">Actions</TableHead>
+ <TableHead className="w-[80px] text-right pr-6 text-[10px] font-bold py-4">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                 {isLoading ? (
                     Array.from({ length: 10 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
-                        <TableCell className="sticky left-[50px] bg-card"><Skeleton className="h-5 w-3/4" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                        {survey.scoringEnabled && <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>}
+ <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
+ <TableCell className="sticky left-[50px] bg-card"><Skeleton className="h-5 w-3/4" /></TableCell>
+ <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+ {survey.scoringEnabled && <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>}
                         {questions.map(q => (
-                            <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
+ <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
                         ))}
-                        <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+ <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                     ))
                 ) : responses && responses.length > 0 ? (
                     responses.map((response) => (
-                    <TableRow key={response.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(response.id) && "bg-primary/5")}>
-                        <TableCell className="pl-6">
+ <TableRow key={response.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(response.id) && "bg-primary/5")}>
+ <TableCell className="pl-6">
                             <Checkbox 
                                 checked={selectedIds.includes(response.id)} 
                                 onCheckedChange={() => toggleSelect(response.id)} 
                             />
                         </TableCell>
-                        <TableCell className="sticky left-[50px] bg-background group-hover:bg-muted/30 font-medium whitespace-nowrap border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                            <span className="text-xs">{format(new Date(response.submittedAt), "MMM d, yyyy · p")}</span>
+ <TableCell className="sticky left-[50px] bg-background group-hover:bg-muted/30 font-medium whitespace-nowrap border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+ <span className="text-xs">{format(new Date(response.submittedAt), "MMM d, yyyy · p")}</span>
                         </TableCell>
                         <TableCell>
                             <EntityInfo response={response} />
                         </TableCell>
                         {survey.scoringEnabled && (
-                            <TableCell className="text-center font-bold">
+ <TableCell className="text-center font-bold">
                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex items-center gap-1 w-fit mx-auto">
-                                    <Trophy className="h-3 w-3" />
+ <Trophy className="h-3 w-3" />
                                     {response.score || 0}
                                 </Badge>
                             </TableCell>
@@ -262,26 +262,26 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                             const answer = getAnswerForQuestion(response, q.id);
                             const formattedAnswer = formatAnswer(answer);
                             return (
-                                <TableCell key={q.id} title={formattedAnswer} className="max-w-[250px] truncate text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+ <TableCell key={q.id} title={formattedAnswer} className="max-w-[250px] truncate text-xs text-muted-foreground group-hover:text-foreground transition-colors">
                                     {formattedAnswer}
                                 </TableCell>
                             )
                         })}
-                        <TableCell className="text-right pr-6">
+ <TableCell className="text-right pr-6">
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <MoreHorizontal className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+ <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
+ <DropdownMenuContent align="end" className="w-48">
                                     <DropdownMenuLabel>Response Options</DropdownMenuLabel>
                                     <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
-                                        <Eye className="mr-2 h-4 w-4" /> View Detail
+ <Eye className="mr-2 h-4 w-4" /> View Detail
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => handleDeleteClick([response.id])}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Response
+ <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => handleDeleteClick([response.id])}>
+ <Trash2 className="mr-2 h-4 w-4" /> Delete Response
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -290,7 +290,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                     ))
                 ) : (
                     <TableRow>
-                    <TableCell colSpan={questions.length + 5} className="h-48 text-center text-muted-foreground italic">
+ <TableCell colSpan={questions.length + 5} className="h-48 text-center text-muted-foreground italic">
                         No responses received for this survey yet.
                     </TableCell>
                     </TableRow>
@@ -300,35 +300,35 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
 
             {/* Password Protected Delete Confirmation */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl">
+ <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader>
-                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                            <AlertTriangle className="h-6 w-6 text-destructive" />
+ <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+ <AlertTriangle className="h-6 w-6 text-destructive" />
                         </div>
-                        <DialogTitle className="text-center text-xl font-black">Verify Identity</DialogTitle>
-                        <DialogDescription className="text-center">
+ <DialogTitle className="text-center text-xl font-semibold">Verify Identity</DialogTitle>
+ <DialogDescription className="text-center">
                             You are about to permanently delete <strong>{selectedIds.length}</strong> record{selectedIds.length !== 1 ? 's' : ''}. Please enter your admin password to proceed.
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                                <Lock className="h-3 w-3" /> Confirm Password
+ <div className="space-y-4 py-4">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+ <Lock className="h-3 w-3" /> Confirm Password
                             </Label>
                             <Input 
                                 type="password" 
                                 placeholder="Your account password..." 
                                 value={password} 
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="h-11 rounded-xl"
+ className="h-11 rounded-xl"
                                 onKeyDown={(e) => e.key === 'Enter' && handleConfirmDelete()}
                             />
-                            {authError && <p className="text-xs font-bold text-destructive animate-pulse px-1">{authError}</p>}
+ {authError && <p className="text-xs font-bold text-destructive animate-pulse px-1">{authError}</p>}
                         </div>
                     </div>
 
-                    <DialogFooter className="sm:justify-between gap-2">
+ <DialogFooter className="sm:justify-between gap-2">
                         <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
                             Cancel
                         </Button>
@@ -336,9 +336,9 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                             variant="destructive" 
                             onClick={handleConfirmDelete} 
                             disabled={isDeleting || !password}
-                            className="font-black h-11 px-8 rounded-xl shadow-lg transition-all active:scale-95"
+ className="font-semibold h-11 px-8 rounded-xl shadow-lg transition-all active:scale-95"
                         >
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+ {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                             Permanently Delete
                         </Button>
                     </DialogFooter>

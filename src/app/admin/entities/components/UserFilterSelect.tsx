@@ -37,12 +37,12 @@ export default function UserFilterSelect({ value, onValueChange }: UserFilterSel
   };
 
   if (isLoading) {
-    return <Skeleton className="h-10 w-full max-w-xs" />;
+ return <Skeleton className="h-10 w-full max-w-xs" />;
   }
 
   return (
     <Select value={value ?? 'all'} onValueChange={handleValueChange}>
-      <SelectTrigger className="w-full max-w-xs">
+ <SelectTrigger className="w-full max-w-xs">
         <SelectValue placeholder="Filter by assigned user..." />
       </SelectTrigger>
       <SelectContent>
@@ -55,10 +55,10 @@ export default function UserFilterSelect({ value, onValueChange }: UserFilterSel
             <SelectSeparator />
             {users.map(user => (
               <SelectItem key={user.id} value={user.id}>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
+ <div className="flex items-center gap-2">
+ <Avatar className="h-6 w-6">
                     <AvatarImage src={user.photoURL} alt={user.name} />
-                    <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+ <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
                   <span>{user.name}</span>
                 </div>

@@ -199,44 +199,44 @@ export default function VariableRegistryPage() {
         const isHidden = !!v.hidden;
 
         return (
-            <TableRow className={cn("group hover:bg-accent/5 transition-colors", isHidden && "opacity-50 grayscale bg-muted/5")}>
-                <TableCell className="pl-6 w-[350px]">
-                    <div className="flex flex-col gap-0.5 text-left">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-foreground">{v.label}</span>
+ <TableRow className={cn("group hover:bg-accent/5 transition-colors", isHidden && "opacity-50 grayscale bg-muted/5")}>
+ <TableCell className="pl-6 w-[350px]">
+ <div className="flex flex-col gap-0.5 text-left">
+ <div className="flex items-center gap-2">
+ <span className="font-bold text-sm text-foreground">{v.label}</span>
                             {isHidden && <Badge variant="secondary" className="h-4 text-[8px] uppercase px-1">Hidden</Badge>}
                         </div>
-                        <code className="text-[10px] font-mono text-primary font-black opacity-60">{"{{" + v.key + "}}"}</code>
+ <code className="text-[10px] font-mono text-primary font-semibold opacity-60">{"{{" + v.key + "}}"}</code>
                     </div>
                 </TableCell>
-                <TableCell className="text-left">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{isConstant ? 'Global' : (v.sourceName || 'Registry')}</span>
-                        <span className="text-[9px] text-muted-foreground/60 uppercase font-bold truncate max-w-[150px]">{isConstant ? 'Fixed Value' : `Path: ${v.path}`}</span>
+ <TableCell className="text-left">
+ <div className="flex flex-col gap-0.5">
+ <span className="text-[10px] font-semibold text-muted-foreground ">{isConstant ? 'Global' : (v.sourceName || 'Registry')}</span>
+ <span className="text-[9px] text-muted-foreground/60 font-bold truncate max-w-[150px]">{isConstant ? 'Fixed Value' : `Path: ${v.path}`}</span>
                     </div>
                 </TableCell>
-                <TableCell className="text-center">
-                    <Badge variant="outline" className="text-[9px] font-black uppercase h-5 bg-primary/10 border-border/50">{v.type}</Badge>
+ <TableCell className="text-center">
+                    <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 bg-primary/10 border-border/50">{v.type}</Badge>
                 </TableCell>
-                <TableCell className="text-center">
+ <TableCell className="text-center">
                     {usageCount > 0 ? (
-                        <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] h-5 px-2 font-black uppercase">
+                        <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] h-5 px-2 font-semibold uppercase">
                             Used in {usageCount}
                         </Badge>
                     ) : (
-                        <span className="text-[10px] font-bold text-muted-foreground/30">—</span>
+ <span className="text-[10px] font-bold text-muted-foreground/30">—</span>
                     )}
                 </TableCell>
-                <TableCell className="text-right pr-6">
-                    <div className="flex items-center justify-end gap-2">
+ <TableCell className="text-right pr-6">
+ <div className="flex items-center justify-end gap-2">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-2 mr-2">
+ <div className="flex items-center gap-2 mr-2">
                                         <Switch 
                                             checked={!isHidden} 
                                             onCheckedChange={() => handleToggleVisibility(v.id, isHidden)}
-                                            className="scale-75"
+ className="scale-75"
                                         />
                                     </div>
                                 </TooltipTrigger>
@@ -245,21 +245,21 @@ export default function VariableRegistryPage() {
 
                             {isConstant && (
                                 <>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleEditConst(v)}><Pencil className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDeleteConst(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleEditConst(v)}><Pencil className="h-3.5 w-3.5" /></Button>
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDeleteConst(v.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                 </>
                             )}
 
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-8 w-8 rounded-lg hover:text-primary"
+ className="h-8 w-8 rounded-lg hover:text-primary"
                                 onClick={() => {
                                     navigator.clipboard.writeText(`{{${v.key}}}`);
                                     toast({ title: 'Tag Copied' });
                                 }}
                             >
-                                <CheckCircle2 className="h-4 w-4" />
+ <CheckCircle2 className="h-4 w-4" />
                             </Button>
                         </TooltipProvider>
                     </div>
@@ -281,25 +281,25 @@ export default function VariableRegistryPage() {
         
         if (items.length === 0) {
             return (
-                <div className="py-24 text-center border-4 border-dashed rounded-[3rem] bg-background/20 border-border/20 flex flex-col items-center justify-center gap-4">
-                    <div className="p-6 bg-card rounded-[2rem] shadow-inner border border-border/50">
-                        <Tag className="h-12 w-12 text-muted-foreground/20" />
+ <div className="py-24 text-center border-4 border-dashed rounded-[3rem] bg-background/20 border-border/20 flex flex-col items-center justify-center gap-4">
+ <div className="p-6 bg-card rounded-[2rem] shadow-inner border border-border/50">
+ <Tag className="h-12 w-12 text-muted-foreground/20" />
                     </div>
-                    <p className="text-muted-foreground font-black uppercase tracking-widest text-xs opacity-40">No variable data in this context.</p>
+ <p className="text-muted-foreground font-semibold text-xs opacity-40">No variable data in this context.</p>
                 </div>
             );
         }
 
         return (
-            <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
+ <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
                 <Table>
-                    <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/30">
                         <TableRow>
-                            <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Data Label & Technical Key</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Origin Hub</TableHead>
-                            <TableHead className="text-center text-[10px] font-black uppercase tracking-widest py-4">Schema Type</TableHead>
-                            <TableHead className="text-center text-[10px] font-black uppercase tracking-widest py-4">Studio Usage</TableHead>
-                            <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest py-4">Global Visibility</TableHead>
+ <TableHead className="pl-6 text-[10px] font-semibold py-4">Data Label & Technical Key</TableHead>
+ <TableHead className="text-[10px] font-semibold py-4">Origin Hub</TableHead>
+ <TableHead className="text-center text-[10px] font-semibold py-4">Schema Type</TableHead>
+ <TableHead className="text-center text-[10px] font-semibold py-4">Studio Usage</TableHead>
+ <TableHead className="text-right pr-6 text-[10px] font-semibold py-4">Global Visibility</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -348,131 +348,131 @@ export default function VariableRegistryPage() {
     }, [variables, templates, usageMap]);
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-            <div className="max-w-7xl mx-auto space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" onClick={() => setIsAddingConstant(true)} className="rounded-xl font-black h-12 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
-                            <Plus className="h-5 w-5" /> New Constant
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-8">
+ <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
+ <div className="flex items-center gap-3">
+ <Button variant="outline" onClick={() => setIsAddingConstant(true)} className="rounded-xl font-semibold h-12 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
+ <Plus className="h-5 w-5" /> New Constant
                         </Button>
                         <Button 
                             onClick={handleSync} 
                             disabled={isSyncing || isLoading}
-                            className="rounded-xl font-black h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8 transition-all active:scale-95 text-white"
+ className="rounded-xl font-semibold h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8 transition-all active:scale-95 text-white"
                         >
-                            {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+ {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
                             Sync Data Hub
                         </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    <div className="space-y-6">
-                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden glass-card">
-                            <CardHeader className="bg-primary/10 border-b pb-4">
-                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Zap className="h-3 w-3" /> Operational Audit
+ <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+ <div className="space-y-6">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden glass-card">
+ <CardHeader className="bg-primary/10 border-b pb-4">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Zap className="h-3 w-3" /> Operational Audit
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6 space-y-6">
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-end border-b pb-3 text-left">
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Total Registry</span>
-                                        <span className="text-2xl font-black tabular-nums">{variables?.length || 0}</span>
+ <CardContent className="p-6 space-y-6">
+ <div className="space-y-4">
+ <div className="flex justify-between items-end border-b pb-3 text-left">
+ <span className="text-[10px] font-semibold text-muted-foreground opacity-60">Total Registry</span>
+ <span className="text-2xl font-semibold tabular-nums">{variables?.length || 0}</span>
                                     </div>
-                                    <div className="flex justify-between items-end border-b pb-3 text-left">
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Active Usage</span>
-                                        <span className="text-2xl font-black tabular-nums text-emerald-600">{healthMetrics.used}</span>
+ <div className="flex justify-between items-end border-b pb-3 text-left">
+ <span className="text-[10px] font-semibold text-muted-foreground opacity-60">Active Usage</span>
+ <span className="text-2xl font-semibold tabular-nums text-emerald-600">{healthMetrics.used}</span>
                                     </div>
                                     <button 
                                         type="button"
                                         onClick={() => healthMetrics.broken > 0 && setIsBrokenModalOpen(true)}
-                                        className={cn(
+ className={cn(
                                             "w-full flex justify-between items-end transition-all rounded-lg p-1 -m-1",
                                             healthMetrics.broken > 0 ? "hover:bg-rose-500/10" : "cursor-default"
                                         )}
                                     >
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Broken Contexts</span>
-                                        <span className={cn("text-2xl font-black tabular-nums flex items-center gap-1", healthMetrics.broken > 0 ? "text-rose-600 animate-pulse" : "text-slate-300")}>
+ <span className="text-[10px] font-semibold text-muted-foreground opacity-60">Broken Contexts</span>
+ <span className={cn("text-2xl font-semibold tabular-nums flex items-center gap-1", healthMetrics.broken > 0 ? "text-rose-600 animate-pulse" : "text-slate-300")}>
                                             {healthMetrics.broken}
-                                            {healthMetrics.broken > 0 && <ChevronRight className="h-4 w-4" />}
+ {healthMetrics.broken > 0 && <ChevronRight className="h-4 w-4" />}
                                         </span>
                                     </button>
                                 </div>
                                 
                                 {healthMetrics.broken > 0 && (
-                                    <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 shadow-sm text-left">
-                                        <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] font-black text-rose-900 uppercase tracking-tighter">Integrity Failure Detected</p>
-                                            <p className="text-[9px] font-bold text-rose-800/70 leading-relaxed uppercase tracking-tighter text-left">
+ <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 shadow-sm text-left">
+ <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+ <div className="space-y-1">
+ <p className="text-[9px] font-semibold text-rose-900 tracking-tighter">Integrity Failure Detected</p>
+ <p className="text-[9px] font-bold text-rose-800/70 leading-relaxed tracking-tighter text-left">
                                                 {healthMetrics.broken} tag(s) exist in templates but are missing from your registry.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 shadow-sm text-left">
-                                    <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                    <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
+ <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 shadow-sm text-left">
+ <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter text-left">
                                         Hiding a variable removes it from design sidebars but preserves its logic in existing templates.
                                     </p>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <div className="space-y-2 px-1 text-left">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search Registry</Label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+ <div className="space-y-2 px-1 text-left">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Search Registry</Label>
+ <div className="relative">
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                                 <Input 
                                     placeholder="Filter by key or label..." 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-11 rounded-xl bg-background/50 border-none shadow-none ring-1 ring-border focus:ring-primary/20 font-bold"
+ className="pl-10 h-11 rounded-xl bg-background/50 border-none shadow-none ring-1 ring-border focus:ring-primary/20 font-bold"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="lg:col-span-3">
-                        <Tabs defaultValue="general" className="space-y-8">
-                            <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
-                                <TabsList className="bg-transparent h-10 gap-1">
-                                    <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <Building className="h-3 w-3" /> {plural}
+ <div className="lg:col-span-3">
+ <Tabs defaultValue="general" className="space-y-8">
+ <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
+ <TabsList className="bg-transparent h-10 gap-1">
+ <TabsTrigger value="general" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <Building className="h-3 w-3" /> {plural}
                                     </TabsTrigger>
-                                    <TabsTrigger value="finance" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <Banknote className="h-3 w-3" /> Finance Hub
+ <TabsTrigger value="finance" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <Banknote className="h-3 w-3" /> Finance Hub
                                     </TabsTrigger>
-                                    <TabsTrigger value="meetings" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <Calendar className="h-3 w-3" /> Meetings
+ <TabsTrigger value="meetings" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <Calendar className="h-3 w-3" /> Meetings
                                     </TabsTrigger>
-                                    <TabsTrigger value="surveys" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <ClipboardList className="h-3 w-3" /> Surveys
+ <TabsTrigger value="surveys" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <ClipboardList className="h-3 w-3" /> Surveys
                                     </TabsTrigger>
-                                    <TabsTrigger value="forms" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <FileText className="h-3 w-3" /> Doc Signing
+ <TabsTrigger value="forms" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <FileText className="h-3 w-3" /> Doc Signing
                                     </TabsTrigger>
-                                    <TabsTrigger value="constants" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
-                                        <Globe className="h-3 w-3" /> Constants
+ <TabsTrigger value="constants" className="rounded-xl font-semibold text-[9px] px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+ <Globe className="h-3 w-3" /> Constants
                                     </TabsTrigger>
                                 </TabsList>
                             </div>
 
-                            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                <TabsContent value="general" className="m-0"><VariableListView category="general" /></TabsContent>
-                                <TabsContent value="finance" className="m-0"><VariableListView category="finance" /></TabsContent>
-                                <TabsContent value="meetings" className="m-0"><VariableListView category="meetings" /></TabsContent>
+ <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+ <TabsContent value="general" className="m-0"><VariableListView category="general" /></TabsContent>
+ <TabsContent value="finance" className="m-0"><VariableListView category="finance" /></TabsContent>
+ <TabsContent value="meetings" className="m-0"><VariableListView category="meetings" /></TabsContent>
                                 
-                                <TabsContent value="surveys" className="m-0 space-y-6">
-                                    <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
+ <TabsContent value="surveys" className="m-0 space-y-6">
+ <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
+ <Label className="text-[10px] font-semibold text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
                                         <Select value={selectedSurveyId || 'all'} onValueChange={setSelectedSurveyId}>
-                                            <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
+ <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
                                                 <SelectValue placeholder="All Surveys" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                 <SelectItem value="all">All Survey Blueprints</SelectItem>
                                                 {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.internalName || s.title}</SelectItem>)}
                                             </SelectContent>
@@ -481,14 +481,14 @@ export default function VariableRegistryPage() {
                                     <VariableListView category="surveys" sourceId={selectedSurveyId} />
                                 </TabsContent>
 
-                                <TabsContent value="forms" className="m-0 space-y-6">
-                                    <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
+ <TabsContent value="forms" className="m-0 space-y-6">
+ <div className="flex items-center gap-4 bg-card p-4 rounded-2xl border shadow-sm glass-card">
+ <Label className="text-[10px] font-semibold text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
                                         <Select value={selectedPdfId || 'all'} onValueChange={setSelectedPdfId}>
-                                            <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
+ <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
                                                 <SelectValue placeholder="All Documents" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                 <SelectItem value="all">All Form Templates</SelectItem>
                                                 {pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                             </SelectContent>
@@ -497,15 +497,15 @@ export default function VariableRegistryPage() {
                                     <VariableListView category="forms" sourceId={selectedPdfId} />
                                 </TabsContent>
 
-                                <TabsContent value="constants" className="m-0">
-                                    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
+ <TabsContent value="constants" className="m-0">
+ <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50 glass-card">
                                         <Table>
-                                            <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/30">
                                                 <TableRow>
-                                                    <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Manual Label & Technical Key</TableHead>
-                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Global Value</TableHead>
-                                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-widest py-4">Studio Usage</TableHead>
-                                                    <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest py-4">Actions</TableHead>
+ <TableHead className="pl-6 text-[10px] font-semibold py-4">Manual Label & Technical Key</TableHead>
+ <TableHead className="text-[10px] font-semibold py-4">Global Value</TableHead>
+ <TableHead className="text-center text-[10px] font-semibold py-4">Studio Usage</TableHead>
+ <TableHead className="text-right pr-6 text-[10px] font-semibold py-4">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -514,10 +514,10 @@ export default function VariableRegistryPage() {
                                                 ))}
                                                 {filteredVars.filter(v => v.source === 'constant').length === 0 && (
                                                     <TableRow>
-                                                        <TableCell colSpan={4} className="h-48 text-center">
-                                                            <div className="flex flex-col items-center justify-center gap-2 opacity-30">
-                                                                <Globe className="h-10 w-10" />
-                                                                <p className="text-[10px] font-black uppercase tracking-widest">No Constants Defined</p>
+ <TableCell colSpan={4} className="h-48 text-center">
+ <div className="flex flex-col items-center justify-center gap-2 opacity-30">
+ <Globe className="h-10 w-10" />
+ <p className="text-[10px] font-semibold ">No Constants Defined</p>
                                                             </div>
                                                         </TableCell>
                                                     </TableRow>
@@ -534,52 +534,52 @@ export default function VariableRegistryPage() {
 
             {/* Broken Context Audit Dialog */}
             <Dialog open={isBrokenModalOpen} onOpenChange={setIsBrokenModalOpen}>
-                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border shadow-2xl bg-card">
-                    <DialogHeader className="p-8 bg-rose-500/10 border-b border-rose-500/20 shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
-                                <ShieldAlert className="h-6 w-6" />
+ <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border shadow-2xl bg-card">
+ <DialogHeader className="p-8 bg-rose-500/10 border-b border-rose-500/20 shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
+ <ShieldAlert className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight text-rose-900">Broken Registry Audit</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-rose-700 opacity-70">Detecting technical tags missing from data hub</DialogDescription>
+ <DialogTitle className="text-2xl font-semibold tracking-tight text-rose-900">Broken Registry Audit</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-rose-700 opacity-70">Detecting technical tags missing from data hub</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-hidden flex flex-col bg-background/50">
-                        <ScrollArea className="h-[400px]">
-                            <div className="p-6">
+ <div className="flex-1 overflow-hidden flex flex-col bg-background/50">
+ <ScrollArea className="h-[400px]">
+ <div className="p-6">
                                 <Table>
-                                    <TableHeader className="bg-muted/30">
-                                        <TableRow className="hover:bg-transparent">
-                                            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 pl-6">Technical Tag</TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Impact Scope</TableHead>
-                                            <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest py-4">Action</TableHead>
+ <TableHeader className="bg-muted/30">
+ <TableRow className="hover:bg-transparent">
+ <TableHead className="text-[10px] font-semibold py-4 pl-6">Technical Tag</TableHead>
+ <TableHead className="text-[10px] font-semibold py-4">Impact Scope</TableHead>
+ <TableHead className="text-right pr-6 text-[10px] font-semibold py-4">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {healthMetrics.brokenItems.map((item) => (
-                                            <TableRow key={item.key} className="group hover:bg-rose-500/10 transition-colors">
-                                                <TableCell className="pl-6 py-4">
-                                                    <code className="text-xs font-mono font-black text-rose-500 bg-rose-500/5 px-2.5 py-1 rounded-lg border border-rose-500/20">
+ <TableRow key={item.key} className="group hover:bg-rose-500/10 transition-colors">
+ <TableCell className="pl-6 py-4">
+ <code className="text-xs font-mono font-semibold text-rose-500 bg-rose-500/5 px-2.5 py-1 rounded-lg border border-rose-500/20">
                                                         {"{{" + item.key + "}}"}
                                                     </code>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-col gap-1 text-left">
-                                                        <span className="text-[10px] font-black uppercase text-muted-foreground">Used in {item.templates.length} templates:</span>
-                                                        <div className="flex flex-wrap gap-1.5">
+ <div className="flex flex-col gap-1 text-left">
+ <span className="text-[10px] font-semibold text-muted-foreground">Used in {item.templates.length} templates:</span>
+ <div className="flex flex-wrap gap-1.5">
                                                             {item.templates.map(t => (
                                                                 <Badge key={t.id} variant="outline" className="text-[8px] h-4 font-bold bg-white">{t.name}</Badge>
                                                             ))}
                                                         </div>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    <Button variant="ghost" size="sm" className="h-8 rounded-xl font-bold gap-2 text-[10px] uppercase hover:bg-primary/10 hover:text-primary transition-all" asChild>
+ <TableCell className="text-right pr-6">
+ <Button variant="ghost" size="sm" className="h-8 rounded-xl font-bold gap-2 text-[10px] hover:bg-primary/10 hover:text-primary transition-all" asChild>
                                                         <Link href="/admin/messaging/templates">
-                                                            Fix in Studio <ChevronRight className="h-3 w-3" />
+ Fix in Studio <ChevronRight className="h-3 w-3" />
                                                         </Link>
                                                     </Button>
                                                 </TableCell>
@@ -591,49 +591,49 @@ export default function VariableRegistryPage() {
                         </ScrollArea>
                     </div>
 
-                    <DialogFooter className="p-6 bg-muted/30 border-t shrink-0">
-                        <Button onClick={() => setIsBrokenModalOpen(false)} className="w-full h-12 rounded-xl font-black uppercase tracking-widest shadow-lg">Acknowledge Audit</Button>
+ <DialogFooter className="p-6 bg-muted/30 border-t shrink-0">
+ <Button onClick={() => setIsBrokenModalOpen(false)} className="w-full h-12 rounded-xl font-semibold shadow-lg">Acknowledge Audit</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Constant Editor Dialog */}
             <Dialog open={isAddingConstant} onOpenChange={(o) => { if(!o) { setIsAddingConstant(false); setEditingConst(null); setConstKey(''); setConstLabel(''); setConstValue(''); } }}>
-                <DialogContent className="sm:max-w-md rounded-[2rem] bg-card border shadow-2xl">
+ <DialogContent className="sm:max-w-md rounded-[2rem] bg-card border shadow-2xl">
                     <DialogHeader>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
-                            <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingConst ? 'Update Constant' : 'Create Global Constant'}</DialogTitle>
+ <div className="flex items-center gap-3 mb-2">
+ <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
+ <DialogTitle className="text-xl font-semibold tracking-tight">{editingConst ? 'Update Constant' : 'Create Global Constant'}</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">Define a permanent schema-less data point.</DialogDescription>
+ <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Define a permanent schema-less data point.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4 text-left">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Variable Key (Tag Name)</Label>
-                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-background/50 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
-                                <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-r">{"{{"}</div>
+ <div className="space-y-6 py-4 text-left">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Variable Key (Tag Name)</Label>
+ <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-background/50 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
+ <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">{"{{"}</div>
                                 <Input 
                                     placeholder="e.g. support_phone" 
                                     value={constKey} 
                                     onChange={e => setConstKey(e.target.value.replace(/\s+/g, '_'))}
-                                    className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono font-black" 
+ className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono font-semibold" 
                                 />
-                                <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-l">{"}}"}</div>
+ <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-l">{"}}"}</div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Display Label</Label>
-                            <Input value={constLabel} onChange={e => setConstLabel(e.target.value)} placeholder="e.g. Help WhatsApp Line" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Display Label</Label>
+ <Input value={constLabel} onChange={e => setConstLabel(e.target.value)} placeholder="e.g. Help WhatsApp Line" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fixed Value</Label>
-                            <Textarea value={constValue} onChange={e => setConstValue(e.target.value)} placeholder="Enter the value to be resolved..." className="min-h-[80px] rounded-xl bg-background/50 border-none p-4 font-medium" />
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Fixed Value</Label>
+ <Textarea value={constValue} onChange={e => setConstValue(e.target.value)} placeholder="Enter the value to be resolved..." className="min-h-[80px] rounded-xl bg-background/50 border-none p-4 font-medium" />
                         </div>
                     </div>
-                    <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-4">
-                        <Button variant="ghost" onClick={() => setIsAddingConstant(false)} className="font-bold">Cancel</Button>
-                        <Button onClick={handleSaveConstant} disabled={isSavingConst || !constKey || !constValue} className="rounded-xl font-bold px-8 shadow-lg min-w-[140px]">
-                            {isSavingConst ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+ <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-4">
+ <Button variant="ghost" onClick={() => setIsAddingConstant(false)} className="font-bold">Cancel</Button>
+ <Button onClick={handleSaveConstant} disabled={isSavingConst || !constKey || !constValue} className="rounded-xl font-bold px-8 shadow-lg min-w-[140px]">
+ {isSavingConst ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             {editingConst ? 'Update' : 'Commit Constant'}
                         </Button>
                     </DialogFooter>

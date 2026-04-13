@@ -33,6 +33,7 @@ import {
 import { addDoc, collection, query, getDocs, orderBy, limit, where, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
 import { Button as MovingButton } from '@/components/ui/moving-border';
@@ -52,6 +53,7 @@ export default function AiEntityGenerator() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeOrganizationId } = useTenant();
+  const { activeWorkspaceId } = useWorkspace();
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const form = useForm<FormData>({
@@ -194,55 +196,55 @@ export default function AiEntityGenerator() {
   };
 
   return (
-    <Card className="max-w-3xl mx-auto shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="text-center pb-10 pt-12 border-b bg-muted/30 relative">
-            <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
-                <Sparkles className="h-8 w-8 text-primary" />
+ <Card className="max-w-3xl mx-auto shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <CardHeader className="text-center pb-10 pt-12 border-b bg-muted/30 relative">
+ <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
+ <Sparkles className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-black tracking-tight uppercase">AI Institutional Architect</CardTitle>
-            <CardDescription className="text-base font-medium max-w-md mx-auto mt-2">Paste school profiles or memos. AI will handle the track classification and data entry.</CardDescription>
+ <CardTitle className="text-3xl font-semibold tracking-tight ">AI Institutional Architect</CardTitle>
+ <CardDescription className="text-base font-medium max-w-md mx-auto mt-2">Paste school profiles or memos. AI will handle the track classification and data entry.</CardDescription>
         </CardHeader>
-        <CardContent className="p-8 sm:p-12">
+ <CardContent className="p-8 sm:p-12">
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     {/* Track Selector */}
                     <FormField
                         control={form.control}
                         name="track"
                         render={({ field }) => (
-                            <FormItem className="text-left space-y-4">
-                                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1">Target Track</FormLabel>
-                                <div className="grid grid-cols-2 gap-4">
+ <FormItem className="text-left space-y-4">
+ <FormLabel className="text-[10px] font-semibold text-primary ml-1">Target Track</FormLabel>
+ <div className="grid grid-cols-2 gap-4">
                                     <button
                                         type="button"
                                         onClick={() => field.onChange('onboarding')}
-                                        className={cn(
+ className={cn(
                                             "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
                                             field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
                                         )}
                                     >
-                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
-                                            <Building className="h-5 w-5" />
+ <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
+ <Building className="h-5 w-5" />
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-xs uppercase">Onboarding</span>
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Direct Signup</span>
+ <div className="flex flex-col">
+ <span className="font-semibold text-xs ">Onboarding</span>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60">Direct Signup</span>
                                         </div>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => field.onChange('prospect')}
-                                        className={cn(
+ className={cn(
                                             "flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
                                             field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
                                         )}
                                     >
-                                        <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
-                                            <Target className="h-5 w-5" />
+ <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
+ <Target className="h-5 w-5" />
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-xs uppercase">Prospect</span>
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">Sales Lead</span>
+ <div className="flex flex-col">
+ <span className="font-semibold text-xs ">Prospect</span>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60">Sales Lead</span>
                                         </div>
                                     </button>
                                 </div>
@@ -254,12 +256,12 @@ export default function AiEntityGenerator() {
                         control={form.control}
                         name="text"
                         render={({ field }) => (
-                            <FormItem className="text-left">
-                                <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1">Source Material</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-primary ml-1">Source Material</FormLabel>
                                 <FormControl>
                                     <Textarea
                                         placeholder="Paste school data here..."
-                                        className="min-h-[250px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-8 text-lg leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="min-h-[250px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-8 text-lg leading-relaxed focus-visible:ring-1 focus-visible:ring-primary/20"
                                         {...field}
                                     />
                                 </FormControl>
@@ -268,13 +270,13 @@ export default function AiEntityGenerator() {
                         )}
                     />
 
-                    <div className="flex items-center justify-between pt-8 border-t border-border/50">
+ <div className="flex items-center justify-between pt-8 border-t border-border/50">
                         <Button
                           type="button"
                           variant="ghost"
                           onClick={() => router.push('/admin/entities')}
                           disabled={isGenerating}
-                          className="font-black uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl"
+ className="font-semibold text-[10px] h-12 px-8 rounded-xl"
                         >
                             Discard
                         </Button>
@@ -282,18 +284,18 @@ export default function AiEntityGenerator() {
                             type="submit" 
                             disabled={isGenerating || !form.formState.isValid} 
                             containerClassName="h-14 px-12 rounded-2xl"
-                            className="h-full w-full font-black text-lg gap-3 bg-slate-900"
+ className="h-full w-full font-semibold text-lg gap-3 bg-slate-900"
                         >
-                            {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
+ {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
                             {isGenerating ? 'Architecting...' : 'Initialize Hub with AI'}
                         </MovingButton>
                     </div>
                 </form>
             </Form>
         </CardContent>
-        <CardFooter className="bg-muted/30 p-6 border-t flex items-center gap-3">
-            <Info className="h-4 w-4 text-muted-foreground opacity-40 shrink-0" />
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.1em] text-left">
+ <CardFooter className="bg-muted/30 p-6 border-t flex items-center gap-3">
+ <Info className="h-4 w-4 text-muted-foreground opacity-40 shrink-0" />
+ <p className="text-[9px] font-bold text-muted-foreground tracking-[0.1em] text-left">
                 The architect will automatically map regional zones and managers based on your current institutional settings.
             </p>
         </CardFooter>

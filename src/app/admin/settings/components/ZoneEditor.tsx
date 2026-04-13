@@ -79,66 +79,66 @@ export default function ZoneEditor() {
 
   return (
     <>
-      <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b pb-6 text-left">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-                <MapPin className="h-5 w-5 text-primary" />
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <MapPin className="h-5 w-5 text-primary" />
             </div>
             <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">Zone Architecture</CardTitle>
-                <CardDescription className="text-xs font-medium">Manage operational areas and zones to categorize and group workspace entities.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Zone Architecture</CardTitle>
+ <CardDescription className="text-xs font-medium">Manage operational areas and zones to categorize and group workspace entities.</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
+ <CardContent className="p-6 space-y-4">
           {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-14 w-full rounded-xl" />
-              <Skeleton className="h-14 w-full rounded-xl" />
+ <div className="space-y-3">
+ <Skeleton className="h-14 w-full rounded-xl" />
+ <Skeleton className="h-14 w-full rounded-xl" />
             </div>
           ) : (
-            <div className="space-y-3">
+ <div className="space-y-3">
               {zones?.map((zone) => (
-                <div key={zone.id} className="flex items-center gap-2 bg-muted/20 p-3 rounded-xl group transition-all hover:bg-muted/40">
+ <div key={zone.id} className="flex items-center gap-2 bg-muted/20 p-3 rounded-xl group transition-all hover:bg-muted/40">
                   {editingZoneId === zone.id ? (
-                    <div className="flex-grow flex items-center gap-2">
+ <div className="flex-grow flex items-center gap-2">
                         <Input
                             value={editingZoneName}
                             onChange={(e) => setEditingZoneName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleRename(zone.id, editingZoneName)}
                             autoFocus
-                            className="h-9 rounded-lg bg-background border-primary/20"
+ className="h-9 rounded-lg bg-background border-primary/20"
                         />
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setEditingZoneId(null)}>
-                            <X className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setEditingZoneId(null)}>
+ <X className="h-4 w-4" />
                         </Button>
                     </div>
                   ) : (
-                    <span className="flex-grow font-bold text-sm px-2 text-foreground/80">{zone.name}</span>
+ <span className="flex-grow font-bold text-sm px-2 text-foreground/80">{zone.name}</span>
                   )}
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingZoneId(zone.id); setEditingZoneName(zone.name); }}>
-                      <Pencil className="h-4 w-4" />
+ <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingZoneId(zone.id); setEditingZoneName(zone.name); }}>
+ <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => setZoneToDelete(zone)}>
-                      <Trash2 className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => setZoneToDelete(zone)}>
+ <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          <div className="flex gap-2 pt-4 border-t border-border/50">
+ <div className="flex gap-2 pt-4 border-t border-border/50">
             <Input
               placeholder="e.g. Airport / Legon Zone"
               value={newZoneName}
               onChange={(e) => setNewZoneName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddZone()}
-              className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
             />
-            <Button onClick={handleAddZone} disabled={isAdding} className="h-11 rounded-xl font-bold shadow-lg">
-              {isAdding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+ <Button onClick={handleAddZone} disabled={isAdding} className="h-11 rounded-xl font-bold shadow-lg">
+ {isAdding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
               Add Zone
             </Button>
           </div>
@@ -146,18 +146,18 @@ export default function ZoneEditor() {
       </Card>
 
       <AlertDialog open={!!zoneToDelete} onOpenChange={(o) => !o && setZoneToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl">
+ <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black">Delete Zone?</AlertDialogTitle>
-            <AlertDialogDescription className="font-medium">
-              Are you sure you want to delete <span className="font-bold text-foreground">"{zoneToDelete?.name}"</span>? 
+ <AlertDialogTitle className="font-semibold">Delete Zone?</AlertDialogTitle>
+ <AlertDialogDescription className="font-medium">
+ Are you sure you want to delete <span className="font-bold text-foreground">"{zoneToDelete?.name}"</span>? 
               <br/><br/>
               Schools assigned to this zone will need to be manually reassigned. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteZone} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete Zone</AlertDialogAction>
+ <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+ <AlertDialogAction onClick={handleDeleteZone} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete Zone</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

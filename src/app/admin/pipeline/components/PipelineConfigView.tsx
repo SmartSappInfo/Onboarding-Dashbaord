@@ -91,40 +91,40 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const roleOptions = roles?.map(r => ({ label: r.name, value: r.id })) || [];
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
-    if (isLoading) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
+ if (isLoading) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-            <div className="lg:col-span-2 space-y-8">
-                <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
-                    <CardHeader className="bg-muted/10 border-b p-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Settings2 size={18} /></div>
-                            <CardTitle className="text-sm font-black uppercase tracking-tight">Master Blueprint</CardTitle>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b p-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Settings2 size={18} /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight">Master Blueprint</CardTitle>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Pipeline Label</Label>
-                            <Input value={name} onChange={e => setName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg px-4 shadow-inner" />
+ <CardContent className="p-8 space-y-8">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-bold text-muted-foreground ml-1">Pipeline Label</Label>
+ <Input value={name} onChange={e => setName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg px-4 shadow-inner" />
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-2"><Layout size={14} /> Shared Workspace Context</Label>
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><Layout size={14} /> Shared Workspace Context</Label>
                             <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} placeholder="Assign to hubs..." />
                         </div>
                         
-                        <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
-                            <div className="flex justify-between items-center px-1">
-                                <Label className="text-[10px] font-black uppercase text-primary">Column Density</Label>
+ <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
+ <div className="flex justify-between items-center px-1">
+ <Label className="text-[10px] font-semibold text-primary">Column Density</Label>
                                 <Badge variant="outline" className="font-mono text-[10px] bg-white border-primary/20 text-primary">{columnWidth}px</Badge>
                             </div>
                             <Slider value={[columnWidth]} onValueChange={([v]) => onWidthChange(v)} min={280} max={500} step={10} />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Scope Description</Label>
-                            <Textarea value={description} onChange={e => setDescription(e.target.value)} className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" />
+ <div className="space-y-2">
+ <Label className="text-[10px] font-bold text-muted-foreground ml-1">Scope Description</Label>
+ <Textarea value={description} onChange={e => setDescription(e.target.value)} className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" />
                         </div>
                     </CardContent>
                 </Card>
@@ -132,23 +132,23 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 <StageEditor pipelineId={pipelineId} />
             </div>
 
-            <div className="space-y-8">
-                <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
-                    <CardHeader className="bg-primary/5 border-b p-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><ShieldCheck size={18} /></div>
-                            <CardTitle className="text-sm font-black uppercase tracking-tight">Access Architecture</CardTitle>
+ <div className="space-y-8">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+ <CardHeader className="bg-primary/5 border-b p-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><ShieldCheck size={18} /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight">Access Architecture</CardTitle>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Authorized User Roles</Label>
+ <CardContent className="p-6 space-y-4">
+ <Label className="text-[10px] font-bold text-muted-foreground ml-1">Authorized User Roles</Label>
                         <MultiSelect options={roleOptions} value={accessRoles} onChange={setAccessRoles} placeholder="Grant visibility..." />
                     </CardContent>
                 </Card>
 
-                <div className="pt-4 sticky top-24">
-                    <Button onClick={handleSave} disabled={isSaving || !name.trim()} className="w-full h-14 rounded-2xl font-black text-xs shadow-xl uppercase tracking-[0.2em] transition-all active:scale-95 gap-2">
-                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+ <div className="pt-4 sticky top-24">
+ <Button onClick={handleSave} disabled={isSaving || !name.trim()} className="w-full h-14 rounded-2xl font-semibold text-xs shadow-xl transition-all active:scale-95 gap-2">
+ {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                         Save Configuration
                     </Button>
                 </div>

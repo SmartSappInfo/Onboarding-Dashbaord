@@ -135,47 +135,47 @@ export default function PipelineSettingsClient() {
 
     const roleOptions = roles?.map(r => ({ label: r.name, value: r.id })) || [];
 
-    if (isLoadingPipelines) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
+ if (isLoadingPipelines) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
 
     return (
-        <div className="h-full overflow-y-auto bg-background text-left p-4 sm:p-8 md:p-12">
-            <div className="max-w-5xl mx-auto space-y-10 pb-32">
+ <div className="h-full overflow-y-auto bg-background text-left p-4 sm:p-8 md:p-12">
+ <div className="max-w-5xl mx-auto space-y-10 pb-32">
                 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-1 text-left">
-                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Pipeline Architecture</h1>
-                        <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Modify shared stages and access rules for {activeWorkspaceId}.</p>
+ <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+ <div className="space-y-1 text-left">
+ <h1 className="text-3xl font-semibold tracking-tight text-foreground ">Pipeline Architecture</h1>
+ <p className="text-sm text-muted-foreground font-medium ">Modify shared stages and access rules for {activeWorkspaceId}.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                         <Button 
                             variant="outline" 
                             onClick={() => { setSelectedId(null); setIsAdding(true); }}
-                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-white shadow-sm"
+ className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-white shadow-sm"
                         >
-                            <Plus className="mr-2 h-4 w-4" /> New Workflow
+ <Plus className="mr-2 h-4 w-4" /> New Workflow
                         </Button>
                     </div>
                 </div>
 
-                <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
-                    <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
-                        <div className="flex items-center gap-3 text-primary shrink-0 ml-2">
-                            <Zap className="h-4 w-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Select Target</span>
+ <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
+ <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
+ <div className="flex items-center gap-3 text-primary shrink-0 ml-2">
+ <Zap className="h-4 w-4" />
+ <span className="text-[10px] font-semibold ">Select Target</span>
                         </div>
                         <Select value={selectedId || (isCreating ? 'new' : '')} onValueChange={(val) => {
                             if (val === 'new') { setSelectedId(null); setIsAdding(true); }
                             else { setSelectedId(val); setIsAdding(false); }
                         }}>
-                            <SelectTrigger className="flex-1 h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-lg">
+ <SelectTrigger className="flex-1 h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-lg">
                                 <SelectValue placeholder="Choose a pipeline to modify..." />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-none shadow-2xl">
+ <SelectContent className="rounded-xl border-none shadow-2xl">
                                 {pipelines?.map(p => (
-                                    <SelectItem key={p.id} value={p.id} className="font-black uppercase py-3 text-xs">{p.name}</SelectItem>
+ <SelectItem key={p.id} value={p.id} className="font-semibold py-3 text-xs">{p.name}</SelectItem>
                                 ))}
-                                <Separator className="my-1" />
-                                <SelectItem value="new" className="text-primary font-black italic">Initialize New Pipeline...</SelectItem>
+ <Separator className="my-1" />
+ <SelectItem value="new" className="text-primary font-semibold italic">Initialize New Pipeline...</SelectItem>
                             </SelectContent>
                         </Select>
                     </CardContent>
@@ -188,31 +188,31 @@ export default function PipelineSettingsClient() {
                             initial={{ opacity: 0, y: 10 }} 
                             animate={{ opacity: 1, y: 0 }} 
                             exit={{ opacity: 0, y: -10 }}
-                            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+ className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                         >
-                            <div className="lg:col-span-2 space-y-8">
-                                <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
-                                    <CardHeader className="bg-muted/10 border-b p-6 px-8">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-white rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
-                                            <CardTitle className="text-sm font-black uppercase tracking-widest">Master Directives</CardTitle>
+ <div className="lg:col-span-2 space-y-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b p-6 px-8">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-white rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
+ <CardTitle className="text-sm font-semibold ">Master Directives</CardTitle>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-8 space-y-8 text-left">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pipeline Label</Label>
+ <CardContent className="p-8 space-y-8 text-left">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Pipeline Label</Label>
                                             <Input 
                                                 value={name} 
                                                 onChange={e => setName(e.target.value)} 
                                                 placeholder="e.g. Sales Pipeline" 
-                                                className="h-12 rounded-xl bg-muted/20 border-none font-black text-lg px-4" 
+ className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg px-4" 
                                             />
                                         </div>
                                         
-                                        <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
-                                            <div className="flex justify-between items-center px-1">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                    <Maximize className="h-3.5 w-3.5" /> Stage Column Width
+ <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
+ <div className="flex justify-between items-center px-1">
+ <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+ <Maximize className="h-3.5 w-3.5" /> Stage Column Width
                                                 </Label>
                                                 <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-white border-primary/20 text-primary">
                                                     {columnWidth}px
@@ -227,13 +227,13 @@ export default function PipelineSettingsClient() {
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Scope Description</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Scope Description</Label>
                                             <Textarea 
                                                 value={description} 
                                                 onChange={e => setDescription(e.target.value)} 
                                                 placeholder="Define the purpose..." 
-                                                className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" 
+ className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" 
                                             />
                                         </div>
                                     </CardContent>
@@ -242,33 +242,33 @@ export default function PipelineSettingsClient() {
                                 {selectedId && <StageEditor pipelineId={selectedId} />}
                             </div>
 
-                            <div className="space-y-8">
-                                <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden text-left">
-                                    <CardHeader className="bg-primary/5 border-b p-6 px-8">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-white rounded-xl shadow-sm"><ShieldCheck className="h-4 w-4 text-primary" /></div>
-                                            <CardTitle className="text-sm font-black uppercase tracking-tight">Access Control</CardTitle>
+ <div className="space-y-8">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden text-left">
+ <CardHeader className="bg-primary/5 border-b p-6 px-8">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-white rounded-xl shadow-sm"><ShieldCheck className="h-4 w-4 text-primary" /></div>
+ <CardTitle className="text-sm font-semibold tracking-tight">Access Control</CardTitle>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-6 space-y-4">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Authorized Roles</Label>
+ <CardContent className="p-6 space-y-4">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Authorized Roles</Label>
                                         <MultiSelect 
                                             options={roleOptions}
                                             value={accessRoles}
                                             onChange={setAccessRoles}
                                             placeholder="Grant visibility..."
-                                            className="rounded-xl border-primary/10 shadow-sm"
+ className="rounded-xl border-primary/10 shadow-sm"
                                         />
                                     </CardContent>
                                 </Card>
 
-                                <div className="space-y-4 pt-4 sticky top-24">
+ <div className="space-y-4 pt-4 sticky top-24">
                                     <Button 
                                         onClick={handleSave} 
                                         disabled={isSaving || !name.trim()} 
-                                        className="w-full h-14 rounded-2xl font-black text-sm shadow-xl uppercase tracking-[0.2em] transition-all active:scale-95 gap-2"
+ className="w-full h-14 rounded-2xl font-semibold text-sm shadow-xl transition-all active:scale-95 gap-2"
                                     >
-                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+ {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                         Commit Architecture
                                     </Button>
                                     
@@ -276,9 +276,9 @@ export default function PipelineSettingsClient() {
                                         <Button 
                                             variant="ghost" 
                                             onClick={handleDelete}
-                                            className="w-full h-10 text-destructive font-black uppercase text-[9px] tracking-widest gap-2"
+ className="w-full h-10 text-destructive font-semibold text-[9px] gap-2"
                                         >
-                                            <Trash2 className="h-3 w-3" /> Purge Workflow
+ <Trash2 className="h-3 w-3" /> Purge Workflow
                                         </Button>
                                     )}
                                 </div>

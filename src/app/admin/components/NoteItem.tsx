@@ -71,9 +71,9 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
     }
     
     return (
-        <div className="relative pl-10 pt-2 pb-4">
-            <div className="absolute -left-1 top-3 transform">
-                <Avatar className="h-8 w-8">
+ <div className="relative pl-10 pt-2 pb-4">
+ <div className="absolute -left-1 top-3 transform">
+ <Avatar className="h-8 w-8">
                     {userProfile?.photoURL ? (
                         <>
                             <AvatarImage src={userProfile.photoURL} alt={userProfile.name} />
@@ -85,46 +85,46 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
                 </Avatar>
             </div>
             
-            <div className="ml-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="font-semibold text-foreground">{userProfile?.name || 'System'}</span>
+ <div className="ml-4">
+ <div className="flex items-center gap-2 text-sm text-muted-foreground">
+ <span className="font-semibold text-foreground">{userProfile?.name || 'System'}</span>
                     <span>&middot;</span>
                     <time
                         dateTime={note.timestamp}
                         title={format(new Date(note.timestamp), "PPP p")}
-                        className="whitespace-nowrap"
+ className="whitespace-nowrap"
                     >
                         {formatDistanceToNow(new Date(note.timestamp), { addSuffix: true })}
                     </time>
                 </div>
-                <div className="mt-2 text-sm text-foreground/90">
+ <div className="mt-2 text-sm text-foreground/90">
                     {isEditing ? (
-                        <div className="space-y-2">
+ <div className="space-y-2">
                              <Textarea
                                 value={editedContent}
                                 onChange={(e) => setEditedContent(e.target.value)}
-                                className="min-h-[100px]"
+ className="min-h-[100px]"
                                 autoFocus
                             />
-                            <div className="flex justify-end gap-2">
+ <div className="flex justify-end gap-2">
                                 <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
                                 <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+ {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Save
                                 </Button>
                             </div>
                         </div>
                     ) : (
-                        <p className="whitespace-pre-wrap">{note.metadata?.content}</p>
+ <p className="whitespace-pre-wrap">{note.metadata?.content}</p>
                     )}
                 </div>
                  {canEdit && !isEditing && (
-                    <div className="absolute top-1 right-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditing(true)}>
-                            <Pencil className="h-4 w-4" />
+ <div className="absolute top-1 right-1 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+ <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsEditing(true)}>
+ <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                            <Trash2 className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
+ <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
                 )}
@@ -141,7 +141,7 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+ {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Delete
                     </AlertDialogAction>
                 </AlertDialogFooter>

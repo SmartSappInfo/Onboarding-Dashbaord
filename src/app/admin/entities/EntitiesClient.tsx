@@ -254,112 +254,112 @@ export default function EntitiesClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
-                <div className="flex justify-end items-center gap-3 shrink-0">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-8">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
+ <div className="flex justify-end items-center gap-3 shrink-0">
                     {selectedEntityIds.length > 0 && (
                         <Button
                             variant="outline"
-                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
+ className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
                             onClick={() => setIsBulkTagOpen(true)}
                         >
-                            <TagIcon className="h-4 w-4" />
+ <TagIcon className="h-4 w-4" />
                             Tag {selectedEntityIds.length} Selected
                         </Button>
                     )}
-                    <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
+ <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
                         <Link href="/admin/entities/upload">
-                            <FileUp className="mr-2 h-4 w-4" />
+ <FileUp className="mr-2 h-4 w-4" />
                             {importBulk}
                         </Link>
                     </Button>
-                    <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95 text-white">
+ <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
                         <Link href="/admin/entities/new/ai">
-                            <Sparkles className="h-4 w-4" /> AI Architect
+ <Sparkles className="h-4 w-4" /> AI Architect
                         </Link>
                     </RainbowButton>
-                    <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+ <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
                         <Link href="/admin/entities/new">
-                            <PlusCircle className="mr-2 h-5 w-5" />
+ <PlusCircle className="mr-2 h-5 w-5" />
                             {addNew}
                         </Link>
                     </Button>
                 </div>
             </div>
             
-            <Card className="glass-card rounded-2xl overflow-hidden">
-                <CardContent className="p-4 space-y-3">
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex-1 min-w-[200px]">
-                            <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+ <Card className="glass-card rounded-2xl overflow-hidden">
+ <CardContent className="p-4 space-y-3">
+ <div className="flex flex-wrap items-center gap-4">
+ <div className="flex-1 min-w-[200px]">
+ <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+ <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                 <SelectItem value="all">All Statuses</SelectItem>
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="archived">Archived</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={stageFilter} onValueChange={setStageFilter}>
-                            <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+ <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                 <SelectValue placeholder="All Stages" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                 <SelectItem value="all">All Stages</SelectItem>
                                 {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                     {/* Tag filter row — shows active filter badges inline */}
-                    <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
+ <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
                 </CardContent>
             </Card>
             
-            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
                 <Table>
-                    <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/30">
                     <TableRow>
-                        <TableHead className="w-[80px]"></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                        <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                        <TableHead><span className="text-[10px] font-bold uppercase tracking-widest">Focal Persons</span></TableHead>
-                        <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                        <TableHead className="text-right pr-6"><span className="text-[10px] font-bold uppercase tracking-widest">Actions</span></TableHead>
+ <TableHead className="w-[80px]"></TableHead>
+ <TableHead><Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+ <TableHead className="text-center"><span className="text-[10px] font-bold ">Status</span></TableHead>
+ <TableHead><Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+ <TableHead><span className="text-[10px] font-bold ">Focal Persons</span></TableHead>
+ <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+ <TableHead className="text-right pr-6"><span className="text-[10px] font-bold ">Actions</span></TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+ <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                         ))
                     ) : sortedEntities.length > 0 ? (
                         sortedEntities.map((entity) => {
                         return (
-                        <TableRow key={entity.id} className={cn("group hover:bg-muted/30 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
-                            <TableCell className="pl-6">
-                            <div className="flex items-center gap-2">
+ <TableRow key={entity.id} className={cn("group hover:bg-muted/30 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
+ <TableCell className="pl-6">
+ <div className="flex items-center gap-2">
                               <input
                                 type="checkbox"
                                 checked={selectedEntityIds.includes(entity.id)}
                                 onChange={() => toggleEntitySelection(entity.id)}
-                                className="h-4 w-4 rounded border-border cursor-pointer"
+ className="h-4 w-4 rounded border-border cursor-pointer"
                                 aria-label={`Select ${entity.displayName}`}
                               />
-                              <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
-                                <AvatarFallback className="font-bold text-xs">{getInitials(entity.displayName)}</AvatarFallback>
+ <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
+ <AvatarFallback className="font-bold text-xs">{getInitials(entity.displayName)}</AvatarFallback>
                               </Avatar>
                             </div>
                             </TableCell>
-                            <TableCell className="py-4">
-                                <div className="flex flex-col text-left gap-1">
-                                    <Link href={`/admin/entities/${entity.entityId}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{entity.displayName}</Link>
-                                    <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
-                                        <User className="h-2 w-2" /> {entity.primaryEmail || 'No Primary Contact'}
+ <TableCell className="py-4">
+ <div className="flex flex-col text-left gap-1">
+ <Link href={`/admin/entities/${entity.entityId}`} className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors tracking-tight">{entity.displayName}</Link>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
+ <User className="h-2 w-2" /> {entity.primaryEmail || 'No Primary Contact'}
                                     </span>
                                     {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
                                         <TagBadges
@@ -370,49 +370,49 @@ export default function EntitiesClient() {
                                     )}
                                 </div>
                             </TableCell>
-                            <TableCell className="text-center">
-                                <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{entity.status}</Badge>
+ <TableCell className="text-center">
+                                <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-semibold uppercase px-2.5 h-5">{entity.status}</Badge>
                             </TableCell>
                             <TableCell>
                             <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.currentStageName || 'Welcome'}</Badge>
                             </TableCell>
                             <TableCell>
-                                <div className="flex flex-col gap-1.5 max-w-[200px]">
+ <div className="flex flex-col gap-1.5 max-w-[200px]">
                                     {(entity.focalPersons || []).length > 0 ? (
                                         entity.focalPersons?.map((fp, idx) => (
-                                            <div key={idx} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group/fp">
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className={cn("text-[10px] font-black truncate uppercase", fp.isSignatory && "text-primary")}>{fp.name}</span>
-                                                    <span className="text-[8px] font-bold opacity-50 uppercase truncate">{fp.type}</span>
+ <div key={idx} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group/fp">
+ <div className="flex flex-col min-w-0">
+ <span className={cn("text-[10px] font-semibold truncate ", fp.isSignatory && "text-primary")}>{fp.name}</span>
+ <span className="text-[8px] font-bold opacity-50 truncate">{fp.type}</span>
                                                 </div>
-                                                <div className="flex items-center gap-0.5 opacity-0 group-hover/fp:opacity-100 transition-opacity">
+ <div className="flex items-center gap-0.5 opacity-0 group-hover/fp:opacity-100 transition-opacity">
                                                     {fp.email && (
                                                         <Tooltip>
                                                             <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
-                                                                    <a href={`mailto:${fp.email}`}><Mail className="h-3 w-3" /></a>
+ <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+ <a href={`mailto:${fp.email}`}><Mail className="h-3 w-3" /></a>
                                                                 </Button>
                                                             </TooltipTrigger>
-                                                            <TooltipContent className="text-[10px]">Email {fp.name}</TooltipContent>
+ <TooltipContent className="text-[10px]">Email {fp.name}</TooltipContent>
                                                         </Tooltip>
                                                     )}
                                                     {fp.phone && (
                                                         <>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
-                                                                        <a href={`tel:${fp.phone}`}><Phone className="h-3 w-3" /></a>
+ <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+ <a href={`tel:${fp.phone}`}><Phone className="h-3 w-3" /></a>
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent className="text-[10px]">Call {fp.name}</TooltipContent>
+ <TooltipContent className="text-[10px]">Call {fp.name}</TooltipContent>
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
-                                                                        <a href={`https://wa.me/${fp.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3 w-3" /></a>
+ <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
+ <a href={`https://wa.me/${fp.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3 w-3" /></a>
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent className="text-[10px]">WhatsApp {fp.name}</TooltipContent>
+ <TooltipContent className="text-[10px]">WhatsApp {fp.name}</TooltipContent>
                                                           </Tooltip>
                                                         </>
                                                     )}
@@ -420,67 +420,67 @@ export default function EntitiesClient() {
                                             </div>
                                         ))
                                     ) : (
-                                        <span className="text-[10px] italic opacity-40">No Focal Persons</span>
+ <span className="text-[10px] italic opacity-40">No Focal Persons</span>
                                     )}
                                 </div>
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-muted-foreground">
-                            {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
+ <TableCell className="text-xs font-medium text-muted-foreground">
+ {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
                             </TableCell>
-                            <TableCell className="text-right pr-6">
-                            <div className="flex items-center justify-end gap-1 transition-opacity">
+ <TableCell className="text-right pr-6">
+ <div className="flex items-center justify-end gap-1 transition-opacity">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageEntity(entity)}>
-                                            <Workflow className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageEntity(entity)}>
+ <Workflow className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Change Stage</TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
-                                            <UserPlus className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
+ <UserPlus className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Assign User</TooltipContent>
                                 </Tooltip>
                                 <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
-                                        <MoreHorizontal className="h-4 w-4" />
+ <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+ <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
-                                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
+ <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+ <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
+ <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
                                     
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
-                                        <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
-                                        <span className="font-bold text-sm">{updateStatus}</span>
+ <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
+ <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">{updateStatus}</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringEntity(entity)}>
-                                        <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
-                                        <span className="font-bold text-sm">Transfer Pipeline</span>
+ <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringEntity(entity)}>
+ <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Transfer Pipeline</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
-                                        <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
-                                        <span className="font-bold text-sm">Manage Tags</span>
+ <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
+ <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Manage Tags</span>
                                     </DropdownMenuItem>
 
-                                    <DropdownMenuSeparator className="my-2" />
+ <DropdownMenuSeparator className="my-2" />
                                     
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
+ <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
+ <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+ <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
                                         <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`}>
-                                            <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
-                                            <span className="font-bold text-sm">Send Message</span>
+ <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Send Message</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     
-                                    <DropdownMenuSeparator className="my-2" />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
+ <DropdownMenuSeparator className="my-2" />
+ <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -488,7 +488,7 @@ export default function EntitiesClient() {
                         </TableRow>
                         )})
                     ) : (
-                        <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
+ <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
                     )}
                     </TableBody>
                 </Table>
@@ -496,7 +496,7 @@ export default function EntitiesClient() {
         </div>
       </div>
       <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+ <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
       
       <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
@@ -506,10 +506,10 @@ export default function EntitiesClient() {
       
       {taggingEntity && (
         <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>
-          <AlertDialogContent className="rounded-2xl max-w-md">
+ <AlertDialogContent className="rounded-2xl max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-black">Manage Tags</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs text-muted-foreground">
+ <AlertDialogTitle className="font-semibold">Manage Tags</AlertDialogTitle>
+ <AlertDialogDescription className="text-xs text-muted-foreground">
                 {taggingEntity.displayName}
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -519,7 +519,7 @@ export default function EntitiesClient() {
               currentTagIds={taggingEntity.workspaceTags ?? []}
             />
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
+ <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

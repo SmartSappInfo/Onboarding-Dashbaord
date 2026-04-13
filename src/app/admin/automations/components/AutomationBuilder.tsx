@@ -142,7 +142,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
     return (
-        <div className={cn(
+ <div className={cn(
             "h-full w-full bg-background relative group/builder",
             isFullScreen && "fixed inset-0 z-[100] bg-background"
         )}>
@@ -159,12 +159,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                 fitView
                 snapToGrid
                 snapGrid={[15, 15]}
-                className="bg-background"
+ className="bg-background"
             >
                 <Background color="#cbd5e1" gap={30} size={1} />
                 
-                <Panel position="top-left" className="m-4 flex flex-col gap-4">
-                    <Card className="rounded-2xl border-none shadow-2xl p-1.5 flex flex-col gap-1.5 bg-background/95 backdrop-blur-md ring-1 ring-black/5">
+ <Panel position="top-left" className="m-4 flex flex-col gap-4">
+ <Card className="rounded-2xl border-none shadow-2xl p-1.5 flex flex-col gap-1.5 bg-background/95 backdrop-blur-md ring-1 ring-black/5">
                         <TooltipProvider>
                             <ToolBtn icon={Zap} label="Add Trigger" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('triggerNode')} />
                             <ToolBtn icon={Play} label="Add Action" color="text-blue-600 bg-blue-50" onClick={() => addNode('actionNode')} />
@@ -172,7 +172,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                             <ToolBtn icon={Tag} label="Add Tag Condition" color="text-violet-600 bg-violet-50" onClick={() => addNode('tagConditionNode')} />
                             <ToolBtn icon={TagIcon} label="Add Tag Action" color="text-emerald-600 bg-emerald-50" onClick={() => addNode('tagActionNode')} />
                             <ToolBtn icon={Clock} label="Add Delay" color="text-purple-600 bg-purple-50" onClick={() => addNode('delayNode')} />
-                            <div className="h-px bg-border/50 mx-2 my-1" />
+ <div className="h-px bg-border/50 mx-2 my-1" />
                             <ToolBtn icon={Grid3X3} label="Auto Layout" onClick={() => {}} />
                             <ToolBtn 
                                 icon={isFullScreen ? Minimize2 : Maximize2} 
@@ -183,58 +183,58 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                     </Card>
                 </Panel>
 
-                <Panel position="bottom-center" className="mb-8">
-                    <Card className="rounded-full bg-accent/10 backdrop-blur-md text-foreground px-6 py-3 shadow-2xl flex items-center gap-6 ring-1 ring-border">
-                        <div className="flex items-center gap-2">
-                            <Layers className="h-4 w-4 text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{nodes.length} Elements</span>
+ <Panel position="bottom-center" className="mb-8">
+ <Card className="rounded-full bg-accent/10 backdrop-blur-md text-foreground px-6 py-3 shadow-2xl flex items-center gap-6 ring-1 ring-border">
+ <div className="flex items-center gap-2">
+ <Layers className="h-4 w-4 text-primary" />
+ <span className="text-[10px] font-semibold ">{nodes.length} Elements</span>
                         </div>
-                        <div className="h-4 w-px bg-border" />
-                        <div className="flex items-center gap-2">
-                            <Wand2 className="h-4 w-4 text-emerald-500" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter italic">Architecture Verified</span>
+ <div className="h-4 w-px bg-border" />
+ <div className="flex items-center gap-2">
+ <Wand2 className="h-4 w-4 text-emerald-500" />
+ <span className="text-[10px] font-bold text-muted-foreground tracking-tighter italic">Architecture Verified</span>
                         </div>
                     </Card>
                 </Panel>
 
-                <Controls className="!bg-card !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
+ <Controls className="!bg-card !border-none !shadow-2xl !rounded-xl overflow-hidden" showInteractive={false} />
             </ReactFlow>
 
             {/* Sidebar Inspector Context */}
-            <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
-                <Card className={cn(
+ <div className="absolute top-6 right-6 z-20 w-[380px] pointer-events-none">
+ <Card className={cn(
                     "rounded-[2.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] glass-card p-6 pointer-events-auto transition-all duration-500 max-h-[85vh] h-full flex flex-col ring-1 ring-border overflow-hidden",
                     selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
                 )}>
-                    <div className="flex items-center justify-between mb-6 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
-                            <h4 className="text-[10px] font-black uppercase tracking-widest">Logic Inspector</h4>
+ <div className="flex items-center justify-between mb-6 shrink-0">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm"><Settings2 className="h-4 w-4" /></div>
+ <h4 className="text-[10px] font-semibold ">Logic Inspector</h4>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg hover:bg-muted">
-                            <X className="h-4 w-4" />
+ <Button variant="ghost" size="icon" onClick={() => setSelectedNodeId(null)} className="h-8 w-8 rounded-lg hover:bg-muted">
+ <X className="h-4 w-4" />
                         </Button>
                     </div>
                     
-                    <div className="flex-1 overflow-hidden min-h-0">
+ <div className="flex-1 overflow-hidden min-h-0">
                         {selectedNode ? (
                             <NodeInspector 
                                 node={selectedNode} 
                                 onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)} 
                             />
                         ) : (
-                            <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-muted/10">
-                                <MousePointer2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground opacity-20" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
+ <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-muted/10">
+ <MousePointer2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground opacity-20" />
+ <p className="text-[10px] font-semibold text-muted-foreground opacity-40">
                                     Select an architecture node<br/>to configure operational logic
                                 </p>
                             </div>
                         )}
                     </div>
 
-                    <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shrink-0 text-left">
-                        <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                        <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+ <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shrink-0 text-left">
+ <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter">
                             Protocol payloads are inherited from the trigger source. Use the dictionary to map dynamic tags.
                         </p>
                     </div>
@@ -248,11 +248,11 @@ function ToolBtn({ icon: Icon, label, color, onClick }: any) {
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={onClick} className={cn("h-10 w-10 rounded-xl transition-all shadow-sm", color)}>
-                    <Icon className="h-5 w-5" />
+ <Button variant="ghost" size="icon" onClick={onClick} className={cn("h-10 w-10 rounded-xl transition-all shadow-sm", color)}>
+ <Icon className="h-5 w-5" />
                 </Button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-black text-[10px] uppercase tracking-widest">{label}</TooltipContent>
+ <TooltipContent side="right" className="font-semibold text-[10px] ">{label}</TooltipContent>
         </Tooltip>
     );
 }

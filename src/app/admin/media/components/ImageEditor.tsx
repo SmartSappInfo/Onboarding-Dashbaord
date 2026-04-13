@@ -126,10 +126,10 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
   };
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 relative bg-muted rounded-md min-h-[300px] md:min-h-[450px] overflow-hidden" ref={containerRef}>
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+ <div className="md:col-span-2 relative bg-muted rounded-md min-h-[300px] md:min-h-[450px] overflow-hidden" ref={containerRef}>
           {imageUrl && (
-            <div className="absolute inset-0">
+ <div className="absolute inset-0">
                 <Cropper
                     image={imageUrl}
                     crop={crop}
@@ -142,9 +142,9 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
                 />
                 
                 {croppedAreaPercent && !isGif && (
-                    <div className="absolute inset-0 pointer-events-none z-10">
+ <div className="absolute inset-0 pointer-events-none z-10">
                         <div 
-                            className="absolute border-2 border-primary/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
+ className="absolute border-2 border-primary/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
                             style={{
                                 left: `${croppedAreaPercent.x}%`,
                                 top: `${croppedAreaPercent.y}%`,
@@ -159,7 +159,7 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
                                     dragMomentum={false}
                                     dragElastic={0}
                                     onDrag={(_, info) => handleResize(corner as any, info.delta.x, info.delta.y)}
-                                    className={cn(
+ className={cn(
                                         "absolute w-4 h-4 bg-primary border-2 border-white rounded-sm pointer-events-auto cursor-nwse-resize shadow-lg",
                                         corner === 'tl' && "-top-2 -left-2",
                                         corner === 'tr' && "-top-2 -right-2 cursor-nesw-resize",
@@ -174,84 +174,84 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
             </div>
           )}
         </div>
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor="filename" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"><TextCursorInput className="w-3 h-3"/> File Name</Label>
-                <div className="flex items-center gap-2">
-                    <Input id="filename" value={filename} onChange={(e) => setFilename(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />
+ <div className="space-y-6">
+ <div className="space-y-2">
+ <Label htmlFor="filename" className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground"><TextCursorInput className="w-3 h-3"/> File Name</Label>
+ <div className="flex items-center gap-2">
+ <Input id="filename" value={filename} onChange={(e) => setFilename(e.target.value)} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />
                     {!isGif && (
                         <Select value={format} onValueChange={(v: 'jpeg' | 'png' | 'webp') => setFormat(v)}>
-                            <SelectTrigger className="w-[100px] h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold">
+ <SelectTrigger className="w-[100px] h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold">
                                 <SelectValue/>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                 <SelectItem value="webp">.webp</SelectItem>
                                 <SelectItem value="jpeg">.jpg</SelectItem>
                                 <SelectItem value="png">.png</SelectItem>
                             </SelectContent>
                         </Select>
                     )}
-                    {isGif && <Badge variant="outline" className="h-11 rounded-xl px-4 font-black">.GIF</Badge>}
+                    {isGif && <Badge variant="outline" className="h-11 rounded-xl px-4 font-semibold">.GIF</Badge>}
                 </div>
             </div>
 
-            <div className={cn("space-y-6", isGif && "opacity-40 pointer-events-none")}>
-                <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"><ImageIcon className="w-3 h-3" /> Output Dimensions</Label>
-                <div className="flex items-center gap-2">
+ <div className={cn("space-y-6", isGif && "opacity-40 pointer-events-none")}>
+ <div className="space-y-2">
+ <Label className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground"><ImageIcon className="w-3 h-3" /> Output Dimensions</Label>
+ <div className="flex items-center gap-2">
                     <Input 
                         id="width" 
                         type="number" 
                         value={targetWidth} 
                         onChange={(e) => handleWidthChange(parseInt(e.target.value, 10) || 0)} 
-                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-center"
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-center"
                     />
-                    <span className="text-muted-foreground font-black">×</span>
+ <span className="text-muted-foreground font-semibold">×</span>
                     <Input 
                         id="height" 
                         type="number" 
                         value={targetHeight} 
                         onChange={(e) => setTargetHeight(parseInt(e.target.value, 10) || 0)}
                         disabled={selectedRatio !== "none"} 
-                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-center disabled:opacity-50"
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-center disabled:opacity-50"
                     />
                 </div>
                 </div>
-                <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Aspect Ratio</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground">Aspect Ratio</Label>
                     <Select value={selectedRatio} onValueChange={setSelectedRatio}>
-                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold">
+ <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold">
                         <SelectValue placeholder="Select aspect ratio" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                         {aspectRatios.map(ratio => (
                             <SelectItem key={ratio.label} value={ratio.value}>{ratio.label}</SelectItem>
                         ))}
                     </SelectContent>
                     </Select>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="zoom" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"><Crop className="w-3 h-3"/> Zoom Level</Label>
-                    <div className="px-2">
-                        <Slider id="zoom" value={[zoom]} onValueChange={([val]) => setZoom(val)} min={1} max={3} step={0.01} className="py-4" />
+ <div className="space-y-2">
+ <Label htmlFor="zoom" className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground"><Crop className="w-3 h-3"/> Zoom Level</Label>
+ <div className="px-2">
+ <Slider id="zoom" value={[zoom]} onValueChange={([val]) => setZoom(val)} min={1} max={3} step={0.01} className="py-4" />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="quality" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"><Percent className="w-3 h-3" /> Compression Quality</Label>
-                    <div className="px-2">
-                        <Slider id="quality" value={[quality]} onValueChange={([val]) => setQuality(val)} min={10} max={100} step={5} className="py-4" />
+ <div className="space-y-2">
+ <Label htmlFor="quality" className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground"><Percent className="w-3 h-3" /> Compression Quality</Label>
+ <div className="px-2">
+ <Slider id="quality" value={[quality]} onValueChange={([val]) => setQuality(val)} min={10} max={100} step={5} className="py-4" />
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-2 text-xs text-muted-foreground rounded-2xl bg-primary/5 border border-primary/10 p-4 shadow-inner">
-                <p className="font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-                    {isGif ? <Sparkles className="h-3 w-3" /> : null}
+ <div className="space-y-2 text-xs text-muted-foreground rounded-2xl bg-primary/5 border border-primary/10 p-4 shadow-inner">
+ <p className="font-semibold text-primary mb-2 flex items-center gap-2">
+ {isGif ? <Sparkles className="h-3 w-3" /> : null}
                     {isGif ? 'Binary Asset Meta' : 'Original File Meta'}
                 </p>
-                <div className="flex justify-between font-medium"><span>Dimensions:</span> <span className="font-bold text-foreground">{imageDimensions.width} × {imageDimensions.height}</span></div>
-                <div className="flex justify-between font-medium pt-1"><span>File Size:</span> <span className="font-bold text-foreground">{formatBytes(originalFileSize)}</span></div>
-                {isGif && <div className="mt-3 pt-3 border-t border-primary/10 text-[9px] font-bold uppercase text-orange-600">Animation frames preserved</div>}
+ <div className="flex justify-between font-medium"><span>Dimensions:</span> <span className="font-bold text-foreground">{imageDimensions.width} × {imageDimensions.height}</span></div>
+ <div className="flex justify-between font-medium pt-1"><span>File Size:</span> <span className="font-bold text-foreground">{formatBytes(originalFileSize)}</span></div>
+ {isGif && <div className="mt-3 pt-3 border-t border-primary/10 text-[9px] font-bold text-orange-600">Animation frames preserved</div>}
             </div>
         </div>
     </div>

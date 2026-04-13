@@ -105,19 +105,19 @@ export default function PortalsClient() {
     };
 
     const PortalCard = ({ title, school, path, icon: Icon, color }: { title: string, school?: string, path: string, icon: any, color: string }) => (
-        <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full text-left">
-            <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
-            <CardHeader className="p-5 pb-3">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-background transition-colors">
-                        <Icon className={cn("h-5 w-5", color.replace('bg-', 'text-'))} />
+ <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full text-left">
+ <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
+ <CardHeader className="p-5 pb-3">
+ <div className="flex items-start justify-between gap-4">
+ <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-background transition-colors">
+ <Icon className={cn("h-5 w-5", color.replace('bg-', 'text-'))} />
                     </div>
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+ <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleCopy(path)}>
-                                        <Copy className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleCopy(path)}>
+ <Copy className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Copy URL</TooltipContent>
@@ -125,22 +125,22 @@ export default function PortalsClient() {
                         </TooltipProvider>
                     </div>
                 </div>
-                <div className="mt-4 space-y-1">
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight uppercase tracking-tight">{title}</CardTitle>
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+ <div className="mt-4 space-y-1">
+ <div className="flex items-center gap-2">
+ <CardTitle className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors leading-tight tracking-tight">{title}</CardTitle>
+ <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     </div>
                     {school && (
-                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
-                            <Building className="h-3 w-3" /> {school}
+ <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground tracking-[0.15em]">
+ <Building className="h-3 w-3" /> {school}
                         </div>
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="px-5 pb-5 mt-auto pt-4">
-                <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm transition-all active:scale-95 uppercase text-[10px] tracking-widest">
+ <CardContent className="px-5 pb-5 mt-auto pt-4">
+ <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm transition-all active:scale-95 text-[10px] ">
                     <a href={path} target="_blank" rel="noopener noreferrer">
-                        Launch Portal <ExternalLink className="h-3.5 w-3.5" />
+ Launch Portal <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                 </Button>
             </CardContent>
@@ -148,53 +148,53 @@ export default function PortalsClient() {
     );
 
     const SectionHeader = ({ title, badge, icon: Icon }: { title: string, badge?: number, icon: any }) => (
-        <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl text-primary"><Icon className="h-5 w-5" /></div>
-                <h2 className="text-xl font-black uppercase tracking-tight text-foreground">{title}</h2>
+ <div className="flex items-center justify-between mb-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl text-primary"><Icon className="h-5 w-5" /></div>
+ <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
             </div>
-            {badge !== undefined && <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums">{badge}</Badge>}
+            {badge !== undefined && <Badge variant="secondary" className="rounded-full h-6 px-3 font-semibold tabular-nums">{badge}</Badge>}
         </div>
     );
 
     const StatCard = ({ label, value, icon: Icon }: { label: string, value: number, icon: any }) => (
-        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white text-left">
-            <CardContent className="p-5 flex items-center gap-4">
-                <div className="p-3 bg-muted/50 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
+ <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white text-left">
+ <CardContent className="p-5 flex items-center gap-4">
+ <div className="p-3 bg-muted/50 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
                 <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">Total {label}</p>
-                    <p className="text-2xl font-black tabular-nums tracking-tighter">{isLoading ? '...' : value}</p>
+ <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">Total {label}</p>
+ <p className="text-2xl font-semibold tabular-nums tracking-tighter">{isLoading ? '...' : value}</p>
                 </div>
             </CardContent>
         </Card>
     );
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="max-w-7xl mx-auto space-y-12 pb-32 text-left">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="max-w-7xl mx-auto space-y-12 pb-32 text-left">
                 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+ <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
-                            <Globe className="h-10 w-10 text-primary" />
+ <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground ">
+ <Globe className="h-10 w-10 text-primary" />
                             Public Launchpad
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">
+ <p className="text-muted-foreground font-medium text-lg mt-1">
                             Live system entry points for the <strong>{activeWorkspaceId || 'global'}</strong> track.
                         </p>
                     </div>
-                    <div className="relative w-full md:w-[400px]">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+ <div className="relative w-full md:w-[400px]">
+ <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                         <Input 
                             placeholder="Filter by school or portal title..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-11 h-12 rounded-2xl bg-white border-none shadow-xl ring-1 ring-border focus:ring-primary/20 font-bold"
+ className="pl-11 h-12 rounded-2xl bg-white border-none shadow-xl ring-1 ring-border focus:ring-primary/20 font-bold"
                         />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard label="Live Surveys" value={surveys?.length || 0} icon={ClipboardList} />
                     <StatCard label="Doc Portals" value={pdfs?.length || 0} icon={FileText} />
                     <StatCard label="Meeting Rooms" value={meetings?.length || 0} icon={Calendar} />
@@ -202,16 +202,16 @@ export default function PortalsClient() {
                 </div>
 
                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+ {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
                     </div>
                 ) : (
-                    <div className="space-y-16">
+ <div className="space-y-16">
                         
                         {!searchTerm && (
                             <section>
                                 <SectionHeader title="Core Custom Pages" icon={Zap} />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
                                     <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
                                     <PortalCard title="Campaign Stats" path="/campaign/school-comparison/statistics" icon={BarChart3} color="bg-emerald-600" />
@@ -223,9 +223,9 @@ export default function PortalsClient() {
                         )}
 
                         {filteredSurveys.length > 0 && (
-                            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <SectionHeader title="Intelligent Surveys" badge={filteredSurveys.length} icon={ClipboardList} />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredSurveys.map(s => (
                                         <PortalCard 
                                             key={s.id} 
@@ -241,9 +241,9 @@ export default function PortalsClient() {
                         )}
 
                         {filteredPdfs.length > 0 && (
-                            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+ <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                                 <SectionHeader title="Doc Signing Portals" badge={filteredPdfs.length} icon={FileText} />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredPdfs.map(p => (
                                         <PortalCard 
                                             key={p.id} 
@@ -259,9 +259,9 @@ export default function PortalsClient() {
                         )}
 
                         {filteredMeetings.length > 0 && (
-                            <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+ <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
                                 <SectionHeader title="Meeting Session Rooms" badge={filteredMeetings.length} icon={Calendar} />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredMeetings.map(m => {
                                         const typeSlug = m.type?.slug || 'parent-engagement';
                                         return (
@@ -281,9 +281,9 @@ export default function PortalsClient() {
 
                         {(searchTerm && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) || 
                          (!isLoading && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) ? (
-                            <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/10 flex flex-col items-center justify-center gap-4 opacity-40">
-                                <LayoutList className="h-16 w-16" />
-                                <p className="font-black uppercase tracking-widest text-lg">
+ <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/10 flex flex-col items-center justify-center gap-4 opacity-40">
+ <LayoutList className="h-16 w-16" />
+ <p className="font-semibold text-lg">
                                     {searchTerm ? 'No portals matched your search' : `No active portals in the ${activeWorkspaceId} hub`}
                                 </p>
                             </div>

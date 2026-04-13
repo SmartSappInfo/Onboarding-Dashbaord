@@ -67,7 +67,7 @@ const CustomizedBarLabel = (props: any) => {
             y={y + 16} 
             fill={isInside ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))"} 
             textAnchor={isInside ? "end" : "start"} 
-            className="text-[10px] font-bold"
+ className="text-[10px] font-bold"
         >
             {`${percentage.toFixed(0)}% (${value})`}
         </text>
@@ -78,36 +78,36 @@ function QuestionResult({ result, index }: { result: AnalyzedResult, index: numb
     const total = result.type !== 'unknown' ? result.total : 0;
     
     return (
-        <Card className="flex flex-col transition-shadow hover:shadow-md">
-            <CardHeader className="p-4 md:p-6 pb-2">
-                <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-base font-semibold flex-1">
+ <Card className="flex flex-col transition-shadow hover:shadow-md">
+ <CardHeader className="p-4 md:p-6 pb-2">
+ <div className="flex items-start justify-between gap-4">
+ <CardTitle className="text-base font-semibold flex-1">
                         {index + 1}. {result.question.title}
                     </CardTitle>
                 </div>
-                <CardDescription className="text-xs">{total} {total === 1 ? 'response' : 'responses'}</CardDescription>
+ <CardDescription className="text-xs">{total} {total === 1 ? 'response' : 'responses'}</CardDescription>
                 {result.insight && (
-                    <p className="text-sm text-muted-foreground pt-2 italic">
+ <p className="text-sm text-muted-foreground pt-2 italic">
                         &ldquo;{result.insight}&rdquo;
                     </p>
                 )}
             </CardHeader>
-            <CardContent className="p-4 md:p-6 pt-2 flex-grow flex flex-col justify-center">
+ <CardContent className="p-4 md:p-6 pt-2 flex-grow flex flex-col justify-center">
                 {result.type === 'chart' && <ChartResult result={result} />}
                 {result.type === 'rating' && <ChartResult result={result} />}
                 {result.type === 'checkbox' && <CheckboxResult result={result} />}
                 {result.type === 'text' && <TextResult result={result} />}
-                {result.type === 'unknown' && <p className="text-center text-muted-foreground py-4 text-xs italic">Unsupported question type.</p>}
+ {result.type === 'unknown' && <p className="text-center text-muted-foreground py-4 text-xs italic">Unsupported question type.</p>}
             </CardContent>
         </Card>
     );
 }
 
 function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'chart' | 'rating' }> }) {
-    if (result.total === 0) return <p className="text-xs text-muted-foreground text-center py-8 italic">No data.</p>;
+ if (result.total === 0) return <p className="text-xs text-muted-foreground text-center py-8 italic">No data.</p>;
     
     return (
-        <div className="h-40 w-full">
+ <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={result.data} layout="vertical" margin={{ top: 5, right: 50, left: -20, bottom: 5 }}>
                     <XAxis type="number" hide />
@@ -117,9 +117,9 @@ function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'char
                         content={({ active, payload, label }) => {
                             if (active && payload && payload.length) {
                                 return (
-                                <div className="rounded-lg border bg-background p-2 shadow-sm text-xs">
-                                    <p className="font-bold">{label}</p>
-                                    <p className="text-muted-foreground">{`Count: ${payload[0].value}`}</p>
+ <div className="rounded-lg border bg-background p-2 shadow-sm text-xs">
+ <p className="font-bold">{label}</p>
+ <p className="text-muted-foreground">{`Count: ${payload[0].value}`}</p>
                                 </div>
                                 );
                             }
@@ -139,19 +139,19 @@ function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'char
 }
 
 function CheckboxResult({ result }: { result: Extract<AnalyzedResult, { type: 'checkbox' }> }) {
-    if (result.total === 0) return <p className="text-xs text-muted-foreground text-center py-8 italic">No data.</p>;
+ if (result.total === 0) return <p className="text-xs text-muted-foreground text-center py-8 italic">No data.</p>;
 
     return (
-        <div className="space-y-3">
+ <div className="space-y-3">
             {result.data.map((item, index) => (
                 <div key={index}>
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground mb-1">
-                        <span className="truncate max-w-[150px]">{item.name}</span>
+ <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-1">
+ <span className="truncate max-w-[150px]">{item.name}</span>
                         <span>{item.value} ({item.percentage.toFixed(0)}%)</span>
                     </div>
-                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+ <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
                         <div 
-                            className="h-full bg-primary transition-all"
+ className="h-full bg-primary transition-all"
                             style={{ width: `${item.percentage}%` }}
                         />
                     </div>
@@ -163,15 +163,15 @@ function CheckboxResult({ result }: { result: Extract<AnalyzedResult, { type: 'c
 
 function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text' }> }) {
     return (
-        <ScrollArea className="h-40 rounded-md border p-3 bg-muted/30">
+ <ScrollArea className="h-40 rounded-md border p-3 bg-muted/30">
             {result.data.length > 0 ? (
-                <ul className="space-y-3">
+ <ul className="space-y-3">
                     {result.data.map((text, index) => (
-                        <li key={index} className="text-xs p-2 bg-background rounded-md shadow-sm border">{text}</li>
+ <li key={index} className="text-xs p-2 bg-background rounded-md shadow-sm border">{text}</li>
                     ))}
                 </ul>
             ) : (
-                <p className="text-xs text-muted-foreground text-center py-8 italic">No text responses.</p>
+ <p className="text-xs text-muted-foreground text-center py-8 italic">No text responses.</p>
             )}
         </ScrollArea>
     );
@@ -334,49 +334,49 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     }, [survey, responses]);
 
     return (
-        <div className="space-y-8">
+ <div className="space-y-8">
             
             {/* Top Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-card shadow-sm">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+ <Card className="bg-card shadow-sm">
+ <CardContent className="p-4 flex items-center gap-4">
+ <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Submissions</p>
-                            <p className="text-2xl font-black">{responses.length}</p>
+ <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Submissions</p>
+ <p className="text-2xl font-semibold">{responses.length}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card shadow-sm">
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
+ <Card className="bg-card shadow-sm">
+ <CardContent className="p-4 flex items-center gap-4">
+ <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Visits</p>
-                            <p className="text-2xl font-black">{sessions?.length || 0}</p>
+ <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Total Visits</p>
+ <p className="text-2xl font-semibold">{sessions?.length || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
                 {survey.scoringEnabled && scoringMetrics && (
                     <>
-                        <Card className="bg-card shadow-sm">
-                            <CardContent className="p-4 flex items-center gap-4">
-                                <div className="bg-green-500/10 p-2.5 rounded-xl"><Trophy className="h-5 w-5 text-green-600" /></div>
+ <Card className="bg-card shadow-sm">
+ <CardContent className="p-4 flex items-center gap-4">
+ <div className="bg-green-500/10 p-2.5 rounded-xl"><Trophy className="h-5 w-5 text-green-600" /></div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Avg. Score</p>
-                                    <p className="text-2xl font-black">{scoringMetrics.avg.toFixed(1)} <span className="text-xs text-muted-foreground font-normal">/ {survey.maxScore}</span></p>
+ <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Avg. Score</p>
+ <p className="text-2xl font-semibold">{scoringMetrics.avg.toFixed(1)} <span className="text-xs text-muted-foreground font-normal">/ {survey.maxScore}</span></p>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-card shadow-sm">
-                            <CardContent className="p-4 flex items-center gap-4">
-                                <div className="bg-purple-500/10 p-2.5 rounded-xl"><Target className="h-5 w-5 text-purple-600" /></div>
-                                <div className="flex-grow">
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Performance Efficiency</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
-                                            <div className="h-full bg-purple-600" style={{ width: `${(scoringMetrics.avg / (survey.maxScore || 100)) * 100}%` }} />
+ <Card className="bg-card shadow-sm">
+ <CardContent className="p-4 flex items-center gap-4">
+ <div className="bg-purple-500/10 p-2.5 rounded-xl"><Target className="h-5 w-5 text-purple-600" /></div>
+ <div className="flex-grow">
+ <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Performance Efficiency</p>
+ <div className="flex items-center gap-3">
+ <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
+ <div className="h-full bg-purple-600" style={{ width: `${(scoringMetrics.avg / (survey.maxScore || 100)) * 100}%` }} />
                                         </div>
-                                        <span className="text-sm font-bold">{((scoringMetrics.avg / (survey.maxScore || 100)) * 100).toFixed(0)}%</span>
+ <span className="text-sm font-bold">{((scoringMetrics.avg / (survey.maxScore || 100)) * 100).toFixed(0)}%</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -387,15 +387,15 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
 
             {/* DROP-OFF ANALYTICS FUNNEL */}
             {funnelData.length > 1 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card className="lg:col-span-2">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+ <Card className="lg:col-span-2">
                         <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                <TrendingDown className="h-4 w-4 text-orange-500" /> Progression Funnel
+ <CardTitle className="text-sm font-semibold flex items-center gap-2">
+ <TrendingDown className="h-4 w-4 text-orange-500" /> Progression Funnel
                             </CardTitle>
                             <CardDescription>Visualizing step-by-step participant retention.</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] p-8">
+ <CardContent className="h-[300px] p-8">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={funnelData} layout="vertical" margin={{ top: 0, right: 100, left: 20, bottom: 0 }}>
                                     <XAxis type="number" hide />
@@ -406,10 +406,10 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                             if (active && payload && payload.length) {
                                                 const d = payload[0].payload;
                                                 return (
-                                                    <div className="bg-background border rounded-lg p-3 shadow-2xl text-xs space-y-1">
-                                                        <p className="font-black uppercase tracking-widest">{d.label}</p>
-                                                        <p className="text-primary font-bold">{d.count} Sessions Reached</p>
-                                                        <p className="text-muted-foreground">{d.percentage.toFixed(1)}% of total traffic</p>
+ <div className="bg-background border rounded-lg p-3 shadow-2xl text-xs space-y-1">
+ <p className="font-semibold ">{d.label}</p>
+ <p className="text-primary font-bold">{d.count} Sessions Reached</p>
+ <p className="text-muted-foreground">{d.percentage.toFixed(1)}% of total traffic</p>
                                                     </div>
                                                 );
                                             }
@@ -427,7 +427,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                                 const { x, y, width, height, value, index } = props;
                                                 const pct = funnelData[index].percentage;
                                                 return (
-                                                    <text x={x + width + 10} y={y + height / 2 + 4} className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">
+ <text x={x + width + 10} y={y + height / 2 + 4} className="text-[10px] font-semibold tracking-tighter text-muted-foreground">
                                                         {value} ({pct.toFixed(0)}%)
                                                     </text>
                                                 );
@@ -439,32 +439,32 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                         </CardContent>
                     </Card>
 
-                    <Card className="flex flex-col">
+ <Card className="flex flex-col">
                         <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4 text-rose-500" /> High Drop-off Audit
+ <CardTitle className="text-sm font-semibold flex items-center gap-2">
+ <AlertCircle className="h-4 w-4 text-rose-500" /> High Drop-off Audit
                             </CardTitle>
                             <CardDescription>Identifying critical friction points.</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-hidden">
+ <CardContent className="flex-1 overflow-hidden">
                             {dropoffInsights.length > 0 ? (
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="hover:bg-transparent bg-muted/30">
-                                            <TableHead className="text-[9px] font-black uppercase">Transition</TableHead>
-                                            <TableHead className="text-right text-[9px] font-black uppercase">Loss %</TableHead>
+ <TableRow className="hover:bg-transparent bg-muted/30">
+ <TableHead className="text-[9px] font-semibold ">Transition</TableHead>
+ <TableHead className="text-right text-[9px] font-semibold ">Loss %</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {dropoffInsights.slice(0, 5).map((insight, idx) => (
-                                            <TableRow key={idx} className="group transition-colors">
-                                                <TableCell className="py-3">
-                                                    <p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p>
-                                                    <p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Users Lost</p>
+ <TableRow key={idx} className="group transition-colors">
+ <TableCell className="py-3">
+ <p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p>
+ <p className="text-[9px] text-muted-foreground mt-0.5">{insight.lost} Users Lost</p>
                                                 </TableCell>
-                                                <TableCell className="text-right py-3">
+ <TableCell className="text-right py-3">
                                                     <Badge variant="outline" className={cn(
-                                                        "h-5 text-[9px] font-black uppercase border-none",
+                                                        "h-5 text-[9px] font-semibold uppercase border-none",
                                                         insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600"
                                                     )}>
                                                         {insight.lossPercentage.toFixed(0)}%
@@ -475,9 +475,9 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                     </TableBody>
                                 </Table>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-30 p-8">
-                                    <UserMinus className="h-10 w-10 mb-2" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Optimal Retention</p>
+ <div className="h-full flex flex-col items-center justify-center text-center opacity-30 p-8">
+ <UserMinus className="h-10 w-10 mb-2" />
+ <p className="text-[10px] font-semibold ">Optimal Retention</p>
                                 </div>
                             )}
                         </CardContent>
@@ -487,15 +487,15 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
 
             {/* Score & Outcome Visualizations */}
             {survey.scoringEnabled && scoringMetrics && scoringMetrics.outcomeData && scoringMetrics.outcomeData.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card className="lg:col-span-2">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+ <Card className="lg:col-span-2">
                         <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                <BarChart3 className="h-4 w-4" /> Outcome Distribution
+ <CardTitle className="text-sm font-semibold flex items-center gap-2">
+ <BarChart3 className="h-4 w-4" /> Outcome Distribution
                             </CardTitle>
                             <CardDescription>Breakdown of respondents by logic result buckets.</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-64">
+ <CardContent className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={scoringMetrics.outcomeData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} interval={0} />
@@ -505,9 +505,9 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                         content={({ active, payload }) => {
                                             if (active && payload && payload.length) {
                                                 return (
-                                                    <div className="bg-background border rounded-lg p-2 shadow-xl text-xs">
-                                                        <p className="font-black">{payload[0].payload.name}</p>
-                                                        <p className="text-primary">{payload[0].value} Respondents</p>
+ <div className="bg-background border rounded-lg p-2 shadow-xl text-xs">
+ <p className="font-semibold">{payload[0].payload.name}</p>
+ <p className="text-primary">{payload[0].value} Respondents</p>
                                                     </div>
                                                 );
                                             }
@@ -527,9 +527,9 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                     
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest">Share of Outcomes</CardTitle>
+ <CardTitle className="text-sm font-semibold ">Share of Outcomes</CardTitle>
                         </CardHeader>
-                        <CardContent className="h-64 relative">
+ <CardContent className="h-64 relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -547,9 +547,9 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                     <Legend verticalAlign="bottom" align="center" iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
                                 </PieChart>
                             </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
-                                <span className="text-2xl font-black">{responses.length}</span>
-                                <span className="text-[8px] font-bold text-muted-foreground uppercase">Total</span>
+ <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
+ <span className="text-2xl font-semibold">{responses.length}</span>
+ <span className="text-[8px] font-bold text-muted-foreground ">Total</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -557,11 +557,11 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
             )}
 
             {/* Question by Question Breakdown */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" /> Detailed Question Analysis
+ <div className="space-y-4">
+ <h3 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+ <BarChart3 className="h-5 w-5 text-primary" /> Detailed Question Analysis
                 </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {analyzedResults.map((result, index) => (
                         <QuestionResult key={result.question.id} result={result} index={index} />
                     ))}

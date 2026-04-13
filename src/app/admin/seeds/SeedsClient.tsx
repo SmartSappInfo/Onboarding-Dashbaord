@@ -331,28 +331,28 @@ export default function SeedsClient() {
 
   if (!isUnlocked) {
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="mb-12 text-center space-y-4">
-                <SmartSappLogo variant="white" className="h-10 mx-auto" />
-                <h1 className="text-white text-3xl font-black uppercase tracking-tighter">System Seeding Hub</h1>
+ <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+ <div className="mb-12 text-center space-y-4">
+ <SmartSappLogo variant="white" className="h-10 mx-auto" />
+ <h1 className="text-white text-3xl font-semibold tracking-tighter">System Seeding Hub</h1>
             </div>
-            <Card className="w-full max-w-md rounded-[2.5rem] glass-card overflow-hidden">
-                <CardHeader className="bg-muted/10 p-8 border-b text-center">
-                    <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4">
-                        <Lock className="h-8 w-8 text-primary" />
+ <Card className="w-full max-w-md rounded-[2.5rem] glass-card overflow-hidden">
+ <CardHeader className="bg-muted/10 p-8 border-b text-center">
+ <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4">
+ <Lock className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-xl font-black uppercase">Protected Area</CardTitle>
-                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Authorized development access only</CardDescription>
+ <CardTitle className="text-xl font-semibold ">Protected Area</CardTitle>
+ <CardDescription className="text-xs font-bold text-muted-foreground">Authorized development access only</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleUnlock}>
-                    <CardContent className="p-8 space-y-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 text-left block">Master Key</Label>
-                            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-black text-xl" autoFocus />
+ <CardContent className="p-8 space-y-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left block">Master Key</Label>
+ <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-semibold text-xl" autoFocus />
                         </div>
                     </CardContent>
-                    <CardFooter className="p-6 bg-muted/30 border-t">
-                        <Button type="submit" className="w-full h-12 rounded-xl font-black uppercase tracking-widest gap-2 shadow-xl active:scale-95 transition-all">Unlock Engine <ArrowRight size={16} /></Button>
+ <CardFooter className="p-6 bg-muted/30 border-t">
+ <Button type="submit" className="w-full h-12 rounded-xl font-semibold gap-2 shadow-xl active:scale-95 transition-all">Unlock Engine <ArrowRight size={16} /></Button>
                     </CardFooter>
                 </form>
             </Card>
@@ -361,32 +361,32 @@ export default function SeedsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-32 text-left">
-        <header className="bg-card/50 backdrop-blur-md border-b h-20 flex items-center px-8 shadow-sm">
-            <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-6 w-6 text-primary" /></div>
+ <div className="min-h-screen bg-background pb-32 text-left">
+ <header className="bg-card/50 backdrop-blur-md border-b h-20 flex items-center px-8 shadow-sm">
+ <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+ <div className="flex items-center gap-4">
+ <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-6 w-6 text-primary" /></div>
                     <div>
-                        <h1 className="text-xl font-black uppercase tracking-tight">Institutional Sync Console</h1>
-                        <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 text-[8px] h-4 uppercase font-black px-1.5">Active Session</Badge>
+ <h1 className="text-xl font-semibold tracking-tight">Institutional Sync Console</h1>
+                        <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 text-[8px] h-4 uppercase font-semibold px-1.5">Active Session</Badge>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" onClick={() => setIsUnlocked(false)} className="rounded-xl font-bold gap-2"><Lock size={16} /> Lock</Button>
-                    <Button variant="outline" onClick={() => router.push('/admin')} className="rounded-xl font-bold border-primary/20 text-primary">Dashboard</Button>
+ <div className="flex items-center gap-3">
+ <Button variant="ghost" onClick={() => setIsUnlocked(false)} className="rounded-xl font-bold gap-2"><Lock size={16} /> Lock</Button>
+ <Button variant="outline" onClick={() => router.push('/admin')} className="rounded-xl font-bold border-primary/20 text-primary">Dashboard</Button>
                 </div>
             </div>
         </header>
 
-        <main className="max-w-7xl mx-auto p-8 space-y-12">
+ <main className="max-w-7xl mx-auto p-8 space-y-12">
             {/* Operational Integrity Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Architectural Restoration</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+ <section className="space-y-6">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary">Architectural Restoration</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                 </div>
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
-                    <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+ <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <SimpleMigrationCard 
                             title="Blueprint Reconstruction" 
                             description="Harvests pipeline and stage snapshots from schools to rebuild missing operational logic."
@@ -414,51 +414,51 @@ export default function SeedsClient() {
             </section>
 
             {/* FER Protocol / Institutional Sync Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-indigo-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-indigo-200 text-indigo-600">FER Protocol / Institutional Sync</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
+ <section className="space-y-6">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-indigo-50 font-semibold text-[10px] uppercase  px-3 py-1 border-indigo-200 text-indigo-600">FER Protocol / Institutional Sync</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
                 </div>
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-100 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-indigo-900">
-                            <Zap className="h-5 w-5 text-indigo-600" />
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-100 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
+ <CardHeader className="p-8 pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2 text-indigo-900">
+ <Zap className="h-5 w-5 text-indigo-600" />
                             Settings Isolation & Provisioning
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-indigo-700/60">
+ <CardDescription className="text-[10px] font-medium tracking-tighter text-indigo-700/60">
                             Migrate global settings to organization-specific buckets and provision mandatory defaults.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><RotateCcw size={18} /></div>
-                                    <h4 className="text-xs font-black uppercase tracking-tight">Legacy Settings Migration</h4>
+ <CardContent className="p-8 pt-0 space-y-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><RotateCcw size={18} /></div>
+ <h4 className="text-xs font-semibold tracking-tight">Legacy Settings Migration</h4>
                                 </div>
-                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+ <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
                                     Clones all existing global Roles, Modules, and Zones into every current organization for immediate isolation.
                                 </p>
                                 <Button 
                                     onClick={() => handleAction('migrate_settings', migrateGlobalSettingsToAllOrgsAction)}
                                     disabled={seedingStatus.migrate_settings === 'seeding'}
-                                    className="w-full h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+ className="w-full h-10 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] gap-2"
                                 >
-                                    {seedingStatus.migrate_settings === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+ {seedingStatus.migrate_settings === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                                     Initialize Isolation Protocol
                                 </Button>
                             </div>
 
-                            <div className="p-6 rounded-3xl bg-indigo-900 text-white shadow-xl space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-800 rounded-xl"><ShieldCheck size={18} /></div>
-                                    <h4 className="text-xs font-black uppercase tracking-tight">FER Provisioning Logic</h4>
+ <div className="p-6 rounded-3xl bg-indigo-900 text-white shadow-xl space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-indigo-800 rounded-xl"><ShieldCheck size={18} /></div>
+ <h4 className="text-xs font-semibold tracking-tight">FER Provisioning Logic</h4>
                                 </div>
-                                <p className="text-[9px] font-medium text-indigo-200 uppercase leading-relaxed">
+ <p className="text-[9px] font-medium text-indigo-200 leading-relaxed">
                                     Verifies that the new organization provisioning logic is active. Administrator, Supervisor, and Finance Officer roles will be created.
                                 </p>
-                                <div className="flex items-center gap-2 pt-2">
-                                    <Badge className="bg-indigo-800 text-indigo-300 border-none text-[8px] font-black tracking-widest px-2 py-0.5 uppercase">Status: Operational</Badge>
+ <div className="flex items-center gap-2 pt-2">
+                                    <Badge className="bg-indigo-800 text-indigo-300 border-none text-[8px] font-semibold  px-2 py-0.5 uppercase">Status: Operational</Badge>
                                 </div>
                             </div>
                         </div>
@@ -467,50 +467,50 @@ export default function SeedsClient() {
             </section>
 
             {/* Entity Architecture Migration Section - NEW */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-emerald-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-emerald-200 text-emerald-600">Entity Architecture Migration</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-emerald-200 to-transparent" />
+ <section className="space-y-6">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-emerald-50 font-semibold text-[10px] uppercase  px-3 py-1 border-emerald-200 text-emerald-600">Entity Architecture Migration</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-emerald-200 to-transparent" />
                 </div>
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-emerald-100 overflow-hidden bg-gradient-to-br from-emerald-50/50 to-white">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
-                            <Database className="h-5 w-5 text-emerald-600" />
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-emerald-100 overflow-hidden bg-gradient-to-br from-emerald-50/50 to-white">
+ <CardHeader className="p-8 pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
+ <Database className="h-5 w-5 text-emerald-600" />
                             Schools → Entities + Workspace_Entities
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-muted-foreground">
+ <CardDescription className="text-[10px] font-medium tracking-tighter text-muted-foreground">
                             Core migration to multi-scope entity architecture. Creates entities collection and workspace_entities link collection.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ <CardContent className="p-8 pt-0 space-y-4">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <Button 
                                 onClick={() => handleAction('migrate_entities', migrateSchoolsToEntities)} 
                                 disabled={seedingStatus.migrate_entities === 'seeding'}
-                                className="h-14 rounded-xl font-black shadow-lg uppercase text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-between px-6"
+ className="h-14 rounded-xl font-semibold shadow-lg text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-between px-6"
                             >
-                                <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                                     {seedingStatus.migrate_entities === 'seeding' ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
+ <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (
-                                        <ArrowRightLeft className="h-5 w-5" />
+ <ArrowRightLeft className="h-5 w-5" />
                                     )}
                                     <span>Migrate All Schools</span>
                                 </div>
-                                <ArrowRight className="h-4 w-4 opacity-50" />
+ <ArrowRight className="h-4 w-4 opacity-50" />
                             </Button>
                             
                             <Button 
                                 onClick={() => handleAction('verify_entities', verifyEntitiesMigration)} 
                                 disabled={seedingStatus.verify_entities === 'seeding'}
                                 variant="outline"
-                                className="h-14 rounded-xl font-black border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 uppercase text-[10px] flex items-center justify-between px-6"
+ className="h-14 rounded-xl font-semibold border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-[10px] flex items-center justify-between px-6"
                             >
-                                <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                                     {seedingStatus.verify_entities === 'seeding' ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
+ <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (
-                                        <ShieldCheck className="h-5 w-5" />
+ <ShieldCheck className="h-5 w-5" />
                                     )}
                                     <span>Verify Migration</span>
                                 </div>
@@ -520,27 +520,27 @@ export default function SeedsClient() {
                                 onClick={() => handleAction('rollback_entities', rollbackEntitiesMigration)} 
                                 disabled={seedingStatus.rollback_entities === 'seeding'}
                                 variant="outline"
-                                className="h-14 rounded-xl font-black border-2 border-rose-200 text-rose-600 hover:bg-rose-50 uppercase text-[10px] flex items-center justify-between px-6"
+ className="h-14 rounded-xl font-semibold border-2 border-rose-200 text-rose-600 hover:bg-rose-50 text-[10px] flex items-center justify-between px-6"
                             >
-                                <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                                     {seedingStatus.rollback_entities === 'seeding' ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
+ <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (
-                                        <RotateCcw className="h-5 w-5" />
+ <RotateCcw className="h-5 w-5" />
                                     )}
                                     <span>Rollback Migration</span>
                                 </div>
                             </Button>
                         </div>
                         
-                        <div className="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 space-y-3">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 bg-emerald-100 rounded-lg">
-                                    <Database className="h-4 w-4 text-emerald-600" />
+ <div className="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 space-y-3">
+ <div className="flex items-start gap-3">
+ <div className="p-2 bg-emerald-100 rounded-lg">
+ <Database className="h-4 w-4 text-emerald-600" />
                                 </div>
-                                <div className="flex-1 space-y-2">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-900">Migration Details</h4>
-                                    <ul className="text-[9px] font-medium text-emerald-700 space-y-1 uppercase tracking-tighter">
+ <div className="flex-1 space-y-2">
+ <h4 className="text-[10px] font-semibold text-emerald-900">Migration Details</h4>
+ <ul className="text-[9px] font-medium text-emerald-700 space-y-1 tracking-tighter">
                                         <li>• Creates entity documents with entityType: institution</li>
                                         <li>• Creates workspace_entities for each workspace link</li>
                                         <li>• Migrates tags to globalTags and workspaceTags</li>
@@ -556,24 +556,24 @@ export default function SeedsClient() {
             </section>
 
             {/* Dedicated Survey Migration Section - Highly Visible */}
-            <section className="space-y-6" id="survey-migration">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-amber-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-amber-200 text-amber-600">Dedicated Survey Migration</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-amber-200 to-transparent" />
+ <section className="space-y-6" id="survey-migration">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-amber-50 font-semibold text-[10px] uppercase  px-3 py-1 border-amber-200 text-amber-600">Dedicated Survey Migration</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-amber-200 to-transparent" />
                 </div>
                 
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-2 ring-amber-400 overflow-hidden bg-gradient-to-br from-amber-50/80 to-white">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-amber-700">
-                            <CheckSquare className="h-6 w-6 text-amber-600" />
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-2 ring-amber-400 overflow-hidden bg-gradient-to-br from-amber-50/80 to-white">
+ <CardHeader className="p-8 pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2 text-amber-700">
+ <CheckSquare className="h-6 w-6 text-amber-600" />
                             Migrate Surveys & Responses
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-medium text-amber-900/60 uppercase tracking-tighter">
+ <CardDescription className="text-[10px] font-medium text-amber-900/60 tracking-tighter">
                             Mandatory data migration for all Survey architecture. Binds forms to the new Workspace Entities.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-amber-100 shadow-inner">
+ <CardContent className="p-8 pt-0">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-amber-100 shadow-inner">
                             <MigrationCard
                                 featureName="Surveys Configuration"
                                 collectionName="surveys"
@@ -603,47 +603,47 @@ export default function SeedsClient() {
             </section>
             
             {/* Legal & Document Sync Section - NEW */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-indigo-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-indigo-200 text-indigo-600">Legal & Document Sync</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
+ <section className="space-y-6">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-indigo-50 font-semibold text-[10px] uppercase  px-3 py-1 border-indigo-200 text-indigo-600">Legal & Document Sync</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-indigo-200 to-transparent" />
                 </div>
                 
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-200 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2 text-indigo-900">
-                            <FileCheck className="h-5 w-5 text-indigo-600" />
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-indigo-200 overflow-hidden bg-gradient-to-br from-indigo-50/50 to-white">
+ <CardHeader className="p-8 pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2 text-indigo-900">
+ <FileCheck className="h-5 w-5 text-indigo-600" />
                             Agreement Context Alignment
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-medium text-indigo-700/60 uppercase tracking-tighter">
+ <CardDescription className="text-[10px] font-medium text-indigo-700/60 tracking-tighter">
                             Migrate top-level contracts and nested PDF submissions to the Unified Entity Architecture.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <CardContent className="p-8 pt-0 space-y-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Agreement Migration Card */}
-                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><FileText size={18} /></div>
-                                    <h4 className="text-xs font-black uppercase tracking-tight">Agreements Migration</h4>
+ <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><FileText size={18} /></div>
+ <h4 className="text-xs font-semibold tracking-tight">Agreements Migration</h4>
                                 </div>
-                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+ <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
                                     Binds all documents in the 'contracts' collection to their new unified Entity IDs.
                                 </p>
-                                <div className="flex gap-2">
+ <div className="flex gap-2">
                                     <Button 
                                         onClick={() => handleAction('migrate_contracts', migrateContractsToEntities)}
                                         disabled={seedingStatus.migrate_contracts === 'seeding'}
-                                        className="flex-1 h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+ className="flex-1 h-10 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] gap-2"
                                     >
-                                        {seedingStatus.migrate_contracts === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+ {seedingStatus.migrate_contracts === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                                         Sync Contracts
                                     </Button>
                                     <Button 
                                         onClick={() => handleAction('rollback_contracts', rollbackContractsMigration)}
                                         disabled={seedingStatus.rollback_contracts === 'seeding'}
                                         variant="outline"
-                                        className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
+ className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
                                         title="Rollback"
                                     >
                                         <RotateCcw size={16} />
@@ -652,28 +652,28 @@ export default function SeedsClient() {
                             </div>
 
                             {/* Submissions Migration Card */}
-                            <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><Layers size={18} /></div>
-                                    <h4 className="text-xs font-black uppercase tracking-tight">Submission Reference Mapping</h4>
+ <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><Layers size={18} /></div>
+ <h4 className="text-xs font-semibold tracking-tight">Submission Reference Mapping</h4>
                                 </div>
-                                <p className="text-[9px] font-medium text-muted-foreground uppercase leading-relaxed">
+ <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
                                     Recursively updates nested 'submissions' within PDF templates to reference unified entities.
                                 </p>
-                                <div className="flex gap-2">
+ <div className="flex gap-2">
                                     <Button 
                                         onClick={() => handleAction('migrate_submissions', migrateSubmissionsToEntities)}
                                         disabled={seedingStatus.migrate_submissions === 'seeding'}
-                                        className="flex-1 h-10 rounded-xl font-black bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] uppercase tracking-widest gap-2"
+ className="flex-1 h-10 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-700 text-white text-[9px] gap-2"
                                     >
-                                        {seedingStatus.migrate_submissions === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+ {seedingStatus.migrate_submissions === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                                         Sync Submissions
                                     </Button>
                                     <Button 
                                         onClick={() => handleAction('rollback_submissions', rollbackSubmissionsMigration)}
                                         disabled={seedingStatus.rollback_submissions === 'seeding'}
                                         variant="outline"
-                                        className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
+ className="w-12 h-10 rounded-xl border-rose-100 text-rose-500 hover:bg-rose-50 p-0"
                                         title="Rollback"
                                     >
                                         <RotateCcw size={16} />
@@ -686,59 +686,59 @@ export default function SeedsClient() {
             </section>
 
             {/* Feature Data Migration Section - NEW */}
-            <section className="space-y-6" id="feature-migration">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-blue-50 font-black text-[10px] uppercase tracking-widest px-3 py-1 border-blue-200 text-blue-600">Feature Data Migration</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-blue-200 to-transparent" />
+ <section className="space-y-6" id="feature-migration">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-blue-50 font-semibold text-[10px] uppercase  px-3 py-1 border-blue-200 text-blue-600">Feature Data Migration</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-blue-200 to-transparent" />
                 </div>
                 
                 {/* Debug Info */}
-                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
-                    <p className="text-xs font-bold text-yellow-900">
+ <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+ <p className="text-xs font-bold text-yellow-900">
                         DEBUG: Feature Migration Section Loaded - {Object.keys(featureMigrationStatus).length} features configured
                     </p>
                 </div>
                 
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-blue-100 overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
-                    <CardHeader className="p-8 pb-4">
-                        <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
-                            <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-blue-100 overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
+ <CardHeader className="p-8 pb-4">
+ <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2">
+ <ArrowRightLeft className="h-5 w-5 text-blue-600" />
                             SchoolId → EntityId Migration
                         </CardTitle>
-                        <CardDescription className="text-[10px] font-medium uppercase tracking-tighter text-muted-foreground">
+ <CardDescription className="text-[10px] font-medium tracking-tighter text-muted-foreground">
                             Migrate feature collections from entityId to entityId references. Supports dual-write pattern with full rollback capability.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 pt-0 space-y-6">
+ <CardContent className="p-8 pt-0 space-y-6">
                         {/* Migrate All Button */}
-                        <div className="flex gap-4">
+ <div className="flex gap-4">
                             <Button 
                                 onClick={handleMigrateAllFeatures} 
                                 disabled={seedingStatus.migrate_all_features === 'seeding'}
-                                className="h-14 rounded-xl font-black shadow-lg uppercase text-[10px] bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-between px-6 flex-1"
+ className="h-14 rounded-xl font-semibold shadow-lg text-[10px] bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-between px-6 flex-1"
                             >
-                                <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                                     {seedingStatus.migrate_all_features === 'seeding' ? (
-                                        <Loader2 className="h-5 w-5 animate-spin" />
+ <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (
-                                        <Zap className="h-5 w-5" />
+ <Zap className="h-5 w-5" />
                                     )}
                                     <span>Migrate All Features</span>
                                 </div>
-                                <ArrowRight className="h-4 w-4 opacity-50" />
+ <ArrowRight className="h-4 w-4 opacity-50" />
                             </Button>
                         </div>
 
                         {/* Migration Log Panel */}
                         {migrationLog.length > 0 && (
-                            <div className="bg-slate-900 rounded-2xl p-6 space-y-2 max-h-64 overflow-y-auto">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <FileText className="h-4 w-4 text-slate-400" />
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+ <div className="bg-slate-900 rounded-2xl p-6 space-y-2 max-h-64 overflow-y-auto">
+ <div className="flex items-center gap-2 mb-3">
+ <FileText className="h-4 w-4 text-slate-400" />
+ <h4 className="text-[10px] font-semibold text-slate-400">
                                         Migration Log
                                     </h4>
                                 </div>
-                                <div className="text-[9px] font-mono text-slate-300 space-y-1">
+ <div className="text-[9px] font-mono text-slate-300 space-y-1">
                                     {migrationLog.map((log, index) => (
                                         <p key={index}>{log}</p>
                                     ))}
@@ -747,7 +747,7 @@ export default function SeedsClient() {
                         )}
 
                         {/* Feature Migration Cards Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <MigrationCard
                                 featureName="Tasks"
                                 collectionName="tasks"
@@ -899,12 +899,12 @@ export default function SeedsClient() {
             </section>
 
             {/* Specialized Domain Sync Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Domain Enrichment</Badge>
-                    <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+ <section className="space-y-6">
+ <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-border text-muted-foreground">Domain Enrichment</Badge>
+ <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <ProtocolButton label="User Identity Sync" icon={Users} status={seedingStatus.users} onClick={() => handleAction('users', enrichUsers)} />
                     <ProtocolButton label="CRM Task Sync" icon={CheckSquare} status={seedingStatus.tasks} onClick={() => handleAction('tasks', enrichTasksWithWorkspace)} />
                     <ProtocolButton label="Roles & Governance" icon={ShieldCheck} status={seedingStatus.roles} onClick={() => handleAction('roles', enrichRolesWithWorkspaces)} />
@@ -914,12 +914,12 @@ export default function SeedsClient() {
             </section>
 
             {/* Diagnostic / Rollback Section */}
-            <section className="pt-8">
-                <Card className="bg-rose-50 border-rose-100 rounded-[2.5rem] overflow-hidden shadow-sm">
-                    <CardHeader className="p-8 pb-4"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-2"><TriangleAlert className="h-4 w-4" /> Emergency Rollback</CardTitle></CardHeader>
-                    <CardContent className="p-8 pt-0 flex flex-wrap gap-4">
-                        <Button variant="outline" onClick={() => handleAction('rollback_schools', rollbackSchoolsMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Schools Snapshot</Button>
-                        <Button variant="outline" onClick={() => handleAction('rollback_tasks', rollbackTasksMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Tasks Snapshot</Button>
+ <section className="pt-8">
+ <Card className="bg-rose-50 border-rose-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+ <CardHeader className="p-8 pb-4"><CardTitle className="text-[10px] font-semibold text-rose-600 flex items-center gap-2"><TriangleAlert className="h-4 w-4" /> Emergency Rollback</CardTitle></CardHeader>
+ <CardContent className="p-8 pt-0 flex flex-wrap gap-4">
+ <Button variant="outline" onClick={() => handleAction('rollback_schools', rollbackSchoolsMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Schools Snapshot</Button>
+ <Button variant="outline" onClick={() => handleAction('rollback_tasks', rollbackTasksMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Tasks Snapshot</Button>
                     </CardContent>
                 </Card>
             </section>
@@ -938,19 +938,19 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
   icon: any;
 }) {
     return (
-        <div className="p-6 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all">
-            <div className="space-y-3">
-                <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100 group-hover:scale-110 transition-transform"><Icon className="h-5 w-5" /></div>
-                <h4 className="text-sm font-black uppercase tracking-tight">{title}</h4>
-                <p className="text-[10px] font-medium text-muted-foreground leading-relaxed uppercase tracking-tighter">{description}</p>
+ <div className="p-6 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all">
+ <div className="space-y-3">
+ <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100 group-hover:scale-110 transition-transform"><Icon className="h-5 w-5" /></div>
+ <h4 className="text-sm font-semibold tracking-tight">{title}</h4>
+ <p className="text-[10px] font-medium text-muted-foreground leading-relaxed tracking-tighter">{description}</p>
             </div>
-            <div className="flex gap-2">
-                <Button onClick={onSync} disabled={status === 'seeding'} className="flex-1 rounded-xl font-black shadow-lg uppercase text-[10px] bg-primary text-white h-11">
-                    {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />} Sync domain
+ <div className="flex gap-2">
+ <Button onClick={onSync} disabled={status === 'seeding'} className="flex-1 rounded-xl font-semibold shadow-lg text-[10px] bg-primary text-white h-11">
+ {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />} Sync domain
                 </Button>
                 {onRollback && (
-                    <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 h-11 bg-white">
-                        <RotateCcw className="h-4 w-4" />
+ <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 h-11 bg-white">
+ <RotateCcw className="h-4 w-4" />
                     </Button>
                 )}
             </div>
@@ -969,16 +969,16 @@ function ProtocolButton({ label, status, onClick, icon: Icon }: {
             variant="outline" 
             onClick={onClick} 
             disabled={status === 'seeding'} 
-            className={cn(
+ className={cn(
                 "h-14 w-full rounded-xl border-2 flex items-center justify-between px-6 transition-all",
                 status === 'seeding' ? "bg-muted animate-pulse" : "bg-white hover:border-primary hover:bg-primary/5"
             )}
         >
-            <div className="flex items-center gap-4">
-                <Icon className="h-4 w-4 text-primary" />
-                <span className="font-black uppercase text-[10px] tracking-widest">{label}</span>
+ <div className="flex items-center gap-4">
+ <Icon className="h-4 w-4 text-primary" />
+ <span className="font-semibold text-[10px] ">{label}</span>
             </div>
-            {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 opacity-20" />}
+ {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 opacity-20" />}
         </Button>
     );
 }

@@ -182,44 +182,44 @@ export default function SubmissionDetailPage() {
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
   return (
-    <div className="h-full overflow-hidden flex flex-col bg-muted/10 text-left">
-       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
-        <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-sm sm:text-base font-black uppercase tracking-tight truncate px-2">
+ <div className="h-full overflow-hidden flex flex-col bg-muted/10 text-left">
+ <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
+ <div className="flex items-center gap-2 min-w-0">
+ <h1 className="text-sm sm:text-base font-semibold tracking-tight truncate px-2">
               {isLoadingSubmission ? (
-                <Skeleton className="h-5 w-32" />
+ <Skeleton className="h-5 w-32" />
               ) : (
-                <span className="truncate flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-primary" />
+ <span className="truncate flex items-center gap-2">
+ <Clock className="h-3.5 w-3.5 text-primary" />
                   {submission ? format(new Date(submission.submittedAt), "MMM d, yyyy · p") : 'Submission'}
                 </span>
               )}
             </h1>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 pr-2">
-          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={Boolean(isLoadingPdf || isFrontEndDownloading)} className="h-9 hidden md:flex rounded-xl font-bold">
-            {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
+ <div className="flex items-center gap-1.5 shrink-0 pr-2">
+ <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={Boolean(isLoadingPdf || isFrontEndDownloading)} className="h-9 hidden md:flex rounded-xl font-bold">
+ {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
             Snapshot
           </Button>
-          <Button size="sm" onClick={handleDownload} disabled={Boolean(isLoadingPdf || isDownloading)} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest">
-            {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+ <Button size="sm" onClick={handleDownload} disabled={Boolean(isLoadingPdf || isDownloading)} className="h-9 rounded-xl font-semibold shadow-lg px-6 text-[10px] ">
+ {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Download Signed Copy
           </Button>
         </div>
       </div>
-      <div className="flex-grow bg-muted/30 overflow-hidden relative">
-        <ScrollArea className="h-full w-full print-area">
+ <div className="flex-grow bg-muted/30 overflow-hidden relative">
+ <ScrollArea className="h-full w-full print-area">
             <div 
                 ref={pageContainerRef}
-                className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y"
+ className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y"
                 style={{ minWidth: 'fit-content' }}
             >
-                <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
+ <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
                     {isLoading ? (
-                        Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" key={i} />)
+ Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" key={i} />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                            <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
+ <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
                                 <SubmissionPageRenderer
                                     pdf={pdfDoc}
                                     pageNumber={index + 1}
@@ -230,14 +230,14 @@ export default function SubmissionDetailPage() {
                             </div>
                         ))
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
-                            <Monitor className="h-12 w-12 mb-4 opacity-20" />
-                            <p className="font-black uppercase tracking-widest text-xs">Submission detail unavailable</p>
+ <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+ <Monitor className="h-12 w-12 mb-4 opacity-20" />
+ <p className="font-semibold text-xs">Submission detail unavailable</p>
                         </div>
                     )}
                 </div>
             </div>
-            <ScrollBar orientation="horizontal" className="print:hidden" />
+ <ScrollBar orientation="horizontal" className="print:hidden" />
         </ScrollArea>
       </div>
     </div>
@@ -299,13 +299,13 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, entity }: {
 
     return (
         <div 
-            className="relative mx-auto shadow-xl bg-white border border-border flex-shrink-0" 
+ className="relative mx-auto shadow-xl bg-white border border-border flex-shrink-0" 
             style={{ width: dimensions.width, height: dimensions.height }}
         >
-            {isRendering && <Skeleton className="absolute inset-0" />}
-            <canvas ref={canvasRef} className="w-full h-full" />
+ {isRendering && <Skeleton className="absolute inset-0" />}
+ <canvas ref={canvasRef} className="w-full h-full" />
             {!isRendering && (
-                <div className="absolute inset-0 pointer-events-none">
+ <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         // RESOLUTION HIERARCHY: Stored Value (Snapshot) > Template Definition
                         const storedValue = formData[field.id];
@@ -348,10 +348,10 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, entity }: {
                                 }}
                             >
                                 {field.type === 'signature' ? (
-                                    <img src={value} alt="Signature" className="w-full h-full object-contain" crossOrigin="anonymous" />
+ <img src={value} alt="Signature" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                 ) : (
                                     <span 
-                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+ className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
                                         style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
                                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : applyTransform(String(value))}

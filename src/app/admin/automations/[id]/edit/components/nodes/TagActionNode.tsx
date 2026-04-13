@@ -38,45 +38,45 @@ export function TagActionNode({ data, selected }: any) {
   const ActionIcon = isAdd ? PlusCircle : MinusCircle;
 
   return (
-    <div className={cn('relative transition-all duration-500', selected ? 'scale-105' : 'scale-100')}>
+ <div className={cn('relative transition-all duration-500', selected ? 'scale-105' : 'scale-100')}>
       <Handle
         type="target"
         position={Position.Top}
-        className={cn('w-3 h-3 border-2 border-white !-top-1.5 shadow-md', colorScheme.handle)}
+ className={cn('w-3 h-3 border-2 border-white !-top-1.5 shadow-md', colorScheme.handle)}
       />
 
       <Card
-        className={cn(
+ className={cn(
           'w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden text-left',
           colorScheme.border,
           colorScheme.shadow,
           selected && `ring-4 ${colorScheme.ring}`
         )}
       >
-        <div className={cn('p-3 flex items-center justify-between border-b', colorScheme.header)}>
-          <div className="flex items-center gap-2 text-white">
-            <ActionIcon className="h-4 w-4" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
+ <div className={cn('p-3 flex items-center justify-between border-b', colorScheme.header)}>
+ <div className="flex items-center gap-2 text-white">
+ <ActionIcon className="h-4 w-4" />
+ <span className="text-[10px] font-semibold ">
               {isAdd ? 'Add Tags' : 'Remove Tags'}
             </span>
           </div>
-          <div className="h-1.5 w-1.5 rounded-full bg-white opacity-40" />
+ <div className="h-1.5 w-1.5 rounded-full bg-white opacity-40" />
         </div>
 
-        <div className="p-4 space-y-2">
-          <p className="text-xs font-black uppercase text-foreground leading-tight">
+ <div className="p-4 space-y-2">
+ <p className="text-xs font-semibold text-foreground leading-tight">
             {data.label || (isAdd ? 'Add Tags' : 'Remove Tags')}
           </p>
-          <div className="flex flex-wrap gap-1.5 pt-1">
+ <div className="flex flex-wrap gap-1.5 pt-1">
             <Badge
               variant="outline"
-              className={cn('text-[7px] font-black uppercase px-1.5 h-4', colorScheme.badge)}
+ className={cn('text-[7px] font-semibold px-1.5 h-4', colorScheme.badge)}
             >
               {isAdd ? 'Add' : 'Remove'}
             </Badge>
             <Badge
               variant="outline"
-              className="text-[7px] font-black uppercase px-1.5 h-4 bg-muted/50 border-none"
+ className="text-[7px] font-semibold px-1.5 h-4 bg-muted/50 border-none"
             >
               {tagIds.length} tag{tagIds.length !== 1 ? 's' : ''}
             </Badge>
@@ -87,7 +87,7 @@ export function TagActionNode({ data, selected }: any) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className={cn('w-3 h-3 border-2 border-white !-bottom-1.5 shadow-md', colorScheme.handle)}
+ className={cn('w-3 h-3 border-2 border-white !-bottom-1.5 shadow-md', colorScheme.handle)}
       />
     </div>
   );

@@ -280,63 +280,63 @@ export default function SenderProfilesPage() {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
-            <div className="max-w-7xl mx-auto space-y-8">
-                <div className="flex items-center justify-end flex-wrap gap-4">
-                    <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-11 px-8">
-                        {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+ <div className="max-w-7xl mx-auto space-y-8">
+ <div className="flex items-center justify-end flex-wrap gap-4">
+ <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">
+ {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {isAdding ? 'Discard' : 'Initialize Identity'}
                     </Button>
                 </div>
 
                 {isAdding && (
-                    <Card className="mb-8 border-primary/20 bg-primary/5 animate-in slide-in-from-top-4 duration-300 rounded-[2.5rem] overflow-hidden shadow-xl">
-                        <CardHeader className="bg-primary/5 border-b p-8 text-left">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Fingerprint size={24} /></div>
+ <Card className="mb-8 border-primary/20 bg-primary/5 animate-in slide-in-from-top-4 duration-300 rounded-[2.5rem] overflow-hidden shadow-xl">
+ <CardHeader className="bg-primary/5 border-b p-8 text-left">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Fingerprint size={24} /></div>
                                 <div>
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity Hub Architect</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-primary/60">Configure sender credentials across institutional tracks.</CardDescription>
+ <CardTitle className="text-2xl font-semibold tracking-tight">Identity Hub Architect</CardTitle>
+ <CardDescription className="text-xs font-bold text-primary/60">Configure sender credentials across institutional tracks.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-8 space-y-8 text-left">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
-                                        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS Uplink" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" />
+ <CardContent className="p-8 space-y-8 text-left">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+ <div className="space-y-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
+ <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS Uplink" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Shared Visibility</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Shared Visibility</Label>
                                         <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} placeholder="Assign to hubs..." />
                                     </div>
                                 </div>
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Channel Medium</Label>
+ <div className="space-y-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel Medium</Label>
                                         <Select value={channel} onValueChange={(v: any) => setChannel(v)}>
-                                            <SelectTrigger className="h-12 rounded-xl bg-white border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
+ <SelectTrigger className="h-12 rounded-xl bg-white border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
+ <SelectContent className="rounded-xl">
                                                 <SelectItem value="sms">SMS (Sender ID)</SelectItem>
                                                 <SelectItem value="email">Email (From Addr)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID' : 'Verified Endpoint'}</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID' : 'Verified Endpoint'}</Label>
                                         <Input 
                                             value={identifier} 
                                             onChange={e => setIdentifier(e.target.value)} 
                                             placeholder={channel === 'sms' ? 'SMARTSAPP' : 'onboarding@enroll.smartsapp.com'} 
-                                            className="h-12 rounded-xl bg-white border-none shadow-inner font-mono font-bold"
+ className="h-12 rounded-xl bg-white border-none shadow-inner font-mono font-bold"
                                         />
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex justify-end pt-4">
-                                <Button onClick={handleAdd} disabled={isSubmitting || !name || !identifier || workspaceIds.length === 0} className="h-14 px-12 rounded-2xl font-black shadow-2xl uppercase tracking-widest text-sm active:scale-95 transition-all">
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+ <div className="flex justify-end pt-4">
+ <Button onClick={handleAdd} disabled={isSubmitting || !name || !identifier || workspaceIds.length === 0} className="h-14 px-12 rounded-2xl font-semibold shadow-2xl text-sm active:scale-95 transition-all">
+ {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                                     Commit Identity
                                 </Button>
                             </div>
@@ -344,97 +344,97 @@ export default function SenderProfilesPage() {
                     </Card>
                 )}
 
-                <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
                     <Table>
-                        <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest pl-8 py-5">Corporate Identity</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Visibility</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Status</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Default</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Active</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest text-right pr-8">Actions</TableHead>
+ <TableHead className="text-[10px] font-semibold pl-8 py-5">Corporate Identity</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Visibility</TableHead>
+ <TableHead className="text-[10px] font-semibold text-center">Status</TableHead>
+ <TableHead className="text-[10px] font-semibold text-center">Default</TableHead>
+ <TableHead className="text-[10px] font-semibold text-center">Active</TableHead>
+ <TableHead className="text-[10px] font-semibold text-right pr-8">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
-                                        <TableCell className="pl-8 py-6"><Skeleton className="h-4 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                                        <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
-                                        <TableCell className="text-center"><Skeleton className="h-4 w-4 mx-auto rounded" /></TableCell>
-                                        <TableCell className="text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
-                                        <TableCell className="pr-8"><Skeleton className="h-8 w-8 ml-auto rounded-lg" /></TableCell>
+ <TableCell className="pl-8 py-6"><Skeleton className="h-4 w-32" /></TableCell>
+ <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+ <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
+ <TableCell className="text-center"><Skeleton className="h-4 w-4 mx-auto rounded" /></TableCell>
+ <TableCell className="text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
+ <TableCell className="pr-8"><Skeleton className="h-8 w-8 ml-auto rounded-lg" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : profiles?.length ? (
                                 profiles.map((profile) => (
-                                    <TableRow key={profile.id} className="group hover:bg-muted/30 transition-colors">
-                                        <TableCell className="pl-8 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-foreground uppercase tracking-tight">{profile.name}</span>
-                                                    {profile.channel === 'sms' ? <Smartphone className="h-3 w-3 text-orange-500" /> : <Mail className="h-3 w-3 text-blue-500" />}
+ <TableRow key={profile.id} className="group hover:bg-muted/30 transition-colors">
+ <TableCell className="pl-8 py-4">
+ <div className="flex flex-col gap-1">
+ <div className="flex items-center gap-2">
+ <span className="font-semibold text-foreground tracking-tight">{profile.name}</span>
+ {profile.channel === 'sms' ? <Smartphone className="h-3 w-3 text-orange-500" /> : <Mail className="h-3 w-3 text-blue-500" />}
                                                 </div>
-                                                <code className="text-[10px] font-mono text-muted-foreground opacity-60 font-black">{profile.identifier}</code>
+ <code className="text-[10px] font-mono text-muted-foreground opacity-60 font-semibold">{profile.identifier}</code>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-wrap gap-1">
+ <div className="flex flex-wrap gap-1">
                                                 {profile.workspaceIds?.map(wId => (
-                                                    <Badge key={wId} variant="outline" className="text-[8px] font-black uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
+                                                    <Badge key={wId} variant="outline" className="text-[8px] font-semibold uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
                                                 )) || <Badge variant="secondary" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            <div className="flex flex-col items-center gap-1">
+ <TableCell className="text-center">
+ <div className="flex flex-col items-center gap-1">
                                                 {getStatusBadge(profile)}
                                                 <button 
                                                     onClick={() => handleSyncStatus(profile)} 
                                                     disabled={syncingId === profile.id}
-                                                    className="text-[8px] font-black uppercase text-primary hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+ className="text-[8px] font-semibold text-primary hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
-                                                    {syncingId === profile.id ? <Loader2 size={8} className="animate-spin" /> : 'Sync Status'}
+ {syncingId === profile.id ? <Loader2 size={8} className="animate-spin" /> : 'Sync Status'}
                                                 </button>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">
+ <TableCell className="text-center">
                                             <button onClick={() => handleSetDefault(profile)}>
-                                                {profile.isDefault ? <Star className="h-4 w-4 text-amber-500 fill-amber-500 mx-auto" /> : <Star className="h-4 w-4 text-muted-foreground/20 mx-auto hover:text-amber-500 transition-colors" />}
+ {profile.isDefault ? <Star className="h-4 w-4 text-amber-500 fill-amber-500 mx-auto" /> : <Star className="h-4 w-4 text-muted-foreground/20 mx-auto hover:text-amber-500 transition-colors" />}
                                             </button>
                                         </TableCell>
-                                        <TableCell className="text-center">
+ <TableCell className="text-center">
                                             <Switch 
                                                 checked={profile.isActive} 
                                                 onCheckedChange={() => toggleActive(profile)}
-                                                className="scale-75 mx-auto"
+ className="scale-75 mx-auto"
                                             />
                                         </TableCell>
-                                        <TableCell className="text-right pr-8">
+ <TableCell className="text-right pr-8">
                                             <DropdownMenu modal={false}>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl"><MoreVertical size={16} /></Button>
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl"><MoreVertical size={16} /></Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
-                                                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest px-3 py-2 text-muted-foreground">Identity Logic</DropdownMenuLabel>
-                                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleEditClick(profile)}>
-                                                        <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Pencil className="h-3.5 w-3.5" /></div>
-                                                        <span className="font-bold text-sm">Edit Hierarchy</span>
+ <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+ <DropdownMenuLabel className="text-[10px] font-semibold px-3 py-2 text-muted-foreground">Identity Logic</DropdownMenuLabel>
+ <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleEditClick(profile)}>
+ <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Pencil className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Edit Hierarchy</span>
                                                     </DropdownMenuItem>
                                                     {profile.channel === 'sms' && (
-                                                        <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleStartRegistration(profile)}>
-                                                            <div className="p-1.5 bg-orange-50 rounded-lg text-orange-600"><Sparkles className="h-3.5 w-3.5" /></div>
-                                                            <span className="font-bold text-sm">Register with mNotify</span>
+ <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleStartRegistration(profile)}>
+ <div className="p-1.5 bg-orange-50 rounded-lg text-orange-600"><Sparkles className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Register with mNotify</span>
                                                         </DropdownMenuItem>
                                                     )}
-                                                    <DropdownMenuSeparator className="my-2" />
+ <DropdownMenuSeparator className="my-2" />
                                                     <DropdownMenuItem 
-                                                        className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
+ className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
                                                         onClick={() => handleDelete(profile.id)}
                                                     >
-                                                        <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-3.5 w-3.5" /></div>
-                                                        <span className="font-bold text-sm">Purge Identity</span>
+ <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-3.5 w-3.5" /></div>
+ <span className="font-bold text-sm">Purge Identity</span>
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -443,10 +443,10 @@ export default function SenderProfilesPage() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-64 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-3 opacity-20">
-                                            <Fingerprint className="h-12 w-12" />
-                                            <p className="text-xs font-black uppercase tracking-widest">No Authorized Identities</p>
+ <TableCell colSpan={6} className="h-64 text-center">
+ <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+ <Fingerprint className="h-12 w-12" />
+ <p className="text-xs font-semibold ">No Authorized Identities</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -458,38 +458,38 @@ export default function SenderProfilesPage() {
 
             {/* Edit Dialog */}
             <Dialog open={!!editingProfile} onOpenChange={(o) => !o && setEditingProfile(null)}>
-                <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <form onSubmit={handleUpdate} className="text-left">
-                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <form onSubmit={handleUpdate} className="text-left">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
                                     <Pencil size={24} />
                                 </div>
-                                <div className="text-left">
-                                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Sync Identity</DialogTitle>
-                                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Updating institutional sender protocol</DialogDescription>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight">Sync Identity</DialogTitle>
+ <DialogDescription className="text-[10px] font-bold text-muted-foreground">Updating institutional sender protocol</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
-                                <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
+ <div className="p-8 space-y-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
+ <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Shared Visibility</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Shared Visibility</Label>
                                 <MultiSelect options={workspaceOptions} value={editWorkspaceIds} onChange={setEditWorkspaceIds} placeholder="Assign to hubs..." />
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Identity Endpoint</Label>
-                                <Input value={editIdentifier} onChange={e => setEditIdentifier(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-black shadow-inner" required />
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Identity Endpoint</Label>
+ <Input value={editIdentifier} onChange={e => setEditIdentifier(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold shadow-inner" required />
                             </div>
                         </div>
-                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
-                            <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Cancel</Button>
-                            <Button type="submit" disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-black h-12 px-10 shadow-2xl uppercase text-xs">
-                                {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                <span className="ml-2">Commit Logic</span>
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
+ <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Cancel</Button>
+ <Button type="submit" disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-semibold h-12 px-10 shadow-2xl text-xs">
+ {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+ <span className="ml-2">Commit Logic</span>
                             </Button>
                         </DialogFooter>
                     </form>
@@ -498,38 +498,38 @@ export default function SenderProfilesPage() {
 
             {/* mNotify Registration Dialog */}
             <Dialog open={!!registeringProfile} onOpenChange={(o) => !o && setRegisteringProfile(null)}>
-                <DialogContent className="sm:max-w-md rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="p-8 pb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-200"><Smartphone size={24} /></div>
-                            <div className="text-left">
-                                <DialogTitle className="text-xl font-black uppercase tracking-tight text-orange-950">Provider Enrollment</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-orange-700 opacity-70">Registering ID: {registeringProfile?.identifier}</DialogDescription>
+ <DialogContent className="sm:max-w-md rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogHeader className="p-8 pb-4">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-200"><Smartphone size={24} /></div>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight text-orange-950">Provider Enrollment</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-orange-700 opacity-70">Registering ID: {registeringProfile?.identifier}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
-                    <div className="p-8 pt-0 space-y-6 text-left">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operational Purpose</Label>
+ <div className="p-8 pt-0 space-y-6 text-left">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Operational Purpose</Label>
                             <Textarea 
                                 value={regPurpose} 
                                 onChange={e => setRegPurpose(e.target.value)} 
                                 placeholder="Explain how this ID will be used (e.g. Transactional alerts for school parents)..." 
-                                className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium"
+ className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium"
                             />
                         </div>
-                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
-                            <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+ <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+ <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter">
                                 mNotify IDs typically require 24-48 hours for institutional verification.
                             </p>
                         </div>
                     </div>
-                    <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
-                        <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="rounded-xl font-bold h-12 px-8">Discard</Button>
-                        <Button onClick={handleCompleteRegistration} disabled={isRegProcessing || !regPurpose.trim()} className="rounded-xl font-black h-12 px-10 shadow-2xl bg-orange-600 hover:bg-orange-700 text-white uppercase text-xs">
-                            {isRegProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                            <span className="ml-2">Submit Application</span>
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
+ <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="rounded-xl font-bold h-12 px-8">Discard</Button>
+ <Button onClick={handleCompleteRegistration} disabled={isRegProcessing || !regPurpose.trim()} className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-orange-600 hover:bg-orange-700 text-white text-xs">
+ {isRegProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+ <span className="ml-2">Submit Application</span>
                         </Button>
                     </DialogFooter>
                 </DialogContent>

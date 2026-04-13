@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { logActivity } from '@/lib/activity-logger';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { Badge } from '@/components/ui/badge';
 
 interface ChangeStageModalProps {
   entity: WorkspaceEntity | null;
@@ -85,22 +86,22 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
-          <div className="flex flex-col text-left">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight">Change Pipeline Stage</DialogTitle>
-            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">
+ <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+ <div className="flex flex-col text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight">Change Pipeline Stage</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground mt-1">
               Move "{entity?.displayName}" to a new phase
             </DialogDescription>
           </div>
         </DialogHeader>
-        <div className="p-6 bg-background">
-          <ScrollArea className="h-96 border-2 border-dashed rounded-2xl bg-muted/10">
-            <div className="p-2 space-y-1">
+ <div className="p-6 bg-background">
+ <ScrollArea className="h-96 border-2 border-dashed rounded-2xl bg-muted/10">
+ <div className="p-2 space-y-1">
               {isLoading ? (
-                <div className="space-y-2 p-2">
+ <div className="space-y-2 p-2">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full rounded-xl" />
+ <Skeleton key={i} className="h-12 w-full rounded-xl" />
                   ))}
                 </div>
               ) : (
@@ -108,28 +109,28 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
                   <button
                     key={stage.id}
                     onClick={() => handleStageChange(stage)}
-                    className="w-full text-left flex items-center gap-4 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all group disabled:opacity-50"
+ className="w-full text-left flex items-center gap-4 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all group disabled:opacity-50"
                     disabled={isUpdating || entity?.stageId === stage.id}
                   >
-                    <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: stage.color }} />
-                    <span className="font-black uppercase text-xs text-foreground/80 group-hover:text-primary transition-colors">{stage.name}</span>
+ <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: stage.color }} />
+ <span className="font-semibold text-xs text-foreground/80 group-hover:text-primary transition-colors">{stage.name}</span>
                     {entity?.stageId === stage.id && (
-                        <Badge variant="secondary" className="ml-auto text-[8px] font-black uppercase bg-primary/10 text-primary">Current</Badge>
+                        <Badge variant="secondary" className="ml-auto text-[8px] font-semibold uppercase bg-primary/10 text-primary">Current</Badge>
                     )}
                   </button>
                 ))
               )}
               {!isLoading && (!stages || stages.length === 0) && (
-                  <p className="text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground p-20 opacity-30 italic">No stages found.</p>
+ <p className="text-center text-[10px] font-semibold text-muted-foreground p-20 opacity-30 italic">No stages found.</p>
               )}
             </div>
           </ScrollArea>
         </div>
-        <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end gap-3">
-            <div className="flex items-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest animate-pulse px-4">
-                {isUpdating && <><Loader2 className="h-3 w-3 animate-spin"/> Updating Stage...</>}
+ <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end gap-3">
+ <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse px-4">
+ {isUpdating && <><Loader2 className="h-3 w-3 animate-spin"/> Updating Stage...</>}
             </div>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-11 px-8">Discard</Button>
+ <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-11 px-8">Discard</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

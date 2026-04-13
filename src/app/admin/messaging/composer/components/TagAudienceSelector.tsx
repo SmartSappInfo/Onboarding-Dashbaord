@@ -161,35 +161,35 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
   const hasFilters = includeTagIds.length > 0 || excludeTagIds.length > 0;
 
   return (
-    <div className={cn('space-y-6', className)}>
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 rounded-xl">
-          <TagIcon className="h-4 w-4 text-primary" />
+ <div className={cn('space-y-6', className)}>
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <TagIcon className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-primary">Tag-Based Audience</p>
-          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+ <p className="text-[10px] font-semibold text-primary">Tag-Based Audience</p>
+ <p className="text-[9px] text-muted-foreground font-bold tracking-wider">
             Target contacts by tag segments
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Include Tags */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1.5">
-              <PlusCircle className="h-3 w-3" /> Include Tags
+ <div className="space-y-3">
+ <div className="flex items-center justify-between">
+ <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1.5">
+ <PlusCircle className="h-3 w-3" /> Include Tags
             </Label>
             {includeTagIds.length > 1 && (
               <Select value={includeLogic} onValueChange={v => handleLogicChange(v as 'AND' | 'OR')}>
-                <SelectTrigger className="h-6 w-28 text-[9px] font-black uppercase border-emerald-200 text-emerald-700 bg-emerald-50">
+ <SelectTrigger className="h-6 w-28 text-[9px] font-semibold border-emerald-200 text-emerald-700 bg-emerald-50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                   {LOGIC_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      <span className="font-bold">{opt.label}</span>
+ <SelectItem key={opt.value} value={opt.value} className="text-xs">
+ <span className="font-bold">{opt.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -203,49 +203,49 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                 type="button"
                 variant="outline"
                 size="sm"
-                className="w-full h-9 rounded-xl border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-bold text-xs gap-2 justify-start"
+ className="w-full h-9 rounded-xl border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-bold text-xs gap-2 justify-start"
               >
-                <Search className="h-3.5 w-3.5" />
+ <Search className="h-3.5 w-3.5" />
                 {includeTagIds.length === 0 ? 'Select tags to include...' : `${includeTagIds.length} tag(s) selected`}
-                <ChevronDown className="h-3 w-3 ml-auto opacity-50" />
+ <ChevronDown className="h-3 w-3 ml-auto opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-0 rounded-2xl shadow-2xl border-none" align="start">
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+ <PopoverContent className="w-72 p-0 rounded-2xl shadow-2xl border-none" align="start">
+ <div className="p-3 border-b">
+ <div className="relative">
+ <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     placeholder="Search tags..."
                     value={includeSearch}
                     onChange={e => setIncludeSearch(e.target.value)}
-                    className="pl-8 h-8 rounded-xl text-xs border-none bg-muted/30"
+ className="pl-8 h-8 rounded-xl text-xs border-none bg-muted/30"
                     autoFocus
                   />
                 </div>
               </div>
-              <div className="max-h-56 overflow-y-auto p-2">
+ <div className="max-h-56 overflow-y-auto p-2">
                 {filteredForInclude.map(tag => (
                   <button
                     key={tag.id}
                     type="button"
                     onClick={() => toggleInclude(tag.id)}
-                    className={cn(
+ className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left',
                       includeTagIds.includes(tag.id) ? 'bg-emerald-50' : 'hover:bg-muted/50'
                     )}
                   >
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-                    <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
-                    <span className="text-[9px] text-muted-foreground uppercase font-bold">{tag.category}</span>
+ <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+ <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
+ <span className="text-[9px] text-muted-foreground font-bold">{tag.category}</span>
                     {includeTagIds.includes(tag.id) && (
-                      <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                        <X className="h-2.5 w-2.5 text-white" />
+ <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+ <X className="h-2.5 w-2.5 text-white" />
                       </div>
                     )}
                   </button>
                 ))}
                 {filteredForInclude.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">No tags found</p>
+ <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">No tags found</p>
                 )}
               </div>
             </PopoverContent>
@@ -253,23 +253,23 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
 
           {/* Selected include tags */}
           {includeTagIds.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+ <div className="flex flex-wrap gap-1.5">
               {includeTagIds.map(id => {
                 const tag = getTagById(id);
                 if (!tag) return null;
                 return (
                   <Badge
                     key={id}
-                    className="text-white border-none font-bold text-[10px] uppercase gap-1 pr-1 rounded-lg"
+ className="text-white border-none font-bold text-[10px] gap-1 pr-1 rounded-lg"
                     style={{ backgroundColor: tag.color }}
                   >
                     {tag.name}
                     <button
                       type="button"
                       onClick={() => toggleInclude(id)}
-                      className="ml-0.5 hover:bg-black/20 rounded-full p-0.5"
+ className="ml-0.5 hover:bg-black/20 rounded-full p-0.5"
                     >
-                      <X className="h-2.5 w-2.5" />
+ <X className="h-2.5 w-2.5" />
                     </button>
                   </Badge>
                 );
@@ -279,9 +279,9 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
         </div>
 
         {/* Exclude Tags */}
-        <div className="space-y-3">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-rose-600 flex items-center gap-1.5">
-            <MinusCircle className="h-3 w-3" /> Exclude Tags
+ <div className="space-y-3">
+ <Label className="text-[10px] font-semibold text-rose-600 flex items-center gap-1.5">
+ <MinusCircle className="h-3 w-3" /> Exclude Tags
           </Label>
 
           <Popover open={excludeOpen} onOpenChange={setExcludeOpen}>
@@ -290,49 +290,49 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                 type="button"
                 variant="outline"
                 size="sm"
-                className="w-full h-9 rounded-xl border-dashed border-rose-300 text-rose-700 hover:bg-rose-50 font-bold text-xs gap-2 justify-start"
+ className="w-full h-9 rounded-xl border-dashed border-rose-300 text-rose-700 hover:bg-rose-50 font-bold text-xs gap-2 justify-start"
               >
-                <Search className="h-3.5 w-3.5" />
+ <Search className="h-3.5 w-3.5" />
                 {excludeTagIds.length === 0 ? 'Select tags to exclude...' : `${excludeTagIds.length} tag(s) excluded`}
-                <ChevronDown className="h-3 w-3 ml-auto opacity-50" />
+ <ChevronDown className="h-3 w-3 ml-auto opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-0 rounded-2xl shadow-2xl border-none" align="start">
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+ <PopoverContent className="w-72 p-0 rounded-2xl shadow-2xl border-none" align="start">
+ <div className="p-3 border-b">
+ <div className="relative">
+ <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     placeholder="Search tags..."
                     value={excludeSearch}
                     onChange={e => setExcludeSearch(e.target.value)}
-                    className="pl-8 h-8 rounded-xl text-xs border-none bg-muted/30"
+ className="pl-8 h-8 rounded-xl text-xs border-none bg-muted/30"
                     autoFocus
                   />
                 </div>
               </div>
-              <div className="max-h-56 overflow-y-auto p-2">
+ <div className="max-h-56 overflow-y-auto p-2">
                 {filteredForExclude.map(tag => (
                   <button
                     key={tag.id}
                     type="button"
                     onClick={() => toggleExclude(tag.id)}
-                    className={cn(
+ className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left',
                       excludeTagIds.includes(tag.id) ? 'bg-rose-50' : 'hover:bg-muted/50'
                     )}
                   >
-                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-                    <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
-                    <span className="text-[9px] text-muted-foreground uppercase font-bold">{tag.category}</span>
+ <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+ <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
+ <span className="text-[9px] text-muted-foreground font-bold">{tag.category}</span>
                     {excludeTagIds.includes(tag.id) && (
-                      <div className="h-4 w-4 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
-                        <X className="h-2.5 w-2.5 text-white" />
+ <div className="h-4 w-4 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+ <X className="h-2.5 w-2.5 text-white" />
                       </div>
                     )}
                   </button>
                 ))}
                 {filteredForExclude.length === 0 && (
-                  <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">No tags found</p>
+ <p className="text-[10px] text-muted-foreground text-center py-4 font-medium">No tags found</p>
                 )}
               </div>
             </PopoverContent>
@@ -340,7 +340,7 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
 
           {/* Selected exclude tags */}
           {excludeTagIds.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+ <div className="flex flex-wrap gap-1.5">
               {excludeTagIds.map(id => {
                 const tag = getTagById(id);
                 if (!tag) return null;
@@ -348,15 +348,15 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                   <Badge
                     key={id}
                     variant="outline"
-                    className="font-bold text-[10px] uppercase gap-1 pr-1 rounded-lg border-rose-300 text-rose-700 bg-rose-50"
+ className="font-bold text-[10px] gap-1 pr-1 rounded-lg border-rose-300 text-rose-700 bg-rose-50"
                   >
                     {tag.name}
                     <button
                       type="button"
                       onClick={() => toggleExclude(id)}
-                      className="ml-0.5 hover:bg-rose-200 rounded-full p-0.5"
+ className="ml-0.5 hover:bg-rose-200 rounded-full p-0.5"
                     >
-                      <X className="h-2.5 w-2.5" />
+ <X className="h-2.5 w-2.5" />
                     </button>
                   </Badge>
                 );
@@ -369,28 +369,28 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
       {/* Preview Button */}
       {hasFilters && (
         <>
-          <Separator className="bg-border/50" />
-          <div className="flex items-center justify-between">
+ <Separator className="bg-border/50" />
+ <div className="flex items-center justify-between">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handlePreview}
               disabled={isPreviewing}
-              className="h-9 rounded-xl font-bold text-xs gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+ className="h-9 rounded-xl font-bold text-xs gap-2 border-primary/20 hover:bg-primary/5 text-primary"
             >
               {isPreviewing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+ <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Eye className="h-3.5 w-3.5" />
+ <Eye className="h-3.5 w-3.5" />
               )}
               Preview Audience
             </Button>
 
             {previewResult && (
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                <span className="text-sm font-black text-primary">
+ <div className="flex items-center gap-2">
+ <Users className="h-4 w-4 text-primary" />
+ <span className="text-sm font-semibold text-primary">
                   {previewResult.count.toLocaleString()} recipient{previewResult.count !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -399,21 +399,21 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
 
           {/* Preview Results */}
           {previewResult && (
-            <div className="rounded-2xl bg-muted/20 border p-4 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+ <div className="rounded-2xl bg-muted/20 border p-4 space-y-4 animate-in fade-in slide-in-from-bottom-2">
               {previewResult.preview.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+ <div className="space-y-2">
+ <p className="text-[9px] font-semibold text-muted-foreground">
                     Sample Recipients
                   </p>
-                  <div className="space-y-1.5">
+ <div className="space-y-1.5">
                     {previewResult.preview.map(contact => (
-                      <div key={contact.id} className="flex items-center gap-3 p-2 rounded-xl bg-white border">
-                        <div className="h-7 w-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                          <Users className="h-3.5 w-3.5 text-primary" />
+ <div key={contact.id} className="flex items-center gap-3 p-2 rounded-xl bg-white border">
+ <div className="h-7 w-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+ <Users className="h-3.5 w-3.5 text-primary" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold truncate">{contact.name}</p>
-                          <p className="text-[9px] text-muted-foreground truncate">
+ <div className="flex-1 min-w-0">
+ <p className="text-xs font-bold truncate">{contact.name}</p>
+ <p className="text-[9px] text-muted-foreground truncate">
                             {contact.tags.slice(0, 3).join(', ')}
                             {contact.tags.length > 3 && ` +${contact.tags.length - 3} more`}
                           </p>
@@ -425,19 +425,19 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
               )}
 
               {previewResult.tagDistribution.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+ <div className="space-y-2">
+ <p className="text-[9px] font-semibold text-muted-foreground">
                     Tag Distribution
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+ <div className="flex flex-wrap gap-1.5">
                     {previewResult.tagDistribution.slice(0, 8).map(item => (
                       <Badge
                         key={item.tagId}
                         variant="outline"
-                        className="text-[9px] font-bold uppercase rounded-lg"
+ className="text-[9px] font-bold rounded-lg"
                       >
                         {item.tagName}
-                        <span className="ml-1 opacity-60">({item.count})</span>
+ <span className="ml-1 opacity-60">({item.count})</span>
                       </Badge>
                     ))}
                   </div>

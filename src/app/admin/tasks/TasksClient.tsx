@@ -330,11 +330,11 @@ export default function TasksClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-            <div className="max-w-7xl mx-auto space-y-12 pb-32">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-12 pb-32">
                 
                 {/* Executive KPI Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard 
                         label="Active Actions" 
                         value={isLoading ? '...' : stats.active} 
@@ -370,46 +370,46 @@ export default function TasksClient() {
                 </div>
 
                 {/* Recommended Categories Grid */}
-                <section className="space-y-6">
-                    <h3 className="text-xl font-black uppercase tracking-tight text-foreground ml-1">Recommended Categories</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+ <section className="space-y-6">
+ <h3 className="text-xl font-semibold tracking-tight text-foreground ml-1">Recommended Categories</h3>
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {(Object.entries(CATEGORY_MAP) as [TaskCategory, any][]).map(([key, config]) => (
                             <button 
                                 key={key}
                                 onClick={() => handleQuickCategorySelect(key)}
-                                className="group flex items-center gap-4 p-5 rounded-2xl bg-white border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
+ className="group flex items-center gap-4 p-5 rounded-2xl bg-white border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
                             >
-                                <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", config.color)}>
-                                    <config.icon className="h-5 w-5" />
+ <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", config.color)}>
+ <config.icon className="h-5 w-5" />
                                 </div>
-                                <span className="font-bold text-sm uppercase tracking-tight text-foreground/80">{config.label}</span>
+ <span className="font-bold text-sm tracking-tight text-foreground/80">{config.label}</span>
                             </button>
                         ))}
                     </div>
                 </section>
 
                 {/* Toolbar */}
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 glass-card p-4 rounded-[2rem]">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
-                            {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
+ <div className="flex flex-col md:flex-row items-center justify-between gap-6 glass-card p-4 rounded-[2rem]">
+ <div className="flex flex-wrap items-center gap-3">
+ <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-semibold text-[10px] gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
+ {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
                         </Button>
-                        <Button variant="outline" size="sm" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-4">
-                            <Filter className="h-3.5 w-3.5" /> Filter <ChevronDown className="h-3 w-3 opacity-40" />
+ <Button variant="outline" size="sm" className="rounded-xl font-semibold text-[10px] gap-2 h-10 px-4">
+ <Filter className="h-3.5 w-3.5" /> Filter <ChevronDown className="h-3 w-3 opacity-40" />
                         </Button>
                     </div>
 
-                    <div className="flex items-center gap-4 flex-1 justify-end">
-                        <div className="relative w-full max-w-sm group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+ <div className="flex items-center gap-4 flex-1 justify-end">
+ <div className="relative w-full max-w-sm group">
+ <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                             <Input 
                                 placeholder="Search tasks..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                             />
                         </div>
-                        <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest h-11 px-8 shadow-xl active:scale-95 text-[10px]">
+ <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-semibold h-11 px-8 shadow-xl active:scale-95 text-[10px]">
                             + New Task
                         </Button>
                     </div>
@@ -421,23 +421,23 @@ export default function TasksClient() {
                             initial={{ y: 50, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 50, opacity: 0 }}
-                            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+ className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
                         >
-                            <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
-                                <span className="px-4 text-[10px] font-black uppercase tracking-widest border-r border-white/10">{selectedIds.length} Selected</span>
-                                <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl">
-                                    <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold uppercase text-[9px] h-9 px-4">Resolve Bulk</Button>
-                                    <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold uppercase text-[9px] h-9 px-4">Purge Selected</Button>
-                                    <Separator orientation="vertical" className="h-9 bg-white/10" />
-                                    <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
+ <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
+ <span className="px-4 text-[10px] font-semibold border-r border-white/10">{selectedIds.length} Selected</span>
+ <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl">
+ <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>
+ <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold text-[9px] h-9 px-4">Purge Selected</Button>
+ <Separator orientation="vertical" className="h-9 bg-white/10" />
+ <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
                                 </div>
                             </Card>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
-                    <TabsContent value="list" className="m-0 space-y-12">
+ <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
+ <TabsContent value="list" className="m-0 space-y-12">
                         {/* Grouped Lists by Status */}
                         {(['todo', 'in_progress', 'done'] as TaskStatus[]).map(status => {
                             const groupTasks = filteredTasks.filter(t => 
@@ -447,17 +447,17 @@ export default function TasksClient() {
                             if (groupTasks.length === 0 && status === 'done') return null;
 
                             return (
-                                <section key={status} className="space-y-6">
-                                    <div className="flex items-center justify-between px-2">
-                                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+ <section key={status} className="space-y-6">
+ <div className="flex items-center justify-between px-2">
+ <h2 className="text-xs font-semibold text-muted-foreground">
                                             {status === 'todo' ? 'Backlog (To Do)' : status === 'done' ? 'Resolved Archive' : 'Active Tasks'}
                                         </h2>
-                                        <button className="text-muted-foreground opacity-40 hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
+ <button className="text-muted-foreground opacity-40 hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></button>
                                     </div>
 
-                                    <div className="space-y-3">
+ <div className="space-y-3">
                                         {isLoading ? (
-                                            Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
+ Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)
                                         ) : groupTasks.length > 0 ? groupTasks.map((task) => {
                                             const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
                                             const daysLeft = differenceInDays(new Date(task.dueDate), new Date());
@@ -467,7 +467,7 @@ export default function TasksClient() {
                                             return (
                                                 <div 
                                                     key={task.id} 
-                                                    className={cn(
+ className={cn(
                                                         "group flex items-center gap-4 p-4 sm:p-5 glass-card rounded-[1.5rem] hover:border-primary/30",
                                                         task.status === 'done' && "opacity-60"
                                                     )}
@@ -476,19 +476,19 @@ export default function TasksClient() {
                                                         <Checkbox 
                                                             checked={selectedIds.includes(task.id)} 
                                                             onCheckedChange={() => toggleSelect(task.id)}
-                                                            className="h-5 w-5 rounded-lg border-2"
+ className="h-5 w-5 rounded-lg border-2"
                                                         />
                                                     )}
                                                     
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
+ <div className="flex-1 min-w-0">
+ <div className="flex flex-col gap-0.5">
+ <h4 className={cn("text-base font-bold text-foreground leading-tight truncate", task.status === 'done' && "line-through")}>
                                                                 {task.title}
                                                             </h4>
-                                                            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                                                {task.category} {task.entityName && <>· <Building className="h-2.5 w-2.5" /> {task.entityName}</>}
+ <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2">
+ {task.category} {task.entityName && <>· <Building className="h-2.5 w-2.5" /> {task.entityName}</>}
                                                                 {task.entityType && (
-                                                                    <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 rounded-sm border-none bg-primary/10 text-primary ml-1">
+                                                                    <Badge variant="outline" className="text-[7px] font-semibold uppercase h-4 px-1.5 rounded-sm border-none bg-primary/10 text-primary ml-1">
                                                                         {task.entityType}
                                                                     </Badge>
                                                                 )}
@@ -496,58 +496,58 @@ export default function TasksClient() {
                                                         </div>
                                                     </div>
 
-                                                    <div className="hidden lg:flex items-center gap-6 px-8">
-                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
-                                                            <Paperclip className="h-3 w-3" />
-                                                            <span className="text-[10px] font-black tabular-nums">{task.attachments?.length || 0}</span>
+ <div className="hidden lg:flex items-center gap-6 px-8">
+ <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
+ <Paperclip className="h-3 w-3" />
+ <span className="text-[10px] font-semibold tabular-nums">{task.attachments?.length || 0}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
-                                                            <MessageSquare className="h-3 w-3" />
-                                                            <span className="text-[10px] font-black tabular-nums">{task.notes?.length || 0}</span>
+ <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 text-muted-foreground">
+ <MessageSquare className="h-3 w-3" />
+ <span className="text-[10px] font-semibold tabular-nums">{task.notes?.length || 0}</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="hidden sm:flex items-center gap-3 shrink-0">
-                                                        <Badge variant="outline" className="h-6 rounded-lg font-black uppercase text-[8px] bg-muted/30 border-none px-2.5">
+ <div className="hidden sm:flex items-center gap-3 shrink-0">
+                                                        <Badge variant="outline" className="h-6 rounded-lg font-semibold uppercase text-[8px] bg-muted/30 border-none px-2.5">
                                                             {STATUS_LABELS[task.status] || task.status}
                                                         </Badge>
-                                                        <Badge variant="outline" className={cn("h-6 rounded-lg font-black uppercase text-[8px] border-none px-2.5", P.color)}>
+                                                        <Badge variant="outline" className={cn("h-6 rounded-lg font-semibold uppercase text-[8px] border-none px-2.5", P.color)}>
                                                             {P.label}
                                                         </Badge>
                                                     </div>
 
-                                                    <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
-                                                        <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
-                                                        <span className={cn("text-[10px] font-black uppercase tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
+ <div className="hidden md:flex items-center gap-2 min-w-[120px] shrink-0">
+ <Clock className={cn("h-3.5 w-3.5", isOverdue ? "text-rose-600" : "text-muted-foreground/40")} />
+ <span className={cn("text-[10px] font-semibold tracking-tighter", isOverdue ? "text-rose-600 animate-pulse" : "text-muted-foreground/60")}>
                                                             {isOverdue ? 'Overdue' : daysLeft === 0 ? 'Due Today' : `${daysLeft} Days Left`}
                                                         </span>
                                                     </div>
 
-                                                    <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
-                                                        <div className="flex-1 space-y-1">
-                                                            <Progress value={progress} className="h-1.5" />
+ <div className="hidden xl:flex items-center gap-4 min-w-[180px] shrink-0">
+ <div className="flex-1 space-y-1">
+ <Progress value={progress} className="h-1.5" />
                                                         </div>
-                                                        <span className="text-[10px] font-black tabular-nums w-8 text-right opacity-40">{progress}%</span>
+ <span className="text-[10px] font-semibold tabular-nums w-8 text-right opacity-40">{progress}%</span>
                                                     </div>
 
-                                                    <div className="flex items-center justify-end shrink-0 pl-2">
+ <div className="flex items-center justify-end shrink-0 pl-2">
                                                         <DropdownMenu modal={false}>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity">
-                                                                    <MoreVertical className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity">
+ <MoreVertical className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
-                                                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Operational Logic</DropdownMenuLabel>
-                                                                <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3">
-                                                                    <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm uppercase">Modify Blueprint</span>
+ <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+ <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Operational Logic</DropdownMenuLabel>
+ <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3">
+ <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm ">Modify Blueprint</span>
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
-                                                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm uppercase">{task.status === 'done' ? 'Reopen Protocol' : 'Mark Resolved'}</span>
+ <DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
+ <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm ">{task.status === 'done' ? 'Reopen Protocol' : 'Mark Resolved'}</span>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
-                                                                    <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm uppercase">Purge Protocol</span>
+ <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
+ <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm ">Purge Protocol</span>
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
@@ -555,9 +555,9 @@ export default function TasksClient() {
                                                 </div>
                                             );
                                         }) : (
-                                            <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
-                                                <EyeOff className="h-8 w-8 text-muted-foreground" />
-                                                <p className="text-[10px] font-black uppercase tracking-widest">No matching tasks in this phase</p>
+ <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
+ <EyeOff className="h-8 w-8 text-muted-foreground" />
+ <p className="text-[10px] font-semibold ">No matching tasks in this phase</p>
                                             </div>
                                         )}
 
@@ -567,9 +567,9 @@ export default function TasksClient() {
                                                     setEditingTask({ status } as any);
                                                     setEditorOpen(true);
                                                 }}
-                                                className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-white hover:border-primary/20 hover:text-primary transition-all group"
+ className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-white hover:border-primary/20 hover:text-primary transition-all group"
                                             >
-                                                <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
+ <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
                                             </button>
                                         )}
                                     </div>
@@ -578,11 +578,11 @@ export default function TasksClient() {
                         })}
                     </TabsContent>
 
-                    <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
+ <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
                         <TaskBoard tasks={filteredTasks} onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} />
                     </TabsContent>
 
-                    <TabsContent value="calendar" className="m-0">
+ <TabsContent value="calendar" className="m-0">
                         <TaskCalendar tasks={filteredTasks} onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} />
                     </TabsContent>
                 </Tabs>
@@ -597,21 +597,21 @@ export default function TasksClient() {
             />
 
             <AlertDialog open={!!taskToComplete} onOpenChange={(o) => !o && setTaskToComplete(null)}>
-                <AlertDialogContent className="rounded-[3rem] p-0 border-none shadow-2xl overflow-hidden">
-                    <div className="p-10 text-center space-y-6">
-                        <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[1.5rem] flex items-center justify-center">
-                            <CheckCircle2 className="h-10 w-10 text-primary" />
+ <AlertDialogContent className="rounded-[3rem] p-0 border-none shadow-2xl overflow-hidden">
+ <div className="p-10 text-center space-y-6">
+ <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[1.5rem] flex items-center justify-center">
+ <CheckCircle2 className="h-10 w-10 text-primary" />
                         </div>
-                        <div className="space-y-2">
-                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Resolve Task?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
+ <div className="space-y-2">
+ <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Task?</AlertDialogTitle>
+ <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
+ Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
                             </AlertDialogDescription>
                         </div>
                     </div>
-                    <div className="bg-muted/30 p-6 border-t flex flex-col sm:flex-row gap-3">
-                        <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-black h-12 flex-1 uppercase tracking-widest text-xs">
+ <div className="bg-muted/30 p-6 border-t flex flex-col sm:flex-row gap-3">
+ <AlertDialogCancel className="rounded-xl font-bold h-12 flex-1 border-none shadow-sm">Discard</AlertDialogCancel>
+ <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-semibold h-12 flex-1 text-xs">
                             Commit Result
                         </AlertDialogAction>
                     </div>
@@ -623,15 +623,15 @@ export default function TasksClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2.5rem] glass-card overflow-hidden group border-none">
-            <CardContent className="p-6 flex items-center gap-5">
-                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
-                    <Icon className="h-7 w-7" />
+ <Card className="rounded-[2.5rem] glass-card overflow-hidden group border-none">
+ <CardContent className="p-6 flex items-center gap-5">
+ <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
+ <Icon className="h-7 w-7" />
                 </div>
-                <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                    <p className="text-2xl font-black tabular-nums tracking-tighter truncate">{value}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1 truncate">{sub}</p>
+ <div className="flex-1 min-w-0">
+ <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
+ <p className="text-2xl font-semibold tabular-nums tracking-tighter truncate">{value}</p>
+ <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter mt-1 truncate">{sub}</p>
                 </div>
             </CardContent>
         </Card>

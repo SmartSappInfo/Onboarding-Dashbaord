@@ -23,7 +23,7 @@ export function ZoneSelect({ value, onValueChange, error }: ZoneSelectProps) {
   const { data: zones, isLoading } = useCollection<Zone>(zonesQuery);
 
   if (isLoading) {
-    return <Skeleton className="h-11 w-full rounded-xl" />;
+ return <Skeleton className="h-11 w-full rounded-xl" />;
   }
 
   return (
@@ -35,14 +35,14 @@ export function ZoneSelect({ value, onValueChange, error }: ZoneSelectProps) {
       }}
     >
       <SelectTrigger
-        className={cn(
+ className={cn(
           'h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all',
           error && 'ring-1 ring-destructive'
         )}
       >
         <SelectValue placeholder="Assign a Geographic Zone..." />
       </SelectTrigger>
-      <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
         {zones?.map((zone) => (
           <SelectItem key={zone.id} value={zone.id}>
             {zone.name}

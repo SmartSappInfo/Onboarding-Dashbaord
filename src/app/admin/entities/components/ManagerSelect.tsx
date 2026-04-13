@@ -37,7 +37,7 @@ export function ManagerSelect({ value, onValueChange, error, disabled }: Manager
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
 
   if (isLoading) {
-    return <Skeleton className="h-12 w-full rounded-xl" />;
+ return <Skeleton className="h-12 w-full rounded-xl" />;
   }
 
   // Robust mapping: ensure internal Select always has a string that matches an item
@@ -46,17 +46,17 @@ export function ManagerSelect({ value, onValueChange, error, disabled }: Manager
   return (
     <Select value={safeValue} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger 
-        className={cn(
+ className={cn(
             "h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all", 
             error && "ring-1 ring-destructive"
         )}
       >
         <SelectValue placeholder="Assign to team member..." />
       </SelectTrigger>
-      <SelectContent className="rounded-xl shadow-2xl border-none">
-        <SelectItem value="unassigned" className="font-bold italic opacity-60">Unassigned</SelectItem>
+ <SelectContent className="rounded-xl shadow-2xl border-none">
+ <SelectItem value="unassigned" className="font-bold italic opacity-60">Unassigned</SelectItem>
         {users?.map(u => (
-          <SelectItem key={u.id} value={u.id} className="font-bold">{u.name}</SelectItem>
+ <SelectItem key={u.id} value={u.id} className="font-bold">{u.name}</SelectItem>
         ))}
       </SelectContent>
     </Select>

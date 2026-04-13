@@ -68,7 +68,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
-    loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
+ loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
 });
 
 const LogActivityModal = dynamic(() => import('../components/LogActivityModal'), { ssr: false });
@@ -161,8 +161,8 @@ export default function EntityDetailPage() {
     // Navigation Entity Resolution
     useSetBreadcrumb(entityData?.name || weData?.displayName);
 
-    if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
-    if (!entityData || !weData) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">{singular} Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
+ if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
+ if (!entityData || !weData) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">{singular} Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {
@@ -190,11 +190,11 @@ export default function EntityDetailPage() {
     };
 
     const DetailItem = ({ icon: Icon, label, value, href, children }: { icon: any, label: string, value?: any, href?: string, children?: any }) => (
-        <div className="flex items-start gap-4">
-            <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50"><Icon className="h-4 w-4 text-muted-foreground" /></div>
-            <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
-                {href ? <a href={href} className="text-base font-bold text-foreground hover:text-primary truncate block underline-offset-4 hover:underline">{String(value)}</a> : value && <p className="text-base font-bold text-foreground leading-tight">{String(value)}</p>}
+ <div className="flex items-start gap-4">
+ <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50"><Icon className="h-4 w-4 text-muted-foreground" /></div>
+ <div className="min-w-0 flex-1">
+ <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
+ {href ? <a href={href} className="text-base font-bold text-foreground hover:text-primary truncate block underline-offset-4 hover:underline">{String(value)}</a> : value && <p className="text-base font-bold text-foreground leading-tight">{String(value)}</p>}
                 {children}
             </div>
         </div>
@@ -206,55 +206,55 @@ export default function EntityDetailPage() {
     const displayName = entityData.name || weData.displayName;
 
     return (
-        <div className={cn("h-full overflow-y-auto bg-background pb-32", weData.status === 'archived' && "grayscale opacity-80")}>
-            <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
+ <div className={cn("h-full overflow-y-auto bg-background pb-32", weData.status === 'archived' && "grayscale opacity-80")}>
+ <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div className="flex items-center gap-3">
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="rounded-xl font-bold h-10 border-primary/20 text-primary bg-background"
+ className="rounded-xl font-bold h-10 border-primary/20 text-primary bg-background"
                             onClick={() => setStatusModalOpen(true)}
                         >
-                            <ShieldCheck className="mr-2 h-4 w-4" /> 
+ <ShieldCheck className="mr-2 h-4 w-4" /> 
                             {updateStatus}
                         </Button>
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            className="rounded-xl font-bold h-10 border-blue-200 text-blue-600 bg-background"
+ className="rounded-xl font-bold h-10 border-blue-200 text-blue-600 bg-background"
                             onClick={() => setTransferModalOpen(true)}
                         >
-                            <ArrowRightLeft className="mr-2 h-4 w-4" /> 
+ <ArrowRightLeft className="mr-2 h-4 w-4" /> 
                             Transfer Pipeline
                         </Button>
                     </div>
-                    <div className="flex justify-end gap-2 text-left">
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4 bg-background" onClick={() => setIsLogModalOpen(true)}>
-                            <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
+ <div className="flex justify-end gap-2 text-left">
+ <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4 bg-background" onClick={() => setIsLogModalOpen(true)}>
+ <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
                             Log Interaction
                         </Button>
-                        <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/entities/${entityId}/edit`)}>
-                            <PenSquare className="mr-2 h-4 w-4" /> 
+ <Button className="rounded-xl font-semibold shadow-lg h-10 px-6" onClick={() => router.push(`/admin/entities/${entityId}/edit`)}>
+ <PenSquare className="mr-2 h-4 w-4" /> 
                             Edit Profile
                         </Button>
                     </div>
                 </div>
 
-                <Card className="border-none shadow-2xl overflow-hidden glass-card rounded-[2.5rem] bg-card">
-                    <div className="h-48 bg-slate-900 relative group">
-                        {institutionData?.logoUrl && <Image src={institutionData.logoUrl} alt="banner" fill className="object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />}
-                        <div className="absolute bottom-6 right-8 flex gap-3">
+ <Card className="border-none shadow-2xl overflow-hidden glass-card rounded-[2.5rem] bg-card">
+ <div className="h-48 bg-slate-900 relative group">
+ {institutionData?.logoUrl && <Image src={institutionData.logoUrl} alt="banner" fill className="object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />}
+ <div className="absolute bottom-6 right-8 flex gap-3">
                              <Badge 
                                 variant={getStatusBadgeVariant(weData.status)} 
-                                className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md"
+ className="h-10 px-6 text-[10px] font-semibold rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md"
                              >
                                 {weData.status}
                              </Badge>
                              {weData.lifecycleStatus && (
                                 <Badge 
-                                    className={cn(
-                                        "h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md",
+ className={cn(
+                                        "h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md",
                                         weData.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
                                         weData.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-500"
                                     )}
@@ -262,40 +262,40 @@ export default function EntityDetailPage() {
                                     {weData.lifecycleStatus}
                                 </Badge>
                              )}
-                             <Badge className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md bg-primary/80">
+                             <Badge className="h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md bg-primary/80">
                                 {weData.currentStageName || 'Welcome'}
                              </Badge>
                         </div>
                     </div>
-                    <CardContent className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end md:items-center gap-8">
+ <CardContent className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end md:items-center gap-8">
                         <div 
-                            className="relative h-44 w-44 rounded-[3rem] bg-card p-3 shadow-2xl ring-8 ring-border/20 overflow-hidden border border-border/50 shrink-0 group cursor-pointer"
+ className="relative h-44 w-44 rounded-[3rem] bg-card p-3 shadow-2xl ring-8 ring-border/20 overflow-hidden border border-border/50 shrink-0 group cursor-pointer"
                             onClick={() => setIsLogoDialogOpen(true)}
                         >
                             {isInstitution && institutionData?.logoUrl ? (
-                                <Image src={institutionData.logoUrl} alt={displayName} fill className="object-contain p-6 transition-transform duration-500 group-hover:scale-110" />
+ <Image src={institutionData.logoUrl} alt={displayName} fill className="object-contain p-6 transition-transform duration-500 group-hover:scale-110" />
                             ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-5xl font-black">{getInitials(displayName)}</div>
+ <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-5xl font-semibold">{getInitials(displayName)}</div>
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
-                                <Camera className="h-8 w-8" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Change Photo</span>
+ <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
+ <Camera className="h-8 w-8" />
+ <span className="text-[10px] font-semibold ">Change Photo</span>
                             </div>
                         </div>
-                        <div className="flex-1 space-y-4 pt-4 text-left">
-                            <div className="flex items-center gap-3">
-                                <Badge variant="outline" className="font-black border-2 text-primary border-primary/20 bg-primary/5 uppercase">
+ <div className="flex-1 space-y-4 pt-4 text-left">
+ <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="font-semibold border-2 text-primary border-primary/20 bg-primary/5 uppercase">
                                     {entityData.entityType}
                                 </Badge>
-                                <Separator orientation="vertical" className="h-4" />
-                                <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm uppercase tracking-widest"><MapPin className="h-3.5 w-3.5" /> {institutionData?.location?.zone || 'Unassigned'}</span>
-                                <Separator orientation="vertical" className="h-4" />
-                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-blue-200 text-blue-600 bg-blue-50">
+ <Separator orientation="vertical" className="h-4" />
+ <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm "><MapPin className="h-3.5 w-3.5" /> {typeof institutionData?.location?.zone === 'object' ? institutionData?.location?.zone?.name : (institutionData?.location?.zone || 'Unassigned')}</span>
+ <Separator orientation="vertical" className="h-4" />
+                                <Badge variant="outline" className="text-[8px] font-semibold uppercase  border-blue-200 text-blue-600 bg-blue-50">
                                     Entity System
                                 </Badge>
                             </div>
-                            <h2 className="text-3xl font-black tracking-tight uppercase">{displayName}</h2>
-                            <div className="flex flex-wrap items-center gap-2">
+ <h2 className="text-3xl font-semibold tracking-tight ">{displayName}</h2>
+ <div className="flex flex-wrap items-center gap-2">
                                 <TagSelector
                                     contactId={entityId}
                                     contactType="school"
@@ -306,29 +306,29 @@ export default function EntityDetailPage() {
                     </CardContent>
                 </Card>
 
-                <Tabs defaultValue="overview" className="space-y-8">
-                    <TabsList className="bg-card/40 border shadow-sm p-1 h-12 rounded-2xl w-fit backdrop-blur-sm">
-                        <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Insights</TabsTrigger>
-                        <TabsTrigger value="tasks" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+ <Tabs defaultValue="overview" className="space-y-8">
+ <TabsList className="bg-card/40 border shadow-sm p-1 h-12 rounded-2xl w-fit backdrop-blur-sm">
+ <TabsTrigger value="overview" className="rounded-xl font-semibold text-[10px] px-8">Insights</TabsTrigger>
+ <TabsTrigger value="tasks" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
                             Tasks
                             {tasks && tasks.length > 0 && (
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
-                            <Receipt className="h-4 w-4" /> Billing & Finance
+ <TabsTrigger value="billing" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
+ <Receipt className="h-4 w-4" /> Billing & Finance
                         </TabsTrigger>
-                        <TabsTrigger value="timeline" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Activity Feed</TabsTrigger>
+ <TabsTrigger value="timeline" className="rounded-xl font-semibold text-[10px] px-8">Activity Feed</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
-                                <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
-                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Focal Directory</CardTitle>
+ <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+ <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+ <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Focal Directory</CardTitle>
                                 </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-border/50">
+ <CardContent className="p-0">
+ <div className="divide-y divide-border/50">
                                         {(() => {
                                             const contacts = (entityData.contacts && entityData.contacts.length > 0) 
                                                 ? entityData.contacts 
@@ -336,50 +336,50 @@ export default function EntityDetailPage() {
                                             
                                             return contacts.length > 0 ? (
                                                 contacts.map((person, idx) => (
-                                                <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors text-left">
-                                                    <div className="flex items-center gap-4 text-left">
-                                                        <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-black text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
-                                                        <div className="text-left">
-                                                            <p className="font-black text-base uppercase">{person.name}</p>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-5">{person.type}</Badge>
-                                                                {person.isSignatory && <Badge className="text-[7px] font-black uppercase bg-amber-500 text-white border-none py-0.5 px-2">Focal Person</Badge>}
+ <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors text-left">
+ <div className="flex items-center gap-4 text-left">
+ <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-semibold text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
+ <div className="text-left">
+ <p className="font-semibold text-base ">{person.name}</p>
+ <div className="flex items-center gap-2 mt-1">
+                                                                <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5">{person.type}</Badge>
+                                                                {person.isSignatory && <Badge className="text-[7px] font-semibold uppercase bg-amber-500 text-white border-none py-0.5 px-2">Focal Person</Badge>}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2 w-full sm:w-auto">
-                                                        {person.email && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`mailto:${person.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a></Button>}
-                                                        {person.phone && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`tel:${person.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a></Button>}
+ <div className="flex gap-2 w-full sm:w-auto">
+ {person.email && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`mailto:${person.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a></Button>}
+ {person.phone && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`tel:${person.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a></Button>}
                                                     </div>
                                                  </div>
                                               ))
                                             ) : (
-                                                <div className="p-12 text-center text-muted-foreground font-medium italic">No focal persons initialized.</div>
+ <div className="p-12 text-center text-muted-foreground font-medium italic">No focal persons initialized.</div>
                                             );
                                         })()}
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
-                                <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 text-left">
-                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
+ <Card className="border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+ <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 text-left">
+ <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
                                 </CardHeader>
-                                <CardContent className="p-8 space-y-8 text-left">
-                                    <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/10 border border-primary/20 shadow-inner">
-                                        <div className="space-y-1 text-left">
-                                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Nominal Strength</p>
-                                            <p className="text-3xl font-black tabular-nums tracking-tighter text-primary">{institutionData?.nominalRoll?.toLocaleString() || '0'}</p>
+ <CardContent className="p-8 space-y-8 text-left">
+ <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/10 border border-primary/20 shadow-inner">
+ <div className="space-y-1 text-left">
+ <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
+ <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{institutionData?.nominalRoll?.toLocaleString() || '0'}</p>
                                         </div>
-                                        <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
+ <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
                                     </div>
-                                    <div className="space-y-6 text-left">
+ <div className="space-y-6 text-left">
                                         <DetailItem icon={UserCheck} label="Account Manager" value={weData.assignedTo?.name || 'Unassigned'} />
                                         <DetailItem icon={Workflow} label="Current Stage" value={weData.currentStageName || 'Not Set'} />
-                                        <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = weData.addedAt?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
+                                        <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = (weData.addedAt as any)?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
                                         <Separator />
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1 text-left">System Information</p>
+ <div className="space-y-3">
+ <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">System Information</p>
                                             <DetailItem icon={Globe} label="Website" value={institutionData?.website || '—'} href={institutionData?.website ? (institutionData.website.startsWith('http') ? institutionData.website : `https://${institutionData.website}`) : undefined} />
                                         </div>
                                     </div>
@@ -388,28 +388,28 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <div className="flex justify-between items-center mb-2 px-2">
-                            <h3 className="text-xl font-black uppercase tracking-tight">Pending Actions</h3>
-                            <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
+ <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <div className="flex justify-between items-center mb-2 px-2">
+ <h3 className="text-xl font-semibold tracking-tight">Pending Actions</h3>
+ <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
                                 <Link href={`/admin/tasks?entityId=${entityId}`}>
-                                    <Plus className="h-4 w-4" /> Create Task
+ <Plus className="h-4 w-4" /> Create Task
                                 </Link>
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                             {isLoadingTasks ? (
-                                Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
+ Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
                             ) : tasks && tasks.length > 0 ? (
                                 tasks.map(task => (
-                                    <Card key={task.id} className="border-border/50 rounded-2xl bg-card shadow-sm hover:shadow-md transition-all text-left">
-                                        <CardContent className="p-4 flex items-center gap-4 text-left">
-                                            <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
-                                            <div className="flex-1 min-w-0 text-left">
-                                                <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{task.title}</p>
-                                                <div className="flex items-center gap-3 mt-1 text-[9px] font-bold uppercase tracking-tighter">
-                                                    <span className={cn("flex items-center gap-1", isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "text-rose-600" : "text-muted-foreground")}>
-                                                        <Clock className="h-2.5 w-2.5" /> Due {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
+ <Card key={task.id} className="border-border/50 rounded-2xl bg-card shadow-sm hover:shadow-md transition-all text-left">
+ <CardContent className="p-4 flex items-center gap-4 text-left">
+ <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
+ <div className="flex-1 min-w-0 text-left">
+ <p className="text-sm font-semibold tracking-tight truncate leading-tight">{task.title}</p>
+ <div className="flex items-center gap-3 mt-1 text-[9px] font-bold tracking-tighter">
+ <span className={cn("flex items-center gap-1", isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "text-rose-600" : "text-muted-foreground")}>
+ <Clock className="h-2.5 w-2.5" /> Due {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
                                                     </span>
                                                     <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px] uppercase">{task.category}</Badge>
                                                 </div>
@@ -418,26 +418,26 @@ export default function EntityDetailPage() {
                                     </Card>
                                 ))
                             ) : (
-                                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-background/20 opacity-30 flex flex-col items-center gap-2">
-                                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending actions for this {singular.toLowerCase()}</p>
+ <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-background/20 opacity-30 flex flex-col items-center gap-2">
+ <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+ <p className="text-[10px] font-semibold ">No pending actions for this {singular.toLowerCase()}</p>
                                 </div>
                             )}
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
                     </TabsContent>
 
-                    <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
-                            <div className="mb-10 flex items-center gap-3 text-left">
-                                <div className="flex flex-col text-left">
-                                    <Badge variant="outline" className="w-fit bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary mb-1">Audit Trail</Badge>
-                                    <h3 className="text-2xl font-black tracking-tight uppercase">Operational Logs</h3>
+ <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
+ <div className="mb-10 flex items-center gap-3 text-left">
+ <div className="flex flex-col text-left">
+                                    <Badge variant="outline" className="w-fit bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary mb-1">Audit Trail</Badge>
+ <h3 className="text-2xl font-semibold tracking-tight ">Operational Logs</h3>
                                 </div>
-                                <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+ <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                             </div>
                             <ActivityTimeline entityId={entityId} limit={20} />
                         </div>
@@ -446,33 +446,33 @@ export default function EntityDetailPage() {
             </div>
 
             <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border shadow-2xl bg-card">
-                    <DialogHeader className="p-8 bg-card/20 border-b shrink-0 text-left">
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
-                                <Camera className="h-6 w-6" />
+ <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border shadow-2xl bg-card">
+ <DialogHeader className="p-8 bg-card/20 border-b shrink-0 text-left">
+ <div className="flex items-center gap-4 text-left">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
+ <Camera className="h-6 w-6" />
                             </div>
-                            <div className="text-left">
-                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Identity Branding</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select or upload a new primary photo.</DialogDescription>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight">Identity Branding</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground">Select or upload a new primary photo.</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
-                    <div className="p-8 text-left">
+ <div className="p-8 text-left">
                         <MediaSelect 
                             value={institutionData?.logoUrl} 
                             onValueChange={handleLogoUpdate} 
-                            className="rounded-2xl" 
+ className="rounded-2xl" 
                         />
                         {isUpdatingLogo && (
-                            <div className="mt-4 flex items-center justify-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest animate-pulse">
-                                <Loader2 className="h-3 w-3 animate-spin" />
+ <div className="mt-4 flex items-center justify-center gap-2 text-primary font-semibold text-[10px] animate-pulse">
+ <Loader2 className="h-3 w-3 animate-spin" />
                                 Synchronizing Branding...
                             </div>
                         )}
                     </div>
-                    <DialogFooter className="p-4 bg-card/50 border-t flex justify-end">
-                        <Button variant="ghost" onClick={() => setIsLogoDialogOpen(false)} className="rounded-xl font-bold h-11 px-8">Discard</Button>
+ <DialogFooter className="p-4 bg-card/50 border-t flex justify-end">
+ <Button variant="ghost" onClick={() => setIsLogoDialogOpen(false)} className="rounded-xl font-bold h-11 px-8">Discard</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

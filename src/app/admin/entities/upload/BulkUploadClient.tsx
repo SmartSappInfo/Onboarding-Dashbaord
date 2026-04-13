@@ -253,24 +253,24 @@ export default function BulkUploadClient() {
     const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
-            <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
+ <div className="max-w-7xl mx-auto space-y-8">
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
                         <motion.div key="upload" {...stepTransition}>
-                            <div className="flex justify-end mb-6"><Button variant="outline" onClick={handleDownloadTemplate} className="gap-2 rounded-xl font-bold"><Download size={16} /> Template</Button></div>
-                            <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
-                                <CardHeader className="text-center py-16 bg-card/20 border-b">
-                                    <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl"><Upload className="h-10 w-10 text-primary" /></div>
-                                    <CardTitle className="text-4xl font-black tracking-tight uppercase">Institutional Import</CardTitle>
-                                    <CardDescription className="text-lg font-medium max-w-md mx-auto mt-4">Automate school onboarding by mapping spreadsheet data directly to our database.</CardDescription>
+ <div className="flex justify-end mb-6"><Button variant="outline" onClick={handleDownloadTemplate} className="gap-2 rounded-xl font-bold"><Download size={16} /> Template</Button></div>
+ <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <CardHeader className="text-center py-16 bg-card/20 border-b">
+ <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl"><Upload className="h-10 w-10 text-primary" /></div>
+ <CardTitle className="text-4xl font-semibold tracking-tight ">Institutional Import</CardTitle>
+ <CardDescription className="text-lg font-medium max-w-md mx-auto mt-4">Automate school onboarding by mapping spreadsheet data directly to our database.</CardDescription>
                                 </CardHeader>
-                                <CardContent className="p-12">
-                                    <label htmlFor="bulk-file" className="w-full max-w-xl mx-auto block cursor-pointer">
-                                        <div className="border-4 border-dashed border-border/20 rounded-[2.5rem] p-16 text-center transition-all hover:border-primary/40 hover:bg-primary/5 flex flex-col items-center gap-6">
-                                            <div className="p-6 bg-card rounded-3xl shadow-xl border border-border/50"><FileText size={48} className="text-primary" /></div>
-                                            <p className="text-xl font-black uppercase">Drop Document Here</p>
-                                            <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
+ <CardContent className="p-12">
+ <label htmlFor="bulk-file" className="w-full max-w-xl mx-auto block cursor-pointer">
+ <div className="border-4 border-dashed border-border/20 rounded-[2.5rem] p-16 text-center transition-all hover:border-primary/40 hover:bg-primary/5 flex flex-col items-center gap-6">
+ <div className="p-6 bg-card rounded-3xl shadow-xl border border-border/50"><FileText size={48} className="text-primary" /></div>
+ <p className="text-xl font-semibold ">Drop Document Here</p>
+ <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
                                         </div>
                                     </label>
                                 </CardContent>
@@ -280,24 +280,24 @@ export default function BulkUploadClient() {
 
                     {currentStep === 'MAPPING' && (
                         <motion.div key="mapping" {...stepTransition}>
-                            <div className="flex items-center justify-between mb-8">
-                                <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="font-bold gap-2"><ArrowLeft size={16} /> Change File</Button>
-                                <Badge className="bg-primary px-4 h-8 uppercase font-black">{rawData.length} Schools Identified</Badge>
+ <div className="flex items-center justify-between mb-8">
+ <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="font-bold gap-2"><ArrowLeft size={16} /> Change File</Button>
+                                <Badge className="bg-primary px-4 h-8 uppercase font-semibold">{rawData.length} Schools Identified</Badge>
                             </div>
-                            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
-                                <CardHeader className="bg-card/20 border-b p-8">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><TableIcon size={24} /></div>
-                                        <div><CardTitle className="text-2xl font-black uppercase">Schema Correlation</CardTitle><CardDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Map columns to institutional system fields.</CardDescription></div>
+ <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <CardHeader className="bg-card/20 border-b p-8">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><TableIcon size={24} /></div>
+ <div><CardTitle className="text-2xl font-semibold ">Schema Correlation</CardTitle><CardDescription className="text-xs font-bold opacity-60">Map columns to institutional system fields.</CardDescription></div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+ <CardContent className="p-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
                                     {TARGET_FIELDS.map((field) => (
-                                        <div key={field.key} className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{field.label} {field.required && '*'}</Label>
+ <div key={field.key} className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{field.label} {field.required && '*'}</Label>
                                             <Select value={mapping[field.key] || 'none'} onValueChange={(val) => setMapping(prev => ({ ...prev, [field.key]: val }))}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-background/50 border-none shadow-inner font-bold"><SelectValue placeholder="Ignore field" /></SelectTrigger>
-                                                <SelectContent className="rounded-xl">
+ <SelectTrigger className="h-12 rounded-xl bg-background/50 border-none shadow-inner font-bold"><SelectValue placeholder="Ignore field" /></SelectTrigger>
+ <SelectContent className="rounded-xl">
                                                     <SelectItem value="none">-- Ignore --</SelectItem>
                                                     {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                                 </SelectContent>
@@ -305,63 +305,63 @@ export default function BulkUploadClient() {
                                         </div>
                                     ))}
                                 </CardContent>
-                                <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
-                                    <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-5 shadow-inner">
-                                        <div className="p-3 bg-card rounded-2xl text-blue-500 shadow-sm border border-blue-500/20"><Zap size={24} /></div>
-                                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest opacity-80 leading-relaxed">Systematic logic will resolve your Regional Zones and Managers using deterministic matching during import.</p>
+ <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
+ <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-5 shadow-inner">
+ <div className="p-3 bg-card rounded-2xl text-blue-500 shadow-sm border border-blue-500/20"><Zap size={24} /></div>
+ <p className="text-[10px] text-blue-700 font-bold opacity-80 leading-relaxed">Systematic logic will resolve your Regional Zones and Managers using deterministic matching during import.</p>
                                     </div>
-                                    <Button onClick={() => startExecution()} disabled={!mapping['name']} className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-widest gap-3"><Zap size={24} /> Launch Hub Import</Button>
+ <Button onClick={() => startExecution()} disabled={!mapping['name']} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3"><Zap size={24} /> Launch Hub Import</Button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
 
                     {currentStep === 'EXECUTING' && (
-                        <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-black uppercase">Task Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length} Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
+ <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-semibold ">Task Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length} Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
                     )}
 
                     {currentStep === 'COMPLETE' && (
-                        <motion.div key="complete" className="space-y-8">
-                            <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card text-center">
-                                <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-500/10" : "bg-orange-500/10")}>
-                                    <div className="mx-auto bg-card/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl"><Check size={48} /></div>
-                                    <CardTitle className="text-4xl font-black uppercase">Import Report</CardTitle>
-                                    <p className="text-base font-bold uppercase tracking-widest mt-4">{executionResults.filter(r => r.status === 'success').length} Records Synchronized</p>
+ <motion.div key="complete" className="space-y-8">
+ <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card text-center">
+ <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-500/10" : "bg-orange-500/10")}>
+ <div className="mx-auto bg-card/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl"><Check size={48} /></div>
+ <CardTitle className="text-4xl font-semibold ">Import Report</CardTitle>
+ <p className="text-base font-bold mt-4">{executionResults.filter(r => r.status === 'success').length} Records Synchronized</p>
                                 </CardHeader>
-                                <CardContent className="p-12">
-                                    <div className="flex justify-between max-w-3xl mx-auto border-b pb-8 mb-8 text-left">
-                                        <div><p className="text-sm font-black uppercase text-muted-foreground mb-1">Success Rate</p><p className="text-4xl font-black text-emerald-600">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p></div>
-                                        {failedRowIndices.length > 0 && <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="h-14 px-8 rounded-xl font-black uppercase tracking-widest text-xs gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"><AlertCircle size={16} /> Manage {failedRowIndices.length} Failures</Button>}
+ <CardContent className="p-12">
+ <div className="flex justify-between max-w-3xl mx-auto border-b pb-8 mb-8 text-left">
+ <div><p className="text-sm font-semibold text-muted-foreground mb-1">Success Rate</p><p className="text-4xl font-semibold text-emerald-600">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p></div>
+ {failedRowIndices.length > 0 && <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="h-14 px-8 rounded-xl font-semibold text-xs gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"><AlertCircle size={16} /> Manage {failedRowIndices.length} Failures</Button>}
                                     </div>
-                                    <Button onClick={() => router.push('/admin/entities')} className="h-16 px-16 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Open Directory <ArrowRight className="ml-2" /></Button>
+ <Button onClick={() => router.push('/admin/entities')} className="h-16 px-16 rounded-[1.5rem] font-semibold shadow-xl">Open Directory <ArrowRight className="ml-2" /></Button>
                                 </CardContent>
                             </Card>
                         </motion.div>
                     )}
 
                     {currentStep === 'CORRECTION' && (
-                        <motion.div key="correction" className="space-y-8">
-                            <div className="flex items-center justify-between mb-8"><Button variant="ghost" onClick={() => setCurrentStep('COMPLETE')} className="font-bold gap-2"><ArrowLeft size={16} /> Summary</Button><h2 className="text-2xl font-black uppercase text-rose-600">Correction Console</h2></div>
-                            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
-                                <ScrollArea className="h-[500px]">
+ <motion.div key="correction" className="space-y-8">
+ <div className="flex items-center justify-between mb-8"><Button variant="ghost" onClick={() => setCurrentStep('COMPLETE')} className="font-bold gap-2"><ArrowLeft size={16} /> Summary</Button><h2 className="text-2xl font-semibold text-rose-600">Correction Console</h2></div>
+ <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <ScrollArea className="h-[500px]">
                                     <Table>
-                                        <TableHeader className="bg-card/20 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="pl-8 py-4 uppercase font-black text-[10px]">Row</TableHead><TableHead className="py-4 uppercase font-black text-[10px]">Identity</TableHead><TableHead className="py-4 uppercase font-black text-[10px]">Logic Failure</TableHead><TableHead className="text-right pr-8 uppercase font-black text-[10px]">Actions</TableHead></TableRow></TableHeader>
+ <TableHeader className="bg-card/20 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="pl-8 py-4 font-semibold text-[10px]">Row</TableHead><TableHead className="py-4 font-semibold text-[10px]">Identity</TableHead><TableHead className="py-4 font-semibold text-[10px]">Logic Failure</TableHead><TableHead className="text-right pr-8 font-semibold text-[10px]">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
                                             {failedRowIndices.map(idx => (
-                                                <TableRow key={idx} className="group hover:bg-rose-50/30 transition-colors">
-                                                    <TableCell className="pl-8 font-black text-xs">#{idx + 1}</TableCell>
-                                                    <TableCell className="font-bold text-xs">{rawData[idx][mapping['name']] || 'Untitled'}</TableCell>
+ <TableRow key={idx} className="group hover:bg-rose-50/30 transition-colors">
+ <TableCell className="pl-8 font-semibold text-xs">#{idx + 1}</TableCell>
+ <TableCell className="font-bold text-xs">{rawData[idx][mapping['name']] || 'Untitled'}</TableCell>
                                                     <TableCell><Badge variant="outline" className="bg-rose-500/10 text-rose-500 border-none text-[10px]">{executionResults.find(r => r.row === idx)?.error || 'Logic Error'}</Badge></TableCell>
-                                                    <TableCell className="text-right pr-8 flex items-center justify-end gap-2 py-4">
-                                                        <Button variant="ghost" size="icon" onClick={() => setEditingRowIdx(idx)} className="h-8 w-8 text-rose-600"><Pencil size={14} /></Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))} className="h-8 w-8 text-muted-foreground"><X size={14} /></Button>
+ <TableCell className="text-right pr-8 flex items-center justify-end gap-2 py-4">
+ <Button variant="ghost" size="icon" onClick={() => setEditingRowIdx(idx)} className="h-8 w-8 text-rose-600"><Pencil size={14} /></Button>
+ <Button variant="ghost" size="icon" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))} className="h-8 w-8 text-muted-foreground"><X size={14} /></Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
                                     </Table>
                                 </ScrollArea>
-                                <CardFooter className="bg-rose-500/10 p-8 border-t"><Button onClick={() => startExecution(failedRowIndices)} disabled={failedRowIndices.length === 0} className="w-full h-14 rounded-xl bg-rose-600 hover:bg-rose-700 font-black uppercase tracking-widest gap-2 shadow-lg"><RefreshCw size={16} /> Re-Execute Failures</Button></CardFooter>
+ <CardFooter className="bg-rose-500/10 p-8 border-t"><Button onClick={() => startExecution(failedRowIndices)} disabled={failedRowIndices.length === 0} className="w-full h-14 rounded-xl bg-rose-600 hover:bg-rose-700 font-semibold gap-2 shadow-lg"><RefreshCw size={16} /> Re-Execute Failures</Button></CardFooter>
                             </Card>
                         </motion.div>
                     )}
@@ -378,15 +378,15 @@ function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: { open:
     React.useEffect(() => { if (open) setLocalData(data); }, [open, data]);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border shadow-2xl bg-card">
-                <DialogHeader className="p-8 bg-card/20 border-b shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary text-white rounded-xl shadow-lg"><Pencil size={24} /></div>
-                        <div className="text-left"><DialogTitle className="text-xl font-black uppercase">Edit Record</DialogTitle><DialogDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Manual Correction for Row #{rowIndex + 1}</DialogDescription></div>
+ <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border shadow-2xl bg-card">
+ <DialogHeader className="p-8 bg-card/20 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-xl shadow-lg"><Pencil size={24} /></div>
+ <div className="text-left"><DialogTitle className="text-xl font-semibold ">Edit Record</DialogTitle><DialogDescription className="text-xs font-bold opacity-60">Manual Correction for Row #{rowIndex + 1}</DialogDescription></div>
                     </div>
                 </DialogHeader>
-                <div className="flex-1 overflow-hidden"><ScrollArea className="h-[400px]"><div className="p-8 space-y-6">{Object.entries(localData).map(([key, val]) => (<div key={key} className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{key}</Label><Input value={String(val || '')} onChange={e => setLocalData((p: any) => ({ ...p, [key]: e.target.value }))} className="h-11 rounded-xl bg-background/50 border-none font-bold shadow-inner" /></div>))}</div></ScrollArea></div>
-                <DialogFooter className="p-6 bg-card/20 border-t flex justify-between"><Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button><Button onClick={() => onSave(rowIndex, localData)} className="rounded-xl font-black px-8 shadow-xl bg-primary text-white uppercase text-xs tracking-widest">Apply Corrections</Button></DialogFooter>
+ <div className="flex-1 overflow-hidden"><ScrollArea className="h-[400px]"><div className="p-8 space-y-6">{Object.entries(localData).map(([key, val]) => (<div key={key} className="space-y-1.5"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">{key}</Label><Input value={String(val || '')} onChange={e => setLocalData((p: any) => ({ ...p, [key]: e.target.value }))} className="h-11 rounded-xl bg-background/50 border-none font-bold shadow-inner" /></div>))}</div></ScrollArea></div>
+ <DialogFooter className="p-6 bg-card/20 border-t flex justify-between"><Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button><Button onClick={() => onSave(rowIndex, localData)} className="rounded-xl font-semibold px-8 shadow-xl bg-primary text-white text-xs ">Apply Corrections</Button></DialogFooter>
             </DialogContent>
         </Dialog>
     );

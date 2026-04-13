@@ -125,9 +125,9 @@ export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
             onDragEnd={handleDragEnd}
             collisionDetection={closestCorners}
         >
-            <div className="h-full relative overflow-hidden">
-                <ScrollArea className="h-full w-full">
-                    <div className="flex h-full gap-6 p-1">
+ <div className="h-full relative overflow-hidden">
+ <ScrollArea className="h-full w-full">
+ <div className="flex h-full gap-6 p-1">
                         {TASK_STATUSES.map(status => (
                             <TaskColumn 
                                 key={status} 
@@ -143,7 +143,7 @@ export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
 
             <DragOverlay dropAnimation={null}>
                 {activeTask ? (
-                    <div className="w-72 pointer-events-none">
+ <div className="w-72 pointer-events-none">
                         <TaskCard task={activeTask} isOverlay />
                     </div>
                 ) : null}

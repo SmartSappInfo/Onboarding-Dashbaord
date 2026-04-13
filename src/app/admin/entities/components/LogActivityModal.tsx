@@ -126,30 +126,30 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-[2rem] text-left">
-        <DialogHeader className="text-left">
-          <DialogTitle className="text-xl font-black text-left">Log Activity for {entity.displayName}</DialogTitle>
-          <DialogDescription className="text-left">
+ <DialogContent className="rounded-[2rem] text-left">
+ <DialogHeader className="text-left">
+ <DialogTitle className="text-xl font-semibold text-left">Log Activity for {entity.displayName}</DialogTitle>
+ <DialogDescription className="text-left">
             Record an interaction or add a note. This will be added to the {singular.toLowerCase()}&apos;s chronological timeline.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4 text-left">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4 text-left">
             <FormField
               control={form.control}
               name="type"
               render={({ field }) => (
-                <FormItem className="text-left">
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 text-left">Event Type</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Event Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+ <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
                         <SelectValue placeholder="Select type..." />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                       {MANUAL_ACTIVITY_TYPES.map((type) => (
-                        <SelectItem key={type} value={type} className="capitalize">
+ <SelectItem key={type} value={type} className="capitalize">
                           {type.replace('_', ' ')}
                         </SelectItem>
                       ))}
@@ -163,12 +163,12 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
               control={form.control}
               name="content"
               render={({ field }) => (
-                <FormItem className="text-left">
-                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 text-left">Notes / Description</FormLabel>
+ <FormItem className="text-left">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Notes / Description</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder={`e.g., Spoke with the focal person about the upcoming kickoff meeting. They requested more info on billing.`}
-                      className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed text-left"
+ className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed text-left"
                       {...field}
                     />
                   </FormControl>
@@ -176,12 +176,12 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
                 </FormItem>
               )}
             />
-            <DialogFooter className="gap-2 text-left">
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold text-left">
+ <DialogFooter className="gap-2 text-left">
+ <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold text-left">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="rounded-xl px-8 font-black shadow-lg text-left">
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+ <Button type="submit" disabled={isSubmitting} className="rounded-xl px-8 font-semibold shadow-lg text-left">
+ {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Log
               </Button>
             </DialogFooter>

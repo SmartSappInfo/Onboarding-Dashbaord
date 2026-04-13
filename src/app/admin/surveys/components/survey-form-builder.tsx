@@ -237,11 +237,11 @@ export default function SurveyFormBuilder() {
     };
 
     return (
-        <div className="relative">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
+ <div className="relative">
+ <div className="flex flex-col md:flex-row gap-8 items-start">
                 {/* Vertical Builder Toolbar - Now Top Left */}
-                <div className="hidden md:block w-14 shrink-0 sticky top-24">
-                    <Card className="shadow-2xl border-none glass-card p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-border">
+ <div className="hidden md:block w-14 shrink-0 sticky top-24">
+ <Card className="shadow-2xl border-none glass-card p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-border">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -249,20 +249,20 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant="ghost" 
-                                        className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
+ className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
                                         onClick={() => requestAddElement(fields.length - 1)}
                                     >
-                                        <PlusCircle className="h-5 w-5 text-primary" />
+ <PlusCircle className="h-5 w-5 text-primary" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Add Block</TooltipContent>
                             </Tooltip>
 
-                            <Separator className="w-8" />
+ <Separator className="w-8" />
 
                             <AiChatEditor variant="icon" />
 
-                            <Separator className="w-8" />
+ <Separator className="w-8" />
 
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -270,10 +270,10 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant={allPagesEnabled ? "secondary" : "ghost"} 
-                                        className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
+ className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
                                         onClick={toggleAllPageBreaks}
                                     >
-                                        <Layout className="h-5 w-5" />
+ <Layout className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Toggle All Page Breaks</TooltipContent>
@@ -285,16 +285,16 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant={allValidationEnabled ? "secondary" : "ghost"} 
-                                        className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
+ className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
                                         onClick={toggleAllValidation}
                                     >
-                                        <ShieldCheck className="h-5 w-5" />
+ <ShieldCheck className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Toggle All Strict Validation</TooltipContent>
                             </Tooltip>
 
-                            <Separator className="w-8" />
+ <Separator className="w-8" />
 
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -302,11 +302,11 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant="ghost" 
-                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+ className="h-10 w-10 rounded-xl disabled:opacity-30"
                                         onClick={handleUndo} 
                                         disabled={!canUndo}
                                     >
-                                        <Undo className="h-5 w-5" />
+ <Undo className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Undo</TooltipContent>
@@ -318,23 +318,23 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant="ghost" 
-                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+ className="h-10 w-10 rounded-xl disabled:opacity-30"
                                         onClick={handleRedo} 
                                         disabled={!canRedo}
                                     >
-                                        <Redo className="h-5 w-5" />
+ <Redo className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Redo</TooltipContent>
                             </Tooltip>
 
-                            <Separator className="w-8" />
+ <Separator className="w-8" />
 
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div className="inline-block">
-                                        <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
-                                            <Eye className="h-5 w-5 text-primary" />
+ <div className="inline-block">
+ <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
+ <Eye className="h-5 w-5 text-primary" />
                                         </SurveyPreviewButton>
                                     </div>
                                 </TooltipTrigger>
@@ -344,7 +344,7 @@ export default function SurveyFormBuilder() {
                     </Card>
                 </div>
 
-                <div className="flex-1 w-full">
+ <div className="flex-1 w-full">
                     {fields.length > 0 ? (
                         <QuestionEditor 
                             fields={fields} 
@@ -355,13 +355,13 @@ export default function SurveyFormBuilder() {
                             requestAddElement={requestAddElement}
                         />
                     ) : (
-                          <div className="text-center py-20 bg-card/20 border-2 border-dashed border-border/50 rounded-[2.5rem] shadow-inner">
-                            <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
+ <div className="text-center py-20 bg-card/20 border-2 border-dashed border-border/50 rounded-[2.5rem] shadow-inner">
+ <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
                             <Button type="button" variant="outline" size="lg" onClick={() => {
                                 setInsertionIndex(0);
                                 setIsAddElementModalOpen(true);
                             }}>
-                                <PlusCircle className="mr-2 h-5 w-5" />
+ <PlusCircle className="mr-2 h-5 w-5" />
                                 Add First Element
                             </Button>
                         </div>

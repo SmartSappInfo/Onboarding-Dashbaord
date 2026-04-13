@@ -15,7 +15,7 @@ export default function SubmissionCount({ pdfId }: { pdfId: string }) {
     
     const { data: submissions, isLoading } = useCollection<Submission>(submissionsCol);
 
-    if (isLoading) return <Skeleton className="h-5 w-8 mx-auto" />;
+ if (isLoading) return <Skeleton className="h-5 w-8 mx-auto" />;
 
     return <>{submissions?.length ?? 0}</>;
 }

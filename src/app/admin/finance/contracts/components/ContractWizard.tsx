@@ -186,15 +186,15 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
     };
 
     const stepLabel = (num: number, label: string) => (
-        <div className={cn(
-            "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all",
+ <div className={cn(
+            "flex items-center gap-2 text-[10px] font-semibold uppercase  transition-all",
             step >= num ? "text-primary" : "text-muted-foreground opacity-40"
         )}>
-            <div className={cn(
+ <div className={cn(
                 "w-7 h-7 rounded-xl border-2 flex items-center justify-center",
                 step > num ? "bg-primary border-primary text-white" : step === num ? "border-primary text-primary shadow-lg shadow-primary/20 scale-110" : "border-muted-foreground"
             )}>
-                {step > num ? <Check className="h-4 w-4" /> : num}
+ {step > num ? <Check className="h-4 w-4" /> : num}
             </div>
             {label}
         </div>
@@ -202,19 +202,19 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
-                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
-                        <div className="flex items-center gap-4 text-left">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                <ShieldCheck className="h-6 w-6" />
+ <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+ <div className="flex items-center gap-4 text-left">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <ShieldCheck className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Legal Execution Hub</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Initializing {entities.length} Institutional Agreements</DialogDescription>
+ <DialogTitle className="text-2xl font-semibold tracking-tight">Legal Execution Hub</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground">Initializing {entities.length} Institutional Agreements</DialogDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-6">
+ <div className="flex items-center gap-6">
                             {stepLabel(1, "Template")}
                             {stepLabel(2, "Preview")}
                             {stepLabel(3, "Execution")}
@@ -222,41 +222,41 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                     </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden relative bg-background">
+ <div className="flex-1 overflow-hidden relative bg-background">
                     <FormProvider {...methods}>
                         <AnimatePresence mode="wait">
                             {step === 1 && (
-                                <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
-                                    <div className="max-w-2xl mx-auto space-y-10 text-left">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
-                                            <Label className="text-base font-black uppercase tracking-tight">Select Contract Architecture</Label>
+ <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
+ <div className="max-w-2xl mx-auto space-y-10 text-left">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
+ <Label className="text-base font-semibold tracking-tight">Select Contract Architecture</Label>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {pdfTemplates?.length ? pdfTemplates.map(p => (
                                                 <Card 
                                                     key={p.id} 
-                                                    className={cn(
+ className={cn(
                                                         "cursor-pointer transition-all duration-300 rounded-2xl border-2 hover:border-primary/40",
                                                         watchedPdfId === p.id ? "border-primary bg-primary/5 shadow-xl shadow-primary/10 scale-[1.02]" : "border-border/50"
                                                     )}
                                                     onClick={() => setValue('pdfId', p.id)}
                                                 >
-                                                    <CardContent className="p-6 flex items-center gap-4 text-left">
-                                                        <div className={cn("p-2 rounded-xl", watchedPdfId === p.id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                                            <FileText className="h-5 w-5" />
+ <CardContent className="p-6 flex items-center gap-4 text-left">
+ <div className={cn("p-2 rounded-xl", watchedPdfId === p.id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+ <FileText className="h-5 w-5" />
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="font-black text-sm uppercase truncate">{p.name}</p>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.fields?.length || 0} Dynamic Tags</p>
+ <div className="flex-1 min-w-0">
+ <p className="font-semibold text-sm truncate">{p.name}</p>
+ <p className="text-[10px] font-bold text-muted-foreground ">{p.fields?.length || 0} Dynamic Tags</p>
                                                         </div>
-                                                        {watchedPdfId === p.id && <Check className="h-5 w-5 text-primary animate-in zoom-in" />}
+ {watchedPdfId === p.id && <Check className="h-5 w-5 text-primary animate-in zoom-in" />}
                                                     </CardContent>
                                                 </Card>
                                             )) : (
-                                                <div className="col-span-2 py-20 text-center border-2 border-dashed rounded-3xl opacity-30">
-                                                    <Zap className="h-12 w-12 mx-auto mb-4" />
-                                                    <p className="text-[10px] font-black uppercase tracking-widest">No published contracts found</p>
+ <div className="col-span-2 py-20 text-center border-2 border-dashed rounded-3xl opacity-30">
+ <Zap className="h-12 w-12 mx-auto mb-4" />
+ <p className="text-[10px] font-semibold ">No published contracts found</p>
                                                 </div>
                                             )}
                                         </div>
@@ -265,45 +265,45 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                             )}
 
                             {step === 2 && (
-                                <motion.div key="step2" {...stepTransition} className="absolute inset-0 bg-slate-50 overflow-hidden flex flex-col">
-                                    <div className="p-4 bg-white border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[10px] uppercase tracking-widest px-3 h-7">
-                                                <Eye className="h-3 w-3 mr-1.5" /> High-Fidelity Simulation
+ <motion.div key="step2" {...stepTransition} className="absolute inset-0 bg-slate-50 overflow-hidden flex flex-col">
+ <div className="p-4 bg-white border-b flex items-center justify-between">
+ <div className="flex items-center gap-4">
+                                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold text-[10px] uppercase  px-3 h-7">
+ <Eye className="h-3 w-3 mr-1.5" /> High-Fidelity Simulation
                                             </Badge>
-                                            <div className="h-6 w-px bg-border" />
-                                            <div className="flex items-center gap-2">
+ <div className="h-6 w-px bg-border" />
+ <div className="flex items-center gap-2">
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-7 w-7 rounded-lg" 
+ className="h-7 w-7 rounded-lg" 
                                                     disabled={previewIndex === 0}
                                                     onClick={() => setPreviewIndex(prev => prev - 1)}
                                                 >
-                                                    <ChevronLeft className="h-4 w-4" />
+ <ChevronLeft className="h-4 w-4" />
                                                 </Button>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground tabular-nums">
+ <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
                                                     Record {previewIndex + 1} of {entities.length}
                                                 </span>
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-7 w-7 rounded-lg" 
+ className="h-7 w-7 rounded-lg" 
                                                     disabled={previewIndex === schools.length - 1}
                                                     onClick={() => setPreviewIndex(prev => prev + 1)}
                                                 >
-                                                    <ChevronRight className="h-4 w-4" />
+ <ChevronRight className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-primary">
-                                            <Building className="h-3.5 w-3.5" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest">{currentEntity.displayName}</p>
+ <div className="flex items-center gap-2 text-primary">
+ <Building className="h-3.5 w-3.5" />
+ <p className="text-[10px] font-semibold ">{currentEntity.displayName}</p>
                                         </div>
                                     </div>
-                                    <ScrollArea className="flex-1">
-                                        <div className="p-12 flex justify-center">
-                                            <div className="max-w-4xl w-full">
+ <ScrollArea className="flex-1">
+ <div className="p-12 flex justify-center">
+ <div className="max-w-4xl w-full">
                                                 {selectedPdf && (
                                                     <PdfFormRenderer 
                                                         pdfForm={selectedPdf} 
@@ -319,21 +319,21 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                             )}
 
                             {step === 3 && (
-                                <motion.div key="step3" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
-                                    <div className="max-w-4xl mx-auto space-y-12 text-left">
+ <motion.div key="step3" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
+ <div className="max-w-4xl mx-auto space-y-12 text-left">
                                         {isSaving ? (
-                                            <div className="py-20 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-500">
-                                                <div className="relative">
-                                                    <Loader2 className="h-20 w-20 animate-spin text-primary opacity-20" />
-                                                    <Zap className="h-10 w-10 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+ <div className="py-20 flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-500">
+ <div className="relative">
+ <Loader2 className="h-20 w-20 animate-spin text-primary opacity-20" />
+ <Zap className="h-10 w-10 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="text-2xl font-black uppercase tracking-tight">Executing Protocols</h3>
-                                                    <p className="text-sm font-medium text-muted-foreground">Initializing {progress.current} of {progress.total} institutional records...</p>
+ <div className="space-y-2">
+ <h3 className="text-2xl font-semibold tracking-tight">Executing Protocols</h3>
+ <p className="text-sm font-medium text-muted-foreground">Initializing {progress.current} of {progress.total} institutional records...</p>
                                                 </div>
-                                                <div className="w-full max-w-md h-2 bg-muted rounded-full overflow-hidden">
+ <div className="w-full max-w-md h-2 bg-muted rounded-full overflow-hidden">
                                                     <motion.div 
-                                                        className="h-full bg-primary"
+ className="h-full bg-primary"
                                                         initial={{ width: 0 }}
                                                         animate={{ width: `${(progress.current / progress.total) * 100}%` }}
                                                     />
@@ -341,18 +341,18 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                                                    <div className="space-y-10">
-                                                        <div className="space-y-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
-                                                                <Label className="text-base font-black uppercase tracking-tight">Batch Target Summary</Label>
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+ <div className="space-y-10">
+ <div className="space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
+ <Label className="text-base font-semibold tracking-tight">Batch Target Summary</Label>
                                                             </div>
-                                                            <ScrollArea className="h-64 border rounded-2xl bg-muted/10 p-4">
-                                                                <div className="space-y-2">
+ <ScrollArea className="h-64 border rounded-2xl bg-muted/10 p-4">
+ <div className="space-y-2">
                                                                     {entities.map(s => (
-                                                                        <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-border/50 shadow-sm">
-                                                                            <span className="text-xs font-black uppercase truncate pr-4">{s.displayName}</span>
+ <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-border/50 shadow-sm">
+ <span className="text-xs font-semibold truncate pr-4">{s.displayName}</span>
                                                                             <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase tracking-tighter shrink-0 bg-slate-50">
                                                                                 {s.identity?.contacts?.find(p => p.isSignatory)?.name.split(' ')[0] || 'Unassigned'}
                                                                             </Badge>
@@ -363,25 +363,25 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                         </div>
                                                     </div>
 
-                                                    <div className="space-y-10">
-                                                        <div className="space-y-6">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
-                                                                <Label className="text-base font-black uppercase tracking-tight">Protocol Selection</Label>
+ <div className="space-y-10">
+ <div className="space-y-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
+ <Label className="text-base font-semibold tracking-tight">Protocol Selection</Label>
                                                             </div>
                                                             
-                                                            <div className={cn("space-y-4", watchedSkipMessaging && "opacity-40 pointer-events-none transition-opacity")}>
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Email Template</Label>
+ <div className={cn("space-y-4", watchedSkipMessaging && "opacity-40 pointer-events-none transition-opacity")}>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-blue-600 ml-1">Email Template</Label>
                                                                     <Controller
                                                                         name="emailTemplateId"
                                                                         control={methods.control}
                                                                         render={({ field }) => (
                                                                             <Select value={field.value} onValueChange={field.onChange}>
-                                                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
                                                                                     <SelectValue placeholder="No email dispatch" />
                                                                                 </SelectTrigger>
-                                                                                <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                                     <SelectItem value="none">No Email Dispatch</SelectItem>
                                                                                     {msgTemplates?.filter(t => t.channel === 'email').map(t => (
                                                                                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -392,17 +392,17 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                     />
                                                                 </div>
 
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">SMS Template</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-orange-600 ml-1">SMS Template</Label>
                                                                     <Controller
                                                                         name="smsTemplateId"
                                                                         control={methods.control}
                                                                         render={({ field }) => (
                                                                             <Select value={field.value} onValueChange={field.onChange}>
-                                                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
                                                                                     <SelectValue placeholder="No SMS dispatch" />
                                                                                 </SelectTrigger>
-                                                                                <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                                                                     <SelectItem value="none">No SMS Dispatch</SelectItem>
                                                                                     {msgTemplates?.filter(t => t.channel === 'sms').map(t => (
                                                                                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -414,18 +414,18 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                 </div>
                                                             </div>
 
-                                                            <div className="space-y-4 border-t pt-6 mt-4 border-dashed">
-                                                                <div className={cn(
+ <div className="space-y-4 border-t pt-6 mt-4 border-dashed">
+ <div className={cn(
                                                                     "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
                                                                     watchedSkipMessaging ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/10"
                                                                 )}>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={cn("p-2 rounded-xl", watchedSkipMessaging ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                                                            <MessageSquareOff className="h-4 w-4" />
+ <div className="flex items-center gap-3">
+ <div className={cn("p-2 rounded-xl", watchedSkipMessaging ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+ <MessageSquareOff className="h-4 w-4" />
                                                                         </div>
-                                                                        <div className="space-y-0.5">
-                                                                            <Label className="text-xs font-black uppercase tracking-tight">Manual Dispatch Mode</Label>
-                                                                            <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tighter">Assign records without sending notifications</p>
+ <div className="space-y-0.5">
+ <Label className="text-xs font-semibold tracking-tight">Manual Dispatch Mode</Label>
+ <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Assign records without sending notifications</p>
                                                                         </div>
                                                                     </div>
                                                                     <Controller 
@@ -441,9 +441,9 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                                 </div>
                                                             </div>
 
-                                                            <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
-                                                                <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
-                                                                <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed tracking-widest opacity-80">
+ <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
+ <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+ <p className="text-[10px] font-bold text-blue-800 leading-relaxed opacity-80">
                                                                     {watchedSkipMessaging ? "The system will initialize institutional contract records but will suppress all automated messaging. Finalize manually after this process." : "Bulk dispatches will resolve unique institutional signing URLs and signatory context for every record before delivery."}
                                                                 </p>
                                                             </div>
@@ -459,44 +459,44 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                     </FormProvider>
                 </div>
 
-                <DialogFooter className="p-8 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 flex gap-3">
+ <DialogFooter className="p-8 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-4">
+ <div className="flex-1 flex gap-3">
                         {step > 1 && !isSaving && (
-                            <Button variant="ghost" onClick={handlePrev} className="rounded-xl font-bold h-12 px-8 gap-2 text-left">
-                                <ChevronLeft className="h-4 w-4" /> Back
+ <Button variant="ghost" onClick={handlePrev} className="rounded-xl font-bold h-12 px-8 gap-2 text-left">
+ <ChevronLeft className="h-4 w-4" /> Back
                             </Button>
                         )}
-                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8">Discard</Button>
+ <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8">Discard</Button>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+ <div className="flex items-center gap-3">
                         {step === 3 && !isSaving && (
                             <Button 
                                 variant="outline" 
                                 onClick={() => setIsTestModalOpen(true)}
                                 disabled={watchedSkipMessaging || (watchedEmailId === 'none' && watchedSmsId === 'none')}
-                                className="rounded-xl font-bold h-14 border-primary/20 text-primary px-8 gap-2"
+ className="rounded-xl font-bold h-14 border-primary/20 text-primary px-8 gap-2"
                             >
-                                <FlaskConical className="h-5 w-5" /> Send Test
+ <FlaskConical className="h-5 w-5" /> Send Test
                             </Button>
                         )}
                         {step < 3 ? (
                             <Button 
                                 onClick={handleNext} 
                                 disabled={isSaving || (step === 1 && !watchedPdfId)}
-                                className="rounded-2xl font-black h-14 px-16 shadow-2xl uppercase tracking-[0.1em] active:scale-95 transition-all gap-2"
+ className="rounded-2xl font-semibold h-14 px-16 shadow-2xl tracking-[0.1em] active:scale-95 transition-all gap-2"
                             >
-                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-                                Next Phase <ChevronRight className="h-5 w-5" />
+ {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+ Next Phase <ChevronRight className="h-5 w-5" />
                             </Button>
                         ) : (
                             !isSaving && (
                                 <Button 
                                     onClick={handleSubmit(onSubmit)} 
                                     disabled={isSaving || (!watchedSkipMessaging && watchedEmailId === 'none' && watchedSmsId === 'none')}
-                                    className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
+ className="rounded-2xl font-semibold h-14 px-20 shadow-2xl bg-primary text-white tracking-[0.1em] active:scale-95 transition-all gap-3"
                                 >
-                                    {watchedSkipMessaging ? <ShieldCheck className="h-6 w-6" /> : <Send className="h-6 w-6" />}
+ {watchedSkipMessaging ? <ShieldCheck className="h-6 w-6" /> : <Send className="h-6 w-6" />}
                                     {watchedSkipMessaging ? 'Finalize Manual Assignment' : 'Launch Bulk Dispatch'}
                                 </Button>
                             )

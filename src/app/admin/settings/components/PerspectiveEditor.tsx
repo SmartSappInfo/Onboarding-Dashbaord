@@ -118,50 +118,50 @@ export default function PerspectiveEditor() {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between px-1">
-                <div className="text-left">
-                    <h3 className="text-xl font-black uppercase tracking-tight text-foreground">Perspective Architect</h3>
-                    <p className="text-sm text-muted-foreground font-medium">Define custom identities and tracks.</p>
+ <div className="space-y-6">
+ <div className="flex items-center justify-between px-1">
+ <div className="text-left">
+ <h3 className="text-xl font-semibold tracking-tight text-foreground">Perspective Architect</h3>
+ <p className="text-sm text-muted-foreground font-medium">Define custom identities and tracks.</p>
                 </div>
-                <Button onClick={() => handleOpenEdit()} className="rounded-xl font-black h-11 px-6 shadow-lg gap-2">
-                    <Plus className="h-4 w-4" /> New Perspective
+ <Button onClick={() => handleOpenEdit()} className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2">
+ <Plus className="h-4 w-4" /> New Perspective
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
+ Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : perspectives?.map(p => (
-                    <Card key={p.id} className={cn(
+ <Card key={p.id} className={cn(
                         "rounded-[2.5rem] glass-card text-left group transition-all duration-500",
                         p.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                     )}>
-                        <div className="h-1.5 w-full" style={{ backgroundColor: p.color || '#3B5FFF' }} />
-                        <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-                            <div className="min-w-0">
-                                <CardTitle className="text-base font-black uppercase tracking-tight truncate">{p.name}</CardTitle>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">ID: {p.id}</p>
+ <div className="h-1.5 w-full" style={{ backgroundColor: p.color || '#3B5FFF' }} />
+ <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between">
+ <div className="min-w-0">
+ <CardTitle className="text-base font-semibold tracking-tight truncate">{p.name}</CardTitle>
+ <p className="text-[10px] font-bold text-muted-foreground opacity-60">ID: {p.id}</p>
                             </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleOpenEdit(p)}>
-                                    <Pencil className="h-4 w-4 text-primary" />
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleOpenEdit(p)}>
+ <Pencil className="h-4 w-4 text-primary" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleArchive(p)}>
-                                    <Archive className="h-4 w-4 text-orange-600" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleArchive(p)}>
+ <Archive className="h-4 w-4 text-orange-600" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDelete(p)}>
-                                    <Trash2 className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDelete(p)}>
+ <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 pt-0 space-y-4">
-                            <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 min-h-[2.5rem]">{p.description || 'No description provided.'}</p>
-                            <div className="flex items-center justify-between pt-2">
-                                <Badge variant={p.status === 'active' ? 'default' : 'outline'} className="text-[8px] font-black uppercase px-2 h-5">
+ <CardContent className="p-6 pt-0 space-y-4">
+ <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-2 min-h-[2.5rem]">{p.description || 'No description provided.'}</p>
+ <div className="flex items-center justify-between pt-2">
+                                <Badge variant={p.status === 'active' ? 'default' : 'outline'} className="text-[8px] font-semibold uppercase px-2 h-5">
                                     {p.status}
                                 </Badge>
-                                <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">Sync: {format(new Date(p.updatedAt), 'MMM d, HH:mm')}</span>
+ <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">Sync: {format(new Date(p.updatedAt), 'MMM d, HH:mm')}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -169,86 +169,86 @@ export default function PerspectiveEditor() {
             </div>
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                    <form onSubmit={handleSave} className="text-left">
-                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
-                                    <Zap className="h-6 w-6" />
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <form onSubmit={handleSave} className="text-left">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
+ <Zap className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+ <DialogTitle className="text-2xl font-semibold tracking-tight">
                                         {activePerspective ? 'Modify Workspace' : 'New Perspective'}
                                     </DialogTitle>
-                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Architect a new institutional track</DialogDescription>
+ <DialogDescription className="text-xs font-bold text-muted-foreground">Architect a new institutional track</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
 
-                        <div className="p-8 space-y-8 bg-background">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Workspace Label</Label>
+ <div className="p-8 space-y-8 bg-background">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspace Label</Label>
                                 <Input 
                                     value={name} 
                                     onChange={e => setName(e.target.value)} 
                                     placeholder="e.g. Higher Education Onboarding" 
-                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
+ className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
                                     required 
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Thematic Branding (Color)</Label>
-                                <div className="flex gap-3">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Thematic Branding (Color)</Label>
+ <div className="flex gap-3">
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <button 
                                                 type="button" 
-                                                className="w-12 h-12 rounded-xl border-2 shadow-sm shrink-0" 
+ className="w-12 h-12 rounded-xl border-2 shadow-sm shrink-0" 
                                                 style={{ backgroundColor: color, borderColor: color + '40' }} 
                                             />
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-3 rounded-2xl border-none shadow-2xl">
-                                            <div className="grid grid-cols-6 gap-2">
+ <PopoverContent className="w-auto p-3 rounded-2xl border-none shadow-2xl">
+ <div className="grid grid-cols-6 gap-2">
                                                 {ONBOARDING_STAGE_COLORS.map(c => (
-                                                    <button key={c} type="button" onClick={() => setColor(c)} className="w-6 h-6 rounded-md shadow-sm" style={{ backgroundColor: c }} />
+ <button key={c} type="button" onClick={() => setColor(c)} className="w-6 h-6 rounded-md shadow-sm" style={{ backgroundColor: c }} />
                                                 ))}
                                             </div>
                                         </PopoverContent>
                                     </Popover>
-                                    <Input value={color} onChange={e => setColor(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-black text-center uppercase" />
+ <Input value={color} onChange={e => setColor(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold text-center " />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Objective Brief</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Objective Brief</Label>
                                 <Textarea 
                                     value={description} 
                                     onChange={e => setDescription(e.target.value)} 
                                     placeholder="Define the scope of this perspective..." 
-                                    className="min-h-[100px] rounded-xl bg-muted/20 border-none p-4 font-medium" 
+ className="min-h-[100px] rounded-xl bg-muted/20 border-none p-4 font-medium" 
                                 />
                             </div>
 
-                            <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
-                                <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                    <p className="text-xs font-black text-blue-900 uppercase">Seamless Linking</p>
-                                    <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed uppercase tracking-tighter text-left">
+ <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
+ <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+ <div className="space-y-1">
+ <p className="text-xs font-semibold text-blue-900 ">Seamless Linking</p>
+ <p className="text-[9px] font-bold text-blue-800/60 leading-relaxed tracking-tighter text-left">
                                         Perspectives are linked via persistent IDs. Renaming a perspective will instantly update its display name across all linked records.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
-                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
-                            <Button type="button" variant="ghost" onClick={() => setIsEditing(false)} className="rounded-xl font-bold h-12 px-8">Discard</Button>
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+ <Button type="button" variant="ghost" onClick={() => setIsEditing(false)} className="rounded-xl font-bold h-12 px-8">Discard</Button>
                             <Button 
                                 type="submit" 
                                 disabled={isSaving || !name.trim()} 
-                                className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-xs"
+ className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-primary text-white gap-2 text-xs"
                             >
-                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+ {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                                 Commit Blueprint
                             </Button>
                         </DialogFooter>

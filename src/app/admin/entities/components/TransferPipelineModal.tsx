@@ -119,77 +119,77 @@ export default function TransferPipelineModal({ entity, open, onOpenChange }: Tr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-8 bg-emerald-500/10 border-b border-emerald-500/20 shrink-0 text-left">
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-500/20">
-                    <Zap className="h-6 w-6" />
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogHeader className="p-8 bg-emerald-500/10 border-b border-emerald-500/20 shrink-0 text-left">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-500/20">
+ <Zap className="h-6 w-6" />
                 </div>
-                <div className="text-left">
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-emerald-500">Pipeline Transfer</DialogTitle>
-                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-emerald-400 opacity-70">Elevate {entity.displayName} to new workflow</DialogDescription>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight text-emerald-500">Pipeline Transfer</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-emerald-400 opacity-70">Elevate {entity.displayName} to new workflow</DialogDescription>
                 </div>
             </div>
         </DialogHeader>
 
-        <div className="p-8 space-y-8 bg-background text-left">
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border shadow-inner">
-                <div className="p-2 bg-card rounded-xl shadow-sm shrink-0 text-primary">
-                    <Building className="h-5 w-5" />
+ <div className="p-8 space-y-8 bg-background text-left">
+ <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border shadow-inner">
+ <div className="p-2 bg-card rounded-xl shadow-sm shrink-0 text-primary">
+ <Building className="h-5 w-5" />
                 </div>
-                <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Target Record</p>
-                    <p className="text-base font-black uppercase text-foreground truncate">{entity.displayName}</p>
+ <div className="min-w-0 flex-1">
+ <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1">Target Record</p>
+ <p className="text-base font-semibold text-foreground truncate">{entity.displayName}</p>
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
-                    <Workflow className="h-3 w-3" /> Select Integration Pipeline
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+ <Workflow className="h-3 w-3" /> Select Integration Pipeline
                 </Label>
                 
-                <div className="space-y-2">
+ <div className="space-y-2">
                     {isLoadingPipelines ? (
-                        <Skeleton className="h-12 w-full rounded-xl" />
+ <Skeleton className="h-12 w-full rounded-xl" />
                     ) : pipelines?.filter(p => p.id !== entity.pipelineId).map(p => (
                         <button
                             key={p.id}
                             type="button"
                             onClick={() => setTargetPipelineId(p.id)}
-                            className={cn(
+ className={cn(
                                 "w-full flex flex-col items-start p-4 rounded-2xl border-2 transition-all text-left",
                                 targetPipelineId === p.id ? "bg-primary/10 border-primary shadow-md" : "bg-card/50 border-transparent hover:bg-muted/30"
                             )}
                         >
-                            <div className="flex items-center justify-between w-full mb-1">
-                                <span className={cn("font-black uppercase text-xs", targetPipelineId === p.id ? "text-primary" : "text-foreground")}>{p.name}</span>
-                                {targetPipelineId === p.id && <Check className="h-4 w-4 text-primary animate-in zoom-in" />}
+ <div className="flex items-center justify-between w-full mb-1">
+ <span className={cn("font-semibold text-xs", targetPipelineId === p.id ? "text-primary" : "text-foreground")}>{p.name}</span>
+ {targetPipelineId === p.id && <Check className="h-4 w-4 text-primary animate-in zoom-in" />}
                             </div>
-                            <p className="text-[10px] text-muted-foreground font-medium line-clamp-1">{p.description}</p>
+ <p className="text-[10px] text-muted-foreground font-medium line-clamp-1">{p.description}</p>
                         </button>
                     ))}
                     {!isLoadingPipelines && (!pipelines || pipelines.length <= 1) && (
-                        <p className="text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground p-10 opacity-30 italic">No alternative pipelines available.</p>
+ <p className="text-center text-[10px] font-semibold text-muted-foreground p-10 opacity-30 italic">No alternative pipelines available.</p>
                     )}
                 </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 mt-4">
-                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-[9px] font-bold text-blue-500 leading-relaxed uppercase tracking-tighter text-left">
+ <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 mt-4">
+ <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-500 leading-relaxed tracking-tighter text-left">
                     Pipeline structures are specific to this workspace. Workflow state is tracked independently per hub.
                 </p>
             </div>
         </div>
 
-        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Discard</Button>
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+ <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Discard</Button>
             <Button 
                 onClick={handleTransfer} 
                 disabled={isUpdating || !targetPipelineId}
-                className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-xs"
+ className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-primary text-white gap-2 text-xs"
             >
-                {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+ {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 Execute Transfer
             </Button>
         </DialogFooter>

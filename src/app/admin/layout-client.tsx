@@ -144,7 +144,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   }, [isUserLoading, user, mounted, firestore, auth, router, toast]);
 
   if (!mounted) {
-    return <div className="min-h-screen w-full bg-background" suppressHydrationWarning />;
+ return <div className="min-h-screen w-full bg-background" suppressHydrationWarning />;
   }
 
   if (!isReady) {
@@ -189,21 +189,21 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar collapsible="icon" className="bg-[#0A1427] text-white border-r-0 shadow-2xl print:hidden">
-        <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
+ <Sidebar collapsible="icon" className="bg-[#0A1427] text-white border-r-0 shadow-2xl print:hidden">
+ <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
            <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
         </SidebarHeader>
         
-        <SidebarContent className="mt-4 overflow-x-hidden">
-          <SidebarGroup className="px-0">
-            <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-[0.2em] mb-2 px-6 group-data-[collapsible=icon]:hidden">Operations</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+ <SidebarContent className="mt-4 overflow-x-hidden">
+ <SidebarGroup className="px-0">
+ <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Operations</SidebarGroupLabel>
+ <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {coreNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" /> 
-                        <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+ <item.icon className="h-5 w-5 shrink-0" /> 
+ <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -211,15 +211,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </SidebarGroup>
 
-          <SidebarGroup className="mt-4 px-0">
-              <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-[0.2em] mb-2 px-6 group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
-              <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+ <SidebarGroup className="mt-4 px-0">
+ <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
+ <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {financeNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+ <item.icon className="h-5 w-5 shrink-0" />
+ <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -227,15 +227,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </SidebarMenu>
           </SidebarGroup>
 
-          <SidebarGroup className="mt-4 px-0">
-            <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-widest mb-2 px-6 group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
-            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+ <SidebarGroup className="mt-4 px-0">
+ <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
+ <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {studioNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+ <item.icon className="h-5 w-5 shrink-0" />
+ <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -243,15 +243,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </SidebarGroup>
 
-          <SidebarGroup className="mt-auto pt-8 mb-4 px-0">
-              <SidebarGroupLabel className="text-left text-white/40 font-black uppercase text-[10px] tracking-widest mb-2 px-6 group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
-              <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+ <SidebarGroup className="mt-auto pt-8 mb-4 px-0">
+ <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
+ <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {systemNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-bold text-xs uppercase tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+ <item.icon className="h-5 w-5 shrink-0" />
+ <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -260,63 +260,63 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
         
-        <SidebarFooter className="p-6 border-t border-white/5 bg-black/20">
+ <SidebarFooter className="p-6 border-t border-white/5 bg-black/20">
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Go to public site" className="text-white/40 hover:text-white transition-all h-10 group-data-[collapsible=icon]:justify-center">
-                        <Link href="/" target="_blank"><ExternalLink className="h-4 w-4 shrink-0" /><span className="font-black text-[10px] uppercase tracking-widest group-data-[collapsible=icon]:hidden">Live Site</span></Link>
+ <SidebarMenuButton asChild tooltip="Go to public site" className="text-white/40 hover:text-white transition-all h-10 group-data-[collapsible=icon]:justify-center">
+ <Link href="/" target="_blank"><ExternalLink className="h-4 w-4 shrink-0" /><span className="font-semibold text-[10px] group-data-[collapsible=icon]:hidden">Live Site</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
+ <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
         {/* Dark Mode Background Aura */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,95,255,0.05),transparent_50%)] pointer-events-none hidden dark:block" />
-        <header className="glass-header h-16 flex shrink-0 items-center gap-4 px-6 print:hidden">
-          <SidebarTrigger className="-ml-1" />
-          <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
-          <div className="flex items-center gap-3 shrink-0">
+ <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,95,255,0.05),transparent_50%)] pointer-events-none hidden dark:block" />
+ <header className="glass-header h-16 flex shrink-0 items-center gap-4 px-6 print:hidden">
+ <SidebarTrigger className="-ml-1" />
+ <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
+ <div className="flex items-center gap-3 shrink-0">
               <ThemeToggle />
               <NotificationBell />
-              <div className="h-8 w-px bg-border mx-1" />
+ <div className="h-8 w-px bg-border mx-1" />
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
-                  <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
+ <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
+ <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
                       <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName || 'User'} />
-                      <AvatarFallback className="bg-primary/5 text-primary font-black text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
+ <AvatarFallback className="bg-primary/5 text-primary font-semibold text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
                   </Avatar>
                   </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64 p-2 rounded-2xl border-none shadow-2xl animate-in zoom-in-95 duration-200" align="end">
-                  <DropdownMenuLabel className="font-normal px-2 py-3">
-                  <div className="flex flex-col space-y-1 text-left">
-                      <p className="text-sm font-black uppercase tracking-tight leading-none text-foreground">{user?.displayName}</p>
-                      <p className="text-[10px] leading-none text-muted-foreground font-bold tracking-tight">{user?.email}</p>
-                      <div className="flex flex-wrap gap-1 mt-3">
+ <DropdownMenuContent className="w-64 p-2 rounded-2xl border-none shadow-2xl animate-in zoom-in-95 duration-200" align="end">
+ <DropdownMenuLabel className="font-normal px-2 py-3">
+ <div className="flex flex-col space-y-1 text-left">
+ <p className="text-sm font-semibold tracking-tight leading-none text-foreground">{user?.displayName}</p>
+ <p className="text-[10px] leading-none text-muted-foreground font-bold tracking-tight">{user?.email}</p>
+ <div className="flex flex-wrap gap-1 mt-3">
                         {userRolesData.map(role => (
-                            <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
+                            <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-semibold px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
                         ))}
                       </div>
                   </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="my-1" />
+ <DropdownMenuSeparator className="my-1" />
                   {hasPerm('system_user_switch') && (
                     <>
                       <AssignedUserGlobalFilter />
-                      <DropdownMenuSeparator className="my-1" />
+ <DropdownMenuSeparator className="my-1" />
                     </>
                   )}
-                  <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs uppercase">My Profile</span></Link></DropdownMenuItem>
-                  <DropdownMenuSeparator className="my-1" />
-                  <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs uppercase">Log out</span></DropdownMenuItem>
+ <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs ">My Profile</span></Link></DropdownMenuItem>
+ <DropdownMenuSeparator className="my-1" />
+ <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs ">Log out</span></DropdownMenuItem>
               </DropdownMenuContent>
               </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 flex flex-col overflow-auto relative p-4 sm:p-6 md:p-8">
+ <main className="flex-1 flex flex-col overflow-auto relative p-4 sm:p-6 md:p-8">
           {children}
         </main>
       </SidebarInset>

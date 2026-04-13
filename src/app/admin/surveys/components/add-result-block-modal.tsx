@@ -49,28 +49,28 @@ export default function AddResultBlockModal({ open, onOpenChange, onSelect }: Ad
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl">
+ <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Add Content to Result Page</DialogTitle>
                     <DialogDescription>
                         Select a block type to add to this outcome.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="max-h-[60vh] -mx-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-4">
+ <ScrollArea className="max-h-[60vh] -mx-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-4">
                         {blockTypes.map(({ type, label, description, icon: Icon }) => (
                             <Button
                                 key={type}
                                 variant="outline"
-                                className="h-auto flex-row items-start justify-start gap-4 p-4 text-left hover:border-primary hover:bg-primary/5 transition-all"
+ className="h-auto flex-row items-start justify-start gap-4 p-4 text-left hover:border-primary hover:bg-primary/5 transition-all"
                                 onClick={() => handleSelect(type)}
                             >
-                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                                    <Icon className="h-6 w-6 text-primary" />
+ <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+ <Icon className="h-6 w-6 text-primary" />
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-sm">{label}</span>
-                                    <span className="text-xs text-muted-foreground line-clamp-1">{description}</span>
+ <div className="flex flex-col">
+ <span className="font-bold text-sm">{label}</span>
+ <span className="text-xs text-muted-foreground line-clamp-1">{description}</span>
                                 </div>
                             </Button>
                         ))}

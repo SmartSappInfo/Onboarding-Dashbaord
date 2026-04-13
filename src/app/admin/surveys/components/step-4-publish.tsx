@@ -23,23 +23,23 @@ export default function Step4Publish() {
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <Globe className="h-5 w-5 text-primary" />
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <Globe className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-sm font-black uppercase tracking-tight">Endpoint Connectivity</CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Configure public accessibility and data streams.</CardDescription>
+ <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
+ <CardDescription className="text-[10px] font-bold text-muted-foreground/60">Configure public accessibility and data streams.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-10 bg-background text-left">
-                    <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary ml-1 flex items-center gap-2">
-                            <Layout className="h-3 w-3" /> Shared Context (Workspaces)
+ <CardContent className="p-6 space-y-10 bg-background text-left">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+ <Layout className="h-3 w-3" /> Shared Context (Workspaces)
                         </Label>
                         <Controller 
                             name="workspaceIds"
@@ -53,25 +53,25 @@ export default function Step4Publish() {
                                 />
                             )}
                         />
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight leading-relaxed">
+ <p className="text-[9px] font-bold text-muted-foreground tracking-tight leading-relaxed">
                             Determines which workspace directories this survey blueprint is visible in.
                         </p>
                     </div>
 
-                    <Separator className="bg-border/50" />
+ <Separator className="bg-border/50" />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="status"
                             control={control}
                             render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Lifecycle State</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Lifecycle State</Label>
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+ <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
                                             <SelectItem value="draft">Draft (Internal)</SelectItem>
                                             <SelectItem value="published">Published (Live)</SelectItem>
                                             <SelectItem value="archived">Archived</SelectItem>
@@ -84,31 +84,31 @@ export default function Step4Publish() {
                             name="slug"
                             control={control}
                             render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Portal URL Backhalf</Label>
-                                    <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                        <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-r">/surveys/</div>
-                                        <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Portal URL Backhalf</Label>
+ <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+ <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">/surveys/</div>
+ <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
                                     </div>
                                 </div>
                             )}
                         />
                     </div>
 
-                    <div className="h-px bg-border/50" />
+ <div className="h-px bg-border/50" />
 
-                    <div className={cn(
+ <div className={cn(
                         "rounded-2xl border-2 transition-all duration-300",
                         watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
                     )}>
-                        <div className="flex items-center justify-between p-4">
-                            <div className="flex items-center gap-3 text-left">
-                                <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                    <AlertCircle className="h-4 w-4" />
+ <div className="flex items-center justify-between p-4">
+ <div className="flex items-center gap-3 text-left">
+ <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+ <AlertCircle className="h-4 w-4" />
                                 </div>
-                                <div className="space-y-0.5">
-                                    <Label className="text-xs font-black uppercase tracking-tight">Technical Diagnostics</Label>
-                                    <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tighter">Surface real-time automation status to the public user</p>
+ <div className="space-y-0.5">
+ <Label className="text-xs font-semibold tracking-tight">Technical Diagnostics</Label>
+ <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Surface real-time automation status to the public user</p>
                                 </div>
                             </div>
                             <Controller
@@ -124,13 +124,13 @@ export default function Step4Publish() {
                         </div>
                     </div>
 
-                    <div className="h-px bg-border/50" />
+ <div className="h-px bg-border/50" />
 
                     <WebhookManager />
                 </CardContent>
             </Card>
 
-            <div className="space-y-8">
+ <div className="space-y-8">
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
                 <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
             </div>

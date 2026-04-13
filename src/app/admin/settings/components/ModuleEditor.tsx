@@ -64,21 +64,21 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-start gap-2 bg-background p-3 border rounded-md">
-      <Button variant="ghost" size="icon" className="cursor-grab h-9 w-9 mt-1 shrink-0" {...attributes} {...listeners}>
-        <GripVertical className="h-5 w-5" />
+ <div ref={setNodeRef} style={style} className="flex items-start gap-2 bg-background p-3 border rounded-md">
+ <Button variant="ghost" size="icon" className="cursor-grab h-9 w-9 mt-1 shrink-0" {...attributes} {...listeners}>
+ <GripVertical className="h-5 w-5" />
       </Button>
       
-      <div className="flex-grow space-y-2">
+ <div className="flex-grow space-y-2">
           {isEditing ? (
-            <div className="flex gap-2">
+ <div className="flex gap-2">
                 <Input
                 value={editValues.name}
                 onChange={(e) => onFieldChange('name', e.target.value)}
                 onBlur={saveChanges}
                 onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
                 autoFocus
-                className="font-medium"
+ className="font-medium"
                 placeholder="Module Name"
                 />
                 <Input
@@ -86,14 +86,14 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
                 onChange={(e) => onFieldChange('abbreviation', e.target.value)}
                 onBlur={saveChanges}
                 onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
-                className="w-24"
+ className="w-24"
                 placeholder="Abbr."
                 />
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-                <span className="font-medium block py-2 px-3" onDoubleClick={() => onToggleEdit(module)}>{module.name}</span>
-                <span className="text-sm text-muted-foreground">({module.abbreviation})</span>
+ <div className="flex items-center gap-3">
+ <span className="font-medium block py-2 px-3" onDoubleClick={() => onToggleEdit(module)}>{module.name}</span>
+ <span className="text-sm text-muted-foreground">({module.abbreviation})</span>
             </div>
           )}
           {isEditing ? (
@@ -102,48 +102,48 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
               onChange={(e) => onFieldChange('description', e.target.value)}
               onBlur={saveChanges}
               placeholder="Module description..."
-              className="text-sm"
+ className="text-sm"
             />
           ) : (
-             <p className="text-sm text-muted-foreground px-3">{module.description || 'No description.'}</p>
+ <p className="text-sm text-muted-foreground px-3">{module.description || 'No description.'}</p>
           )}
       </div>
       
-      <div className="flex items-center">
+ <div className="flex items-center">
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: module.color || '#ccc' }}>
-                    <div className="w-full h-full rounded-sm" style={{ backgroundColor: module.color || '#FFFFFF' }} />
+ <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: module.color || '#ccc' }}>
+ <div className="w-full h-full rounded-sm" style={{ backgroundColor: module.color || '#FFFFFF' }} />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-2">
-                <div className="grid grid-cols-6 gap-1 mb-2">
+ <PopoverContent className="w-auto p-2">
+ <div className="grid grid-cols-6 gap-1 mb-2">
                     {ONBOARDING_STAGE_COLORS.map((color) => (
                         <button
                             key={color}
-                            className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === module.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+ className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === module.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
                             style={{ backgroundColor: color }}
                             onClick={() => onColorChange(module.id, color)}
                         />
                     ))}
                 </div>
-                <div className="flex items-center gap-2 border-t pt-2">
-                    <label htmlFor={`color-picker-${module.id}`} className="text-sm font-medium">Custom</label>
+ <div className="flex items-center gap-2 border-t pt-2">
+ <label htmlFor={`color-picker-${module.id}`} className="text-sm font-medium">Custom</label>
                     <Input
                         id={`color-picker-${module.id}`}
                         type="color"
                         value={module.color || '#FFFFFF'}
                         onChange={(e) => onColorChange(module.id, e.target.value)}
-                        className="w-10 h-10 p-1"
+ className="w-10 h-10 p-1"
                     />
                 </div>
             </PopoverContent>
         </Popover>
-        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onToggleEdit(module)}>
-            <Pencil className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onToggleEdit(module)}>
+ <Pencil className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => onDelete(module)}>
-            <Trash2 className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => onDelete(module)}>
+ <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -292,29 +292,29 @@ export default function ModuleEditor() {
   
   return (
     <>
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b pb-6 text-left">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-xl">
-                        <Layers className="h-5 w-5 text-primary" />
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+ <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl">
+ <Layers className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Product Management</CardTitle>
-                        <CardDescription className="text-xs font-medium">Define and organize the core product modules available within your workspace environment.</CardDescription>
+ <CardTitle className="text-lg font-semibold tracking-tight">Product Management</CardTitle>
+ <CardDescription className="text-xs font-medium">Define and organize the core product modules available within your workspace environment.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-4 text-left">
+ <CardContent className="p-6 space-y-4 text-left">
                 {isLoading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
+ <div className="space-y-2">
+ <Skeleton className="h-20 w-full" />
+ <Skeleton className="h-20 w-full" />
+ <Skeleton className="h-20 w-full" />
                 </div>
                 ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={localModules.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-2">
+ <div className="space-y-2">
                         {localModules.map((module) => (
                             <SortableModuleItem
                                 key={module.id}
@@ -339,7 +339,7 @@ export default function ModuleEditor() {
                     </SortableContext>
                 </DndContext>
                 )}
-                <div className="flex gap-2 pt-4">
+ <div className="flex gap-2 pt-4">
                 <Input
                     placeholder="New module name..."
                     value={newModuleName}
@@ -347,8 +347,8 @@ export default function ModuleEditor() {
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                 />
                 <Button onClick={handleAddModule} disabled={isAdding}>
-                    {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
-                    <span className="ml-2">Add Module</span>
+ {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
+ <span className="ml-2">Add Module</span>
                 </Button>
                 </div>
             </CardContent>

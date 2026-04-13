@@ -84,7 +84,7 @@ const RichTextEditor = ({
             contentEditable
             onInput={handleInput}
             onKeyDown={handleKeyDown}
-            className={cn(
+ className={cn(
                 "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
                 textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
                 className
@@ -149,30 +149,30 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
     };
 
     return (
-        <div className={cn("flex items-center gap-0.5", !minimal && "bg-card/20 p-1 rounded-md mb-2 ring-1 ring-border")}>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)">
-                <Bold className="h-3.5 w-3.5 text-muted-foreground" />
+ <div className={cn("flex items-center gap-0.5", !minimal && "bg-card/20 p-1 rounded-md mb-2 ring-1 ring-border")}>
+ <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)">
+ <Bold className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)">
-                <Italic className="h-3.5 w-3.5 text-muted-foreground" />
+ <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)">
+ <Italic className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('underline')} title="Underline (Ctrl+U)">
-                <Underline className="h-3.5 w-3.5 text-muted-foreground" />
+ <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('underline')} title="Underline (Ctrl+U)">
+ <Underline className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             
             {onAlignChange && (
                 <>
-                    <Button type="button" variant={alignValue === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('left')}>
-                        <AlignLeft className="h-3.5 w-3.5" />
+ <Button type="button" variant={alignValue === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('left')}>
+ <AlignLeft className="h-3.5 w-3.5" />
                     </Button>
-                    <Button type="button" variant={alignValue === 'center' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('center')}>
-                        <AlignCenter className="h-3.5 w-3.5" />
+ <Button type="button" variant={alignValue === 'center' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('center')}>
+ <AlignCenter className="h-3.5 w-3.5" />
                     </Button>
-                    <Button type="button" variant={alignValue === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('right')}>
-                        <AlignRight className="h-3.5 w-3.5" />
+ <Button type="button" variant={alignValue === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('right')}>
+ <AlignRight className="h-3.5 w-3.5" />
                     </Button>
-                    <Button type="button" variant={alignValue === 'justify' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('justify')}>
-                        <AlignJustify className="h-3.5 w-3.5" />
+ <Button type="button" variant={alignValue === 'justify' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('justify')}>
+ <AlignJustify className="h-3.5 w-3.5" />
                     </Button>
                 </>
             )}
@@ -194,30 +194,30 @@ const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; fie
     return (
         <>
             {field.value ? (
-                <div className="relative group/media-preview rounded-lg border border-border/50 overflow-hidden">
-                    {element.type === 'image' && <Image src={field.value} alt={element.title || 'image preview'} width={800} height={450} className="w-full h-auto object-cover" />}
+ <div className="relative group/media-preview rounded-lg border border-border/50 overflow-hidden">
+ {element.type === 'image' && <Image src={field.value} alt={element.title || 'image preview'} width={800} height={450} className="w-full h-auto object-cover" />}
                     {element.type === 'video' && <VideoEmbed url={field.value} />}
-                    {element.type === 'audio' && <div className="p-4"><audio controls src={field.value} className="w-full" /></div>}
+ {element.type === 'audio' && <div className="p-4"><audio controls src={field.value} className="w-full" /></div>}
                     {element.type === 'document' && (
-                        <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 hover:bg-accent/10 transition-colors">
-                            <FileText className="h-8 w-8 text-muted-foreground" />
+ <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 hover:bg-accent/10 transition-colors">
+ <FileText className="h-8 w-8 text-muted-foreground" />
                             <div>
-                                <p className="font-semibold">Document</p>
-                                <p className="text-sm text-muted-foreground truncate">{field.value}</p>
+ <p className="font-semibold">Document</p>
+ <p className="text-sm text-muted-foreground truncate">{field.value}</p>
                             </div>
                         </a>
                     )}
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/media-preview:opacity-100 transition-opacity">
+ <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/media-preview:opacity-100 transition-opacity">
                          <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(true)}>Change {element.type}</Button>
                     </div>
                 </div>
             ) : (
                 <div 
-                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/50 bg-card/5 rounded-xl cursor-pointer hover:bg-accent/5 transition-all"
+ className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/50 bg-card/5 rounded-xl cursor-pointer hover:bg-accent/5 transition-all"
                     onClick={() => setIsDialogOpen(true)}
                 >
-                    <Icon className="h-12 w-12 text-muted-foreground" />
-                    <span className="mt-4 text-sm font-semibold text-muted-foreground">Select an {element.type}</span>
+ <Icon className="h-12 w-12 text-muted-foreground" />
+ <span className="mt-4 text-sm font-semibold text-muted-foreground">Select an {element.type}</span>
                 </div>
             )}
             <MediaSelectorDialog
@@ -254,22 +254,22 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto min-h-10 border-border"
+ className="w-full justify-between h-auto min-h-10 border-border"
         >
-          <div className="flex gap-1 flex-wrap">
+ <div className="flex gap-1 flex-wrap">
             {selectedValues.size > 0 ? (
                 options.filter(opt => selectedValues.has(opt.value)).map(option => (
                     <Badge
                         variant="secondary"
                         key={option.value}
-                        className="mr-1 mb-1"
+ className="mr-1 mb-1"
                     >
                         {option.label}
                          <div
                             role="button"
                             tabIndex={0}
                             aria-label={`Remove ${option.label}`}
-                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+ className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -286,19 +286,19 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                                 }
                             }}
                         >
-                            <X className="h-3 w-3" />
+ <X className="h-3 w-3" />
                         </div>
                     </Badge>
                 ))
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+ <span className="text-muted-foreground">{placeholder}</span>
             )}
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+ <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[--radix-popover-trigger-width] p-0"
+ className="w-[--radix-popover-trigger-width] p-0"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
@@ -320,10 +320,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                     }
                     onChange(Array.from(newSelection));
                   }}
-                  className="cursor-pointer"
+ className="cursor-pointer"
                 >
                   <Check
-                    className={cn(
+ className={cn(
                       "mr-2 h-4 w-4",
                       selectedValues.has(option.value) ? "opacity-100" : "opacity-0"
                     )}
@@ -373,14 +373,14 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   }
 
   return (
-    <div className="space-y-3">
-      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Options</Label>
+ <div className="space-y-3">
+ <Label className="text-[10px] font-semibold text-muted-foreground/60">Options</Label>
       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
         <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
           {fields.map((field, index) => {
             const optionValue = watch(`elements.${questionIndex}.options.${index}`);
             return (
-              <div key={field.id} className="flex items-center gap-2">
+ <div key={field.id} className="flex items-center gap-2">
                 <RadioGroupItem 
                     value={optionValue} 
                     id={`${field.id}-radio`} 
@@ -391,7 +391,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         }
                     }}
                 />
-                <div className="flex-1 space-y-1">
+ <div className="flex-1 space-y-1">
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
@@ -400,7 +400,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
-                        className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
+ className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -427,7 +427,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -435,8 +435,8 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     )}
                     />
                 )}
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
+ <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
+ <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             )
@@ -444,7 +444,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
         </RadioGroup>
       )}
       {questionType === 'checkboxes' && (
-        <div className="space-y-2">
+ <div className="space-y-2">
           {fields.map((field, index) => {
             const optionValue = watch(`elements.${questionIndex}.options.${index}`);
             const isChecked = allowOther
@@ -452,7 +452,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
               : Array.isArray(defaultValue) && defaultValue.includes(optionValue);
 
             return (
-              <div key={field.id} className="flex items-center gap-2">
+ <div key={field.id} className="flex items-center gap-2">
                 <Checkbox
                   id={`${field.id}-checkbox`}
                   checked={isChecked}
@@ -472,7 +472,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     }
                   }}
                 />
-                <div className="flex-1">
+ <div className="flex-1">
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
@@ -481,7 +481,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
-                        className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
+ className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -508,7 +508,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -516,8 +516,8 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     )}
                     />
                 )}
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
+ <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
+ <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             )
@@ -525,11 +525,11 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={handleAddOption} className="rounded-xl font-bold border-border/50">
-        <PlusCircle className="h-4 w-4 mr-2" /> Add Option
+ <Button type="button" variant="outline" size="sm" onClick={handleAddOption} className="rounded-xl font-bold border-border/50">
+ <PlusCircle className="h-4 w-4 mr-2" /> Add Option
       </Button>
       {questionType === 'checkboxes' && (
-        <div className="flex items-center space-x-2 pt-2">
+ <div className="flex items-center space-x-2 pt-2">
           <Controller
             name={`elements.${questionIndex}.allowOther`}
             control={control}
@@ -550,7 +550,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
               />
             )}
           />
-          <Label htmlFor={`allowOther-${questionIndex}`} className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Allow "Other" option</Label>
+ <Label htmlFor={`allowOther-${questionIndex}`} className="text-xs font-bold tracking-wider text-muted-foreground">Allow "Other" option</Label>
         </div>
       )}
     </div>
@@ -597,31 +597,31 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
     }
   
     return (
-      <div className="space-y-4 p-4 border border-primary/20 rounded-2xl bg-primary/10">
+ <div className="space-y-4 p-4 border border-primary/20 rounded-2xl bg-primary/10">
         {fields.map((field, index) => {
           const operator = watch(`elements.${elementIndex}.rules.${index}.operator`);
           const actionType = watch(`elements.${elementIndex}.rules.${index}.action.type`);
           const showValueInput = operator !== 'isEmpty' && operator !== 'isNotEmpty';
   
           return (
-              <div key={field.id} className="p-4 border border-border/50 rounded-xl bg-background shadow-xs relative">
-              <div className="absolute top-2 right-2">
-                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+ <div key={field.id} className="p-4 border border-border/50 rounded-xl bg-background shadow-xs relative">
+ <div className="absolute top-2 right-2">
+ <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
+ <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
               </div>
-              <div className="flex items-start gap-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
-                      <Bot className="h-5 w-5" />
+ <div className="flex items-start gap-4">
+ <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+ <Bot className="h-5 w-5" />
                       <span>When</span>
                   </div>
-                  <div className="flex-grow space-y-2">
+ <div className="flex-grow space-y-2">
                   <Controller
                       name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
                       control={control}
                       render={({ field }) => (
                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Select a question..." /></SelectTrigger>
+ <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Select a question..." /></SelectTrigger>
                           <SelectContent>
                           {potentialSourceQuestions.map((q) => (
                               <SelectItem key={q.id} value={q.id}>
@@ -632,13 +632,13 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       </Select>
                       )}
                   />
-                  <div className="flex items-center gap-2">
+ <div className="flex items-center gap-2">
                       <Controller
                       name={`elements.${elementIndex}.rules.${index}.operator`}
                       control={control}
                       render={({ field }) => (
                            <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="w-1/2 bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Operator..." /></SelectTrigger>
+ <SelectTrigger className="w-1/2 bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Operator..." /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="isEqualTo">Is</SelectItem>
                               <SelectItem value="isNotEqualTo">Is not</SelectItem>
@@ -660,24 +660,24 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <Controller
                           name={`elements.${elementIndex}.rules.${index}.targetValue`}
                           control={control}
-                           render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-card border-border/50 ring-1 ring-border" />}
+ render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-card border-border/50 ring-1 ring-border" />}
                           />
                       )}
                   </div>
                   </div>
               </div>
-              <div className="flex items-start gap-4 mt-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
-                      <span className="text-lg">↳</span>
+ <div className="flex items-start gap-4 mt-4">
+ <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+ <span className="text-lg">↳</span>
                       <span>Then</span>
                   </div>
-                  <div className="flex-grow flex flex-col gap-2">
+ <div className="flex-grow flex flex-col gap-2">
                       <Controller
                           name={`elements.${elementIndex}.rules.${index}.action.type`}
                           control={control}
                           render={({ field }) => (
                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Action..." /></SelectTrigger>
+ <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Action..." /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="jump">Jump To...</SelectItem>
                                       <SelectItem value="show">Show Element(s)...</SelectItem>
@@ -694,7 +694,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                               control={control}
                               render={({ field }) => (
                                    <Select onValueChange={field.onChange} value={field.value}>
-                                      <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Target element..." /></SelectTrigger>
+ <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Target element..." /></SelectTrigger>
                                       <SelectContent>
                                       {getJumpTargets().map((el) => (
                                           <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
@@ -729,9 +729,9 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
           variant="outline"
           size="sm"
           onClick={() => append({ sourceQuestionId: '', operator: 'isEqualTo', action: { type: 'jump' } })}
-          className="rounded-xl font-bold border-border/50"
+ className="rounded-xl font-bold border-border/50"
         >
-          <PlusCircle className="h-4 w-4 mr-2" /> Add Rule
+ <PlusCircle className="h-4 w-4 mr-2" /> Add Rule
         </Button>
       </div>
     );
@@ -739,11 +739,11 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
 
 const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
-        <div className="flex gap-1">
+ <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map(star => (
                 <Star
                     key={star}
-                    className={cn(
+ className={cn(
                         'w-10 h-10 cursor-pointer',
                         star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
                         disabled ? 'cursor-not-allowed opacity-50' : ''
@@ -767,12 +767,12 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-fit justify-start text-left font-normal h-11 bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
-                    <CalendarIcon className="mr-2 h-4" />
+ <Button variant="outline" className={cn("w-full sm:w-fit justify-start text-left font-normal h-11 bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
+ <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+ <PopoverContent className="w-auto p-0" align="start">
                 <Calendar mode="single" selected={dateValue} onSelect={onChange} initialFocus />
             </PopoverContent>
         </Popover>
@@ -811,34 +811,34 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     }, [getValues, index, isTextQuestion]);
 
     return (
-        <div className="space-y-4">
+ <div className="space-y-4">
             {isElemQuestion && isTextQuestion && (
-                <div className="space-y-4">
-                    <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Validation</h4>
-                    <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                        <Label htmlFor={`min-chars-toggle-${index}`} className="text-xs">Min characters</Label>
+ <div className="space-y-4">
+ <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Validation</h4>
+ <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+ <Label htmlFor={`min-chars-toggle-${index}`} className="text-xs">Min characters</Label>
                         <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                     </div>
-                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
+ {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
-                    <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                        <Label htmlFor={`max-chars-toggle-${index}`} className="text-xs">Max characters</Label>
+ <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+ <Label htmlFor={`max-chars-toggle-${index}`} className="text-xs">Max characters</Label>
                         <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
                     </div>
-                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+ {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                 </div>
             )}
-            <div className="space-y-4">
-                <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Content</h4>
-                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                   <Label htmlFor={`hidden-toggle-${index}`} className="text-xs">Hidden by default</Label>
+ <div className="space-y-4">
+ <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Content</h4>
+ <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+ <Label htmlFor={`hidden-toggle-${index}`} className="text-xs">Hidden by default</Label>
                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
                 </div>
             </div>
-            <div className="space-y-4">
-                <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Change To</h4>
+ <div className="space-y-4">
+ <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Change To</h4>
                 <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
-                    <SelectTrigger className="h-10"><SelectValue placeholder="Turn into..." /></SelectTrigger>
+ <SelectTrigger className="h-10"><SelectValue placeholder="Turn into..." /></SelectTrigger>
                     <SelectContent>
                         {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type}>{qType.label}</SelectItem>)}
                     </SelectContent>
@@ -932,30 +932,30 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   }, [watch('elements'), id, isElementQuestion]);
   
   return (
-    <div className="relative group" ref={setNodeRef} style={style}>
+ <div className="relative group" ref={setNodeRef} style={style}>
         <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-accent/10"
+ className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-accent/10"
             {...attributes}
             {...listeners}
         >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+ <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         <Card 
             id={element.id}
-            className={cn(
+ className={cn(
                 "border transition-all duration-200",
                 hasErrors ? "border-destructive shadow-lg" : "border-border shadow-xs group-hover:shadow-md",
                 element.hidden ? "opacity-60 bg-card/10 backdrop-blur-sm" : "bg-card"
             )}
         >
-             <CardHeader className="py-3 px-4 border-b bg-card/20">
-                <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                        <div className={cn(
+ <CardHeader className="py-3 px-4 border-b bg-card/20">
+ <div className="flex justify-between items-center w-full">
+ <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
+ <div className={cn(
                             "flex items-center justify-center rounded border p-1.5 bg-primary/10 shadow-xs",
                             element.hidden && "opacity-50"
                         )}>
-                            <ElementIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+ <ElementIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                         </div>
                         <span>
                             {isElementQuestion ? `Question #${questionNumber}`
@@ -965,11 +965,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         </span>
                         {element.hidden && <Badge variant="secondary" className="ml-2 h-5 text-[8px] font-bold uppercase">Hidden</Badge>}
                     </div>
-                    <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-all ml-auto">
+ <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-all ml-auto">
                         <TooltipProvider>
                             {/* Formatting and Level Controls Group */}
                             {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && (
-                                <div className="flex items-center">
+ <div className="flex items-center">
                                     <FormattingToolbar 
                                         fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
                                         alignValue={element.style?.textAlign}
@@ -978,12 +978,12 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     />
                                     {element.type === 'heading' && (
                                         <>
-                                            <Separator orientation="vertical" className="h-4 mx-1" />
+ <Separator orientation="vertical" className="h-4 mx-1" />
                                             <Select 
                                                 value={element.variant || 'h2'} 
                                                 onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
                                             >
-                                                <SelectTrigger className="w-16 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
+ <SelectTrigger className="w-16 h-8 text-[10px] font-semibold border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -994,58 +994,58 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             </Select>
                                         </>
                                     )}
-                                    <Separator orientation="vertical" className="h-4 mx-1" />
+ <Separator orientation="vertical" className="h-4 mx-1" />
                                 </div>
                             )}
 
                             {/* System Actions Group */}
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleHidden(index)}>
-                                        {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleHidden(index)}>
+ {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>{element.hidden ? 'Show Block' : 'Hide Block'}</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateElement(index)}>
-                                        <Copy className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateElement(index)}>
+ <Copy className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Duplicate</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={index === 0} onClick={() => swap(index, index - 1)} >
-                                        <ArrowUp className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+ <ArrowUp className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Move Up</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
-                                        <ArrowDown className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
+ <ArrowDown className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Move Down</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
-                                        <Trash2 className="h-4 w-4" />
+ <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
+ <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Delete</TooltipContent>
                             </Tooltip>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                                        <MoreVertical className="h-4 w-4" />
+ <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+ <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80 p-2">
+ <PopoverContent className="w-80 p-2">
                                     <QuestionSettingsPopover
                                         element={element}
                                         index={index}
@@ -1057,10 +1057,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6">
+ <CardContent className="pt-6">
                  {isElementQuestion ? (
-                    <div className="grid grid-cols-1 gap-y-8">
-                        <div className="space-y-2">
+ <div className="grid grid-cols-1 gap-y-8">
+ <div className="space-y-2">
                             <Controller 
                                 name={`elements.${index}.title`} 
                                 control={control} 
@@ -1070,7 +1070,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         onChange={field.onChange} 
                                         placeholder="e.g., What is your favorite color?" 
                                         textAlign={element.style?.textAlign}
-                                        className={cn(
+ className={cn(
                                             "text-lg font-bold min-h-[1.5em] focus:ring-0 px-1 py-1 transition-all",
                                             elementErrors?.title && "text-destructive underline decoration-dotted"
                                         )}
@@ -1079,31 +1079,31 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             />
                             {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
-                        <div className="space-y-3">
-                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-1">
+ <div className="space-y-3">
+ <Label className="text-[10px] font-semibold text-muted-foreground/60 block ml-1">
                                 {(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}
                              </Label>
                              
                              {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
-                                 <div className="bg-primary/10 p-4 rounded-2xl border-2 border-primary/20 shadow-inner">
+ <div className="bg-primary/10 p-4 rounded-2xl border-2 border-primary/20 shadow-inner">
                                     <Controller
                                         name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
                                         control={control}
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-card border-none shadow-none ring-1 ring-border h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
+ return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-card border-none shadow-none ring-1 ring-border h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-card border-none shadow-none ring-1 ring-border min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
+ return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-card border-none shadow-none ring-1 ring-border min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
                                                 case 'yes-no':
                                                     return (
-                                                        <div className="space-y-4">
-                                                            <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                                                <div className="flex items-center space-x-2">
+ <div className="space-y-4">
+ <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
+ <div className="flex items-center space-x-2">
                                                                     <RadioGroupItem 
                                                                         value="Yes" 
                                                                         id={`${element.id}-yes`} 
-                                                                        className="size-5 border-2" 
+ className="size-5 border-2" 
                                                                         onClick={(e) => {
                                                                             if (field.value === 'Yes') {
                                                                                 e.preventDefault();
@@ -1111,13 +1111,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                             }
                                                                         }}
                                                                     />
-                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-yes`}>Yes</Label>
+ <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-yes`}>Yes</Label>
                                                                 </div>
-                                                                <div className="flex items-center space-x-2">
+ <div className="flex items-center space-x-2">
                                                                     <RadioGroupItem 
                                                                         value="No" 
                                                                         id={`${element.id}-no`} 
-                                                                        className="size-5 border-2" 
+ className="size-5 border-2" 
                                                                         onClick={(e) => {
                                                                             if (field.value === 'No') {
                                                                                 e.preventDefault();
@@ -1125,18 +1125,18 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                             }
                                                                         }}
                                                                     />
-                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-no`}>No</Label>
+ <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-no`}>No</Label>
                                                                 </div>
                                                             </RadioGroup>
                                                             {enableScoring && (
-                                                                <div className="flex gap-4 items-center rounded-xl ring-1 ring-primary/20 bg-card p-4 shadow-xs mt-4">
-                                                                    <FormItem className="flex-1">
-                                                                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "Yes"</FormLabel>
-                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
+ <div className="flex gap-4 items-center rounded-xl ring-1 ring-primary/20 bg-card p-4 shadow-xs mt-4">
+ <FormItem className="flex-1">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground">Score for "Yes"</FormLabel>
+ <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
-                                                                    <FormItem className="flex-1">
-                                                                        <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "No"</FormLabel>
-                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
+ <FormItem className="flex-1">
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground">Score for "No"</FormLabel>
+ <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
                                                                 </div>
                                                             )}
@@ -1147,12 +1147,12 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-card ring-1 ring-border appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:ring-primary/20 focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
+ return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-card ring-1 ring-border appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:ring-primary/20 focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
                                                 case 'file-upload':
                                                     return (
-                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-card/50 shadow-inner">
-                                                            <Upload className="w-4 h-4 text-primary" />
-                                                            <span className="font-bold">File Upload Field</span>
+ <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-card/50 shadow-inner">
+ <Upload className="w-4 h-4 text-primary" />
+ <span className="font-bold">File Upload Field</span>
                                                         </div>
                                                     );
                                                 default:
@@ -1162,14 +1162,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     />
                                  </div>
                              ): (
-                                <div className="bg-primary/10 p-6 rounded-2xl border-2 border-primary/20 shadow-inner">
+ <div className="bg-primary/10 p-6 rounded-2xl border-2 border-primary/20 shadow-inner">
                                     <OptionsEditor questionIndex={index} />
                                 </div>
                             )}
-                             {elementErrors?.options && <FormMessage className="mt-2 ml-1">{elementErrors.options.message}</FormMessage>}
+ {elementErrors?.options && <FormMessage className="mt-2 ml-1">{elementErrors.options.message}</FormMessage>}
                         </div>
-                        <div className="flex items-center gap-6 pt-6 border-t border-border/50">
-                            <div className="flex items-center gap-2.5">
+ <div className="flex items-center gap-6 pt-6 border-t border-border/50">
+ <div className="flex items-center gap-2.5">
                                 <Controller 
                                     name={`elements.${index}.isRequired`} 
                                     control={control} 
@@ -1177,10 +1177,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         <Switch id={`required-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
                                     )} 
                                 />
-                                <Label htmlFor={`required-${index}`} className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Asterisk className="h-3.5 w-3.5 text-destructive" /> Answer Required</Label>
+ <Label htmlFor={`required-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><Asterisk className="h-3.5 w-3.5 text-destructive" /> Answer Required</Label>
                             </div>
                             {isAutoAdvanceable && (
-                                <div className="flex items-center gap-2.5">
+ <div className="flex items-center gap-2.5">
                                     <Controller 
                                         name={`elements.${index}.autoAdvance`} 
                                         control={control} 
@@ -1188,25 +1188,25 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             <Switch id={`auto-advance-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
                                         )} 
                                     />
-                                    <Label htmlFor={`auto-advance-${index}`} className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-primary" /> Auto-advance</Label>
+ <Label htmlFor={`auto-advance-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-primary" /> Auto-advance</Label>
                                 </div>
                             )}
                             {isScoreable && (
-                                <div className="flex items-center gap-2.5">
+ <div className="flex items-center gap-2.5">
                                     <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
-                                    <Label htmlFor={`scoring-${index}`} className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><TrophyIcon className="h-3.5 w-3.5 text-yellow-500" /> Enable Scoring</Label>
+ <Label htmlFor={`scoring-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><TrophyIcon className="h-3.5 w-3.5 text-yellow-500" /> Enable Scoring</Label>
                                 </div>
                             )}
                         </div>
                     </div>
                 ) : isElementLayout ? (
-                     <div className={cn(isMediaLayout && "bg-primary/10 rounded-2xl border-2 border-primary/20 p-6")}>
+ <div className={cn(isMediaLayout && "bg-primary/10 rounded-2xl border-2 border-primary/20 p-6")}>
                         {element.type === 'section' && (
-                             <div className="w-full text-center space-y-6 p-8 border-2 border-primary/20 rounded-[2.5rem] bg-primary/10 shadow-inner">
-                                 <div className="space-y-4">
-                                     <div className="flex items-center gap-4">
-                                         <div className="flex-grow h-px bg-primary/20" />
-                                         <div className="w-full max-w-2xl mx-auto">
+ <div className="w-full text-center space-y-6 p-8 border-2 border-primary/20 rounded-[2.5rem] bg-primary/10 shadow-inner">
+ <div className="space-y-4">
+ <div className="flex items-center gap-4">
+ <div className="flex-grow h-px bg-primary/20" />
+ <div className="w-full max-w-2xl mx-auto">
                                             <Controller 
                                                 name={`elements.${index}.title`} 
                                                 control={control} 
@@ -1216,14 +1216,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         onChange={field.onChange} 
                                                         placeholder="Enter Section Title..." 
                                                         textAlign="center"
-                                                        className="text-2xl sm:text-3xl font-black text-foreground min-h-[1.2em] leading-tight"
+ className="text-2xl sm:text-3xl font-semibold text-foreground min-h-[1.2em] leading-tight"
                                                     />
                                                 )} 
                                             />
                                          </div>
-                                         <div className="flex-grow h-px bg-primary/20" />
+ <div className="flex-grow h-px bg-primary/20" />
                                      </div>
-                                     <div className="w-full max-w-2xl mx-auto">
+ <div className="w-full max-w-2xl mx-auto">
                                         <Controller 
                                             name={`elements.${index}.description`} 
                                             control={control} 
@@ -1233,16 +1233,16 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="Section description (optional)..." 
                                                     textAlign="center"
-                                                    className="text-muted-foreground text-base sm:text-lg font-medium italic min-h-[1.5em] leading-relaxed whitespace-pre-wrap"
+ className="text-muted-foreground text-base sm:text-lg font-medium italic min-h-[1.5em] leading-relaxed whitespace-pre-wrap"
                                                 />
                                             )} 
                                         />
                                      </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
-                                    <div className="space-y-4 bg-card ring-1 ring-border rounded-xl p-4 shadow-xs border-none">
-                                        <div className="flex justify-between items-center gap-3">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
+ <div className="space-y-4 bg-card ring-1 ring-border rounded-xl p-4 shadow-xs border-none">
+ <div className="flex justify-between items-center gap-3">
                                             <Controller 
                                                 name={`elements.${index}.renderAsPage`} 
                                                 control={control} 
@@ -1254,9 +1254,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     />
                                                 )} 
                                             />
-                                            <Label htmlFor={`render-as-page-${index}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Page Break</Label>
+ <Label htmlFor={`render-as-page-${index}`} className="text-[10px] font-semibold text-muted-foreground">New Page Break</Label>
                                         </div>
-                                        <div className="flex justify-between items-center gap-3 pt-2 border-t border-primary/10">
+ <div className="flex justify-between items-center gap-3 pt-2 border-t border-primary/10">
                                             <Controller 
                                                 name={`elements.${index}.validateBeforeNext`} 
                                                 control={control} 
@@ -1268,11 +1268,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     />
                                                 )} 
                                             />
-                                            <Label htmlFor={`validate-before-next-${index}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Validate before next</Label>
+ <Label htmlFor={`validate-before-next-${index}`} className="text-[10px] font-semibold text-muted-foreground">Validate before next</Label>
                                         </div>
                                     </div>
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Stepper Navigation Label</Label>
+ <div className="space-y-2 text-left">
+ <Label className="text-[10px] font-semibold text-primary ml-1">Stepper Navigation Label</Label>
                                         <Controller 
                                             name={`elements.${index}.stepperTitle`} 
                                             control={control} 
@@ -1281,7 +1281,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     {...field} 
                                                     value={field.value ?? ''} 
                                                     placeholder="e.g., Company Details" 
-                                                    className="h-11 rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
+ className="h-11 rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
                                                 />
                                             )} 
                                         />
@@ -1290,7 +1290,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              </div>
                          )}
                         {element.type === 'heading' && (
-                            <div className="space-y-4">
+ <div className="space-y-4">
                                 <Controller 
                                     name={`elements.${index}.title`} 
                                     control={control} 
@@ -1300,8 +1300,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             onChange={field.onChange} 
                                             placeholder="Heading Text" 
                                             textAlign={element.style?.textAlign}
-                                            className={cn(
-                                                "font-black leading-tight whitespace-pre-wrap",
+ className={cn(
+                                                "font-semibold leading-tight whitespace-pre-wrap",
                                                 element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
@@ -1310,7 +1310,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </div>
                         )}
                         {element.type === 'description' && (
-                            <div className="space-y-2">
+ <div className="space-y-2">
                                 <Controller 
                                     name={`elements.${index}.text`} 
                                     control={control} 
@@ -1320,13 +1320,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             onChange={field.onChange} 
                                             placeholder="Description text..." 
                                             textAlign={element.style?.textAlign}
-                                            className="text-base sm:text-lg leading-relaxed text-muted-foreground min-h-[1.5em] whitespace-pre-wrap" 
+ className="text-base sm:text-lg leading-relaxed text-muted-foreground min-h-[1.5em] whitespace-pre-wrap" 
                                         />
                                     )} 
                                 />
                             </div>
                         )}
-                        {element.type === 'divider' && <hr className="my-4 border-border/50" />}
+ {element.type === 'divider' && <hr className="my-4 border-border/50" />}
                         
                         {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
                             <Controller
@@ -1338,8 +1338,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.type === 'embed' && (
                             <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Embed HTML Code</FormLabel>
-                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground">Embed HTML Code</FormLabel>
+ <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
                                 </FormItem>
                             )} />
                         )}
@@ -1350,10 +1350,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             </CardContent>
         </Card>
         <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+ className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
             onClick={() => requestAddElement(index)}
         >
-            <PlusCircle className="h-5 w-5 text-primary" />
+ <PlusCircle className="h-5 w-5 text-primary" />
         </div>
     </div>
   );
@@ -1393,7 +1393,7 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     <div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-8">
+ <div className="space-y-8">
                     {fields.map((field, index) => (
                         <SortableSurveyElement 
                             key={field.id} 
@@ -1408,10 +1408,10 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                 </div>
             </SortableContext>
         </DndContext>
-        <div className="mt-6">
+ <div className="mt-6">
             {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
-                <FormMessage className="text-sm font-bold bg-destructive/10 p-3 rounded-lg flex items-center gap-2">
-                    <X className="h-4 w-4" />
+ <FormMessage className="text-sm font-bold bg-destructive/10 p-3 rounded-lg flex items-center gap-2">
+ <X className="h-4 w-4" />
                     {(formErrors as any).message}
                 </FormMessage>
             )}

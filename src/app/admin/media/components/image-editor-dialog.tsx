@@ -206,15 +206,15 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+ <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+ <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle>Edit Image</DialogTitle>
           <DialogDescription>Crop, resize, and optimize your image before uploading.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
-            <div className="md:col-span-2 relative bg-muted rounded-md min-h-[300px] md:min-h-[450px]">
+ <div className="flex-grow overflow-y-auto">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+ <div className="md:col-span-2 relative bg-muted rounded-md min-h-[300px] md:min-h-[450px]">
               {file.originalDataUrl && (
                 <Cropper
                   image={file.originalDataUrl}
@@ -227,21 +227,21 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
                 />
               )}
             </div>
-            <div className="space-y-6">
-                <div className="space-y-2">
-                    <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
+ <div className="space-y-6">
+ <div className="space-y-2">
+ <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
                     <Input id="filename" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
-                  <div className="flex items-center gap-2">
+ <div className="space-y-2">
+ <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
+ <div className="flex items-center gap-2">
                       <Input id="width" type="number" value={targetWidth} onChange={(e) => setTargetWidth(parseInt(e.target.value, 10) || 0)} disabled={aspectString === 'original'} />
-                      <span className="text-muted-foreground">x</span>
+ <span className="text-muted-foreground">x</span>
                       <Input id="height" type="number" value={targetHeight} disabled />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
+ <div className="space-y-2">
+ <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
                   <Select value={aspectString} onValueChange={setAspectString}>
                       <SelectTrigger>
                           <SelectValue placeholder="Select aspect ratio" />
@@ -254,26 +254,26 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="zoom" className="flex items-center gap-2"><Crop/> Zoom</Label>
+ <div className="space-y-2">
+ <Label htmlFor="zoom" className="flex items-center gap-2"><Crop/> Zoom</Label>
                     <Slider id="zoom" value={[zoom]} onValueChange={([val]) => setZoom(val)} min={1} max={3} step={0.1} />
                 </div>
 
-                <div className="space-y-2">
-                    <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality</Label>
+ <div className="space-y-2">
+ <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality</Label>
                     <Slider id="quality" value={[quality]} onValueChange={([val]) => setQuality(val)} min={10} max={100} step={5} />
                 </div>
-                <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
-                    <p className="font-semibold text-foreground">Original:</p>
-                    <div className="flex justify-between"><span>Dimensions:</span> <span>{file.originalWidth} x {file.originalHeight}</span></div>
-                    <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(file.file.size)}</span></div>
-                    <div className="border-t pt-2 mt-2">
-                        <p className="font-semibold text-foreground">Estimated Output:</p>
-                        <div className="flex justify-between"><span>Dimensions:</span> <span>{targetWidth} x {targetHeight}</span></div>
-                        <div className="flex justify-between items-center">
+ <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
+ <p className="font-semibold text-foreground">Original:</p>
+ <div className="flex justify-between"><span>Dimensions:</span> <span>{file.originalWidth} x {file.originalHeight}</span></div>
+ <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(file.file.size)}</span></div>
+ <div className="border-t pt-2 mt-2">
+ <p className="font-semibold text-foreground">Estimated Output:</p>
+ <div className="flex justify-between"><span>Dimensions:</span> <span>{targetWidth} x {targetHeight}</span></div>
+ <div className="flex justify-between items-center">
                             <span>File Size:</span>
-                            <span className="font-mono text-foreground flex items-center">
-                              {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+ <span className="font-mono text-foreground flex items-center">
+ {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
                               {isEstimating ? '...' : estimatedSize || 'N/A'}
                             </span>
                           </div>
@@ -283,7 +283,7 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
           </div>
         </div>
 
-        <DialogFooter className="px-6 pb-6 pt-4 border-t">
+ <DialogFooter className="px-6 pb-6 pt-4 border-t">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button onClick={handleSave}>Save Changes</Button>
         </DialogFooter>

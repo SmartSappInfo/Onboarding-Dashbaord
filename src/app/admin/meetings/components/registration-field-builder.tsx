@@ -126,25 +126,25 @@ function SortableFieldRow({
       <div
         ref={setNodeRef}
         style={style}
-        className="p-4 bg-primary/5 rounded-xl border-2 border-primary/20 space-y-4 animate-in fade-in"
+ className="p-4 bg-primary/5 rounded-xl border-2 border-primary/20 space-y-4 animate-in fade-in"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Label</Label>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+ <div className="space-y-1.5">
+ <Label className="text-[9px] font-semibold text-muted-foreground">Label</Label>
             <Input
               value={editState.label || ''}
               onChange={e => onEditChange({ label: e.target.value })}
               placeholder="Field label..."
-              className="h-10 rounded-lg text-sm font-bold"
+ className="h-10 rounded-lg text-sm font-bold"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Type</Label>
+ <div className="space-y-1.5">
+ <Label className="text-[9px] font-semibold text-muted-foreground">Type</Label>
             <Select
               value={editState.type || 'text'}
               onValueChange={v => onEditChange({ type: v as MeetingRegistrationField['type'] })}
             >
-              <SelectTrigger className="h-10 rounded-lg text-sm font-bold">
+ <SelectTrigger className="h-10 rounded-lg text-sm font-bold">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,52 +157,52 @@ function SortableFieldRow({
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Placeholder</Label>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+ <div className="space-y-1.5">
+ <Label className="text-[9px] font-semibold text-muted-foreground">Placeholder</Label>
             <Input
               value={editState.placeholder || ''}
               onChange={e => onEditChange({ placeholder: e.target.value })}
               placeholder="Placeholder text..."
-              className="h-10 rounded-lg text-sm"
+ className="h-10 rounded-lg text-sm"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Key (slug)</Label>
+ <div className="space-y-1.5">
+ <Label className="text-[9px] font-semibold text-muted-foreground">Key (slug)</Label>
             <Input
               value={editState.key || ''}
               onChange={e => onEditChange({ key: e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') })}
               placeholder="field_key"
-              className="h-10 rounded-lg text-sm font-mono"
+ className="h-10 rounded-lg text-sm font-mono"
             />
           </div>
         </div>
         {(editState.type === 'select' || editState.type === 'multiselect') && (
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Options (comma-separated)</Label>
+ <div className="space-y-1.5">
+ <Label className="text-[9px] font-semibold text-muted-foreground">Options (comma-separated)</Label>
             <Input
               value={(editState.options || []).join(', ')}
               onChange={e => onEditChange({ options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
               placeholder="Option 1, Option 2, Option 3"
-              className="h-10 rounded-lg text-sm"
+ className="h-10 rounded-lg text-sm"
             />
           </div>
         )}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
+ <div className="flex items-center justify-between pt-2">
+ <div className="flex items-center gap-2">
             <Switch
               checked={editState.required ?? false}
               onCheckedChange={checked => onEditChange({ required: checked })}
               id={`edit-required-${field.id}`}
             />
-            <Label htmlFor={`edit-required-${field.id}`} className="text-xs font-bold">Required</Label>
+ <Label htmlFor={`edit-required-${field.id}`} className="text-xs font-bold">Required</Label>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onEditCancel} className="rounded-lg h-8 gap-1 text-xs font-bold">
-              <X className="h-3 w-3" /> Cancel
+ <div className="flex items-center gap-2">
+ <Button type="button" variant="ghost" size="sm" onClick={onEditCancel} className="rounded-lg h-8 gap-1 text-xs font-bold">
+ <X className="h-3 w-3" /> Cancel
             </Button>
-            <Button type="button" size="sm" onClick={onEditSave} className="rounded-lg h-8 gap-1 text-xs font-bold">
-              <Check className="h-3 w-3" /> Save
+ <Button type="button" size="sm" onClick={onEditSave} className="rounded-lg h-8 gap-1 text-xs font-bold">
+ <Check className="h-3 w-3" /> Save
             </Button>
           </div>
         </div>
@@ -214,7 +214,7 @@ function SortableFieldRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
+ className={cn(
         "flex items-center gap-3 p-3 rounded-xl border bg-background group transition-all",
         isDragging && "opacity-50 shadow-lg ring-2 ring-primary/20",
         "hover:border-primary/20 hover:shadow-sm"
@@ -225,65 +225,65 @@ function SortableFieldRow({
         type="button"
         {...attributes}
         {...listeners}
-        className="p-1 rounded-md cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors shrink-0"
+ className="p-1 rounded-md cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition-colors shrink-0"
       >
-        <GripVertical className="h-4 w-4" />
+ <GripVertical className="h-4 w-4" />
       </button>
 
       {/* Field icon + label */}
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
-        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-sm font-bold truncate">{field.label}</span>
-        <Badge className={cn("text-[8px] font-black uppercase px-1.5 h-4 border-none shrink-0", getFieldTypeBadgeColor(field.type))}>
+ <div className="flex items-center gap-2.5 flex-1 min-w-0">
+ <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+ <span className="text-sm font-bold truncate">{field.label}</span>
+        <Badge className={cn("text-[8px] font-semibold uppercase px-1.5 h-4 border-none shrink-0", getFieldTypeBadgeColor(field.type))}>
           {field.type}
         </Badge>
         {field.required && (
-          <Badge className="text-[8px] font-black uppercase px-1.5 h-4 bg-rose-50 text-rose-600 border-none shrink-0">
+          <Badge className="text-[8px] font-semibold uppercase px-1.5 h-4 bg-rose-50 text-rose-600 border-none shrink-0">
             Required
           </Badge>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+ className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onMoveUp}
           disabled={index === 0}
         >
-          <ChevronUp className="h-3.5 w-3.5" />
+ <ChevronUp className="h-3.5 w-3.5" />
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+ className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={onMoveDown}
           disabled={index === total - 1}
         >
-          <ChevronDown className="h-3.5 w-3.5" />
+ <ChevronDown className="h-3.5 w-3.5" />
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-primary"
+ className="h-7 w-7 text-muted-foreground hover:text-primary"
           onClick={onEdit}
         >
-          <Pencil className="h-3.5 w-3.5" />
+ <Pencil className="h-3.5 w-3.5" />
         </Button>
         {!isProtected && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+ className="h-7 w-7 text-muted-foreground hover:text-destructive"
             onClick={onDelete}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+ <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
@@ -380,9 +380,9 @@ export default function RegistrationFieldBuilder({ value, onChange }: Registrati
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
+ <div className="space-y-3">
+ <div className="flex items-center justify-between">
+ <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1">
           Registration Fields
         </Label>
         <Badge variant="secondary" className="text-[9px] font-bold h-5">
@@ -390,8 +390,8 @@ export default function RegistrationFieldBuilder({ value, onChange }: Registrati
         </Badge>
       </div>
 
-      <Card className="border-dashed border-2 rounded-xl overflow-hidden">
-        <CardContent className="p-3 space-y-2">
+ <Card className="border-dashed border-2 rounded-xl overflow-hidden">
+ <CardContent className="p-3 space-y-2">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -426,9 +426,9 @@ export default function RegistrationFieldBuilder({ value, onChange }: Registrati
             type="button"
             variant="outline"
             onClick={handleAddField}
-            className="w-full rounded-xl h-10 border-dashed font-bold gap-2 text-xs text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
+ className="w-full rounded-xl h-10 border-dashed font-bold gap-2 text-xs text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
           >
-            <Plus className="h-4 w-4" />
+ <Plus className="h-4 w-4" />
             Add Custom Field
           </Button>
         </CardContent>

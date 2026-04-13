@@ -42,7 +42,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;900&family=Figtree:wght@400;700&family=Raleway:ital,wght@0,400;1,400&family=League+Script&family=Mrs+Saint+Delafield&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&family=Figtree:wght@300;400;500;600;700;800;900&family=Raleway:ital,wght@0,400;1,400&family=League+Script&family=Mrs+Saint+Delafield&display=swap"
           rel="stylesheet"
         />
       </head>

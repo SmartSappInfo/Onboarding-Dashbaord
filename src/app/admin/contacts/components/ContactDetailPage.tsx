@@ -43,29 +43,29 @@ export function ContactDetailPage({
   );
 
   return (
-    <div className="space-y-6">
+ <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">{entity.name}</h1>
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-3">
+ <h1 className="text-3xl font-bold">{entity.name}</h1>
           {entityTypeBadge}
         </div>
-        <div className="flex gap-2">
+ <div className="flex gap-2">
           {onLogActivity && (
             <Button variant="outline" onClick={onLogActivity}>
-              <MessageSquarePlus className="mr-2 h-4 w-4" />
+ <MessageSquarePlus className="mr-2 h-4 w-4" />
               Log Activity
             </Button>
           )}
           {onMessage && (
             <Button variant="outline" onClick={onMessage}>
-              <Mail className="mr-2 h-4 w-4" />
+ <Mail className="mr-2 h-4 w-4" />
               Message
             </Button>
           )}
           {onEdit && (
             <Button onClick={onEdit}>
-              <PenSquare className="mr-2 h-4 w-4" />
+ <PenSquare className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
@@ -84,7 +84,7 @@ export function ContactDetailPage({
       )}
 
       {/* Common sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Notes Section */}
         <Card>
           <CardHeader>
@@ -119,16 +119,16 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
   const institutionData = entity.institutionData;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Institution Profile */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Building className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <Building className="h-5 w-5 text-primary" />
             <CardTitle>Institution Profile</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           <DetailItem icon={Users} label="Nominal Roll" value={institutionData?.nominalRoll?.toLocaleString()} />
           <DetailItem icon={MapPin} label="Billing Address" value={institutionData?.billingAddress} />
           <DetailItem icon={Calendar} label="Implementation Date">
@@ -141,12 +141,12 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
       {/* Financial Profile */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Banknote className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <Banknote className="h-5 w-5 text-primary" />
             <CardTitle>Financial Profile</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           <DetailItem 
             icon={Banknote} 
             label="Subscription Rate" 
@@ -155,13 +155,13 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
           <DetailItem label="Subscription Package" value={institutionData?.subscriptionPackageId} />
           {institutionData?.modules && institutionData.modules.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
-              <div className="flex flex-wrap gap-2">
+ <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
+ <div className="flex flex-wrap gap-2">
                 {institutionData.modules.map((module) => (
                   <Badge 
                     key={module.id} 
                     style={{ backgroundColor: module.color }} 
-                    className="text-primary-foreground"
+ className="text-primary-foreground"
                   >
                     {module.name}
                   </Badge>
@@ -173,28 +173,28 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
       </Card>
 
       {/* Focal Persons */}
-      <Card className="lg:col-span-2">
+ <Card className="lg:col-span-2">
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <Users className="h-5 w-5 text-primary" />
             <CardTitle>Focal Persons</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {entity.contacts.map((person, index) => (
-              <div key={index} className="p-4 bg-muted/20 rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="font-bold">{person.name}</p>
+ <div key={index} className="p-4 bg-muted/20 rounded-lg space-y-2">
+ <div className="flex items-center justify-between">
+ <p className="font-bold">{person.name}</p>
                   <Badge variant="outline" className="text-xs">{person.type}</Badge>
                 </div>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p className="flex items-center gap-2">
-                    <Mail className="h-3 w-3" />
+ <div className="space-y-1 text-sm text-muted-foreground">
+ <p className="flex items-center gap-2">
+ <Mail className="h-3 w-3" />
                     {person.email}
                   </p>
-                  <p className="flex items-center gap-2">
-                    <Phone className="h-3 w-3" />
+ <p className="flex items-center gap-2">
+ <Phone className="h-3 w-3" />
                     {person.phone}
                   </p>
                   {person.isSignatory && (
@@ -208,24 +208,24 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
       </Card>
 
       {/* Pipeline Stage */}
-      <Card className="lg:col-span-2">
+ <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Pipeline Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
+ <div className="flex items-center gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Current Stage</p>
+ <p className="text-sm text-muted-foreground">Current Stage</p>
               <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Assigned To</p>
-              <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
+ <p className="text-sm text-muted-foreground">Assigned To</p>
+ <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Status</p>
+ <p className="text-sm text-muted-foreground">Status</p>
               <Badge variant="outline" className="mt-1">{workspaceEntity.status}</Badge>
             </div>
           </div>
@@ -243,32 +243,32 @@ function FamilyDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
   const familyData = entity.familyData;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Guardians */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <UserPlus className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <UserPlus className="h-5 w-5 text-primary" />
             <CardTitle>Guardians</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           {familyData?.guardians.map((guardian, index) => (
-            <div key={index} className="p-3 bg-muted/20 rounded-lg space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="font-bold">{guardian.name}</p>
-                <div className="flex gap-2">
+ <div key={index} className="p-3 bg-muted/20 rounded-lg space-y-2">
+ <div className="flex items-center justify-between">
+ <p className="font-bold">{guardian.name}</p>
+ <div className="flex gap-2">
                   <Badge variant="outline" className="text-xs">{guardian.relationship}</Badge>
                   {guardian.isPrimary && <Badge className="text-xs">Primary</Badge>}
                 </div>
               </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <p className="flex items-center gap-2">
-                  <Mail className="h-3 w-3" />
+ <div className="space-y-1 text-sm text-muted-foreground">
+ <p className="flex items-center gap-2">
+ <Mail className="h-3 w-3" />
                   {guardian.email}
                 </p>
-                <p className="flex items-center gap-2">
-                  <Phone className="h-3 w-3" />
+ <p className="flex items-center gap-2">
+ <Phone className="h-3 w-3" />
                   {guardian.phone}
                 </p>
               </div>
@@ -280,31 +280,31 @@ function FamilyDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
       {/* Children */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Baby className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <Baby className="h-5 w-5 text-primary" />
             <CardTitle>Children</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           {familyData?.children && familyData.children.length > 0 ? (
             familyData.children.map((child, index) => (
-              <div key={index} className="p-3 bg-muted/20 rounded-lg space-y-2">
-                <p className="font-bold">{child.firstName} {child.lastName}</p>
-                <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+ <div key={index} className="p-3 bg-muted/20 rounded-lg space-y-2">
+ <p className="font-bold">{child.firstName} {child.lastName}</p>
+ <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                   {child.dateOfBirth && (
                     <div>
-                      <p className="text-xs">Date of Birth</p>
-                      <p className="font-medium">{format(new Date(child.dateOfBirth), 'PP')}</p>
+ <p className="text-xs">Date of Birth</p>
+ <p className="font-medium">{format(new Date(child.dateOfBirth), 'PP')}</p>
                     </div>
                   )}
                   {child.gradeLevel && (
                     <div>
-                      <p className="text-xs">Grade Level</p>
-                      <p className="font-medium">{child.gradeLevel}</p>
+ <p className="text-xs">Grade Level</p>
+ <p className="font-medium">{child.gradeLevel}</p>
                     </div>
                   )}
                   {child.enrollmentStatus && (
-                    <div className="col-span-2">
+ <div className="col-span-2">
                       <Badge variant="secondary" className="text-xs">{child.enrollmentStatus}</Badge>
                     </div>
                   )}
@@ -312,30 +312,30 @@ function FamilyDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
               </div>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground italic">No children added</p>
+ <p className="text-sm text-muted-foreground italic">No children added</p>
           )}
         </CardContent>
       </Card>
 
       {/* Admissions Pipeline */}
-      <Card className="lg:col-span-2">
+ <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Admissions Pipeline</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
+ <div className="flex items-center gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Current Stage</p>
+ <p className="text-sm text-muted-foreground">Current Stage</p>
               <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Assigned To</p>
-              <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
+ <p className="text-sm text-muted-foreground">Assigned To</p>
+ <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Status</p>
+ <p className="text-sm text-muted-foreground">Status</p>
               <Badge variant="outline" className="mt-1">{workspaceEntity.status}</Badge>
             </div>
           </div>
@@ -354,16 +354,16 @@ function PersonDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
   const primaryContact = entity.contacts[0];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Personal Information */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <User className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <User className="h-5 w-5 text-primary" />
             <CardTitle>Personal Information</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           <DetailItem label="Full Name" value={`${personData?.firstName} ${personData?.lastName}`} />
           <DetailItem icon={Mail} label="Email" value={primaryContact?.email} />
           <DetailItem icon={Phone} label="Phone" value={primaryContact?.phone} />
@@ -373,12 +373,12 @@ function PersonDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
       {/* Professional Information */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Briefcase className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3">
+ <Briefcase className="h-5 w-5 text-primary" />
             <CardTitle>Professional Information</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+ <CardContent className="space-y-4">
           <DetailItem icon={Building} label="Company" value={personData?.company} />
           <DetailItem label="Job Title" value={personData?.jobTitle} />
           <DetailItem label="Lead Source" value={personData?.leadSource} />
@@ -386,24 +386,24 @@ function PersonDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
       </Card>
 
       {/* Pipeline Status */}
-      <Card className="lg:col-span-2">
+ <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>Pipeline Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
+ <div className="flex items-center gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Current Stage</p>
+ <p className="text-sm text-muted-foreground">Current Stage</p>
               <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Assigned To</p>
-              <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
+ <p className="text-sm text-muted-foreground">Assigned To</p>
+ <p className="font-medium mt-1">{workspaceEntity.assignedTo?.name || 'Unassigned'}</p>
             </div>
-            <Separator orientation="vertical" className="h-12" />
+ <Separator orientation="vertical" className="h-12" />
             <div>
-              <p className="text-sm text-muted-foreground">Status</p>
+ <p className="text-sm text-muted-foreground">Status</p>
               <Badge variant="outline" className="mt-1">{workspaceEntity.status}</Badge>
             </div>
           </div>
@@ -430,11 +430,11 @@ function DetailItem({
   if (!value && !children) return null;
   
   return (
-    <div className="flex items-start gap-3">
-      {Icon && <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
+ <div className="flex items-start gap-3">
+ {Icon && <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
       <div>
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        {value && <p className="text-base text-foreground">{String(value)}</p>}
+ <p className="text-sm font-medium text-muted-foreground">{label}</p>
+ {value && <p className="text-base text-foreground">{String(value)}</p>}
         {children}
       </div>
     </div>

@@ -69,7 +69,7 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
   }
   
   if (isLoading) {
-    return <Skeleton className="h-10 w-full" />;
+ return <Skeleton className="h-10 w-full" />;
   }
 
   return (
@@ -79,22 +79,22 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto min-h-10"
+ className="w-full justify-between h-auto min-h-10"
         >
-          <div className="flex gap-1 flex-wrap">
+ <div className="flex gap-1 flex-wrap">
             {value && value.length > 0 ? (
                 value.map(module => (
                     <Badge
                         key={module.id}
                         style={{ backgroundColor: module.color, color: 'hsl(var(--primary-foreground))' }}
-                        className="mr-1 mb-1 border-transparent"
+ className="mr-1 mb-1 border-transparent"
                     >
                         {module.abbreviation}
                          <div
                             role="button"
                             aria-label={`Remove ${module.name}`}
                             tabIndex={0}
-                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+ className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             onClick={(e) => handleRemove(module.id, e)}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -103,18 +103,18 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
                                 }
                             }}
                         >
-                            <X className="h-3 w-3" />
+ <X className="h-3 w-3" />
                         </div>
                     </Badge>
                 ))
             ) : (
-              <span className="text-muted-foreground">Select modules...</span>
+ <span className="text-muted-foreground">Select modules...</span>
             )}
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+ <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+ <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput placeholder="Search modules..." value={searchTerm} onValueChange={setSearchTerm} />
           <CommandList>
@@ -127,14 +127,14 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
                   value={option.name}
                 >
                   <Check
-                    className={cn(
+ className={cn(
                       "mr-2 h-4 w-4",
                       selectedValues.has(option.id) ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <div className="w-3 h-3 rounded-full mr-2" style={{backgroundColor: option.color}} />
+ <div className="w-3 h-3 rounded-full mr-2" style={{backgroundColor: option.color}} />
                   <span>{option.name}</span>
-                  <span className="ml-auto text-muted-foreground text-xs">{option.abbreviation}</span>
+ <span className="ml-auto text-muted-foreground text-xs">{option.abbreviation}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

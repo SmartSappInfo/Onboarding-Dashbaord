@@ -53,72 +53,72 @@ export default function NotificationBell() {
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'meeting_created': return <Calendar className="h-4 w-4 text-blue-500" />;
-            case 'pdf_form_submitted': return <FileText className="h-4 w-4 text-emerald-500" />;
-            case 'school_assigned': return <Inbox className="h-4 w-4 text-purple-500" />;
-            default: return <Info className="h-4 w-4 text-primary" />;
+ case 'meeting_created': return <Calendar className="h-4 w-4 text-blue-500" />;
+ case 'pdf_form_submitted': return <FileText className="h-4 w-4 text-emerald-500" />;
+ case 'school_assigned': return <Inbox className="h-4 w-4 text-purple-500" />;
+ default: return <Info className="h-4 w-4 text-primary" />;
         }
     }
 
     return (
         <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-primary/5 transition-all">
-                    <Bell className={cn("h-5 w-5", unreadCount > 0 ? "text-primary fill-primary/10" : "text-muted-foreground")} />
+ <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-primary/5 transition-all">
+ <Bell className={cn("h-5 w-5", unreadCount > 0 ? "text-primary fill-primary/10" : "text-muted-foreground")} />
                     {unreadCount > 0 && (
-                        <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-black text-white ring-2 ring-background animate-in zoom-in duration-300">
+ <span className="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[8px] font-semibold text-white ring-2 ring-background animate-in zoom-in duration-300">
                             {unreadCount}
                         </span>
                     )}
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[380px] p-0 rounded-[1.5rem] overflow-hidden shadow-2xl border-primary/10">
-                <div className="p-4 bg-muted/30 border-b flex items-center justify-between">
+ <DropdownMenuContent align="end" className="w-[380px] p-0 rounded-[1.5rem] overflow-hidden shadow-2xl border-primary/10">
+ <div className="p-4 bg-muted/30 border-b flex items-center justify-between">
                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Workspace Inbox</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Recent system events</p>
+ <h3 className="text-sm font-semibold text-foreground">Workspace Inbox</h3>
+ <p className="text-[10px] font-bold text-muted-foreground tracking-tighter">Recent system events</p>
                     </div>
-                    {unreadCount > 0 && <Badge className="rounded-full px-2 font-black text-[9px] tracking-tighter">{unreadCount} NEW</Badge>}
+                    {unreadCount > 0 && <Badge className="rounded-full px-2 font-semibold text-[9px] tracking-tighter">{unreadCount} NEW</Badge>}
                 </div>
                 
-                <ScrollArea className="h-[400px]">
-                    <div className="divide-y divide-border/50">
+ <ScrollArea className="h-[400px]">
+ <div className="divide-y divide-border/50">
                         {isLoading ? (
                             Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="p-4 space-y-2">
-                                    <div className="h-3 w-2/3 bg-muted animate-pulse rounded" />
-                                    <div className="h-2 w-1/2 bg-muted animate-pulse rounded" />
+ <div key={i} className="p-4 space-y-2">
+ <div className="h-3 w-2/3 bg-muted animate-pulse rounded" />
+ <div className="h-2 w-1/2 bg-muted animate-pulse rounded" />
                                 </div>
                             ))
                         ) : notifications && notifications.length > 0 ? (
                             notifications.map((n) => (
-                                <div key={n.id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
-                                    <div className="flex gap-4">
-                                        <div className="p-2 bg-muted/50 rounded-xl h-fit shadow-inner group-hover:bg-background transition-colors">
+ <div key={n.id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
+ <div className="flex gap-4">
+ <div className="p-2 bg-muted/50 rounded-xl h-fit shadow-inner group-hover:bg-background transition-colors">
                                             {getIcon(n.type)}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold leading-tight mb-1">{n.description}</p>
-                                            <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
-                                                <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}</span>
-                                                {n.entityName && <span className="flex items-center gap-1 border-l pl-3 truncate">{n.entityName}</span>}
+ <div className="flex-1 min-w-0">
+ <p className="text-xs font-bold leading-tight mb-1">{n.description}</p>
+ <div className="flex items-center gap-3 text-[9px] font-semibold text-muted-foreground opacity-60">
+ <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" /> {formatDistanceToNow(new Date(n.timestamp), { addSuffix: true })}</span>
+ {n.entityName && <span className="flex items-center gap-1 border-l pl-3 truncate">{n.entityName}</span>}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="py-20 text-center space-y-3 opacity-30">
-                                <Inbox className="h-10 w-10 mx-auto" />
-                                <p className="text-[10px] font-black uppercase tracking-widest">Inbox Empty</p>
+ <div className="py-20 text-center space-y-3 opacity-30">
+ <Inbox className="h-10 w-10 mx-auto" />
+ <p className="text-[10px] font-semibold ">Inbox Empty</p>
                             </div>
                         )}
                     </div>
                 </ScrollArea>
 
-                <DropdownMenuSeparator className="m-0" />
-                <div className="p-2 bg-muted/30">
-                    <Button variant="ghost" asChild className="w-full h-9 rounded-xl font-black text-[10px] uppercase tracking-widest hover:text-primary transition-all">
+ <DropdownMenuSeparator className="m-0" />
+ <div className="p-2 bg-muted/30">
+ <Button variant="ghost" asChild className="w-full h-9 rounded-xl font-semibold text-[10px] hover:text-primary transition-all">
                         <Link href="/admin/activities">View Complete Timeline</Link>
                     </Button>
                 </div>

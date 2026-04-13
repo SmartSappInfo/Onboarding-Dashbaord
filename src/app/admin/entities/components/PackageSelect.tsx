@@ -36,7 +36,7 @@ export function PackageSelect({ value, onValueChange, error, disabled }: Package
   const { data: packages, isLoading } = useCollection<SubscriptionPackage>(packagesQuery);
 
   if (isLoading) {
-    return <Skeleton className="h-11 w-full rounded-xl" />;
+ return <Skeleton className="h-11 w-full rounded-xl" />;
   }
 
   // Robust mapping for 'none' state
@@ -52,17 +52,17 @@ export function PackageSelect({ value, onValueChange, error, disabled }: Package
         disabled={disabled}
     >
       <SelectTrigger 
-        className={cn(
+ className={cn(
             "h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all", 
             error && "ring-1 ring-destructive"
         )}
       >
         <SelectValue placeholder="Pick a pricing tier..." />
       </SelectTrigger>
-      <SelectContent className="rounded-xl shadow-2xl border-none">
-        <SelectItem value="none" className="font-bold italic opacity-60">No Active Subscription</SelectItem>
+ <SelectContent className="rounded-xl shadow-2xl border-none">
+ <SelectItem value="none" className="font-bold italic opacity-60">No Active Subscription</SelectItem>
         {packages?.map(pkg => (
-          <SelectItem key={pkg.id} value={pkg.id} className="font-bold">
+ <SelectItem key={pkg.id} value={pkg.id} className="font-bold">
             {pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)
           </SelectItem>
         ))}

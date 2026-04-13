@@ -22,7 +22,7 @@ export function ScopeBadge({ scope, variant = 'secondary', showIcon = false, cla
   
   return (
     <Badge variant={variant} className={cn('text-xs font-bold uppercase tracking-wider', className)}>
-      {showIcon && <scopeConfig.icon className="h-3 w-3 mr-1" />}
+ {showIcon && <scopeConfig.icon className="h-3 w-3 mr-1" />}
       {scopeConfig.label}
     </Badge>
   );
@@ -49,15 +49,15 @@ export function ScopeLabel({ scope, locked }: { scope: ContactScope; locked?: bo
   const scopeConfig = getScopeConfig(scope);
   
   return (
-    <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border">
-      <div className="p-2 bg-primary/10 rounded-lg">
-        <scopeConfig.icon className="h-5 w-5 text-primary" />
+ <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border">
+ <div className="p-2 bg-primary/10 rounded-lg">
+ <scopeConfig.icon className="h-5 w-5 text-primary" />
       </div>
-      <div className="flex-1">
-        <p className="text-sm font-bold">
-          This workspace manages <span className="text-primary">{scopeConfig.label}</span>.
+ <div className="flex-1">
+ <p className="text-sm font-bold">
+ This workspace manages <span className="text-primary">{scopeConfig.label}</span>.
         </p>
-        <p className="text-xs text-muted-foreground">
+ <p className="text-xs text-muted-foreground">
           Only {scopeConfig.label} records can exist here.
           {locked && ' Scope is locked because this workspace has active contacts.'}
         </p>
@@ -86,8 +86,8 @@ export function ScopeSelector({
   const scopes: ContactScope[] = ['institution', 'family', 'person'];
   
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+ <div className="space-y-4">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {scopes.map((scope) => {
           const config = getScopeConfig(scope);
           const isSelected = value === scope;
@@ -98,7 +98,7 @@ export function ScopeSelector({
               type="button"
               onClick={() => !disabled && onChange(scope)}
               disabled={disabled}
-              className={cn(
+ className={cn(
                 'p-6 rounded-xl border-2 transition-all text-left',
                 'hover:shadow-md hover:scale-105',
                 isSelected 
@@ -107,16 +107,16 @@ export function ScopeSelector({
                 disabled && 'opacity-50 cursor-not-allowed hover:scale-100'
               )}
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={cn(
+ <div className="flex items-center gap-3 mb-3">
+ <div className={cn(
                   'p-2 rounded-lg',
                   isSelected ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 )}>
-                  <config.icon className="h-5 w-5" />
+ <config.icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-bold text-lg">{config.label}</h3>
+ <h3 className="font-bold text-lg">{config.label}</h3>
               </div>
-              <p className="text-sm text-muted-foreground">
+ <p className="text-sm text-muted-foreground">
                 {scope === 'institution' && 'Manage schools and educational institutions with billing, contracts, and enrollment tracking.'}
                 {scope === 'family' && 'Manage families with guardians, children, and admissions workflows.'}
                 {scope === 'person' && 'Manage individual contacts with company info and sales pipeline tracking.'}
@@ -126,8 +126,8 @@ export function ScopeSelector({
         })}
       </div>
       
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-        <p className="text-sm font-medium text-amber-900">
+ <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+ <p className="text-sm font-medium text-amber-900">
           ⚠️ Scope cannot be changed after the first contact is added.
         </p>
       </div>
@@ -150,14 +150,14 @@ export function ScopeMismatchError({
   const workspaceConfig = getScopeConfig(workspaceScope);
   
   return (
-    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
-      <p className="text-sm font-bold text-destructive mb-2">
+ <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+ <p className="text-sm font-bold text-destructive mb-2">
         Scope Mismatch Error
       </p>
-      <p className="text-sm text-destructive/80">
+ <p className="text-sm text-destructive/80">
         {entityConfig.label} records cannot be added to a workspace that manages {workspaceConfig.label}.
       </p>
-      <p className="text-xs text-muted-foreground mt-2">
+ <p className="text-xs text-muted-foreground mt-2">
         Please select a workspace with the correct contact scope or create a new workspace.
       </p>
     </div>

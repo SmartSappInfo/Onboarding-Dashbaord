@@ -103,20 +103,20 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-              <ShieldCheck className="h-6 w-6" />
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <ShieldCheck className="h-6 w-6" />
             </div>
-            <div className="text-left">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">{singular} Status Architect</DialogTitle>
-              <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Modify current state for {entity.displayName}</DialogDescription>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight">{singular} Status Architect</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground">Modify current state for {entity.displayName}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="p-6 space-y-4 bg-background">
+ <div className="p-6 space-y-4 bg-background">
             {workspaceStatuses.map((status) => {
                 const isActive = entity.lifecycleStatus === status.value;
 
@@ -125,27 +125,27 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
                         key={status.value}
                         onClick={() => handleStatusChange(status.value)}
                         disabled={isUpdating}
-                        className={cn(
+ className={cn(
                             "w-full flex items-start gap-4 p-4 rounded-2xl border-2 transition-all duration-300 text-left group",
                             isActive ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40",
                             isUpdating && "opacity-50 cursor-not-allowed"
                         )}
                     >
                         <div 
-                            className={cn(
+ className={cn(
                                 "p-2 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
                                 isActive ? "bg-primary text-white" : "bg-white border"
                             )}
                             style={!isActive ? { color: status.color, borderColor: `${status.color}40` } : {}}
                         >
-                            {status.value === 'Active' ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+ {status.value === 'Active' ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                                <p className="font-black uppercase text-sm tracking-tight">{status.label}</p>
-                                {isActive && <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in" />}
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center justify-between">
+ <p className="font-semibold text-sm tracking-tight">{status.label}</p>
+ {isActive && <CheckCircle2 className="h-4 w-4 text-primary animate-in zoom-in" />}
                             </div>
-                            <p className="text-[10px] font-medium text-muted-foreground mt-0.5 leading-relaxed">
+ <p className="text-[10px] font-medium text-muted-foreground mt-0.5 leading-relaxed">
                                 {status.description || 'Lifecycle phase entry.'}
                             </p>
                         </div>
@@ -153,16 +153,16 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
                 );
             })}
 
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 mt-4">
-                <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
+ <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3 mt-4">
+ <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter text-left">
                     "{singular} Status" is unique to the **{activeWorkspace?.name}** hub. Changes are reflected in the pipeline and reporting views.
                 </p>
             </div>
         </div>
 
-        <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold">Discard</Button>
+ <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end">
+ <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold">Discard</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

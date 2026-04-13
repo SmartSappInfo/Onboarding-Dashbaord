@@ -231,7 +231,7 @@ function TagsClientInner() {
                 });
                 invalidate();
               }}
-              className="text-xs font-bold underline underline-offset-2 hover:no-underline"
+ className="text-xs font-bold underline underline-offset-2 hover:no-underline"
             >
               Undo
             </button>
@@ -248,55 +248,55 @@ function TagsClientInner() {
   };
 
   const TagForm = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="text-[10px] font-black uppercase tracking-widest">Tag Name *</Label>
+ <div className="space-y-4">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold ">Tag Name *</Label>
         <Input
           value={formData.name}
           onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
           placeholder="e.g. Hot Lead"
-          className="rounded-xl"
+ className="rounded-xl"
           maxLength={50}
         />
-        <p className="text-[10px] text-muted-foreground">{formData.name.length}/50 characters</p>
+ <p className="text-[10px] text-muted-foreground">{formData.name.length}/50 characters</p>
       </div>
-      <div className="space-y-2">
-        <Label className="text-[10px] font-black uppercase tracking-widest">Description</Label>
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold ">Description</Label>
         <Textarea
           value={formData.description}
           onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
           placeholder="Optional description..."
-          className="rounded-xl resize-none"
+ className="rounded-xl resize-none"
           rows={2}
           maxLength={200}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest">Category</Label>
+ <div className="grid grid-cols-2 gap-4">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold ">Category</Label>
           <Select
             value={formData.category}
             onValueChange={v => setFormData(p => ({ ...p, category: v as TagCategory }))}
           >
-            <SelectTrigger className="rounded-xl">
+ <SelectTrigger className="rounded-xl">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
+ <SelectContent className="rounded-xl">
               {TAG_CATEGORIES.map(cat => (
                 <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest">Color</Label>
-          <div className="flex flex-wrap gap-2 p-2 border rounded-xl">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold ">Color</Label>
+ <div className="flex flex-wrap gap-2 p-2 border rounded-xl">
             {TAG_COLORS.map(color => (
               <button
                 key={color}
                 type="button"
                 onClick={() => setFormData(p => ({ ...p, color }))}
-                className="h-6 w-6 rounded-full transition-transform hover:scale-110 ring-offset-2"
+ className="h-6 w-6 rounded-full transition-transform hover:scale-110 ring-offset-2"
                 style={{
                   backgroundColor: color,
                   outline: formData.color === color ? `2px solid ${color}` : 'none',
@@ -307,10 +307,10 @@ function TagsClientInner() {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Preview:</span>
+ <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
+ <span className="text-[10px] font-semibold text-muted-foreground">Preview:</span>
         <Badge
-          className="text-white border-none font-bold text-xs"
+ className="text-white border-none font-bold text-xs"
           style={{ backgroundColor: formData.color }}
         >
           {formData.name || 'Tag Name'}
@@ -320,83 +320,83 @@ function TagsClientInner() {
   );
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight">Tag Management</h1>
-            <p className="text-sm text-muted-foreground font-medium mt-1">
+ <h1 className="text-2xl font-semibold tracking-tight">Tag Management</h1>
+ <p className="text-sm text-muted-foreground font-medium mt-1">
               Organize contacts with flexible labels for intelligent segmentation
             </p>
           </div>
-          <Button onClick={openCreate} className="rounded-xl font-bold shadow-lg h-11 px-6 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1" aria-label="Create new tag">
-            <PlusCircle className="mr-2 h-5 w-5" aria-hidden="true" />
+ <Button onClick={openCreate} className="rounded-xl font-bold shadow-lg h-11 px-6 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1" aria-label="Create new tag">
+ <PlusCircle className="mr-2 h-5 w-5" aria-hidden="true" />
             Create Tag
           </Button>
         </div>
 
         {/* Main navigation tabs */}
         <Tabs value={mainTab} onValueChange={v => setMainTab(v as any)}>
-          <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl gap-1">
-            <TabsTrigger value="tags" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4 gap-1.5">
-              <TagIcon className="h-3.5 w-3.5" /> Tags
+ <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl gap-1">
+ <TabsTrigger value="tags" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5">
+ <TagIcon className="h-3.5 w-3.5" /> Tags
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4 gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5" /> Analytics
+ <TabsTrigger value="analytics" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5">
+ <BarChart3 className="h-3.5 w-3.5" /> Analytics
             </TabsTrigger>
-            <TabsTrigger value="cleanup" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4 gap-1.5">
-              <Wrench className="h-3.5 w-3.5" /> Cleanup
+ <TabsTrigger value="cleanup" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5">
+ <Wrench className="h-3.5 w-3.5" /> Cleanup
             </TabsTrigger>
-            <TabsTrigger value="audit" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4 gap-1.5">
-              <History className="h-3.5 w-3.5" /> Audit Log
+ <TabsTrigger value="audit" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5">
+ <History className="h-3.5 w-3.5" /> Audit Log
             </TabsTrigger>
           </TabsList>
 
           {/* Tags tab */}
-          <TabsContent value="tags" className="mt-6 space-y-6">
+ <TabsContent value="tags" className="mt-6 space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border-none shadow-sm rounded-2xl bg-card">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-xl"><Hash className="h-4 w-4 text-primary" /></div>
+ <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+ <Card className="border-none shadow-sm rounded-2xl bg-card">
+ <CardContent className="p-5">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-primary/10 rounded-xl"><Hash className="h-4 w-4 text-primary" /></div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Tags</p>
-                      <p className="text-2xl font-black tabular-nums">{isLoading ? '—' : (tags?.length || 0)}</p>
+ <p className="text-[10px] font-semibold text-muted-foreground">Total Tags</p>
+ <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : (tags?.length || 0)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-none shadow-sm rounded-2xl bg-card">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-xl"><Users className="h-4 w-4 text-emerald-600" /></div>
+ <Card className="border-none shadow-sm rounded-2xl bg-card">
+ <CardContent className="p-5">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-emerald-100 rounded-xl"><Users className="h-4 w-4 text-emerald-600" /></div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Usages</p>
-                      <p className="text-2xl font-black tabular-nums">{isLoading ? '—' : totalUsage}</p>
+ <p className="text-[10px] font-semibold text-muted-foreground">Total Usages</p>
+ <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : totalUsage}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-none shadow-sm rounded-2xl bg-card">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-xl"><TrendingUp className="h-4 w-4 text-amber-600" /></div>
+ <Card className="border-none shadow-sm rounded-2xl bg-card">
+ <CardContent className="p-5">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-amber-100 rounded-xl"><TrendingUp className="h-4 w-4 text-amber-600" /></div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Most Used</p>
-                      <p className="text-sm font-black truncate max-w-[100px]">{isLoading ? '—' : (mostUsedTag?.name || 'None')}</p>
+ <p className="text-[10px] font-semibold text-muted-foreground">Most Used</p>
+ <p className="text-sm font-semibold truncate max-w-[100px]">{isLoading ? '—' : (mostUsedTag?.name || 'None')}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-none shadow-sm rounded-2xl bg-card">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-xl"><TagIcon className="h-4 w-4 text-blue-600" /></div>
+ <Card className="border-none shadow-sm rounded-2xl bg-card">
+ <CardContent className="p-5">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-blue-100 rounded-xl"><TagIcon className="h-4 w-4 text-blue-600" /></div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Categories</p>
-                      <p className="text-2xl font-black tabular-nums">
+ <p className="text-[10px] font-semibold text-muted-foreground">Categories</p>
+ <p className="text-2xl font-semibold tabular-nums">
                         {isLoading ? '—' : Object.values(tagsByCategory).filter(arr => arr.length > 0).length}
                       </p>
                     </div>
@@ -406,16 +406,16 @@ function TagsClientInner() {
             </div>
 
             {/* Search */}
-            <Card className="border-none shadow-sm rounded-2xl bg-card">
-              <CardContent className="p-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
+ <Card className="border-none shadow-sm rounded-2xl bg-card">
+ <CardContent className="p-4">
+ <div className="relative">
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
                   <Input
                     id="tag-search"
                     placeholder="Search tags by name or description…"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-2 focus-visible:ring-primary"
+ className="pl-9 h-10 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label="Search tags"
                   />
                 </div>
@@ -424,88 +424,88 @@ function TagsClientInner() {
 
             {/* Tags by Category */}
             <Tabs value={activeCategory} onValueChange={v => setActiveCategory(v as TagCategory | 'all')}>
-              <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl flex-wrap h-auto gap-1">
-                <TabsTrigger value="all" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4">
+ <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl flex-wrap h-auto gap-1">
+ <TabsTrigger value="all" className="rounded-xl font-semibold text-[10px] px-4">
                   All ({tags?.length || 0})
                 </TabsTrigger>
                 {TAG_CATEGORIES.map(cat => (
-                  <TabsTrigger key={cat.value} value={cat.value} className="rounded-xl font-black uppercase text-[10px] tracking-widest px-4">
+ <TabsTrigger key={cat.value} value={cat.value} className="rounded-xl font-semibold text-[10px] px-4">
                     {cat.label} ({tagsByCategory[cat.value]?.length || 0})
                   </TabsTrigger>
                 ))}
               </TabsList>
 
-              <TabsContent value={activeCategory} className="mt-6">
+ <TabsContent value={activeCategory} className="mt-6">
                 {isLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <Skeleton key={i} className="h-24 rounded-2xl" />
+ <Skeleton key={i} className="h-24 rounded-2xl" />
                     ))}
                   </div>
                 ) : filteredTags.length === 0 ? (
-                  <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-muted/10">
-                    <TagIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+ <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-muted/10">
+ <TagIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+ <p className="text-[10px] font-semibold text-muted-foreground">
                       {searchTerm ? 'No tags match your search' : 'No tags in this category'}
                     </p>
                     {!searchTerm && (
-                      <Button variant="outline" size="sm" onClick={openCreate} className="mt-4 rounded-xl font-bold">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create First Tag
+ <Button variant="outline" size="sm" onClick={openCreate} className="mt-4 rounded-xl font-bold">
+ <PlusCircle className="mr-2 h-4 w-4" /> Create First Tag
                       </Button>
                     )}
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {paginatedTags.map(tag => (
-                        <Card key={tag.id} className="border-border/50 shadow-sm rounded-2xl bg-card hover:shadow-md transition-all group">
-                          <CardContent className="p-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
+ <Card key={tag.id} className="border-border/50 shadow-sm rounded-2xl bg-card hover:shadow-md transition-all group">
+ <CardContent className="p-5">
+ <div className="flex items-start justify-between gap-3">
+ <div className="flex items-center gap-3 min-w-0">
                                 <div
-                                  className="h-10 w-10 rounded-xl shrink-0 shadow-sm"
+ className="h-10 w-10 rounded-xl shrink-0 shadow-sm"
                                   style={{ backgroundColor: tag.color }}
                                 />
-                                <div className="min-w-0">
-                                  <p className="font-black text-sm uppercase tracking-tight truncate">{tag.name}</p>
+ <div className="min-w-0">
+ <p className="font-semibold text-sm tracking-tight truncate">{tag.name}</p>
                                   {tag.description && (
-                                    <p className="text-[10px] text-muted-foreground font-medium mt-0.5 line-clamp-1">{tag.description}</p>
+ <p className="text-[10px] text-muted-foreground font-medium mt-0.5 line-clamp-1">{tag.description}</p>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+ <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                 {!tag.isSystem && (
                                   <>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-muted-foreground hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+ className="h-7 w-7 text-muted-foreground hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
                                       onClick={() => openEdit(tag)}
                                       aria-label={`Edit tag ${tag.name}`}
                                     >
-                                      <Edit className="h-3.5 w-3.5" aria-hidden="true" />
+ <Edit className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1"
+ className="h-7 w-7 text-muted-foreground hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1"
                                       onClick={() => setDeletingTag(tag)}
                                       aria-label={`Delete tag ${tag.name}`}
                                     >
-                                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+ <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                   </>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center justify-between mt-4">
+ <div className="flex items-center justify-between mt-4">
                               <Badge
                                 variant="outline"
-                                className={`text-[9px] font-black uppercase tracking-widest border ${CATEGORY_COLORS[tag.category]}`}
+ className={`text-[9px] font-semibold border ${CATEGORY_COLORS[tag.category]}`}
                               >
                                 {tag.category}
                               </Badge>
-                              <span className="text-[10px] font-bold text-muted-foreground">
+ <span className="text-[10px] font-bold text-muted-foreground">
                                 {tag.usageCount || 0} contacts
                               </span>
                             </div>
@@ -515,10 +515,10 @@ function TagsClientInner() {
                     </div>
                     {/* Load More */}
                     {hasMore && (
-                      <div className="flex justify-center pt-4">
+ <div className="flex justify-center pt-4">
                         <Button
                           variant="outline"
-                          className="rounded-xl font-bold"
+ className="rounded-xl font-bold"
                           onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
                         >
                           Load More ({filteredTags.length - visibleCount} remaining)
@@ -532,21 +532,21 @@ function TagsClientInner() {
           </TabsContent>
 
           {/* Analytics tab */}
-          <TabsContent value="analytics" className="mt-6">
+ <TabsContent value="analytics" className="mt-6">
             <TagUsageDashboard refreshKey={analyticsRefreshKey} />
           </TabsContent>
 
           {/* Cleanup tab */}
-          <TabsContent value="cleanup" className="mt-6">
+ <TabsContent value="cleanup" className="mt-6">
             <TagCleanupTools onTagsChanged={() => setAnalyticsRefreshKey(k => k + 1)} />
           </TabsContent>
 
           {/* Audit log tab */}
-          <TabsContent value="audit" className="mt-6">
-            <Card className="border-none shadow-sm rounded-2xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                  <History className="h-4 w-4 text-primary" />
+ <TabsContent value="audit" className="mt-6">
+ <Card className="border-none shadow-sm rounded-2xl">
+ <CardHeader className="pb-3">
+ <CardTitle className="text-sm font-semibold flex items-center gap-2">
+ <History className="h-4 w-4 text-primary" />
                   Tag Audit Log
                 </CardTitle>
               </CardHeader>
@@ -560,15 +560,15 @@ function TagsClientInner() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="rounded-2xl max-w-md">
+ <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-tight">Create New Tag</DialogTitle>
+ <DialogTitle className="font-semibold tracking-tight">Create New Tag</DialogTitle>
             <DialogDescription>Add a new tag to organize your contacts.</DialogDescription>
           </DialogHeader>
           <TagForm />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-            <Button onClick={handleCreate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
+ <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl font-bold">Cancel</Button>
+ <Button onClick={handleCreate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
               {isSubmitting ? 'Creating...' : 'Create Tag'}
             </Button>
           </DialogFooter>
@@ -577,15 +577,15 @@ function TagsClientInner() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingTag} onOpenChange={open => !open && setEditingTag(null)}>
-        <DialogContent className="rounded-2xl max-w-md">
+ <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-tight">Edit Tag</DialogTitle>
+ <DialogTitle className="font-semibold tracking-tight">Edit Tag</DialogTitle>
             <DialogDescription>Update tag properties.</DialogDescription>
           </DialogHeader>
           <TagForm />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditingTag(null)} className="rounded-xl font-bold">Cancel</Button>
-            <Button onClick={handleUpdate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
+ <Button variant="ghost" onClick={() => setEditingTag(null)} className="rounded-xl font-bold">Cancel</Button>
+ <Button onClick={handleUpdate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
@@ -594,20 +594,20 @@ function TagsClientInner() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingTag} onOpenChange={open => !open && setDeletingTag(null)}>
-        <AlertDialogContent className="rounded-2xl">
+ <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black">Delete Tag?</AlertDialogTitle>
+ <AlertDialogTitle className="font-semibold">Delete Tag?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove <span className="font-bold">"{deletingTag?.name}"</span> from all{' '}
-              <span className="font-bold">{deletingTag?.usageCount || 0} contacts</span>. This action cannot be undone.
+ This will remove <span className="font-bold">"{deletingTag?.name}"</span> from all{' '}
+ <span className="font-bold">{deletingTag?.usageCount || 0} contacts</span>. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+ <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold"
+ className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold"
             >
               {isSubmitting ? 'Deleting...' : 'Delete Tag'}
             </AlertDialogAction>

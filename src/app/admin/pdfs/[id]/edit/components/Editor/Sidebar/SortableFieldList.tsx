@@ -25,7 +25,7 @@ export function SortableFieldList() {
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-1">
+ <div className="space-y-1">
           {fields.map((field) => (
             <FieldListItem 
               key={field.id} 

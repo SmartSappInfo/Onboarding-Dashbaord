@@ -11,11 +11,11 @@ export default {
   	extend: {
   		fontFamily: {
   			body: [
-  				'Inter',
+  				'Figtree',
   				'sans-serif'
   			],
   			headline: [
-  				'DM Sans',
+  				'Figtree',
   				'sans-serif'
   			],
   			quote: [

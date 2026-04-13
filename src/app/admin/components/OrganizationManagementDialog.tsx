@@ -151,47 +151,47 @@ export default function OrganizationManagementDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
-                <form onSubmit={handleSave} className="flex flex-col h-full text-left">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
-                                <Building className="h-6 w-6" />
+ <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
+ <form onSubmit={handleSave} className="flex flex-col h-full text-left">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
+ <Building className="h-6 w-6" />
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+ <DialogTitle className="text-2xl font-semibold tracking-tight">
                                     {organization ? 'Edit Organization' : 'New Organization'}
                                 </DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+ <DialogDescription className="text-xs font-bold text-muted-foreground">
                                     Configure organization identity and default settings
                                 </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-hidden relative bg-background">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 space-y-8">
+ <div className="flex-1 overflow-hidden relative bg-background">
+ <ScrollArea className="h-full">
+ <div className="p-8 space-y-8">
                                 {/* Basic Information */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-primary">Basic Information</h4>
+ <div className="space-y-4">
+ <h4 className="text-xs font-semibold text-primary">Basic Information</h4>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Organization Name *
                                             </Label>
                                             <Input 
                                                 value={name} 
                                                 onChange={e => setName(e.target.value)} 
                                                 placeholder="e.g. Acme Corporation" 
-                                                className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
+ className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
                                                 required 
                                             />
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-4">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Organization Logo
                                             </Label>
                                             <MediaSelectorTrigger 
@@ -203,15 +203,15 @@ export default function OrganizationManagementDialog({
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                             Description
                                         </Label>
                                         <Textarea 
                                             value={description} 
                                             onChange={e => setDescription(e.target.value)} 
                                             placeholder="Brief description of the organization..." 
-                                            className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed" 
+ className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed" 
                                         />
                                     </div>
                                 </div>
@@ -219,58 +219,58 @@ export default function OrganizationManagementDialog({
                                 <Separator />
 
                                 {/* Contact Information */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-primary">Contact Information</h4>
+ <div className="space-y-4">
+ <h4 className="text-xs font-semibold text-primary">Contact Information</h4>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
-                                                <Globe className="h-3 w-3" /> Website
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+ <Globe className="h-3 w-3" /> Website
                                             </Label>
                                             <Input 
                                                 value={website} 
                                                 onChange={e => setWebsite(e.target.value)} 
                                                 placeholder="https://example.com" 
                                                 type="url"
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
-                                                <Mail className="h-3 w-3" /> Email
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+ <Mail className="h-3 w-3" /> Email
                                             </Label>
                                             <Input 
                                                 value={email} 
                                                 onChange={e => setEmail(e.target.value)} 
                                                 placeholder="contact@example.com" 
                                                 type="email"
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
-                                                <Phone className="h-3 w-3" /> Phone
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+ <Phone className="h-3 w-3" /> Phone
                                             </Label>
                                             <Input 
                                                 value={phone} 
                                                 onChange={e => setPhone(e.target.value)} 
                                                 placeholder="+1 (555) 123-4567" 
                                                 type="tel"
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
-                                                <MapPin className="h-3 w-3" /> Address
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-1.5">
+ <MapPin className="h-3 w-3" /> Address
                                             </Label>
                                             <Input 
                                                 value={address} 
                                                 onChange={e => setAddress(e.target.value)} 
                                                 placeholder="123 Main St, City, Country" 
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
                                     </div>
@@ -279,43 +279,43 @@ export default function OrganizationManagementDialog({
                                 <Separator />
 
                                 {/* Default Settings */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-primary">Default Settings</h4>
+ <div className="space-y-4">
+ <h4 className="text-xs font-semibold text-primary">Default Settings</h4>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Currency
                                             </Label>
                                             <Input 
                                                 value={defaultCurrency} 
                                                 onChange={e => setDefaultCurrency(e.target.value)} 
                                                 placeholder="USD" 
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Timezone
                                             </Label>
                                             <Input 
                                                 value={defaultTimezone} 
                                                 onChange={e => setDefaultTimezone(e.target.value)} 
                                                 placeholder="UTC" 
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Language
                                             </Label>
                                             <Input 
                                                 value={defaultLanguage} 
                                                 onChange={e => setDefaultLanguage(e.target.value)} 
                                                 placeholder="en" 
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
                                     </div>
@@ -324,27 +324,27 @@ export default function OrganizationManagementDialog({
                                 <Separator />
 
                                 {/* AI Configuration */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-black uppercase tracking-widest text-primary">AI Configuration</h4>
-                                        <div className="flex items-center gap-2">
+ <div className="space-y-4">
+ <div className="flex items-center justify-between">
+ <h4 className="text-xs font-semibold text-primary">AI Configuration</h4>
+ <div className="flex items-center gap-2">
                                             <Button 
                                                 type="button" 
                                                 variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => setShowApiKeys(!showApiKeys)}
-                                                className="h-6 text-xs text-muted-foreground hover:text-foreground"
+ className="h-6 text-xs text-muted-foreground hover:text-foreground"
                                             >
-                                                {showApiKeys ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+ {showApiKeys ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
                                                 {showApiKeys ? 'Hide Keys' : 'Show Keys'}
                                             </Button>
-                                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
+ <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
                                         </div>
                                     </div>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Gemini API Key
                                             </Label>
                                             <Input 
@@ -352,12 +352,12 @@ export default function OrganizationManagementDialog({
                                                 onChange={e => setGeminiApiKey(e.target.value)} 
                                                 placeholder="AIza..." 
                                                 type={showApiKeys ? "text" : "password"}
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 OpenRouter API Key
                                             </Label>
                                             <Input 
@@ -365,12 +365,12 @@ export default function OrganizationManagementDialog({
                                                 onChange={e => setOpenRouterApiKey(e.target.value)} 
                                                 placeholder="sk-or-v1-..." 
                                                 type={showApiKeys ? "text" : "password"}
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 OpenAI API Key
                                             </Label>
                                             <Input 
@@ -378,12 +378,12 @@ export default function OrganizationManagementDialog({
                                                 onChange={e => setOpenaiApiKey(e.target.value)} 
                                                 placeholder="sk-..." 
                                                 type={showApiKeys ? "text" : "password"}
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+ <div className="space-y-2">
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Claude API Key (Optional)
                                             </Label>
                                             <Input 
@@ -391,9 +391,9 @@ export default function OrganizationManagementDialog({
                                                 onChange={e => setClaudeApiKey(e.target.value)} 
                                                 placeholder="sk-ant-..." 
                                                 type={showApiKeys ? "text" : "password"}
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+ className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
-                                            <p className="text-[9px] text-muted-foreground ml-1 uppercase font-bold">Recommended: Use OpenRouter for Claude</p>
+ <p className="text-[9px] text-muted-foreground ml-1 font-bold">Recommended: Use OpenRouter for Claude</p>
                                         </div>
                                     </div>
                                 </div>
@@ -401,22 +401,22 @@ export default function OrganizationManagementDialog({
                         </ScrollArea>
                     </div>
 
-                    <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex justify-between">
+ <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex justify-between">
                         <Button 
                             type="button" 
                             variant="ghost" 
                             onClick={() => onOpenChange(false)} 
-                            className="rounded-xl font-bold px-8"
+ className="rounded-xl font-bold px-8"
                         >
                             Cancel
                         </Button>
                         <Button 
                             type="submit" 
                             disabled={isSaving || !name.trim()} 
-                            className="rounded-xl font-black px-12 shadow-2xl bg-primary text-white uppercase text-xs"
+ className="rounded-xl font-semibold px-12 shadow-2xl bg-primary text-white text-xs"
                         >
-                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building className="h-4 w-4" />}
-                            <span className="ml-2">{organization ? 'Update' : 'Create'} Organization</span>
+ {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building className="h-4 w-4" />}
+ <span className="ml-2">{organization ? 'Update' : 'Create'} Organization</span>
                         </Button>
                     </DialogFooter>
                 </form>

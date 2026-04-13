@@ -89,36 +89,36 @@ export default function NotesSection({ entityId }: NotesSectionProps) {
                 <CardTitle>Internal Notes</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
+ <div className="space-y-4">
                     {/* Add Note Form */}
-                    <div className="space-y-2">
+ <div className="space-y-2">
                         <Textarea
                             placeholder="Add a new note..."
                             value={newNoteContent}
                             onChange={(e) => setNewNoteContent(e.target.value)}
                             disabled={isSubmitting}
-                            className="min-h-[100px]"
+ className="min-h-[100px]"
                         />
-                        <div className="flex justify-end">
+ <div className="flex justify-end">
                             <Button onClick={handleAddNote} disabled={isSubmitting || !newNoteContent.trim()}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+ {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Add Note
                             </Button>
                         </div>
                     </div>
                     
                     {/* Notes List */}
-                    <div className="relative space-y-4">
+ <div className="relative space-y-4">
                         {isLoading ? (
-                            <div className="space-y-4">
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
+ <div className="space-y-4">
+ <Skeleton className="h-16 w-full" />
+ <Skeleton className="h-16 w-full" />
                             </div>
                         ) : notes && notes.length > 0 ? (
-                            <div className="relative">
-                               <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
+ <div className="relative">
+ <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
                                {notes.map(note => (
-                                   <div key={note.id} className="group relative">
+ <div key={note.id} className="group relative">
                                         <NoteItem
                                             note={note}
                                             userProfile={note.userId ? usersMap.get(note.userId) : undefined}
@@ -127,7 +127,7 @@ export default function NotesSection({ entityId }: NotesSectionProps) {
                                ))}
                             </div>
                         ) : (
-                            <div className="text-center py-10 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+ <div className="text-center py-10 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
                                 <p>No notes have been added for this school yet.</p>
                             </div>
                         )}

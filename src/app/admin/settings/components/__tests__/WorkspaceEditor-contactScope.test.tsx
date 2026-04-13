@@ -34,7 +34,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
         <button 
           data-testid="scope-institution"
           onClick={() => selectedScope = 'institution'}
-          className={selectedScope === 'institution' ? 'selected' : ''}
+ className={selectedScope === 'institution' ? 'selected' : ''}
         >
           Schools
         </button>

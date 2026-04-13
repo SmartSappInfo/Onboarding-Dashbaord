@@ -144,34 +144,34 @@ export default function AddLinkButton() {
 
   return (
     <>
-      <Button variant="outline" onClick={() => setIsDialogOpen(true)} className="rounded-xl font-bold border-primary/20 text-primary h-11 px-6 shadow-sm hover:bg-primary/5">
-        <LinkIcon className="mr-2 h-4 w-4" />
+ <Button variant="outline" onClick={() => setIsDialogOpen(true)} className="rounded-xl font-bold border-primary/20 text-primary h-11 px-6 shadow-sm hover:bg-primary/5">
+ <LinkIcon className="mr-2 h-4 w-4" />
         Add Link
       </Button>
       <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
-          <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-            <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                    <LinkIcon className="h-6 w-6" />
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+ <div className="flex items-center gap-4">
+ <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+ <LinkIcon className="h-6 w-6" />
                 </div>
-                <div className="text-left">
-                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Add Dynamic Link</DialogTitle>
-                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Broadcast URLs across workspaces.</DialogDescription>
+ <div className="text-left">
+ <DialogTitle className="text-xl font-semibold tracking-tight">Add Dynamic Link</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground">Broadcast URLs across workspaces.</DialogDescription>
                 </div>
             </div>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 p-8 text-left bg-background">
-              <div className="space-y-6">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 p-8 text-left bg-background">
+ <div className="space-y-6">
                   <FormField
                     control={form.control}
                     name="url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocol URL</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Protocol URL</FormLabel>
                         <FormControl>
-                          <Input type="url" placeholder="https://www.smartsapp.com" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-mono text-sm" />
+ <Input type="url" placeholder="https://www.smartsapp.com" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-mono text-sm" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -182,9 +182,9 @@ export default function AddLinkButton() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Reference Label</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Reference Label</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Marketing Brochure" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+ <Input placeholder="e.g., Marketing Brochure" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -195,8 +195,8 @@ export default function AddLinkButton() {
                     name="workspaceIds"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
-                            <Layout className="h-3 w-3" /> Destination Hubs
+ <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+ <Layout className="h-3 w-3" /> Destination Hubs
                         </FormLabel>
                         <FormControl>
                           <MultiSelect 
@@ -204,7 +204,7 @@ export default function AddLinkButton() {
                             value={field.value}
                             onChange={field.onChange}
                             placeholder="Share with..."
-                            className="rounded-xl border-primary/10 shadow-sm"
+ className="rounded-xl border-primary/10 shadow-sm"
                           />
                         </FormControl>
                         <FormMessage />
@@ -213,12 +213,12 @@ export default function AddLinkButton() {
                   />
               </div>
 
-              <DialogFooter className="pt-4 flex justify-between sm:justify-between items-center bg-muted/30 -mx-8 -mb-8 p-6 border-t">
-                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isProcessing} className="font-bold rounded-xl h-12 px-8">
+ <DialogFooter className="pt-4 flex justify-between sm:justify-between items-center bg-muted/30 -mx-8 -mb-8 p-6 border-t">
+ <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isProcessing} className="font-bold rounded-xl h-12 px-8">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isProcessing} className="rounded-xl font-black h-12 px-10 shadow-2xl active:scale-95 transition-all">
-                  {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+ <Button type="submit" disabled={isProcessing} className="rounded-xl font-semibold h-12 px-10 shadow-2xl active:scale-95 transition-all">
+ {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                   Initialize Link
                 </Button>
               </DialogFooter>
