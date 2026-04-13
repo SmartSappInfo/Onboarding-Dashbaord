@@ -96,7 +96,7 @@ export default function CampaignStatisticsPage() {
 
     if (isLoading) {
         return (
-            <div className="p-8 space-y-8 bg-muted/5 min-h-screen">
+            <div className="p-8 space-y-8 bg-background min-h-screen">
                 <div className="max-w-5xl mx-auto space-y-8 pt-20">
                     <Skeleton className="h-12 w-64 rounded-xl" />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -113,7 +113,7 @@ export default function CampaignStatisticsPage() {
     if (!stats) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col text-left">
+        <div className="min-h-screen bg-background relative overflow-hidden flex flex-col text-left">
             <div className="absolute inset-0 z-0 opacity-20">
                 <LightRays
                     raysOrigin="top-center"
@@ -128,7 +128,7 @@ export default function CampaignStatisticsPage() {
                 />
             </div>
 
-            <header className="relative z-10 p-6 sm:p-8 flex items-center justify-between border-b bg-white/80 backdrop-blur-md shrink-0">
+            <header className="relative z-10 p-6 sm:p-8 flex items-center justify-between border-b bg-card/80 backdrop-blur-md shrink-0">
                 <div className="flex items-center gap-4">
                     <SmartSappLogo className="h-8" />
                     <div className="h-6 w-px bg-border hidden sm:block" />
@@ -137,7 +137,7 @@ export default function CampaignStatisticsPage() {
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">School Comparison Performance</p>
                     </div>
                 </div>
-                <Badge variant="outline" className="rounded-full bg-emerald-50 text-emerald-600 border-emerald-200 font-black text-[10px] px-4 h-8 uppercase tracking-widest gap-2">
+                <Badge variant="outline" className="rounded-full bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-black text-[10px] px-4 h-8 uppercase tracking-widest gap-2">
                     <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     Live Monitoring
                 </Badge>
@@ -148,15 +148,15 @@ export default function CampaignStatisticsPage() {
                     
                     {/* Hero Stats */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <StatCard label="Public Reach" value={stats.totalVisits} sub="Unique Visitors" icon={Globe} color="text-primary" bg="bg-primary/10" />
-                        <StatCard label="Persona Pull" value={`${stats.conversionRate.toFixed(1)}%`} sub="Click-through Rate" icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
-                        <StatCard label="Engagement" value={`${stats.avgDuration}s`} sub="Avg. Time on Page" icon={Clock} color="text-blue-600" bg="bg-blue-50" />
-                        <StatCard label="Total Intent" value={stats.totalConversions} sub="Persona Selections" icon={Zap} color="text-orange-600" bg="bg-orange-50" />
+                        <StatCard label="Public Reach" value={stats.totalVisits} sub="Unique Visitors" icon={Globe} color="text-primary" bg="bg-primary/20" />
+                        <StatCard label="Persona Pull" value={`${stats.conversionRate.toFixed(1)}%`} sub="Click-through Rate" icon={Target} color="text-emerald-400" bg="bg-emerald-500/10" />
+                        <StatCard label="Engagement" value={`${stats.avgDuration}s`} sub="Avg. Time on Page" icon={Clock} color="text-blue-400" bg="bg-blue-500/10" />
+                        <StatCard label="Total Intent" value={stats.totalConversions} sub="Persona Selections" icon={Zap} color="text-orange-400" bg="bg-orange-500/10" />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Sentiment / Persona Distribution */}
-                        <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
+                        <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-card/60 backdrop-blur-sm">
                             <CardHeader className="p-8 border-b bg-muted/10">
                                 <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
                                     <Activity className="h-5 w-5 text-primary" /> Audience Distribution
@@ -189,7 +189,7 @@ export default function CampaignStatisticsPage() {
                         </Card>
 
                         {/* Summary Insights */}
-                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl bg-slate-900 text-white overflow-hidden flex flex-col h-full">
+                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl bg-card text-white overflow-hidden flex flex-col h-full">
                             <CardHeader className="p-8 border-b border-white/5 bg-white/5">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Strategic Snapshot</CardTitle>
                             </CardHeader>
@@ -219,7 +219,7 @@ export default function CampaignStatisticsPage() {
                     </div>
 
                     {/* Individual Visits List */}
-                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-white">
+                    <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden bg-card/60 backdrop-blur-sm">
                         <CardHeader className="p-8 border-b bg-muted/10">
                             <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
                                 <List className="h-5 w-5 text-primary" /> Individual Visits
@@ -239,7 +239,7 @@ export default function CampaignStatisticsPage() {
                                             : 0;
                                         const visitedAt = session.createdAt ? new Date(session.createdAt) : null;
                                         return (
-                                            <div key={session.id ?? i} className="flex items-center gap-4 px-8 py-4 hover:bg-muted/30 transition-colors">
+                                            <div key={session.id ?? i} className="flex items-center gap-4 px-8 py-4 hover:bg-primary/5 transition-colors">
                                                 <span className="text-[10px] font-black text-muted-foreground/40 w-6 shrink-0 tabular-nums">{i + 1}</span>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-xs font-mono text-muted-foreground truncate">{session.id}</p>
@@ -254,12 +254,12 @@ export default function CampaignStatisticsPage() {
                                                         {duration > 0 ? `${duration}s` : '<1s'}
                                                     </Badge>
                                                     {session.selectedOption === 'school' && (
-                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-blue-500/20 text-blue-400 border-blue-500/20 hover:bg-blue-500/30">
                                                             <Building2 className="h-3 w-3" /> Institutional
                                                         </Badge>
                                                     )}
                                                     {session.selectedOption === 'parent' && (
-                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">
+                                                        <Badge className="rounded-full text-[10px] font-black uppercase tracking-widest gap-1.5 px-3 h-7 bg-orange-500/20 text-orange-400 border-orange-500/20 hover:bg-orange-500/30">
                                                             <Users className="h-3 w-3" /> Families
                                                         </Badge>
                                                     )}
@@ -289,7 +289,7 @@ export default function CampaignStatisticsPage() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
-        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all">
             <CardContent className="p-6 flex items-center gap-5">
                 <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
                     <Icon className="h-7 w-7" />

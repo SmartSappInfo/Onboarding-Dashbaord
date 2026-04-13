@@ -150,7 +150,7 @@ export default function PipelineSettingsClient() {
                         <Button 
                             variant="outline" 
                             onClick={() => { setSelectedId(null); setIsAdding(true); }}
- className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-white shadow-sm"
+ className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm"
                         >
  <Plus className="mr-2 h-4 w-4" /> New Workflow
                         </Button>
@@ -191,10 +191,10 @@ export default function PipelineSettingsClient() {
  className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                         >
  <div className="lg:col-span-2 space-y-8">
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
- <CardHeader className="bg-muted/10 border-b p-6 px-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+ <CardHeader className="bg-background border-b p-6 px-8">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-white rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
+ <div className="p-2 bg-card rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
  <CardTitle className="text-sm font-semibold ">Master Directives</CardTitle>
                                         </div>
                                     </CardHeader>
@@ -214,7 +214,7 @@ export default function PipelineSettingsClient() {
  <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Maximize className="h-3.5 w-3.5" /> Stage Column Width
                                                 </Label>
-                                                <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-white border-primary/20 text-primary">
+                                                <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-card border-primary/20 text-primary">
                                                     {columnWidth}px
                                                 </Badge>
                                             </div>
@@ -243,10 +243,10 @@ export default function PipelineSettingsClient() {
                             </div>
 
  <div className="space-y-8">
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden text-left">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
  <CardHeader className="bg-primary/5 border-b p-6 px-8">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-white rounded-xl shadow-sm"><ShieldCheck className="h-4 w-4 text-primary" /></div>
+ <div className="p-2 bg-card rounded-xl shadow-sm"><ShieldCheck className="h-4 w-4 text-primary" /></div>
  <CardTitle className="text-sm font-semibold tracking-tight">Access Control</CardTitle>
                                         </div>
                                     </CardHeader>

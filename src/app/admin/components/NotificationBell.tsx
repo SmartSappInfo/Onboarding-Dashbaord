@@ -94,7 +94,7 @@ export default function NotificationBell() {
                             notifications.map((n) => (
  <div key={n.id} className="p-4 hover:bg-muted/30 transition-colors cursor-default group">
  <div className="flex gap-4">
- <div className="p-2 bg-muted/50 rounded-xl h-fit shadow-inner group-hover:bg-background transition-colors">
+ <div className="p-2 bg-background0 rounded-xl h-fit shadow-inner group-hover:bg-background transition-colors">
                                             {getIcon(n.type)}
                                         </div>
  <div className="flex-1 min-w-0">

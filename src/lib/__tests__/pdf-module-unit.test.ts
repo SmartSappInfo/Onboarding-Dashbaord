@@ -406,9 +406,8 @@ describe('PDF Module - EntityId Migration', () => {
       // Save progress with dual-write
       const result = await saveAgreementProgressAction(
         'pdf_1',
-        'school_1',
-        { field1: 'value1' },
         'entity_123',
+        { field1: 'value1' },
         'institution'
       );
 
@@ -416,9 +415,8 @@ describe('PDF Module - EntityId Migration', () => {
       expect(result.success).toBe(true);
       expect(result.submissionId).toBe('submission_1');
 
-      // Verify dual-write: both entityId and entityId populated
+      // Verify entityId populated
       expect(capturedSubmissionData).toBeDefined();
-      expect(capturedSubmissionData.entityId).toBe('school_1');
       expect(capturedSubmissionData.entityId).toBe('entity_123');
       expect(capturedSubmissionData.entityType).toBe('institution');
       expect(capturedSubmissionData.status).toBe('partial');
@@ -490,9 +488,8 @@ describe('PDF Module - EntityId Migration', () => {
       // Finalize agreement with dual-write
       const result = await finalizeAgreementAction(
         'pdf_1',
-        'school_1',
-        { field1: 'value1' },
         'entity_456',
+        { field1: 'value1' },
         'family'
       );
 
@@ -500,9 +497,8 @@ describe('PDF Module - EntityId Migration', () => {
       expect(result.success).toBe(true);
       expect(result.submissionId).toBe('submission_2');
 
-      // Verify dual-write: both entityId and entityId populated
+      // Verify entityId populated
       expect(capturedSubmissionData).toBeDefined();
-      expect(capturedSubmissionData.entityId).toBe('school_1');
       expect(capturedSubmissionData.entityId).toBe('entity_456');
       expect(capturedSubmissionData.entityType).toBe('family');
       expect(capturedSubmissionData.status).toBe('submitted');
@@ -554,16 +550,15 @@ describe('PDF Module - EntityId Migration', () => {
         };
       });
 
-      // Save with entityId only (no legacy entityId)
+      // Save with entityId only
       const result = await saveAgreementProgressAction(
         'pdf_1',
-        '', // Empty entityId
-        { field1: 'value1' },
         'entity_789',
+        { field1: 'value1' },
         'person'
       );
 
-      // Verify success (may fail due to empty entityId, but entityId should be captured)
+      // Verify entityId captured
       if (capturedSubmissionData) {
         expect(capturedSubmissionData.entityId).toBe('entity_789');
         expect(capturedSubmissionData.entityType).toBe('person');
@@ -742,7 +737,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'submitted',
           entityId: 'entity_123',
           entityType: 'institution',
-          entityId: null,
         },
         {
           id: 'sub_2',
@@ -752,7 +746,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'partial',
           entityId: 'entity_123',
           entityType: 'institution',
-          entityId: null,
         },
       ];
 
@@ -833,7 +826,6 @@ describe('PDF Module - EntityId Migration', () => {
           status: 'submitted',
           entityId: 'entity_456',
           entityType: 'family',
-          entityId: null,
         },
       ];
 
@@ -1075,7 +1067,6 @@ describe('PDF Module - EntityId Migration', () => {
         status: 'submitted',
         entityId: 'entity_222',
         entityType: 'person',
-        entityId: null,
       };
 
       const mockDoc = {

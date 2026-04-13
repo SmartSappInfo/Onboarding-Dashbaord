@@ -64,7 +64,7 @@ function LogicSimulator() {
  <Label className="text-[10px] font-bold mb-1 block text-muted-foreground">Public Perspective ({scoreDisplayMode})</Label>
  <div className={cn(
                             "h-12 flex items-center px-4 rounded-md border transition-all",
-                            matchedRule ? "bg-background border-primary shadow-sm" : "bg-muted/50 border-dashed"
+                            matchedRule ? "bg-background border-primary shadow-sm" : "bg-background0 border-dashed"
                         )}>
                             {matchedRule ? (
  <div className="flex items-center justify-between w-full">
@@ -170,7 +170,7 @@ export default function ResultsStep() {
             <LogicSimulator />
 
  <Tabs defaultValue="logic" className="w-full">
- <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50 p-1 border">
+ <TabsList className="grid w-full grid-cols-2 h-12 bg-background0 p-1 border">
  <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
  <BrainCircuit className="h-4 w-4" /> Outcome Logic
                     </TabsTrigger>

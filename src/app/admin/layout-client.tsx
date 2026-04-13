@@ -42,7 +42,8 @@ import {
     Settings2,
     FileCheck,
     Target,
-    Tags
+    Tags,
+    Layout
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -68,8 +69,9 @@ import { TenantProvider, useTenant } from '@/context/TenantContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useFeatures } from '@/hooks/use-features';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
-import type { AppPermissionId, Role } from '@/lib/types';
+import type { AppPermissionId, AppFeatureId, Role } from '@/lib/types';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -81,6 +83,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { toast } = useToast();
   const { plural } = useTerminology();
+  const { isFeatureEnabled } = useFeatures();
   
   const [mounted, setMounted] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
@@ -153,32 +156,39 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
   const hasPerm = (perm: AppPermissionId) => userPermissions.includes(perm) || userPermissions.includes('system_admin' as any);
 
+  // Feature-aware visibility: visible = permission check AND feature toggle
+  const isVisible = (hasPerm: boolean, featureId?: AppFeatureId) => {
+    if (!hasPerm) return false;
+    if (!featureId) return true;
+    return isFeatureEnabled(featureId);
+  };
+
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
-    { href: '/admin/entities', icon: School, label: plural, visible: hasPerm('schools_view') },
-    // { href: '/admin/prospects', icon: Target, label: 'Prospects', visible: hasPerm('prospects_view') }, // TODO: Implement prospects page
-    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') || hasPerm('prospects_view') },
-    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: hasPerm('tasks_manage') },
-    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: hasPerm('meetings_manage') },
-    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: hasPerm('system_admin') },
-    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: hasPerm('activities_view') },
+    { href: '/admin/entities', icon: School, label: plural, visible: isVisible(hasPerm('schools_view'), 'entities') },
+    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: isVisible(hasPerm('schools_view') || hasPerm('prospects_view'), 'pipeline') },
+    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: isVisible(hasPerm('tasks_manage'), 'tasks') },
+    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: isVisible(hasPerm('meetings_manage'), 'meetings') },
+    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: isVisible(hasPerm('system_admin'), 'automations') },
+    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isVisible(hasPerm('activities_view'), 'reports') },
   ];
 
   const studioNavItems = [
-    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: hasPerm('studios_view') },
-    { href: '/admin/media', icon: Film, label: 'Media', visible: true },
-    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: hasPerm('studios_view') },
-    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: hasPerm('studios_view') },
-    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: hasPerm('studios_view') },
-    { href: '/admin/contacts/tags', icon: Tags, label: 'Tags', visible: hasPerm('tags_view') },
+    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isVisible(hasPerm('studios_view'), 'portals') },
+    { href: '/admin/pages', icon: Layout, label: 'Landing Pages', visible: isVisible(hasPerm('studios_view'), 'portals') },
+    { href: '/admin/media', icon: Film, label: 'Media', visible: isVisible(true, 'media') },
+    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isVisible(hasPerm('studios_view'), 'surveys') },
+    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isVisible(hasPerm('studios_view'), 'pdfs') },
+    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isVisible(hasPerm('studios_view'), 'messaging') },
+    { href: '/admin/contacts/tags', icon: Tags, label: 'Tags', visible: isVisible(hasPerm('tags_view'), 'tags') },
   ];
 
   const financeNavItems = [
-    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: hasPerm('finance_view') },
-    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: hasPerm('finance_view') },
-    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: hasPerm('finance_view') },
-    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: hasPerm('finance_view') },
-    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: hasPerm('finance_manage') },
+    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isVisible(hasPerm('finance_view'), 'agreements') },
+    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isVisible(hasPerm('finance_view'), 'invoices') },
+    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isVisible(hasPerm('finance_view'), 'packages') },
+    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isVisible(hasPerm('finance_view'), 'billing_periods') },
+    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isVisible(hasPerm('finance_manage'), 'billing_setup') },
   ];
 
   const systemNavItems = [
@@ -200,7 +210,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
  <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {coreNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
  <item.icon className="h-5 w-5 shrink-0" /> 
  <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -216,7 +226,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
  <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {financeNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
  <item.icon className="h-5 w-5 shrink-0" />
  <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -232,7 +242,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
  <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {studioNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
  <item.icon className="h-5 w-5 shrink-0" />
  <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -248,7 +258,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
  <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {systemNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-white/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+ <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
                       <Link href={item.href}>
  <item.icon className="h-5 w-5 shrink-0" />
  <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
@@ -316,7 +326,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenu>
           </div>
         </header>
- <main className="flex-1 flex flex-col overflow-auto relative p-4 sm:p-6 md:p-8">
+        <main className="flex-1 flex flex-col overflow-auto relative p-6">
           {children}
         </main>
       </SidebarInset>

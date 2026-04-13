@@ -126,7 +126,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
- <div className="flex h-full w-full items-center justify-center p-4 sm:p-6 md:p-8">
+ <div className="flex h-full w-full items-center justify-center ">
  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
@@ -134,7 +134,7 @@ export default function SurveyResultsPage() {
 
     if (!survey) {
         return (
- <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-4 sm:p-6 md:p-8">
+ <div className="flex h-full w-full flex-col items-center justify-center gap-4 ">
  <p className="text-lg font-medium">Survey not found.</p>
             </div>
         );

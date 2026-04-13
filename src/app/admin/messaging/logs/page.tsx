@@ -171,7 +171,7 @@ export default function MessageLogsPage() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+ <div className="h-full overflow-y-auto  bg-background text-left">
  <div className="grid gap-6">
  <div className="flex justify-end gap-3">
                     <Button 
@@ -185,8 +185,8 @@ export default function MessageLogsPage() {
                     </Button>
                 </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
- <CardHeader className="pb-3 border-b bg-muted/10">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
+ <CardHeader className="pb-3 border-b bg-background">
  <div className="flex items-center justify-between gap-4">
  <div className="relative flex-grow max-w-md">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -360,7 +360,7 @@ export default function MessageLogsPage() {
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
- className="h-8 rounded-xl font-semibold text-[10px] gap-2 bg-white" 
+ className="h-8 rounded-xl font-semibold text-[10px] gap-2 bg-card" 
                                                         onClick={handleSyncStatus}
                                                         disabled={isSyncing}
                                                     >
@@ -387,7 +387,7 @@ export default function MessageLogsPage() {
  <div className="p-4 rounded-xl bg-muted/30 border border-dashed text-xs font-semibold tracking-tight shadow-inner">
  <span className="opacity-40 mr-2 text-left">Subject:</span> {selectedLog.subject}
                                         </div>
- <div className="border rounded-3xl bg-white shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left">
+ <div className="border rounded-3xl bg-card shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left">
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20" />
                                             <div 
  className="p-8 prose prose-sm max-w-none text-slate-700 leading-relaxed font-medium"
@@ -396,8 +396,8 @@ export default function MessageLogsPage() {
                                         </div>
                                     </div>
                                 ) : (
- <div className="bg-slate-50 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02] text-left">
- <div className="absolute -left-2.5 top-10 w-4 h-4 bg-slate-50 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
+ <div className="bg-muted/10 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02] text-left">
+ <div className="absolute -left-2.5 top-10 w-4 h-4 bg-muted/10 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
  <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
  <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between text-[8px] font-semibold text-slate-300">
                                             <span>Chars: {selectedLog?.body.length}</span>

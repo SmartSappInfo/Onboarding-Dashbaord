@@ -40,8 +40,8 @@ export default function AlreadySignedGate({ entityName, logoUrl, pdfName, onView
                 </div>
 
                 <CardContent className="p-10 space-y-10">
-                    <div className="flex items-center gap-5 p-5 rounded-2xl bg-muted/30 border border-border/50 shadow-inner">
-                        <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-white border shrink-0">
+                    <div className="flex items-center gap-5 p-5 rounded-2xl bg-slate-50 border border-border/50 shadow-inner">
+                        <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-white border border-border/50 shrink-0">
                             {logoUrl ? (
                                 <Image src={logoUrl} alt="Logo" fill className="object-contain p-2" />
                             ) : (
@@ -78,7 +78,7 @@ export default function AlreadySignedGate({ entityName, logoUrl, pdfName, onView
                     </div>
                 </CardContent>
 
-                <div className="bg-muted/30 p-4 border-t text-center">
+                <div className="bg-slate-50 p-4 border-t text-center">
                     <div className="flex items-center justify-center gap-2 opacity-40">
                         <SmartSappIcon className="h-4 w-4" />
                         <span className="text-[9px] font-black uppercase tracking-widest">Secure Legal Registry</span>

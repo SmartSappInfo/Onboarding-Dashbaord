@@ -12,7 +12,7 @@ import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
-    const { pdfId, formData, entityId: submittedEntityId, entityType: submittedEntityType } = await req.json();
+    const { pdfId, formData, entityId: submittedEntityId, entityType: submittedEntityType, schoolId: submittedSchoolId } = await req.json();
 
     if (!pdfId || !formData) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });

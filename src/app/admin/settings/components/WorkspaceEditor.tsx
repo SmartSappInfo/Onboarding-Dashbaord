@@ -290,7 +290,7 @@ export default function WorkspaceEditor() {
                                         <Button 
                                             variant="ghost" 
                                             size="sm" 
- className="h-5 rounded-md px-1.5 text-[8px] font-semibold bg-muted/50 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100"
+ className="h-5 rounded-md px-1.5 text-[8px] font-semibold bg-background0 hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100"
                                             onClick={() => handleSetDefault(w.id)}
                                         >
                                             Set as Default
@@ -394,7 +394,7 @@ export default function WorkspaceEditor() {
                                                             "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
                                                             contactScope === 'institution'
                                                                 ? "bg-primary/5 border-primary shadow-md"
-                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                                : "bg-background border-border hover:border-primary/30"
                                                         )}
                                                     >
  <div className="space-y-3">
@@ -428,7 +428,7 @@ export default function WorkspaceEditor() {
                                                             "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
                                                             contactScope === 'family'
                                                                 ? "bg-primary/5 border-primary shadow-md"
-                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                                : "bg-background border-border hover:border-primary/30"
                                                         )}
                                                     >
  <div className="space-y-3">
@@ -462,7 +462,7 @@ export default function WorkspaceEditor() {
                                                             "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
                                                             contactScope === 'person'
                                                                 ? "bg-primary/5 border-primary shadow-md"
-                                                                : "bg-muted/10 border-border hover:border-primary/30"
+                                                                : "bg-background border-border hover:border-primary/30"
                                                         )}
                                                     >
  <div className="space-y-3">
@@ -629,7 +629,7 @@ export default function WorkspaceEditor() {
                                                     value={singularTerm} 
                                                     onChange={e => setSingularTerm(e.target.value)} 
                                                     placeholder="e.g. Company" 
- className="h-11 rounded-xl bg-muted/10 border-none font-bold text-sm px-4" 
+ className="h-11 rounded-xl bg-background border-none font-bold text-sm px-4" 
                                                 />
                                             </div>
  <div className="space-y-2">
@@ -638,7 +638,7 @@ export default function WorkspaceEditor() {
                                                     value={pluralTerm} 
                                                     onChange={e => setPluralTerm(e.target.value)} 
                                                     placeholder="e.g. Companies" 
- className="h-11 rounded-xl bg-muted/10 border-none font-bold text-sm px-4" 
+ className="h-11 rounded-xl bg-background border-none font-bold text-sm px-4" 
                                                 />
                                             </div>
                                         </div>
@@ -666,7 +666,7 @@ export default function WorkspaceEditor() {
 
  <div className="space-y-3">
                                             {statuses.map((status, idx) => (
- <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 rounded-2xl bg-muted/10 border group">
+ <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 rounded-2xl bg-background border group">
  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
  <div className="flex items-center gap-3">
                                                             <Popover>

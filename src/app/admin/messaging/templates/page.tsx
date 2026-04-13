@@ -241,8 +241,8 @@ export default function MessageTemplatesPage() {
                         isSaving={false}
                     />
                 ) : (
- <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="flex-1 overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <div className="flex items-center gap-3">
                                     <RainbowButton 

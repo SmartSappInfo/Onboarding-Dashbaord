@@ -328,7 +328,7 @@ export default function MediaUploader({
               value={selectedWorkspaces}
               onChange={setSelectedWorkspaces}
               placeholder={isSuperAdmin ? "Global Asset (No hubs selected)" : "Select destination hubs..."}
- className="bg-white border-primary/10 rounded-xl shadow-sm h-11"
+ className="bg-card border-primary/10 rounded-xl shadow-sm h-11"
           />
  <p className="text-[9px] font-bold text-muted-foreground mt-1 px-1">
             {selectedWorkspaces.length > 0 ? "Asset will be shared across all selected hubs." : "Asset will be stored globally."}
@@ -338,7 +338,7 @@ export default function MediaUploader({
       {!activeFileState && (
  <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative">
  <Input ref={inputRef} id="file-upload" type="file" multiple onChange={e => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
- <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-muted/50", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+ <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-background0", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
  <Upload className="h-10 w-10 text-muted-foreground mb-4" />
  <p className="text-lg font-medium">Drag & drop files here or browse</p>
  <p className="text-xs text-muted-foreground mt-2">GIF support included (Animations preserved)</p>

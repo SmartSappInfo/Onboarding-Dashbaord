@@ -260,7 +260,7 @@ export default function NewSchoolSignupForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12 text-left pb-20">
         
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-muted/30 border-b p-8">
+            <CardHeader className="bg-slate-50 border-b p-8">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                         <Building className="h-6 w-6" />
@@ -279,7 +279,7 @@ export default function NewSchoolSignupForm() {
                         <FormItem>
                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Official School Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g. Ghana International School" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg" />
+                            <Input placeholder="e.g. Ghana International School" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -294,7 +294,7 @@ export default function NewSchoolSignupForm() {
                             <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Physical Location</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g. Airport Residential Area, Accra" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                                <Input placeholder="e.g. Airport Residential Area, Accra" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -307,7 +307,7 @@ export default function NewSchoolSignupForm() {
                             <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Student Footprint (Roll)</FormLabel>
                             <FormControl>
-                                <Input type="number" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-black" />
+                                <Input type="number" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-black" />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -318,7 +318,7 @@ export default function NewSchoolSignupForm() {
         </Card>
 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-muted/30 border-b p-8">
+            <CardHeader className="bg-slate-50 border-b p-8">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                         <Users className="h-6 w-6" />
@@ -336,7 +336,7 @@ export default function NewSchoolSignupForm() {
 
         {/* Financial Profile Card */}
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-muted/30 border-b p-8">
+            <CardHeader className="bg-slate-50 border-b p-8">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                         <Banknote className="h-6 w-6" />
@@ -373,7 +373,7 @@ export default function NewSchoolSignupForm() {
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
+                                    <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
                                         <SelectValue />
                                     </SelectTrigger>
                                 </FormControl>
@@ -389,7 +389,7 @@ export default function NewSchoolSignupForm() {
                 {/* Rate and Discount Adjustment */}
                 <div className={cn(
                     "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500",
-                    watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border opacity-40 pointer-events-none"
+                    watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-border opacity-40 pointer-events-none"
                 )}>
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
@@ -410,7 +410,7 @@ export default function NewSchoolSignupForm() {
                                             field.onChange(val);
                                             handleDiscountChange(val);
                                         }}
-                                        className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                        className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center" 
                                     />
                                 </FormControl>
                                 <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this campus</FormDescription>
@@ -429,7 +429,7 @@ export default function NewSchoolSignupForm() {
                                             field.onChange(val);
                                             handleRateChange(val);
                                         }}
-                                        className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                        className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center" 
                                     />
                                 </FormControl>
                                 <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Effective rate billed per student</FormDescription>
@@ -442,7 +442,7 @@ export default function NewSchoolSignupForm() {
                     <FormItem>
                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Remittance Address</FormLabel>
                         <FormControl>
-                            <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+                            <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-slate-50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -453,7 +453,7 @@ export default function NewSchoolSignupForm() {
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Carried Arrears</FormLabel>
                             <FormControl>
-                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
+                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-500/10 border-none shadow-inner font-black text-rose-500" />
                             </FormControl>
                             <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Previous system outstanding balance</FormDescription>
                         </FormItem>
@@ -462,7 +462,7 @@ export default function NewSchoolSignupForm() {
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Initial Credit</FormLabel>
                             <FormControl>
-                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
+                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-500/10 border-none shadow-inner font-black text-emerald-500" />
                             </FormControl>
                             <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Overpayments from old system</FormDescription>
                         </FormItem>
@@ -472,7 +472,7 @@ export default function NewSchoolSignupForm() {
         </Card>
 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-muted/30 border-b p-8">
+            <CardHeader className="bg-slate-50 border-b p-8">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                         <Zap className="h-6 w-6" />
@@ -491,7 +491,7 @@ export default function NewSchoolSignupForm() {
                         <FormItem>
                         <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Required Capabilities</FormLabel>
                         <FormControl>
-                            <Textarea placeholder="e.g. Student Billing, Child Security, Staff Attendance..." {...field} className="min-h-[120px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner" />
+                            <Textarea placeholder="e.g. Student Billing, Child Security, Staff Attendance..." {...field} className="min-h-[120px] rounded-2xl bg-slate-50 border-none p-6 font-medium leading-relaxed shadow-inner" />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -508,7 +508,7 @@ export default function NewSchoolSignupForm() {
                             <Popover>
                                 <PopoverTrigger asChild>
                                 <FormControl>
-                                    <Button variant={"outline"} className={cn("h-12 justify-start pl-4 text-left font-bold rounded-xl border-none bg-muted/20 shadow-inner", !field.value && "text-muted-foreground")}>
+                                    <Button variant={"outline"} className={cn("h-12 justify-start pl-4 text-left font-bold rounded-xl border-none bg-slate-50 shadow-inner", !field.value && "text-muted-foreground")}>
                                     <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
                                     {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                     </Button>
@@ -535,7 +535,7 @@ export default function NewSchoolSignupForm() {
                             <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Referral Source</FormLabel>
                             <FormControl>
-                                <Input placeholder="How did you hear about us?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                                <Input placeholder="How did you hear about us?" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -557,7 +557,7 @@ export default function NewSchoolSignupForm() {
                             control={form.control}
                             name="notifySchool"
                             render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-muted/10">
+                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-slate-50">
                                 <div className="space-y-0.5">
                                 <FormLabel className="text-sm font-black uppercase">Email Acknowledgement</FormLabel>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Confirmation to focal persons</p>
@@ -569,8 +569,8 @@ export default function NewSchoolSignupForm() {
                         {watchNotifySchool && (
                             <div className="space-y-3 px-1 animate-in fade-in slide-in-from-top-2">
                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Additional Receivers</Label>
-                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-muted/20 shadow-inner">
-                                    {isMainEmailValid && <Badge variant="outline" className="bg-white font-bold h-6 border-primary/20 text-primary">{watchMainEmail}</Badge>}
+                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-50 shadow-inner">
+                                    {isMainEmailValid && <Badge variant="outline" className="bg-card font-bold h-6 border-primary/20 text-primary">{watchMainEmail}</Badge>}
                                     {form.getValues('notifySchoolEmails').map(e => <Badge key={e} className="bg-primary h-6 font-bold">{e}</Badge>)}
                                     <Input 
                                         placeholder="Add email..." 
@@ -601,7 +601,7 @@ export default function NewSchoolSignupForm() {
                             control={form.control}
                             name="notifySchoolBySms"
                             render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-muted/10">
+                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-slate-50">
                                 <div className="space-y-0.5">
                                 <FormLabel className="text-sm font-black uppercase">SMS Alerting</FormLabel>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Real-time handset confirmation</p>
@@ -613,8 +613,8 @@ export default function NewSchoolSignupForm() {
                         {watchNotifySchoolBySms && (
                             <div className="space-y-3 px-1 animate-in fade-in slide-in-from-top-2">
                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Handset Targets</Label>
-                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-muted/20 shadow-inner">
-                                    {isMainPhoneValid && <Badge variant="outline" className="bg-white font-bold h-6 border-primary/20 text-primary">{watchMainPhone}</Badge>}
+                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-50 shadow-inner">
+                                    {isMainPhoneValid && <Badge variant="outline" className="bg-card font-bold h-6 border-primary/20 text-primary">{watchMainPhone}</Badge>}
                                     {form.getValues('notifySchoolSmsNumbers').map(n => <Badge key={n} className="bg-primary h-6 font-bold">{n}</Badge>)}
                                     <Input 
                                         placeholder="Add number..." 

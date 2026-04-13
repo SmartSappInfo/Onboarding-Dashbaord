@@ -111,7 +111,7 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
     <div 
       ref={combinedRef}
       data-page-number={pageNumber}
- className="relative mx-auto shadow-2xl mb-12 bg-white flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg"
+ className="relative mx-auto shadow-2xl mb-12 bg-card flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg"
       style={{ width: dimensions.width || 816, height: dimensions.height || 1056 }}
     >
  {isRendering && dimensions.width === 0 && <Skeleton className="absolute inset-0" />}

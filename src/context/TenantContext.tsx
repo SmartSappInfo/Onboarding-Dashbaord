@@ -24,6 +24,7 @@ type TenantContextType = {
   accessibleWorkspaces: Workspace[];
   allowedWorkspaces: Workspace[]; // Alias for backward compatibility
   isSuperAdmin: boolean;
+  hasPermission: (perm: AppPermissionId) => boolean;
   isLoading: boolean;
 };
 
@@ -48,6 +49,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   const isSuperAdmin = React.useMemo(() => {
     return profile?.permissions?.includes('system_admin' as any) || false;
+  }, [profile]);
+
+  const hasPermission = React.useCallback((perm: AppPermissionId) => {
+    return profile?.permissions?.includes(perm) || profile?.permissions?.includes('system_admin' as any) || false;
   }, [profile]);
 
   // 2. Fetch Organizations
@@ -161,11 +166,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     accessibleWorkspaces,
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
+    hasPermission,
     isLoading: !isInitialized || isUserLoading || isProfileLoading || isOrgsLoading || isWorkspacesLoading
   }), [
     activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, 
     setActiveOrganization, setActiveWorkspace, organizations, accessibleWorkspaces, 
-    isSuperAdmin, isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
+    isSuperAdmin, hasPermission, isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
   ]);
 
   return (

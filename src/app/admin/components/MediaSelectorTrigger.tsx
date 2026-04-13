@@ -54,7 +54,7 @@ export default function MediaSelectorTrigger({
             {/* Main Trigger UI */}
  <div className="flex items-center gap-4">
  <div className="relative group">
- <div className="h-24 w-24 rounded-2xl border-2 border-dashed border-muted-foreground/30 overflow-hidden bg-muted/5 flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5">
+ <div className="h-24 w-24 rounded-2xl border-2 border-dashed border-muted-foreground/30 overflow-hidden bg-background flex items-center justify-center transition-all group-hover:border-primary/50 group-hover:bg-primary/5">
                         {value ? (
  <img src={value} alt="Preview" className="h-full w-full object-cover" />
                         ) : (

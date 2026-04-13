@@ -96,7 +96,7 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
           </div>
         </DialogHeader>
  <div className="p-6 bg-background">
- <ScrollArea className="h-96 border-2 border-dashed rounded-2xl bg-muted/10">
+ <ScrollArea className="h-96 border-2 border-dashed rounded-2xl bg-background">
  <div className="p-2 space-y-1">
               {isLoading ? (
  <div className="space-y-2 p-2">
@@ -109,7 +109,7 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
                   <button
                     key={stage.id}
                     onClick={() => handleStageChange(stage)}
- className="w-full text-left flex items-center gap-4 p-4 rounded-xl hover:bg-white hover:shadow-md transition-all group disabled:opacity-50"
+ className="w-full text-left flex items-center gap-4 p-4 rounded-xl hover:bg-card hover:shadow-md transition-all group disabled:opacity-50"
                     disabled={isUpdating || entity?.stageId === stage.id}
                   >
  <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: stage.color }} />

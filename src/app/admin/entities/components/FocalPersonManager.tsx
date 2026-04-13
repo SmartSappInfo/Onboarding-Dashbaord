@@ -71,7 +71,7 @@ function FocalPersonItem({
                     <Input
                         {...register(`contacts.${index}.name`)}
                         placeholder="e.g. Ama Serwaa"
- className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+ className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
                     />
                 </div>
 
@@ -84,7 +84,7 @@ function FocalPersonItem({
                             {...register(`contacts.${index}.email`)}
                             type="email"
                             placeholder="ama@school.edu"
- className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+ className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
                         />
                     </div>
  <div className="space-y-2">
@@ -94,7 +94,7 @@ function FocalPersonItem({
                         <Input
                             {...register(`contacts.${index}.phone`)}
                             placeholder="+233..."
- className="h-11 rounded-xl bg-muted/10 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+ className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
                         />
                     </div>
                 </div>
@@ -109,7 +109,7 @@ function FocalPersonItem({
                                 <Input 
                                     {...register(`contacts.${index}.type`)}
                                     placeholder="Enter custom role..."
- className="h-10 rounded-xl bg-muted/10 border-none font-bold"
+ className="h-10 rounded-xl bg-background border-none font-bold"
                                     autoFocus
                                 />
  <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
@@ -126,7 +126,7 @@ function FocalPersonItem({
                                         }} 
                                         value={selectField.value}
                                     >
- <SelectTrigger className="h-10 rounded-xl bg-muted/10 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+ <SelectTrigger className="h-10 rounded-xl bg-background border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                             <SelectValue />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl shadow-2xl border-none">

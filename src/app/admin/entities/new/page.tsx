@@ -233,8 +233,8 @@ export default function NewEntityPage() {
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
         <FormProvider {...methods}>
  <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">

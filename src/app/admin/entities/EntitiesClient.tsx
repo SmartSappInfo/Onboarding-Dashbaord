@@ -254,8 +254,8 @@ export default function EntitiesClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
  <div className="flex justify-end items-center gap-3 shrink-0">
                     {selectedEntityIds.length > 0 && (

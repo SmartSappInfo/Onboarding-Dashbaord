@@ -138,6 +138,7 @@ export default function EditPdfPage() {
   });
 
   const { reset, watch, setValue, getValues, trigger } = form;
+  const watchedSchoolId = watch('entityId');
   const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc')) : null, [firestore, activeWorkspaceId]);
   const { data: entities } = useCollection<WorkspaceEntity>(schoolsQuery);
 
@@ -242,7 +243,7 @@ export default function EditPdfPage() {
   return (
     <FormProvider {...form}>
  <div className="h-full flex flex-col bg-muted/30">
- <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+ <div className="flex-1 overflow-y-auto ">
  <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
  <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-32">
@@ -291,7 +292,7 @@ export default function EditPdfPage() {
                             {step === 2 && (
  <motion.div key="step2" {...stepTransition} className="h-full">
  <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
-                                        <FieldMapper pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging} onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')} isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo} password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })} passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })} school={selectedSchool} />
+                                        <FieldMapper pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging} onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')} isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo} password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })} passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })} entity={selectedSchool} />
                                     </div>
                                 </motion.div>
                             )}
@@ -343,7 +344,7 @@ export default function EditPdfPage() {
                 </div>
             </div>
         </div>
-        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} school={selectedSchool} />
+        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} entity={selectedSchool} />
     </FormProvider>
   );
 }

@@ -295,9 +295,9 @@ export default function SignupPage() {
             className="!absolute inset-0 opacity-70"
         />
         <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-white p-8">
-            <div className="relative bg-white/20 rounded-full p-2 backdrop-blur-sm">
-                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-fade"></div>
-                <div className="relative bg-white rounded-full h-32 w-32 flex items-center justify-center">
+            <div className="relative bg-primary/20 rounded-full p-2 backdrop-blur-sm">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-fade"></div>
+                <div className="relative bg-card rounded-full h-32 w-32 flex items-center justify-center border border-white/5 shadow-2xl">
                     <SmartSappIcon className="h-20 w-20 text-primary" variant="primary" />
                 </div>
             </div>

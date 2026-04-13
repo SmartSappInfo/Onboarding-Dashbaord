@@ -105,7 +105,7 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
     const theme = getStatusTheme(invoice.status);
 
     return (
-        <div className="min-h-screen bg-slate-100/50 py-12 px-4 sm:px-6">
+        <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
             <div className="max-w-4xl mx-auto space-y-8">
                 
                 {/* Action Bar */}
@@ -135,7 +135,7 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                     <div ref={invoiceRef}>
                     <CardContent className="p-0">
                         {/* Branded Header */}
-                        <div className="p-12 sm:p-16 border-b flex flex-col sm:flex-row justify-between gap-12 bg-slate-50/50">
+                        <div className="p-12 sm:p-16 border-b flex flex-col sm:flex-row justify-between gap-12 bg-slate-50">
                             <div className="space-y-8">
                                 <SmartSappLogo className="h-10" />
                                 <div className="space-y-1">
@@ -172,14 +172,14 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
 
                         {/* Line Items */}
                         <div className="p-12 sm:p-16 space-y-12">
-                            <div className="rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                            <div className="rounded-2xl border border-border/50 overflow-hidden shadow-sm">
                                 <Table>
                                     <TableHeader className="bg-slate-50">
                                         <TableRow>
-                                            <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Service Description</TableHead>
-                                            <TableHead className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">Qty</TableHead>
-                                            <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Unit Rate</TableHead>
-                                            <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest text-slate-500">Subtotal</TableHead>
+                                            <TableHead className="pl-8 py-5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Service Description</TableHead>
+                                            <TableHead className="text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">Qty</TableHead>
+                                            <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unit Rate</TableHead>
+                                            <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subtotal</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -189,8 +189,8 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                                                     <p className="font-black text-sm uppercase tracking-tight text-foreground">{item.name}</p>
                                                     <p className="text-[10px] font-medium text-muted-foreground mt-1">{item.description}</p>
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold text-slate-600 tabular-nums">{item.quantity}</TableCell>
-                                                <TableCell className="text-right font-bold text-slate-600 tabular-nums">{invoice.currency} {item.unitPrice.toLocaleString()}</TableCell>
+                                                <TableCell className="text-center font-bold text-muted-foreground tabular-nums">{item.quantity}</TableCell>
+                                                <TableCell className="text-right font-bold text-muted-foreground tabular-nums">{invoice.currency} {item.unitPrice.toLocaleString()}</TableCell>
                                                 <TableCell className="text-right pr-8 font-black text-foreground tabular-nums">{invoice.currency} {item.amount.toLocaleString()}</TableCell>
                                             </TableRow>
                                         ))}
@@ -206,8 +206,8 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                                             <ShieldCheck className="h-4 w-4 text-primary" />
                                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary">Remittance Guidelines</h3>
                                         </div>
-                                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner">
-                                            <p className="text-xs font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">{invoice.paymentInstructions}</p>
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-border/50 shadow-inner">
+                                            <p className="text-xs font-medium text-muted-foreground leading-relaxed whitespace-pre-wrap">{invoice.paymentInstructions}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -227,21 +227,21 @@ export default function InvoicePortalClient({ invoice }: InvoicePortalClientProp
                                     </div>
                                     
                                     {invoice.arrearsAdded > 0 && (
-                                        <div className="flex justify-between items-center px-2 py-1 bg-rose-50 rounded-lg text-rose-600">
+                                        <div className="flex justify-between items-center px-2 py-1 bg-rose-500/10 rounded-lg text-rose-500">
                                             <span className="text-[10px] font-black uppercase tracking-widest">Carried Arrears</span>
                                             <span className="font-black tabular-nums">+{invoice.currency} {invoice.arrearsAdded.toLocaleString()}</span>
                                         </div>
                                     )}
 
                                     {invoice.creditDeducted > 0 && (
-                                        <div className="flex justify-between items-center px-2 py-1 bg-emerald-50 rounded-lg text-emerald-600">
+                                        <div className="flex justify-between items-center px-2 py-1 bg-emerald-500/10 rounded-lg text-emerald-500">
                                             <span className="text-[10px] font-black uppercase tracking-widest">Applied Credit</span>
                                             <span className="font-black tabular-nums">-{invoice.currency} {invoice.creditDeducted.toLocaleString()}</span>
                                         </div>
                                     )}
 
                                     {invoice.discount > 0 && (
-                                        <div className="flex justify-between items-center px-2 py-1 bg-primary/5 rounded-lg text-primary">
+                                        <div className="flex justify-between items-center px-2 py-1 bg-primary/20 rounded-lg text-primary">
                                             <span className="text-[10px] font-black uppercase tracking-widest">Total Discount</span>
                                             <span className="font-black tabular-nums">-{invoice.currency} {invoice.discount.toLocaleString()}</span>
                                         </div>

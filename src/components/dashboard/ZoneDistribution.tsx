@@ -13,7 +13,13 @@ interface ZoneMetric {
     studentCount: number;
 }
 
-export function ZoneDistribution({ data }: { data: ZoneMetric[] }) {
+export function ZoneDistribution({ 
+    data,
+    terminology = { singular: 'Entity', plural: 'Entities' }
+}: { 
+    data: ZoneMetric[],
+    terminology?: { singular: string, plural: string }
+}) {
     const hasData = data && data.length > 0 && data.some(d => d.schoolCount > 0);
 
     if (!hasData) {
@@ -22,14 +28,14 @@ export function ZoneDistribution({ data }: { data: ZoneMetric[] }) {
                 <div className="flex flex-col items-center justify-center h-64 text-center text-sm text-muted-foreground bg-muted/10 rounded-xl border border-dashed">
                     <MapPin className="h-8 w-8 mb-2 opacity-20" />
                     <p>No zone data available.</p>
-                    <p className="text-[10px] uppercase font-bold tracking-tighter">Assign schools to zones to see analytics</p>
+                    <p className="text-[10px] uppercase font-bold tracking-tighter">Assign {terminology.plural.toLowerCase()} to zones to see analytics</p>
                 </div>
             </DashboardCard>
         );
     }
 
     return (
-        <DashboardCard title="Zone Distribution" description="School and student density across organizational areas.">
+        <DashboardCard title="Zone Distribution" description={`${terminology.singular} and student density across organizational areas.`}>
             <div className="space-y-8">
                 <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -58,7 +64,7 @@ export function ZoneDistribution({ data }: { data: ZoneMetric[] }) {
                                             <div className="rounded-xl border bg-background p-3 shadow-xl text-xs space-y-2">
                                                 <p className="font-black uppercase tracking-widest text-primary">{d.name}</p>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3 w-3" /> Schools:</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {terminology.plural}:</span>
                                                     <span className="font-bold">{d.schoolCount}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-4">
@@ -85,7 +91,7 @@ export function ZoneDistribution({ data }: { data: ZoneMetric[] }) {
                         <div key={idx} className="p-3 rounded-xl bg-muted/20 border border-border/50 flex flex-col gap-1">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate max-w-[120px]">{zone.name}</span>
-                                <Badge variant="secondary" className="h-4 text-[8px] px-1.5">{zone.schoolCount} Schools</Badge>
+                                <Badge variant="secondary" className="h-4 text-[8px] px-1.5">{zone.schoolCount} {zone.schoolCount === 1 ? terminology.singular : terminology.plural}</Badge>
                             </div>
                             <div className="flex items-end justify-between">
                                 <span className="text-lg font-black tabular-nums">{zone.studentCount.toLocaleString()}</span>

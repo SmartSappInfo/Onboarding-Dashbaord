@@ -174,7 +174,7 @@ export function VisualBlock({
             );
         case 'quote':
             return (
- <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
+ <div className={cn("w-full my-4 p-6 bg-muted/10 border-l-4 border-primary rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
  <Quote className="h-6 w-6 text-primary/20 mb-2" />
                     {isEditing ? (
                         <RichTextEditor 
@@ -218,7 +218,7 @@ export function VisualBlock({
             return (
  <div className="w-full py-6">
  <Card className="bg-primary text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
-                        <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase ">Assessment Result</Badge>
+                        <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase ">Assessment Result</Badge>
  <span className="text-6xl font-semibold tabular-nums tracking-tighter">{simulationVars.score || 0}</span>
  <span className="text-[10px] font-bold opacity-60 mt-1">Total Points Recorded</span>
                     </Card>

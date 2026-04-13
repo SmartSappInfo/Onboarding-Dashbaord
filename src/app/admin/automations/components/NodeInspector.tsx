@@ -155,7 +155,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                 value={data.label || ''} 
                                 onChange={e => onUpdate({ label: e.target.value })} 
                                 placeholder="Give this step a name..."
- className="h-11 rounded-xl bg-muted/10 border-none font-bold shadow-inner"
+ className="h-11 rounded-xl bg-background border-none font-bold shadow-inner"
                             />
                         </div>
                     </div>
@@ -177,7 +177,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             onClick={() => onUpdate({ trigger: trigger.value, label: trigger.label })}
  className={cn(
                                                 "flex items-start gap-4 p-4 rounded-2xl border-2 transition-all text-left group",
-                                                data.trigger === trigger.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-muted/10 hover:bg-card/50"
+                                                data.trigger === trigger.value ? "border-emerald-500 bg-emerald-500/10 shadow-md" : "border-transparent bg-background hover:bg-card/50"
                                             )}
                                         >
  <div className={cn(
@@ -229,7 +229,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
  <Database className="h-3 w-3" /> Targeted Data Point
                                     </Label>
                                     <Select value={config.field || ''} onValueChange={(v) => updateConfig({ field: v })}>
- <SelectTrigger className="h-12 rounded-xl bg-muted/10 border-none font-bold shadow-inner px-4">
+ <SelectTrigger className="h-12 rounded-xl bg-background border-none font-bold shadow-inner px-4">
                                             <SelectValue placeholder="Pick variable to evaluate..." />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
@@ -268,7 +268,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                         value={config.value || ''} 
                                         onChange={(e) => updateConfig({ value: e.target.value })}
                                         placeholder="Expected string or number..."
- className="h-12 rounded-xl bg-muted/10 border-none font-bold px-4 shadow-inner"
+ className="h-12 rounded-xl bg-background border-none font-bold px-4 shadow-inner"
                                     />
                                 </div>
                             </div>
@@ -305,7 +305,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                     'flex items-start gap-3 p-3 rounded-2xl border-2 transition-all text-left',
                                                     data.logic === opt.value
                                                         ? 'border-violet-500 bg-violet-500/10 shadow-md'
-                                                        : 'border-transparent bg-muted/10 hover:bg-card/50'
+                                                        : 'border-transparent bg-background hover:bg-card/50'
                                                 )}
                                             >
  <div className={cn(
@@ -367,7 +367,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             }
                                         }}
                                     >
- <SelectTrigger className="h-11 rounded-xl bg-muted/10 border-none font-bold shadow-inner px-4">
+ <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold shadow-inner px-4">
                                             <SelectValue placeholder="Add a tag..." />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[280px] overflow-y-auto">
@@ -422,7 +422,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                     'flex items-start gap-3 p-3 rounded-2xl border-2 transition-all text-left',
                                                     data.action === opt.value
                                                         ? opt.activeClass
-                                                        : 'border-transparent bg-muted/10 hover:bg-card/50'
+                                                        : 'border-transparent bg-background hover:bg-card/50'
                                                 )}
                                             >
  <div className={cn(
@@ -537,10 +537,10 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             type="number"
                                             value={config.value || 5} 
                                             onChange={(e) => updateConfig({ value: parseInt(e.target.value, 10) })}
- className="h-14 w-24 rounded-2xl bg-muted/10 border-none font-semibold text-center text-3xl shadow-inner"
+ className="h-14 w-24 rounded-2xl bg-background border-none font-semibold text-center text-3xl shadow-inner"
                                         />
                                         <Select value={config.unit || 'Minutes'} onValueChange={(v) => updateConfig({ unit: v })}>
- <SelectTrigger className="h-14 flex-1 rounded-2xl bg-muted/10 border-none font-semibold text-xs shadow-inner px-6">
+ <SelectTrigger className="h-14 flex-1 rounded-2xl bg-background border-none font-semibold text-xs shadow-inner px-6">
                                                 <SelectValue />
                                             </SelectTrigger>
  <SelectContent className="rounded-2xl border-none shadow-2xl">
@@ -575,7 +575,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     value={data.actionType || ''} 
                                     onValueChange={(val) => onUpdate({ actionType: val, label: ACTION_TYPES.find(a => a.value === val)?.label })}
                                 >
- <SelectTrigger className="h-14 rounded-[1.25rem] bg-muted/10 border-none shadow-inner font-semibold text-lg px-6">
+ <SelectTrigger className="h-14 rounded-[1.25rem] bg-background border-none shadow-inner font-semibold text-lg px-6">
                                         <SelectValue placeholder="Select action type..." />
                                     </SelectTrigger>
  <SelectContent className="rounded-2xl border-none shadow-2xl p-2 max-h-[400px] overflow-y-auto">
@@ -676,7 +676,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                         type="number" 
                                                         value={config.dueOffsetDays || 3} 
                                                         onChange={(e) => updateConfig({ dueOffsetDays: parseInt(e.target.value, 10) || 0 })} 
- className="h-10 rounded-xl bg-white text-center font-semibold w-16"
+ className="h-10 rounded-xl bg-card text-center font-semibold w-16"
                                                     />
  <span className="text-[9px] font-bold opacity-40">Days</span>
                                                 </div>
@@ -685,7 +685,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assigned Identity</Label>
                                             <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
- <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
                                                     <SelectValue placeholder="Auto-Resolve from School" />
                                                 </SelectTrigger>
  <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
@@ -704,7 +704,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Lifecycle State Mutation</Label>
                                             <Select value={config.updates?.lifecycleStatus || ''} onValueChange={(v) => updateConfig({ updates: { ...config.updates, lifecycleStatus: v } })}>
- <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-semibold text-xs"><SelectValue placeholder="No change" /></SelectTrigger>
+ <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-semibold text-xs"><SelectValue placeholder="No change" /></SelectTrigger>
  <SelectContent className="rounded-xl border-none shadow-2xl">
  <SelectItem value="Onboarding" className="font-semibold">Onboarding</SelectItem>
  <SelectItem value="Active" className="font-semibold text-emerald-600">Active</SelectItem>
@@ -718,7 +718,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                 const stage = stages?.find(s => s.id === v);
                                                 updateConfig({ updates: { ...config.updates, stage: { id: stage?.id, name: stage?.name, order: stage?.order, color: stage?.color } } });
                                             }}>
- <SelectTrigger className="h-12 rounded-xl bg-white border shadow-sm font-semibold text-xs"><SelectValue placeholder="No movement" /></SelectTrigger>
+ <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-semibold text-xs"><SelectValue placeholder="No movement" /></SelectTrigger>
  <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
                                                     {stages?.map(s => (
  <SelectItem key={s.id} value={s.id} className="rounded-lg py-2.5">

@@ -112,7 +112,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
 
     if (isSubmitted) {
         return (
-            <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
+            <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
                  <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
                  <main className="flex-grow flex items-center justify-center p-4 relative z-10">
                     <div className="max-w-4xl w-full mx-auto text-center">
@@ -126,7 +126,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                           )}
                         </div>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border-4 border-white bg-white">
+                            <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border border-border/50 bg-card">
                                 <Image 
                                     src={survey.bannerImageUrl} 
                                     alt={survey.title || 'Survey thank you banner'} 
@@ -152,7 +152,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     const showHeader = !!survey.showSurveyTitles;
 
     return (
-        <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
+        <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow relative z-10">
                 <div className="max-w-4xl mx-auto py-5 sm:py-10 px-4">
@@ -172,7 +172,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                             {showHeader && (
                                 <>
                                     {survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-2xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white bg-white">
+                                        <div className="relative w-full rounded-2xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border border-border/50 bg-card">
                                             <Image 
                                                 src={survey.bannerImageUrl} 
                                                 alt={survey.title || ''} 

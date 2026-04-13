@@ -78,7 +78,7 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                 {previewData && !isSubmitted && (
  <div className="max-w-4xl mx-auto py-12 px-4">
                                         {previewData.bannerImageUrl && (
- <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-white">
+ <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-card">
                                                 <Image 
                                                     src={previewData.bannerImageUrl} 
                                                     alt={previewData.title || ''} 
@@ -99,7 +99,7 @@ export default function SurveyPreviewButton({ variant, size, className, children
  <div className="max-w-4xl w-full mx-auto text-center">
  <SmartSappLogo className="h-12 mx-auto mb-8" />
                                             {previewData.bannerImageUrl && (
- <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-white">
+ <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-card">
                                                     <Image 
                                                         src={previewData.bannerImageUrl} 
                                                         alt={previewData.title || 'Survey thank you banner'} 

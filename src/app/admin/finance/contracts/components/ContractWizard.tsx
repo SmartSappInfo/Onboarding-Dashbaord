@@ -265,8 +265,8 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                             )}
 
                             {step === 2 && (
- <motion.div key="step2" {...stepTransition} className="absolute inset-0 bg-slate-50 overflow-hidden flex flex-col">
- <div className="p-4 bg-white border-b flex items-center justify-between">
+ <motion.div key="step2" {...stepTransition} className="absolute inset-0 bg-muted/10 overflow-hidden flex flex-col">
+ <div className="p-4 bg-card border-b flex items-center justify-between">
  <div className="flex items-center gap-4">
                                             <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold text-[10px] uppercase  px-3 h-7">
  <Eye className="h-3 w-3 mr-1.5" /> High-Fidelity Simulation
@@ -289,7 +289,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
                                                     variant="ghost" 
                                                     size="icon" 
  className="h-7 w-7 rounded-lg" 
-                                                    disabled={previewIndex === schools.length - 1}
+                                                    disabled={previewIndex === entities.length - 1}
                                                     onClick={() => setPreviewIndex(prev => prev + 1)}
                                                 >
  <ChevronRight className="h-4 w-4" />
@@ -348,12 +348,12 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
  <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
  <Label className="text-base font-semibold tracking-tight">Batch Target Summary</Label>
                                                             </div>
- <ScrollArea className="h-64 border rounded-2xl bg-muted/10 p-4">
+ <ScrollArea className="h-64 border rounded-2xl bg-background p-4">
  <div className="space-y-2">
                                                                     {entities.map(s => (
- <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-border/50 shadow-sm">
+ <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50 shadow-sm">
  <span className="text-xs font-semibold truncate pr-4">{s.displayName}</span>
-                                                                            <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase tracking-tighter shrink-0 bg-slate-50">
+                                                                            <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase tracking-tighter shrink-0 bg-muted/10">
                                                                                 {s.identity?.contacts?.find(p => p.isSignatory)?.name.split(' ')[0] || 'Unassigned'}
                                                                             </Badge>
                                                                         </div>
@@ -417,7 +417,7 @@ export default function ContractWizard({ entities, open, onOpenChange }: Contrac
  <div className="space-y-4 border-t pt-6 mt-4 border-dashed">
  <div className={cn(
                                                                     "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
-                                                                    watchedSkipMessaging ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/10"
+                                                                    watchedSkipMessaging ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
                                                                 )}>
  <div className="flex items-center gap-3">
  <div className={cn("p-2 rounded-xl", watchedSkipMessaging ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>

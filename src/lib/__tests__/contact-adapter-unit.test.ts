@@ -1407,7 +1407,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ entityId: 'nonexistent' });
+        const exists = await contactExists('nonexistent');
 
         expect(exists).toBe(false);
       });
@@ -1421,7 +1421,7 @@ describe('Contact Adapter - Unit Tests', () => {
 
         (adminDb.collection as any) = mockCollection;
 
-        const exists = await contactExists({ entityId: 'error_entity' });
+        const exists = await contactExists('error_entity');
 
         expect(exists).toBe(false);
       });

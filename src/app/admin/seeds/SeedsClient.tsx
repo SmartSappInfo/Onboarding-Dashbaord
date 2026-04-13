@@ -17,7 +17,8 @@ import {
     seedBillingData,
     rollbackSchoolsMigration,
     rollbackTasksMigration,
-    rollbackActivitiesMigration
+    rollbackActivitiesMigration,
+    seedPageTemplates
 } from '@/lib/seed';
 import {
     migrateSchoolsToEntities,
@@ -89,7 +90,8 @@ export default function SeedsClient() {
     rollback_entities: 'idle',
     verify_entities: 'idle',
     migrate_all_features: 'idle',
-    migrate_settings: 'idle'
+    migrate_settings: 'idle',
+    templates: 'idle'
   });
 
   // Feature migration state
@@ -337,7 +339,7 @@ export default function SeedsClient() {
  <h1 className="text-white text-3xl font-semibold tracking-tighter">System Seeding Hub</h1>
             </div>
  <Card className="w-full max-w-md rounded-[2.5rem] glass-card overflow-hidden">
- <CardHeader className="bg-muted/10 p-8 border-b text-center">
+ <CardHeader className="bg-background p-8 border-b text-center">
  <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-4">
  <Lock className="h-8 w-8 text-primary" />
                     </div>
@@ -363,7 +365,7 @@ export default function SeedsClient() {
   return (
  <div className="min-h-screen bg-background pb-32 text-left">
  <header className="bg-card/50 backdrop-blur-md border-b h-20 flex items-center px-8 shadow-sm">
- <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+ <div className=" w-full flex items-center justify-between">
  <div className="flex items-center gap-4">
  <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-6 w-6 text-primary" /></div>
                     <div>
@@ -378,14 +380,14 @@ export default function SeedsClient() {
             </div>
         </header>
 
- <main className="max-w-7xl mx-auto p-8 space-y-12">
+ <main className=" p-8 space-y-12">
             {/* Operational Integrity Section */}
  <section className="space-y-6">
  <div className="flex items-center gap-3">
                     <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary">Architectural Restoration</Badge>
  <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                 </div>
- <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
  <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <SimpleMigrationCard 
                             title="Blueprint Reconstruction" 
@@ -431,7 +433,7 @@ export default function SeedsClient() {
                     </CardHeader>
  <CardContent className="p-8 pt-0 space-y-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="p-6 rounded-3xl bg-card border border-indigo-100 shadow-sm space-y-4">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><RotateCcw size={18} /></div>
  <h4 className="text-xs font-semibold tracking-tight">Legacy Settings Migration</h4>
@@ -573,7 +575,7 @@ export default function SeedsClient() {
                         </CardDescription>
                     </CardHeader>
  <CardContent className="p-8 pt-0">
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-amber-100 shadow-inner">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-card p-6 rounded-2xl border border-amber-100 shadow-inner">
                             <MigrationCard
                                 featureName="Surveys Configuration"
                                 collectionName="surveys"
@@ -622,7 +624,7 @@ export default function SeedsClient() {
  <CardContent className="p-8 pt-0 space-y-6">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Agreement Migration Card */}
- <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="p-6 rounded-3xl bg-card border border-indigo-100 shadow-sm space-y-4">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><FileText size={18} /></div>
  <h4 className="text-xs font-semibold tracking-tight">Agreements Migration</h4>
@@ -652,7 +654,7 @@ export default function SeedsClient() {
                             </div>
 
                             {/* Submissions Migration Card */}
- <div className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm space-y-4">
+ <div className="p-6 rounded-3xl bg-card border border-indigo-100 shadow-sm space-y-4">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600"><Layers size={18} /></div>
  <h4 className="text-xs font-semibold tracking-tight">Submission Reference Mapping</h4>
@@ -910,6 +912,7 @@ export default function SeedsClient() {
                     <ProtocolButton label="Roles & Governance" icon={ShieldCheck} status={seedingStatus.roles} onClick={() => handleAction('roles', enrichRolesWithWorkspaces)} />
                     <ProtocolButton label="Workspaces" icon={Layout} status={seedingStatus.workspaces} onClick={() => handleAction('workspaces', seedWorkspaces)} />
                     <ProtocolButton label="Billing Profiles" icon={Banknote} status={seedingStatus.billing} onClick={() => handleAction('billing', seedBillingData)} />
+                    <ProtocolButton label="Page Templates" icon={FileText} status={seedingStatus.templates} onClick={() => handleAction('templates', seedPageTemplates)} />
                 </div>
             </section>
 
@@ -918,8 +921,8 @@ export default function SeedsClient() {
  <Card className="bg-rose-50 border-rose-100 rounded-[2.5rem] overflow-hidden shadow-sm">
  <CardHeader className="p-8 pb-4"><CardTitle className="text-[10px] font-semibold text-rose-600 flex items-center gap-2"><TriangleAlert className="h-4 w-4" /> Emergency Rollback</CardTitle></CardHeader>
  <CardContent className="p-8 pt-0 flex flex-wrap gap-4">
- <Button variant="outline" onClick={() => handleAction('rollback_schools', rollbackSchoolsMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Schools Snapshot</Button>
- <Button variant="outline" onClick={() => handleAction('rollback_tasks', rollbackTasksMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-white">Restore Tasks Snapshot</Button>
+ <Button variant="outline" onClick={() => handleAction('rollback_schools', rollbackSchoolsMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-card">Restore Schools Snapshot</Button>
+ <Button variant="outline" onClick={() => handleAction('rollback_tasks', rollbackTasksMigration)} className="rounded-xl font-bold border-rose-200 text-rose-600 bg-card">Restore Tasks Snapshot</Button>
                     </CardContent>
                 </Card>
             </section>
@@ -938,9 +941,9 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
   icon: any;
 }) {
     return (
- <div className="p-6 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all">
+ <div className="p-6 rounded-3xl bg-muted/10 border-2 border-dashed border-slate-200 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all">
  <div className="space-y-3">
- <div className="p-2.5 bg-white rounded-xl w-fit shadow-sm text-primary border border-slate-100 group-hover:scale-110 transition-transform"><Icon className="h-5 w-5" /></div>
+ <div className="p-2.5 bg-card rounded-xl w-fit shadow-sm text-primary border border-slate-100 group-hover:scale-110 transition-transform"><Icon className="h-5 w-5" /></div>
  <h4 className="text-sm font-semibold tracking-tight">{title}</h4>
  <p className="text-[10px] font-medium text-muted-foreground leading-relaxed tracking-tighter">{description}</p>
             </div>
@@ -949,7 +952,7 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
  {status === 'seeding' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />} Sync domain
                 </Button>
                 {onRollback && (
- <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 h-11 bg-white">
+ <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 h-11 bg-card">
  <RotateCcw className="h-4 w-4" />
                     </Button>
                 )}
@@ -971,7 +974,7 @@ function ProtocolButton({ label, status, onClick, icon: Icon }: {
             disabled={status === 'seeding'} 
  className={cn(
                 "h-14 w-full rounded-xl border-2 flex items-center justify-between px-6 transition-all",
-                status === 'seeding' ? "bg-muted animate-pulse" : "bg-white hover:border-primary hover:bg-primary/5"
+                status === 'seeding' ? "bg-muted animate-pulse" : "bg-card hover:border-primary hover:bg-primary/5"
             )}
         >
  <div className="flex items-center gap-4">

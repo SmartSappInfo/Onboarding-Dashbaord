@@ -30,7 +30,6 @@ import type { Firestore } from 'firebase/firestore';
 // Mock types
 type MockRecordData = {
   id: string;
-  entityId: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
@@ -517,11 +516,11 @@ describe('Property 17: Rollback Cleanup', () => {
           // Setup: Create backup records, but make one invalid to cause failure
           const backupData = new Map<string, MockBackupData>();
           records.forEach((record, idx) => {
-            const { entityId, entityType, ...originalData } = record;
+            const { entityType, ...originalData } = record;
             
             // Make the first record invalid (missing required field)
             if (idx === 0) {
-              const { entityId, ...invalidData } = originalData;
+              const { title: _title, ...invalidData } = originalData;
               backupData.set(record.id, {
                 ...invalidData,
                 backedUpAt: new Date().toISOString(),

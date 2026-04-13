@@ -96,10 +96,10 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     return (
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
  <div className="lg:col-span-2 space-y-8">
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
- <CardHeader className="bg-muted/10 border-b p-6">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+ <CardHeader className="bg-background border-b p-6">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><Settings2 size={18} /></div>
+ <div className="p-2 bg-card rounded-xl shadow-sm text-primary"><Settings2 size={18} /></div>
  <CardTitle className="text-sm font-semibold tracking-tight">Master Blueprint</CardTitle>
                         </div>
                     </CardHeader>
@@ -117,7 +117,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
  <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
  <div className="flex justify-between items-center px-1">
  <Label className="text-[10px] font-semibold text-primary">Column Density</Label>
-                                <Badge variant="outline" className="font-mono text-[10px] bg-white border-primary/20 text-primary">{columnWidth}px</Badge>
+                                <Badge variant="outline" className="font-mono text-[10px] bg-card border-primary/20 text-primary">{columnWidth}px</Badge>
                             </div>
                             <Slider value={[columnWidth]} onValueChange={([v]) => onWidthChange(v)} min={280} max={500} step={10} />
                         </div>
@@ -133,10 +133,10 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
             </div>
 
  <div className="space-y-8">
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
  <CardHeader className="bg-primary/5 border-b p-6">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-white rounded-xl shadow-sm text-primary"><ShieldCheck size={18} /></div>
+ <div className="p-2 bg-card rounded-xl shadow-sm text-primary"><ShieldCheck size={18} /></div>
  <CardTitle className="text-sm font-semibold tracking-tight">Access Architecture</CardTitle>
                         </div>
                     </CardHeader>

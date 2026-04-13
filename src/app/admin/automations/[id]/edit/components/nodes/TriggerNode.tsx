@@ -32,7 +32,7 @@ export function TriggerNode({ data, selected }: any) {
             selected ? "scale-105" : "scale-100"
         )}>
  <Card className={cn(
-                "w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden shadow-sm",
+                "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm",
                 selected ? "border-emerald-500 shadow-2xl ring-4 ring-emerald-500/10" : "border-emerald-200"
             )}>
  <div className="bg-emerald-500 p-3 flex items-center justify-between border-b border-emerald-600/20">
@@ -41,8 +41,8 @@ export function TriggerNode({ data, selected }: any) {
  <span className="text-[10px] font-semibold ">Protocol Entry</span>
                     </div>
  <div className="flex gap-1">
- <div className="h-1 w-1 rounded-full bg-white opacity-40" />
- <div className="h-1 w-1 rounded-full bg-white opacity-40" />
+ <div className="h-1 w-1 rounded-full bg-card opacity-40" />
+ <div className="h-1 w-1 rounded-full bg-card opacity-40" />
                     </div>
                 </div>
  <div className="p-4 space-y-3 text-left">

@@ -38,7 +38,7 @@ interface TemplateCardProps {
 function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelete }: TemplateCardProps) {
     return (
  <Card className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
- <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-muted/5 group-hover:bg-background transition-colors duration-500">
+ <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-background group-hover:bg-background transition-colors duration-500">
  <div className="flex items-center gap-1.5">
  <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
  {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
@@ -53,17 +53,17 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
                 </div>
             </div>
             
- <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-center p-1.5">
+ <div className="flex-1 overflow-hidden relative bg-card flex flex-col items-center justify-center p-1.5">
                 {template.channel === 'email' ? (
- <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex items-start justify-center">
+ <div className="w-full h-full relative overflow-hidden bg-muted/10 border rounded-xl shadow-inner flex items-start justify-center">
  <div className="relative transform origin-top scale-[0.42] w-[238%] h-[238%] pointer-events-none p-4 shrink-0">
- <iframe srcDoc={template.body} className="w-full h-full border-none bg-white rounded-[2rem] pointer-events-none shadow-2xl" title="preview" />
+ <iframe srcDoc={template.body} className="w-full h-full border-none bg-card rounded-[2rem] pointer-events-none shadow-2xl" title="preview" />
                         </div>
                     </div>
                 ) : (
- <div className="w-full h-full bg-white rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 shadow-inner">
+ <div className="w-full h-full bg-card rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 shadow-inner">
  <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary"><Zap size={120} /></div>
- <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
+ <div className="p-4 bg-card border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
  <p className="text-[9px] font-bold text-slate-900 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
                         </div>
  <div className="flex items-center justify-between opacity-20 border-t border-slate-200 pt-3">
@@ -225,7 +225,7 @@ export function TemplateGallery({
                     ))}
                     
                     {filteredTemplates.length === 0 && (
- <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4 opacity-30">
+ <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
  <FileType className="h-16 w-16 text-muted-foreground" />
  <p className="font-semibold text-sm">No template blueprints found.</p>
                         </div>

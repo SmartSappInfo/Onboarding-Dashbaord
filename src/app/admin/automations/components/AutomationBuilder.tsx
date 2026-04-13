@@ -223,7 +223,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, onStateC
                                 onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)} 
                             />
                         ) : (
- <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-muted/10">
+ <div className="py-20 text-center border-2 border-dashed rounded-2xl border-border/50 bg-background">
  <MousePointer2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground opacity-20" />
  <p className="text-[10px] font-semibold text-muted-foreground opacity-40">
                                     Select an architecture node<br/>to configure operational logic

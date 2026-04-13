@@ -56,6 +56,9 @@ export default function MeetingRegisteredState({
           ? childrenFromData.split(',').map(s => s.trim()).filter(Boolean)
           : [];
 
+      // Create attendees collection reference
+      const attendeesRef = collection(firestore, 'attendees');
+      
       await addDoc(attendeesRef, {
         meetingId: meeting.id,
         entityId: meeting.entityId || '',

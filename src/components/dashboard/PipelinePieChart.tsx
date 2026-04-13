@@ -5,7 +5,13 @@ import { DonutChart, type DonutChartSegment } from "@/components/ui/donut-chart"
 import DashboardCard from "./DashboardCard";
 import { cn } from '@/lib/utils';
 
-export function PipelinePieChart({ stages }: { stages: { name: string; count: number; students: number; color?: string }[] }) {
+export function PipelinePieChart({ 
+    stages, 
+    terminology = { singular: 'Entity', plural: 'Entities' } 
+}: { 
+    stages: { name: string; count: number; students: number; color?: string }[];
+    terminology?: { singular: string; plural: string };
+}) {
     const [hoveredSegment, setHoveredSegment] = React.useState<DonutChartSegment | null>(null);
 
     const chartData = React.useMemo(() => stages.map(stage => ({
@@ -15,7 +21,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
         students: stage.students,
     })), [stages]);
 
-    const totalSchools = React.useMemo(() => stages.reduce((acc, curr) => acc + curr.count, 0), [stages]);
+    const totalCount = React.useMemo(() => stages.reduce((acc, curr) => acc + curr.count, 0), [stages]);
     const totalStudents = React.useMemo(() => stages.reduce((acc, curr) => acc + curr.students, 0), [stages]);
 
     const handleSegmentHover = (segment: DonutChartSegment | null) => {
@@ -28,16 +34,18 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                 <>
                     <p className="text-sm text-muted-foreground truncate px-2">{hoveredSegment.label}</p>
                     <p className="text-3xl font-bold">
-                        {totalSchools > 0 ? ((hoveredSegment.value / totalSchools) * 100).toFixed(1) : 0}%
+                        {totalCount > 0 ? ((hoveredSegment.value / totalCount) * 100).toFixed(1) : 0}%
                     </p>
-                    <p className="text-sm text-muted-foreground">{hoveredSegment.value} School{hoveredSegment.value === 1 ? '' : 's'}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {hoveredSegment.value} {hoveredSegment.value === 1 ? terminology.singular : terminology.plural}
+                    </p>
                     <p className="text-lg font-semibold mt-1">{hoveredSegment.students?.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Students</p>
                 </>
             ) : (
                 <>
-                    <p className="text-3xl font-bold">{totalSchools}</p>
-                    <p className="text-sm text-muted-foreground">Total Schools</p>
+                    <p className="text-3xl font-bold">{totalCount}</p>
+                    <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
                     <p className="text-xl font-semibold mt-2">{totalStudents.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Total Students</p>
                 </>
@@ -45,11 +53,11 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
         </div>
     );
     
-    if (totalSchools === 0) {
+    if (totalCount === 0) {
         return (
             <DashboardCard title="Onboarding Pipeline">
                 <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
-                    <p>No schools in the pipeline yet.</p>
+                    <p>No {terminology.plural.toLowerCase()} in the pipeline yet.</p>
                 </div>
             </DashboardCard>
         );

@@ -168,7 +168,7 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
             </ScrollArea>
           </div>
 
- <SheetFooter className="p-6 mt-auto border-t justify-between flex-row gap-2 text-left bg-muted/10">
+ <SheetFooter className="p-6 mt-auto border-t justify-between flex-row gap-2 text-left bg-background">
  <div className="flex gap-2">
  <Button variant="outline" onClick={() => setIsLogActivityModalOpen(true)} className="rounded-xl font-bold h-11 text-left">
  <MessageSquarePlus className="mr-2 h-4 w-4" />

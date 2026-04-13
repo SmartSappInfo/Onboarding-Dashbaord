@@ -267,7 +267,6 @@ describe('Meeting Module Migration', () => {
       // Arrange
       const existingMeeting: Meeting = {
         id: 'meeting_123',
-        entityId: 'school_123',
         entityName: 'Test School',
         entitySlug: 'test-school',
         entityId: 'entity_123',
@@ -312,7 +311,6 @@ describe('Meeting Module Migration', () => {
       // Arrange
       const existingMeeting: Meeting = {
         id: 'meeting_123',
-        entityId: 'school_123',
         entityName: 'Test School',
         entitySlug: 'test-school',
         entityId: 'entity_123',
@@ -355,41 +353,29 @@ describe('Meeting Module Migration', () => {
 
   describe('Meeting Query with Fallback (Requirement 9.4, 22.1)', () => {
     it('should query meetings by entityId when provided', async () => {
-      // This test validates the query pattern logic
-      // In actual implementation, Firestore would be queried with entityId filter
+      const result = await getMeetingsForContactAction('entity_123', 'workspace_1');
       
-      const result = await getMeetingsForContactAction('entity_123', workspaceId);
-      
-      // Verify function accepts entityId parameter
       expect(result.success).toBe(true);
       expect(result.meetings).toBeDefined();
     });
 
     it('should fallback to entitySlug when entityId is not provided', async () => {
-      // This test validates the fallback query pattern
-      
       const result = await getMeetingsForContactAction('legacy-school');
       
-      // Verify function accepts entitySlug parameter
       expect(result.success).toBe(true);
       expect(result.meetings).toBeDefined();
     });
 
     it('should prefer entityId when both entityId and entitySlug are provided', async () => {
-      // This test validates the preference logic
-      
       const result = await getMeetingsForContactAction('entity_123');
       
-      // Verify function processes successfully with entityId preference
       expect(result.success).toBe(true);
       expect(result.meetings).toBeDefined();
     });
 
     it('should throw error when neither entityId nor entitySlug is provided', async () => {
-      // Act
-      const result = await getMeetingsForContactAction({});
+      const result = await getMeetingsForContactAction('');
 
-      // Assert
       expect(result.success).toBe(false);
       expect(result.error).toContain('Entity ID is required');
     });
@@ -424,7 +410,6 @@ describe('Meeting Module Migration', () => {
       
       const mockMeeting: Meeting = {
         id: 'meeting_migrated',
-        entityId: 'school_123',
         entityName: 'Test School',
         entitySlug: 'test-school',
         entityId: 'entity_123',
@@ -446,7 +431,6 @@ describe('Meeting Module Migration', () => {
         entityId: 'school_456',
         entityName: 'Legacy School',
         entitySlug: 'legacy-school',
-        entityId: undefined,
         entityType: undefined,
         workspaceIds: ['workspace_1'],
         meetingTime: '2024-06-01T10:00:00Z',

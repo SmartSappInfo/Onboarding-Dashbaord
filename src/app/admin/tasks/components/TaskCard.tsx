@@ -27,7 +27,7 @@ const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: any }> = {
     urgent: { color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
     high: { color: 'text-orange-600 bg-orange-50 border-orange-200', icon: AlertTriangle },
     medium: { color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Clock },
-    low: { color: 'text-slate-500 bg-slate-50 border-slate-200', icon: Circle }
+    low: { color: 'text-slate-500 bg-muted/10 border-slate-200', icon: Circle }
 };
 
 interface TaskCardProps {
@@ -72,7 +72,7 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
                 "group mb-3 rounded-2xl border-border/50 bg-card transition-all duration-300 select-none",
                 !isOverlay && "hover:shadow-lg hover:border-primary/20",
                 isOverlay && "shadow-2xl border-primary ring-1 ring-primary/20 rotate-2 scale-105 cursor-grabbing",
-                isDone && "opacity-60 bg-muted/10"
+                isDone && "opacity-60 bg-background"
             )}
         >
  <CardContent className="p-4 space-y-4" {...attributes} {...listeners}>

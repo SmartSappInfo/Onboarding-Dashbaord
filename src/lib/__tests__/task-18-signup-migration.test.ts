@@ -56,7 +56,7 @@ describe('Task 18: Signup Module Migration', () => {
       // Arrange
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -108,7 +108,7 @@ describe('Task 18: Signup Module Migration', () => {
       // Arrange
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -165,7 +165,7 @@ describe('Task 18: Signup Module Migration', () => {
 
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -217,7 +217,7 @@ describe('Task 18: Signup Module Migration', () => {
 
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: `entity_${mockDocId}`,
+        id: `entity_${mockDocId}`,
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -261,7 +261,7 @@ describe('Task 18: Signup Module Migration', () => {
       // Arrange
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -323,7 +323,7 @@ describe('Task 18: Signup Module Migration', () => {
       // Arrange
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -376,7 +376,7 @@ describe('Task 18: Signup Module Migration', () => {
 
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_mock_random_id_123',
+        id: 'entity_mock_random_id_123',
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({

@@ -36,7 +36,7 @@ const workspaceEntities = new Map<string, any>();
 // Mock contact adapter
 vi.mock('../contact-adapter', () => ({
   resolveContact: vi.fn().mockImplementation(async (
-    identifier: { entityId?: string; entityId?: string },
+    identifier: { entityId?: string },
     workspaceId: string
   ) => {
     // Try to resolve by entityId first
@@ -741,7 +741,6 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       description: 'Test activity',
       entityId: 'entity_123',
       entityType: 'institution' as EntityType,
-      entityId: null,
       userId: 'user_123',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -763,7 +762,6 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       description: 'Test call',
       entityId: 'school_456',
       entityName: 'Test School',
-      entityId: null,
       userId: 'user_456',
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -785,7 +783,6 @@ describe('Dual-Write Edge Cases - Activity Logging', () => {
       description: 'Test meeting',
       entityId: 'school_789',
       entityName: 'Test School',
-      entityId: 'entity_789',
       entityType: 'institution' as EntityType,
       userId: 'user_789',
       timestamp: new Date().toISOString(),
@@ -837,7 +834,6 @@ describe('Dual-Write Edge Cases - Message Logs', () => {
       status: 'sent' as const,
       entityId: 'entity_msg_123',
       entityType: 'institution' as EntityType,
-      entityId: null,
       createdAt: new Date().toISOString(),
     };
 
@@ -927,7 +923,6 @@ describe('Dual-Write Edge Cases - Type Safety', () => {
         dueDate: '2025-07-01T00:00:00.000Z',
         entityId: `entity_${type}`,
         entityType: type,
-        entityId: null,
         reminders: [],
         reminderSent: false,
         createdAt: new Date().toISOString(),
@@ -953,7 +948,6 @@ describe('Dual-Write Edge Cases - Type Safety', () => {
       dueDate: '2025-08-01T00:00:00.000Z',
       entityId: 'entity_missing_type',
       // entityType is missing
-      entityId: null,
       reminders: [],
       reminderSent: false,
       createdAt: new Date().toISOString(),

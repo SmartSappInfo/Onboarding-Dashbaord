@@ -42,12 +42,14 @@ import { Label } from '@/components/ui/label';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction } from '@/lib/pipeline-actions';
+import { useTerminology } from '@/hooks/use-terminology';
 
 export default function PipelineClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
+  const { plural } = useTerminology();
   
   const [activeView, setActiveView] = React.useState<'board' | 'config'>('board');
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);

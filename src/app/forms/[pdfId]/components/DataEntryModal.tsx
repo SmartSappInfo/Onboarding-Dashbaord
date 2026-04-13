@@ -51,7 +51,7 @@ const DatePickerInput = ({ value, onChange, placeholder, disabled, hasError }: {
                     variant="outline" 
                     disabled={disabled}
                     className={cn(
-                        "w-full h-12 rounded-xl text-base bg-white shadow-sm transition-all justify-start text-left font-normal border-input",
+                        "w-full h-12 rounded-xl text-base bg-card shadow-sm transition-all justify-start text-left font-normal border-border/50",
                         !dateValue && "text-muted-foreground",
                         hasError && "border-destructive ring-destructive/20"
                     )}
@@ -146,7 +146,7 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
                       >
                         <SelectTrigger 
                           ref={(el) => { fieldRefs.current[field.id] = el; }}
-                          className={cn("h-12 rounded-xl text-base bg-white shadow-sm", errors[field.id] && "border-destructive")}
+                          className={cn("h-12 rounded-xl text-base bg-card border-border/50 shadow-sm", errors[field.id] && "border-destructive")}
                         >
                           <SelectValue placeholder={field.placeholder || "Select an option..."} />
                         </SelectTrigger>
@@ -178,7 +178,7 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
                     type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'time' ? 'time' : 'text'}
                     placeholder={field.placeholder}
                     className={cn(
-                      "h-12 rounded-xl text-base bg-white shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/20",
+                      "h-12 rounded-xl text-base bg-card border-border/50 shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/20",
                       errors[field.id] && "border-destructive focus-visible:ring-destructive/20"
                     )}
                     ref={(el) => { 

@@ -336,7 +336,7 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
   return (
     <>
  <Card className="glass-card rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6">
+ <CardHeader className="bg-background border-b pb-6">
  <CardTitle className="text-sm font-semibold text-foreground">Stage Architect</CardTitle>
  <CardDescription className="text-xs font-medium">Define the progression nodes. Double-click to rename.</CardDescription>
             </CardHeader>

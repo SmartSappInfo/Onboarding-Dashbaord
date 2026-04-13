@@ -226,6 +226,8 @@ export interface Organization {
   openaiApiKey?: string;
   claudeApiKey?: string; // Optional if using OpenRouter directly
   defaultWorkspaceId?: string;
+  /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
+  enabledFeatures?: FeatureToggleMap;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -279,6 +281,8 @@ export interface Workspace {
   statuses: WorkspaceStatus[];
   contactScope?: ContactScope; // Declares the contact type this workspace manages
   capabilities?: WorkspaceCapabilities; // Feature flags for workspace modules
+  /** Features enabled for this workspace. Can only enable features that are enabled at org level. */
+  enabledFeatures?: FeatureToggleMap;
   terminology?: {
     singular: string;
     plural: string;
@@ -398,6 +402,7 @@ export const APP_PERMISSIONS = [
   { id: 'contracts_delete', label: 'Purge Legal Records', category: 'Finance' },
   { id: 'studios_view', label: 'View Design Studios', category: 'Studios' },
   { id: 'studios_edit', label: 'Create Content', category: 'Studios' },
+  { id: 'dashboard_manage', label: 'Customize Dashboard Layout', category: 'Management' },
   { id: 'system_admin', label: 'Full System Management', category: 'Management' },
   { id: 'system_user_switch', label: 'Switch User Context', category: 'Management' },
   { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
@@ -406,6 +411,8 @@ export const APP_PERMISSIONS = [
   { id: 'tags_view', label: 'View Tags', category: 'Operations' },
   { id: 'tags_manage', label: 'Manage Tags', category: 'Operations' },
   { id: 'tags_apply', label: 'Apply Tags to Contacts', category: 'Operations' },
+  { id: 'forms_manage', label: 'Manage Forms', category: 'Studios' },
+  { id: 'fields_manage', label: 'Manage Fields', category: 'Management' },
 ] as const;
 
 export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];
@@ -767,6 +774,7 @@ export interface Meeting {
   id: string;
   entityId?: string; // Unified entity reference
   entityName?: string | null; // Snapshot of entity name
+  entitySlug?: string; // URL slug for public page routing
   entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
   meetingTime: string;
@@ -860,6 +868,8 @@ export interface Survey {
   videoCaption?: string;
   status: 'draft' | 'published' | 'archived';
   elements: SurveyElement[];
+  entityId?: string | null; // Unified entity reference (formerly schoolId)
+  entityName?: string | null; // Snapshot of entity name
   createdAt: string;
   updatedAt: string;
   scoringEnabled?: boolean;
@@ -889,8 +899,6 @@ export interface Survey {
   externalAlertEmailTemplateId?: string;
   externalAlertSmsTemplateId?: string;
   useEntityLogo?: boolean;
-  entityId?: string | null; // Unified entity reference (formerly schoolId)
-  entityName?: string | null;
 }
 
 export interface SurveyElement {
@@ -1047,6 +1055,7 @@ export interface PDFForm {
   patternColor?: string;
   logoUrl?: string;
   entityId?: string | null; // Unified entity reference
+  entityName?: string | null; // Snapshot of entity name
   webhookEnabled?: boolean;
   webhookId?: string;
   showDebugProcessingModal?: boolean;
@@ -1480,6 +1489,7 @@ export interface Perspective {
 
 export interface DashboardLayout {
   componentIds: string[];
+  hiddenWidgetIds?: string[]; // Widgets explicitly hidden by the user
 }
 
 export interface BillingSettings {
@@ -1490,4 +1500,148 @@ export interface BillingSettings {
   signatureName: string;
   signatureDesignation: string;
   signatureUrl?: string;
+}
+
+// ─────────────────────────────────────────────────
+// Feature Toggle System
+// ─────────────────────────────────────────────────
+
+/**
+ * Canonical Feature Registry - single source of truth for all toggleable features.
+ * Each feature maps to sidebar nav items and corresponding dashboard widgets.
+ * When a new feature is added to the app, register it here.
+ */
+export const APP_FEATURES = [
+  // Operations
+  { id: 'entities', label: 'Contacts / Entities', category: 'Operations', icon: 'School', defaultEnabled: true },
+  { id: 'pipeline', label: 'Pipeline', category: 'Operations', icon: 'Workflow', defaultEnabled: true },
+  { id: 'tasks', label: 'Tasks', category: 'Operations', icon: 'CheckSquare', defaultEnabled: true },
+  { id: 'meetings', label: 'Meetings', category: 'Operations', icon: 'Calendar', defaultEnabled: true },
+  { id: 'automations', label: 'Automations', category: 'Operations', icon: 'Zap', defaultEnabled: true },
+  { id: 'reports', label: 'Intelligence / Reports', category: 'Operations', icon: 'BarChart3', defaultEnabled: true },
+  // Studios
+  { id: 'portals', label: 'Public Portals', category: 'Studios', icon: 'Globe', defaultEnabled: true },
+  { id: 'media', label: 'Media Library', category: 'Studios', icon: 'Film', defaultEnabled: true },
+  { id: 'surveys', label: 'Surveys', category: 'Studios', icon: 'ClipboardList', defaultEnabled: true },
+  { id: 'pdfs', label: 'Doc Signing', category: 'Studios', icon: 'FileText', defaultEnabled: true },
+  { id: 'messaging', label: 'Messaging', category: 'Studios', icon: 'MessageSquareText', defaultEnabled: true },
+  { id: 'tags', label: 'Tags', category: 'Studios', icon: 'Tags', defaultEnabled: true },
+  // Finance
+  { id: 'agreements', label: 'Agreements', category: 'Finance', icon: 'FileCheck', defaultEnabled: true },
+  { id: 'invoices', label: 'Invoices', category: 'Finance', icon: 'Receipt', defaultEnabled: true },
+  { id: 'packages', label: 'Packages', category: 'Finance', icon: 'Package', defaultEnabled: true },
+  { id: 'billing_periods', label: 'Billing Cycles', category: 'Finance', icon: 'Timer', defaultEnabled: true },
+  { id: 'billing_setup', label: 'Billing Setup', category: 'Finance', icon: 'Settings2', defaultEnabled: true },
+] as const;
+
+export type AppFeatureId = typeof APP_FEATURES[number]['id'];
+
+/** Feature toggle map: featureId → enabled */
+export type FeatureToggleMap = Partial<Record<AppFeatureId, boolean>>;
+
+/**
+ * Widget definition for the dashboard widget registry.
+ */
+export interface WidgetDefinition {
+  id: string;
+  type: 'static' | 'pipeline';
+  label: string;
+  description: string;
+  icon: string;
+  featureId?: AppFeatureId;
+  category: string;
+  gridClass: string;
+  pipelineId?: string;
+}
+
+// ─────────────────────────────────────────────────
+// Campaign Page Builder Types
+// ─────────────────────────────────────────────────
+
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats';
+
+export interface PageBlock {
+  id: string;
+  type: PageBlockType;
+  props: Record<string, any>;
+  blocks?: PageBlock[]; // for nested layouts
+}
+
+export interface PageSection {
+  id: string;
+  type: 'section';
+  props: Record<string, any>;
+  blocks: PageBlock[];
+}
+
+export interface CampaignPageStructure {
+  sections: PageSection[];
+}
+
+export interface CampaignPage {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  campaignId?: string | null;
+  name: string;
+  slug: string;
+  status: 'draft' | 'published' | 'archived';
+  pageGoal: 'lead_capture' | 'registration' | 'information' | 'payment' | 'thank_you';
+  themeId?: string | null;
+  seo: {
+    title: string;
+    description: string;
+    ogImageUrl?: string;
+    noIndex: boolean;
+  };
+  settings: {
+    customScriptsAllowed: boolean;
+    showHeader: boolean;
+    showFooter: boolean;
+  };
+  publishedVersionId?: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignPageVersion {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  versionNumber: number;
+  structureJson: CampaignPageStructure;
+  themeSnapshot?: Record<string, any>;
+  createdBy: string;
+  createdAt: string;
+  isPublishedVersion: boolean;
+}
+
+export interface PageTemplate {
+  id: string;
+  name: string;
+  description: string;
+  goal: 'lead_capture' | 'registration' | 'information' | 'payment' | 'thank_you';
+  structureJson: CampaignPageStructure;
+  thumbnailUrl?: string;
+  isGlobal?: boolean;
+  organizationId?: string;
+}
+
+export interface PageSubmission {
+  id: string;
+  pageId: string;
+  campaignId?: string;
+  workspaceId: string;
+  organizationId: string;
+  entityId?: string | null;
+  submissionType: 'form' | 'registration' | 'signup';
+  data: Record<string, any>;
+  source: {
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    referrer?: string;
+  };
+  createdAt: string;
 }

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { ThemeProvider } from '@/components/theme-provider';
 import AdminLayoutClient from './layout-client';
 
 /**
@@ -8,8 +8,10 @@ import AdminLayoutClient from './layout-client';
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
- <Suspense fallback={<div className="min-h-screen w-full bg-background" />}>
-      <AdminLayoutClient>{children}</AdminLayoutClient>
+    <Suspense fallback={<div className="min-h-screen w-full bg-background" />}>
+      <ThemeProvider attribute="class" forcedTheme="dark" enableSystem={false}>
+        <AdminLayoutClient>{children}</AdminLayoutClient>
+      </ThemeProvider>
     </Suspense>
   );
 }

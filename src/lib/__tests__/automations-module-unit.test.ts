@@ -257,9 +257,9 @@ describe('Automations Module - Unit Tests', () => {
   });
 
   describe('Automation Task Creation with Dual-Write', () => {
-    it('should create task with both entityId and entityId', async () => {
+    it('should create task with both entityId and legacy schoolId', async () => {
       const entityId = 'entity_task_123';
-      const entityId = 'school_task_123';
+      const legacySchoolId = 'school_task_123';
       const workspaceId = 'workspace_1';
       
       const { adminDb } = await import('../firebase-admin');
@@ -272,7 +272,6 @@ describe('Automations Module - Unit Tests', () => {
         workspaceId,
         entityId,
         entityName: 'Test Entity',
-        entityId,
         entityType: 'institution',
         assignedTo: 'user_123',
         dueDate: new Date().toISOString(),

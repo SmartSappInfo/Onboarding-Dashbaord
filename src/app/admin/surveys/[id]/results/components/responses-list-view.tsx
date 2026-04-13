@@ -55,7 +55,7 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
 
             try {
                 const resolved = await resolveContact(
-                    { entityId: response.entityId },
+                    response.entityId || '',
                     activeWorkspaceId
                 );
                 setContact(resolved);
@@ -190,7 +190,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
  <span className="font-bold text-sm">{selectedIds.length} responses selected</span>
                     </div>
  <div className="flex items-center gap-2">
- <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={() => setSelectedIds([])}>
+ <Button variant="ghost" size="sm" className="text-white hover:bg-card/10" onClick={() => setSelectedIds([])}>
                             Cancel
                         </Button>
  <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => handleDeleteClick()}>
@@ -203,7 +203,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
 
             <Table>
                 <TableHeader>
- <TableRow className="bg-muted/50 border-b border-border/50">
+ <TableRow className="bg-background0 border-b border-border/50">
  <TableHead className="w-[50px] pl-6">
                             <Checkbox 
                                 checked={responses?.length ? selectedIds.length === responses.length : false} 

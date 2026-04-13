@@ -97,7 +97,6 @@ const formSchema = z.object({
     selectedEntityIds: z.array(z.string()).default([]),
     contactScope: z.enum(['primary', 'signatories', 'all']).default('primary'),
     variables: z.record(z.any()).default({}),
-    entityId: z.string().optional(), // Legacy field for backward compatibility
     entityId: z.string().optional(), // New unified entity reference (Requirement 15.3)
     entityType: z.enum(['institution', 'family', 'person']).optional(), // Entity type (Requirement 15.3)
     isScheduled: z.boolean().default(false),
@@ -560,7 +559,7 @@ export default function ComposerWizard() {
 
  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
                 {step === 1 && (
- <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b pb-6 p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -638,7 +637,7 @@ export default function ComposerWizard() {
                             </div>
 
                             {selectedTemplate && (
- <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 space-y-8 text-left">
+ <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-muted/10 border-2 border-dashed border-slate-200 space-y-8 text-left">
  <div className="flex justify-between items-center px-2">
  <div className="flex items-center gap-3">
  <Zap className="h-5 w-5 text-primary" />
@@ -646,7 +645,7 @@ export default function ComposerWizard() {
                                         </div>
  <div className="flex items-center gap-3">
                                             <Select value={selectedTone} onValueChange={(v: any) => setSelectedTone(v)}>
- <SelectTrigger className="h-8 w-32 text-[10px] font-semibold bg-white border-primary/20">
+ <SelectTrigger className="h-8 w-32 text-[10px] font-semibold bg-card border-primary/20">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -664,7 +663,7 @@ export default function ComposerWizard() {
                                     </div>
  <div className="flex flex-wrap gap-3">
                                         {selectedTemplate.variables.map(v => (
- <code key={v} className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-semibold text-primary shadow-sm tracking-tighter">{"{{" + v + "}}"}</code>
+ <code key={v} className="bg-card px-4 py-2 rounded-xl border border-slate-200 text-[10px] font-semibold text-primary shadow-sm tracking-tighter">{"{{" + v + "}}"}</code>
                                         ))}
                                     </div>
                                 </motion.div>
@@ -679,7 +678,7 @@ export default function ComposerWizard() {
                 )}
 
                 {step === 2 && (
- <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b pb-6 p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -724,7 +723,7 @@ export default function ComposerWizard() {
                                         <Button
                                             type="button"
                                             variant={watchedMode === 'single' ? 'secondary' : 'ghost'}
- className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'single' && "bg-white shadow-xl text-primary")}
+ className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'single' && "bg-card shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'single')}
                                         >
  <Target className="mr-2 h-4 w-4" /> Targeted
@@ -732,7 +731,7 @@ export default function ComposerWizard() {
                                         <Button
                                             type="button"
                                             variant={watchedMode === 'bulk' ? 'secondary' : 'ghost'}
- className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'bulk' && "bg-white shadow-xl text-primary")}
+ className={cn("h-12 rounded-xl font-semibold text-[10px] transition-all", watchedMode === 'bulk' && "bg-card shadow-xl text-primary")}
                                             onClick={() => setValue('mode', 'bulk')}
                                         >
  <Layers className="mr-2 h-4 w-4" /> Broadcast
@@ -801,7 +800,7 @@ export default function ComposerWizard() {
                                                                 onClick={() => setValue('contactScope', scope.id as any)}
  className={cn(
                                                                     "cursor-pointer border-2 rounded-2xl p-5 transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group",
-                                                                    watchedContactScope === scope.id ? "bg-primary/[0.03] border-primary shadow-lg ring-1 ring-primary/20" : "bg-white border-primary/5 hover:border-primary/20 shadow-sm"
+                                                                    watchedContactScope === scope.id ? "bg-primary/[0.03] border-primary shadow-lg ring-1 ring-primary/20" : "bg-card border-primary/5 hover:border-primary/20 shadow-sm"
                                                                 )}
                                                             >
  <div className="flex items-center justify-between mb-2">
@@ -980,12 +979,12 @@ export default function ComposerWizard() {
                                 ) : (
  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
                                         {/* Tag-Based Audience Segmentation (FR5.1.1, FR5.1.2, FR5.1.3) */}
- <div className="p-8 rounded-[2.5rem] bg-muted/10 border border-border/50 shadow-inner">
+ <div className="p-8 rounded-[2.5rem] bg-background border border-border/50 shadow-inner">
                                             <TagAudienceSelector onChange={setTagSegment} />
                                         </div>
 
                                         {!csvData.length ? (
- <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
+ <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-background border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
  <Upload className="h-12 w-12 text-primary" />
  <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
  <Button asChild variant="outline" className="rounded-2xl border-2 font-semibold h-16 px-16 text-xs">
@@ -1011,7 +1010,7 @@ export default function ComposerWizard() {
                                                                     Map &#123;&#123;{v}&#125;&#125; to column:
                                                                 </Label>
                                                                 <Select value={columnMapping[v] || ''} onValueChange={(val) => setColumnMapping(prev => ({ ...prev, [v]: val }))}>
- <SelectTrigger className="h-12 rounded-xl bg-white border-primary/10 font-bold">
+ <SelectTrigger className="h-12 rounded-xl bg-card border-primary/10 font-bold">
                                                                         <SelectValue placeholder="Select CSV column..." />
                                                                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -1055,7 +1054,7 @@ export default function ComposerWizard() {
                 )}
 
                 {step === 3 && (
- <Card className="shadow-2xl border-none ring-1 ring-border rounded-[3rem] overflow-hidden bg-white">
+ <Card className="shadow-2xl border-none ring-1 ring-border rounded-[3rem] overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b pb-8 p-10">
  <div className="flex items-center gap-5">
  <div className="p-4 bg-primary text-white rounded-[1.5rem] shadow-2xl shadow-primary/20 rotate-3">
@@ -1238,7 +1237,7 @@ export default function ComposerWizard() {
                 )}
 
                 {step === 4 && (
- <Card className="shadow-2xl border-none ring-1 ring-primary/20 rounded-[4rem] overflow-hidden bg-white">
+ <Card className="shadow-2xl border-none ring-1 ring-primary/20 rounded-[4rem] overflow-hidden bg-card">
  <CardHeader className="text-center pb-12 pt-16 border-b bg-muted/30">
  <div className="mx-auto bg-primary/10 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-primary/10">
  {jobStatus === 'processing' ? <Loader2 className="h-12 w-12 animate-spin text-primary" /> : <Trophy className="h-12 w-12 text-emerald-600" />}
@@ -1359,7 +1358,7 @@ export default function ComposerWizard() {
                                              {sendSummary.failedEntities.map((failed, idx) => (
                                                     <div
                                                         key={idx}
- className="p-3 rounded-lg bg-white border border-red-200 space-y-1"
+ className="p-3 rounded-lg bg-card border border-red-200 space-y-1"
                                                     >
  <div className="flex items-center gap-2">
  <Building className="h-3 w-3 text-red-600" />
@@ -1422,7 +1421,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
         return (
  <div className={cn(
                 "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700 p-8",
-                template.channel === 'email' ? "bg-white border-blue-50" : "bg-white border-slate-200"
+                template.channel === 'email' ? "bg-card border-blue-50" : "bg-card border-slate-200"
             )}>
  <div className="flex items-center gap-2 mb-4 text-emerald-600">
  <Wand2 className="h-4 w-4" />
@@ -1440,7 +1439,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
     return (
  <div className={cn(
             "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700",
-            template.channel === 'email' ? "bg-white border-blue-50" : "bg-slate-50 border-slate-200 max-w-sm mx-auto"
+            template.channel === 'email' ? "bg-card border-blue-50" : "bg-muted/10 border-slate-200 max-w-sm mx-auto"
         )}>
             {template.channel === 'email' ? (
  <div className="flex flex-col h-[450px]">
@@ -1448,7 +1447,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
  <p className="text-[10px] font-semibold tracking-[0.3em] text-muted-foreground opacity-60">Inbox Perspective</p>
  <p className="font-semibold text-lg truncate text-foreground">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
                     </div>
- <div className="flex-1 overflow-auto p-10 bg-white relative">
+ <div className="flex-1 overflow-auto p-10 bg-card relative">
  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-purple-500 opacity-20" />
  <div className="whitespace-pre-wrap font-medium leading-relaxed text-slate-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: resolvedBody }} />
                     </div>
@@ -1459,8 +1458,8 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
  <SmartSappIcon className="h-8 w-8 text-primary opacity-20" />
  <p className="text-[10px] font-semibold text-primary/40 tracking-[0.3em]">SMS Gateway Simulator</p>
                     </div>
- <div className="p-6 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
- <div className="absolute -left-2.5 top-8 w-5 h-5 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
+ <div className="p-6 bg-card border border-slate-200 rounded-[2rem] relative shadow-xl">
+ <div className="absolute -left-2.5 top-8 w-5 h-5 bg-card border-l border-b border-slate-200 rotate-45 rounded-sm" />
  <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{resolvedBody}</p>
                     </div>
  <div className="pt-6 text-center border-t border-slate-200">

@@ -13,7 +13,7 @@ export default async function PublicMeetingPage({ params }: { params: Promise<{ 
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow">
-        <SchoolMeetingLoader schoolSlug={schoolSlug} typeSlug={typeSlug} />
+        <SchoolMeetingLoader entitySlug={schoolSlug} typeSlug={typeSlug} />
       </main>
       <Footer />
     </div>

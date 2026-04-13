@@ -669,7 +669,6 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [testWorkspaceId],
-        entityId: null,
         providerId: null,
         providerStatus: null,
       };
@@ -703,7 +702,6 @@ describe('Migration E2E Workflows - Integration Tests', () => {
           senderName: 'SmartSapp',
           variables: {},
           workspaceIds: [testWorkspaceId],
-          entityId: null,
           providerId: null,
           providerStatus: null,
         },
@@ -764,7 +762,6 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [testWorkspaceId],
-        entityId: null,
         providerId: null,
         providerStatus: null,
       };
@@ -823,7 +820,6 @@ describe('Migration E2E Workflows - Integration Tests', () => {
         senderName: 'SmartSapp',
         variables: {},
         workspaceIds: [workspaceId],
-        entityId: null,
         providerId: null,
         providerStatus: null,
       };

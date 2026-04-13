@@ -182,7 +182,7 @@ export default function SubmissionDetailPage() {
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
   return (
- <div className="h-full overflow-hidden flex flex-col bg-muted/10 text-left">
+ <div className="h-full overflow-hidden flex flex-col bg-background text-left">
  <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
  <div className="flex items-center gap-2 min-w-0">
  <h1 className="text-sm sm:text-base font-semibold tracking-tight truncate px-2">
@@ -216,7 +216,7 @@ export default function SubmissionDetailPage() {
             >
  <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
                     {isLoading ? (
- Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" key={i} />)
+ Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-md mb-4 flex-shrink-0" key={i} />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
  <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
@@ -299,7 +299,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, entity }: {
 
     return (
         <div 
- className="relative mx-auto shadow-xl bg-white border border-border flex-shrink-0" 
+ className="relative mx-auto shadow-xl bg-card border border-border flex-shrink-0" 
             style={{ width: dimensions.width, height: dimensions.height }}
         >
  {isRendering && <Skeleton className="absolute inset-0" />}

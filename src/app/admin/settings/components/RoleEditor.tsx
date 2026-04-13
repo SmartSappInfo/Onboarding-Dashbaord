@@ -192,7 +192,7 @@ export default function RoleEditor() {
  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
                 ) : roles?.map(role => (
  <Card key={role.id} className="rounded-[2.5rem] glass-card overflow-hidden group text-left">
- <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between border-b bg-muted/5">
+ <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between border-b bg-background">
  <div className="flex items-center gap-3">
  <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: role.color }} />
  <CardTitle className="text-sm font-semibold tracking-tight">{role.name}</CardTitle>
@@ -346,7 +346,7 @@ export default function RoleEditor() {
                                             <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 font-semibold tabular-nums">{selectedPermissions.length} Active</Badge>
                                         </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 rounded-[2rem] bg-muted/10 border-2 border-dashed border-border shadow-inner">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 rounded-[2rem] bg-background border-2 border-dashed border-border shadow-inner">
                                             {groupedPermissions.map(({ category, perms }) => (
  <div key={category} className="space-y-4">
  <h4 className="text-[10px] font-semibold text-muted-foreground opacity-60 ml-1">{category}</h4>

@@ -461,7 +461,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
       queryExecutionTimes = [];
       await resolveContact(entityId, workspaceId);
       const cachedCallQueries = queryExecutionTimes.length;
- Sands      expect(cachedCallQueries).toBe(0);
+      expect(cachedCallQueries).toBe(0);
 
       // Clear cache
       await clearContactCache();

@@ -124,7 +124,7 @@ export default function PackagesClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+ <div className="h-full overflow-y-auto  bg-background text-left">
  <div className="max-w-6xl mx-auto space-y-8">
  <div className="flex items-center justify-between">
                     <div>
@@ -275,7 +275,7 @@ export default function PackagesClient() {
                                     </SelectContent>
                                 </Select>
                             </div>
- <div className="flex items-center justify-between p-4 rounded-2xl border bg-muted/10">
+ <div className="flex items-center justify-between p-4 rounded-2xl border bg-background">
  <div className="space-y-0.5">
  <Label className="text-sm font-bold tracking-tight">Active for Selection</Label>
  <p className="text-[9px] text-muted-foreground ">Enable this tier in the onboarding flow</p>

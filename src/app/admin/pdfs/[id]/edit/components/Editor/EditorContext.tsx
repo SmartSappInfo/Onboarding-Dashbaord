@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm, PDFFormField, School } from '@/lib/types';
+import type { PDFForm, PDFFormField, WorkspaceEntity } from '@/lib/types';
 import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState, EditorViewMode } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
 
@@ -10,7 +10,7 @@ export type SidebarTab = 'blocks' | 'tags' | 'properties';
 interface EditorContextType {
   // State
   pdf: PDFForm;
-  school?: School;
+  entity?: WorkspaceEntity;
   fields: LocalPDFFormField[];
   selectedFieldIds: string[];
   zoom: number;
@@ -74,7 +74,7 @@ const EditorContext = React.createContext<EditorContextType | undefined>(undefin
 export function EditorProvider({ 
   children, 
   pdf, 
-  school,
+  entity,
   fields, 
   setFields, 
   namingFieldId, 
@@ -97,7 +97,7 @@ export function EditorProvider({
 }: { 
   children: React.ReactNode; 
   pdf: PDFForm;
-  school?: School;
+  entity?: WorkspaceEntity;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   namingFieldId: string | null;
@@ -245,7 +245,7 @@ export function EditorProvider({
   }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, school, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
     setFields, setSelectedFieldIds, setZoom, setNumPages, setActivePageNumber, setIsSidebarCollapsed, setSidebarTab, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     setIsFieldDeleteConfirmOpen,
@@ -253,7 +253,7 @@ export function EditorProvider({
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, school, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, entity, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
     setFields, setNamingFieldId, setNumPages, setActivePageNumber, setIsFieldDeleteConfirmOpen, setSidebarTab,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,

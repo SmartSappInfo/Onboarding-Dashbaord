@@ -28,7 +28,6 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   // 1. Fetch Partitioned Data
   const [
     workspaceEntitiesSnapshot,
-    schoolsSnapshot,
     meetingsSnapshot,
     surveysSnapshot,
     stagesSnapshot,
@@ -38,10 +37,8 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     logsSnapshot,
     tasksSnapshot
   ] = await Promise.all([
-    // Query workspace_entities for migrated contacts (Requirement 6.1)
+    // Query workspace_entities for unified contacts (Requirement 6.1)
     safeGetDocs(query(collection(db, 'workspace_entities'), where('workspaceId', '==', workspaceId))),
-    // Query legacy schools for backward compatibility
-    safeGetDocs(query(collection(db, 'schools'), where('workspaceIds', 'array-contains', workspaceId))),
     safeGetDocs(query(collection(db, 'meetings'), where('workspaceIds', 'array-contains', workspaceId))), 
     safeGetDocs(query(collection(db, 'surveys'), where('workspaceIds', 'array-contains', workspaceId))),
     safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))), 
@@ -56,7 +53,6 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
 
   // 2. Data Resolution
   const workspaceEntities = workspaceEntitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as any));
-  const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
   const tasks = tasksSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Task));
   const activities = activitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity));
   const zones = zonesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Zone));
@@ -64,23 +60,12 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   
   const now = startOfToday();
   
-  // Contact counts now use workspace_entities for migrated contacts + legacy schools (Requirement 6.1)
-  const migratedContactsCount = workspaceEntities.filter((we: any) => we.status !== 'archived').length;
-  const legacySchoolsCount = schools.filter((s: School) => 
-    s.migrationStatus !== 'migrated' && s.status !== 'archived'
-  ).length;
-  const totalSchools = migratedContactsCount + legacySchoolsCount;
+  // Unified Entity Counts (Phasing out legacy schools)
+  const activeEntities = workspaceEntities.filter((we: any) => we.status !== 'archived');
+  const totalEntities = activeEntities.length;
   
-  // Calculate total students from both migrated and legacy contacts
-  const migratedStudents = workspaceEntities.reduce((sum: number, we: any) => {
-    // For migrated contacts, we need to look up the entity to get nominalRoll
-    // For now, we'll use denormalized data if available
-    return sum + (we.nominalRoll || 0);
-  }, 0);
-  const legacyStudents = schools
-    .filter((s: School) => s.migrationStatus !== 'migrated')
-    .reduce((sum: number, school: School) => sum + (school.nominalRoll || 0), 0);
-  const totalStudents = migratedStudents + legacyStudents;
+  // Calculate total secondary metric (e.g. Students/Nominal Roll) from workspace_entities
+  const totalStudents = activeEntities.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
   
   // 3. Meeting Intelligence
   const upcomingMeetings = meetingsSnapshot.docs
@@ -97,7 +82,8 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   const publishedSurveysCount = surveysSnapshot.docs.filter((doc: any) => doc.data().status === 'published').length;
   
   const metrics = {
-    totalSchools: totalSchools,
+    totalEntities: totalEntities,
+    totalSchools: totalEntities, // Alias for backward compatibility during migration
     totalStudents: totalStudents,
     upcomingMeetings: upcomingMeetings.length,
     publishedSurveys: publishedSurveysCount,
@@ -112,40 +98,26 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     })
     .slice(0, 3);
 
-  // 4. Workflow Architecture - AGGREGATED BY NAME
+  // 4. Workflow Architecture
   const stages = stagesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as OnboardingStage));
-  
-  // Create logical buckets by name to handle duplicate stage names across multiple pipelines
   const aggregatedStages: Record<string, { count: number; students: number; color: string; order: number }> = {};
   
-  // Count contacts in each stage from workspace_entities (migrated) and schools (legacy)
   stages.forEach((stage: OnboardingStage) => {
-      // Count migrated contacts in this stage
-      const migratedInStage = workspaceEntities.filter((we: any) => we.stageId === stage.id);
-      const migratedCount = migratedInStage.length;
-      const migratedStudentCount = migratedInStage.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
-      
-      // Count legacy schools in this stage
-      const schoolsInStage = schools.filter((school: School) => 
-        school.migrationStatus !== 'migrated' && school.stage?.id === stage.id
-      );
-      const schoolCount = schoolsInStage.length;
-      const schoolStudentCount = schoolsInStage.reduce((sum: number, school: School) => sum + (school.nominalRoll || 0), 0);
-      
-      const totalCount = migratedCount + schoolCount;
-      const totalStudentCount = migratedStudentCount + schoolStudentCount;
+      const entitiesInStage = activeEntities.filter((we: any) => we.stageId === stage.id);
+      const count = entitiesInStage.length;
+      const studentCount = entitiesInStage.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
       
       const key = stage.name;
       if (!aggregatedStages[key]) {
           aggregatedStages[key] = {
-              count: totalCount,
-              students: totalStudentCount,
+              count: count,
+              students: studentCount,
               color: stage.color || '#cccccc',
               order: stage.order
           };
       } else {
-          aggregatedStages[key].count += totalCount;
-          aggregatedStages[key].students += totalStudentCount;
+          aggregatedStages[key].count += count;
+          aggregatedStages[key].students += studentCount;
           if (stage.order < aggregatedStages[key].order) {
               aggregatedStages[key].order = stage.order;
               aggregatedStages[key].color = stage.color || aggregatedStages[key].color;
@@ -166,61 +138,61 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
   // 5. User Assignments
   const users = usersSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map((user: UserProfile) => {
-      // Count assignments from both workspace_entities (migrated) and schools (legacy)
-      const assignedMigrated = workspaceEntities.filter((we: any) => we.assignedTo?.userId === user.id);
-      const assignedSchools = schools.filter((s: School) => 
-        s.migrationStatus !== 'migrated' && s.assignedTo?.userId === user.id
-      );
-      
-      const totalAssigned = assignedMigrated.length + assignedSchools.length;
-      const migratedStudents = assignedMigrated.reduce((acc: number, we: any) => acc + (we.nominalRoll || 0), 0);
-      const legacyStudents = assignedSchools.reduce((acc: number, school: School) => acc + (school.nominalRoll || 0), 0);
-      const totalStudents = migratedStudents + legacyStudents;
+      const assignedEntities = activeEntities.filter((we: any) => we.assignedTo?.userId === user.id);
+      const totalAssigned = assignedEntities.length;
+      const totalStudentsAssigned = assignedEntities.reduce((acc: number, we: any) => acc + (we.nominalRoll || 0), 0);
 
       return {
           user,
           totalAssigned,
-          totalStudents,
-          assignmentPercentage: totalSchools > 0 ? (totalAssigned / totalSchools) * 100 : 0,
+          totalStudents: totalStudentsAssigned,
+          assignmentPercentage: totalEntities > 0 ? (totalAssigned / totalEntities) * 100 : 0,
       };
   }).filter((ua: { totalAssigned: number }) => ua.totalAssigned > 0);
   
   // 6. Regional Distribution
   const zoneDistribution = zones.map((zone: Zone) => {
-    // Count contacts in this zone from both workspace_entities and schools
-    const migratedInZone = workspaceEntities.filter((we: any) => we.zone?.id === zone.id);
-    const schoolsInZone = schools.filter((s: School) => 
-      s.migrationStatus !== 'migrated' && s.zone?.id === zone.id
-    );
-    
-    const totalCount = migratedInZone.length + schoolsInZone.length;
-    const migratedStudents = migratedInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
-    const legacyStudents = schoolsInZone.reduce((sum: number, s: School) => sum + (s.nominalRoll || 0), 0);
+    const entitiesInZone = activeEntities.filter((we: any) => we.zone?.id === zone.id);
+    const totalCount = entitiesInZone.length;
+    const studentCount = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
     
     return {
       name: zone.name,
       schoolCount: totalCount,
-      studentCount: migratedStudents + legacyStudents
+      studentCount: studentCount
     };
   }).filter((zd: { schoolCount: number }) => zd.schoolCount > 0);
 
-  // 7. Module Implementations
+  // 7. Monthly Trends (New!)
+  const monthlyTrends: Record<string, number> = {};
+  activeEntities.forEach((we: any) => {
+    if (!we.createdAt) return;
+    const date = new Date(we.createdAt);
+    const month = format(date, 'MMM');
+    monthlyTrends[month] = (monthlyTrends[month] || 0) + 1;
+  });
+
+  const monthlyData = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ].map(month => ({
+    name: month,
+    total: monthlyTrends[month] || 0
+  }));
+
+  // 8. Module Implementations
+  // Note: Migration of module storage for entities should be handled here
   const moduleCounts: Record<string, { abbreviation: string; name: string; count: number }> = {};
-  
-  // Count modules from legacy schools only (migrated contacts store modules differently)
-  schools
-    .filter((s: School) => s.migrationStatus !== 'migrated')
-    .forEach((school: School) => {
-      school.modules?.forEach((m: { id: string; name: string; abbreviation: string }) => {
-          if (!moduleCounts[m.id]) {
-              moduleCounts[m.id] = { name: m.name, abbreviation: m.abbreviation, count: 0 };
-          }
-          moduleCounts[m.id].count++;
-      });
+  activeEntities.forEach((we: any) => {
+    we.modules?.forEach((m: { id: string; name: string; abbreviation: string }) => {
+        if (!moduleCounts[m.id]) {
+            moduleCounts[m.id] = { name: m.name, abbreviation: m.abbreviation, count: 0 };
+        }
+        moduleCounts[m.id].count++;
     });
+  });
   const moduleImplementations = Object.values(moduleCounts);
 
-  // 8. Messaging Metrics
+  // 9. Messaging Metrics
   const emailLogs = logs.filter((l: MessageLog) => l.channel === 'email');
   const smsLogs = logs.filter((l: MessageLog) => l.channel === 'sms');
   const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter((l: MessageLog) => l.status === 'sent').length / emailLogs.length) * 100 : 100;
@@ -232,49 +204,81 @@ export async function getDashboardData(db: Firestore, workspaceId: string) {
     recentLogs: logs.slice(0, 5)
   };
 
-  /** 
-   * Only users/entities referenced by the recent activity feed (limits payload size vs. full collections).
-   * Activities now use entityId references (Requirement 6.2, 6.4)
-   */
   const activityUserIds = new Set(
     activities
       .map((a: Activity) => a.userId)
       .filter((id: string | null | undefined): id is string => Boolean(id))
   );
   
-  // Support both entityId (new) and entityId (legacy) references in activities
   const activityEntityIds = new Set(
-    activities
-      .map((a: Activity) => a.entityId)
-      .filter((id: string | null | undefined): id is string => Boolean(id))
-  );
-  const activitySchoolIds = new Set(
     activities
       .map((a: Activity) => a.entityId)
       .filter((id: string | null | undefined): id is string => Boolean(id))
   );
   
   const recentActivityUsers = users.filter((u: UserProfile) => activityUserIds.has(u.id));
-  
-  // For activities with entityId, resolve from workspace_entities
-  const recentActivityEntities = workspaceEntities.filter((we: any) => activityEntityIds.has(we.entityId));
-  
-  // For activities with entityId (legacy), resolve from schools
-  const recentActivitySchools = schools.filter((s: School) => activitySchoolIds.has(s.id));
+  const recentActivityEntities = activeEntities.filter((we: any) => activityEntityIds.has(we.entityId));
 
   return {
     metrics,
     latestSurveys,
     upcomingMeetings,
     pipelineCounts,
+    pipelinesByPipeline: buildPerPipelineData(stages, activeEntities, []), // Legacy schools array empty now
     userAssignments,
     activities,
     recentActivityUsers,
-    recentActivityEntities, // New: workspace_entities for migrated contacts
-    recentActivitySchools, // Legacy: schools for backward compatibility
+    recentActivityEntities, 
+    recentActivitySchools: [], // Legcay schools cleared
     zoneDistribution,
     messagingMetrics,
     moduleImplementations,
-    monthlySchools: [] 
+    monthlySchools: monthlyData 
   };
+}
+
+/**
+ * Builds per-pipeline stage distribution data for individual pipeline dashboard widgets.
+ * Returns a map: pipelineId → array of { name, count, students, color }
+ */
+function buildPerPipelineData(
+  stages: OnboardingStage[],
+  workspaceEntities: any[],
+  schools: School[]
+): Record<string, { name: string; count: number; students: number; color: string }[]> {
+  const result: Record<string, { name: string; count: number; students: number; color: string }[]> = {};
+
+  // Group stages by pipeline
+  const stagesByPipeline: Record<string, OnboardingStage[]> = {};
+  stages.forEach(stage => {
+    if (!stage.pipelineId) return;
+    if (!stagesByPipeline[stage.pipelineId]) stagesByPipeline[stage.pipelineId] = [];
+    stagesByPipeline[stage.pipelineId].push(stage);
+  });
+
+  // For each pipeline, compute per-stage counts
+  for (const [pipelineId, pipelineStages] of Object.entries(stagesByPipeline)) {
+    const sortedStages = pipelineStages.sort((a, b) => a.order - b.order);
+
+    result[pipelineId] = sortedStages.map(stage => {
+      const migratedInStage = workspaceEntities.filter((we: any) => we.stageId === stage.id);
+      const migratedCount = migratedInStage.length;
+      const migratedStudents = migratedInStage.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
+
+      const schoolsInStage = schools.filter(
+        (s: School) => s.migrationStatus !== 'migrated' && s.stage?.id === stage.id
+      );
+      const schoolCount = schoolsInStage.length;
+      const schoolStudents = schoolsInStage.reduce((sum: number, s: School) => sum + (s.nominalRoll || 0), 0);
+
+      return {
+        name: stage.name,
+        count: migratedCount + schoolCount,
+        students: migratedStudents + schoolStudents,
+        color: stage.color || '#cccccc',
+      };
+    });
+  }
+
+  return result;
 }

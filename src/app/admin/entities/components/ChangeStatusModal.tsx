@@ -134,7 +134,7 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
                         <div 
  className={cn(
                                 "p-2 rounded-xl shrink-0 transition-transform group-hover:scale-110 shadow-sm",
-                                isActive ? "bg-primary text-white" : "bg-white border"
+                                isActive ? "bg-primary text-white" : "bg-card border"
                             )}
                             style={!isActive ? { color: status.color, borderColor: `${status.color}40` } : {}}
                         >

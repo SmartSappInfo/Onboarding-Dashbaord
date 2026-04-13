@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import type { School, Meeting } from '@/lib/types';
+import type { School, Meeting, Entity } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
@@ -18,14 +18,19 @@ import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
 import MeetingJoinSection from '@/components/meeting-join-section';
 
 interface TrainingMeetingHeroProps {
-  school: School;
+  entity: Entity | School;
   meeting: Meeting;
 }
 
 const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/image%2FRelief%20woman%20whtie.png?alt=media&token=b7cef605-a227-4d36-bc9d-9248c27331e0";
 
-export default function TrainingMeetingHero({ school, meeting }: TrainingMeetingHeroProps) {
+export default function TrainingMeetingHero({ entity, meeting }: TrainingMeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
+
+  // Helper to get entity properties (works for both Entity and School types)
+  const entityName = (entity as any).displayName || (entity as any).name || '';
+  const entityLogo = (entity as any).logoUrl;
+  const entitySlogan = (entity as any).slogan;
 
   useEffect(() => {
     const checkMeetingState = () => {
@@ -73,19 +78,19 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
           {/* Left Column */}
           <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">
             
-            {school.logoUrl && (
+            {entityLogo && (
               <div className="mb-8 md:mb-16 flex items-center gap-4">
                 <div className="relative w-16 h-16">
                   <Image
-                    src={school.logoUrl}
-                    alt={`${school.name} logo`}
+                    src={entityLogo}
+                    alt={`${entityName} logo`}
                     fill
                     className="rounded-full bg-white p-1 shadow-md object-contain"
                   />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight">{school.name}</h2>
-                  {school.slogan && <p className="text-foreground/80 font-medium italic">{school.slogan}</p>}
+                  <h2 className="text-2xl font-bold uppercase tracking-tight">{entityName}</h2>
+                  {entitySlogan && <p className="text-foreground/80 font-medium italic">{entitySlogan}</p>}
                 </div>
               </div>
             )}
@@ -95,10 +100,10 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
             </Badge>
 
             <h1 className="font-headline text-3xl font-black tracking-tighter sm:text-5xl md:text-6xl uppercase leading-none">
-              {getHeroTitle(meeting.type?.id || 'training', school.name, meeting.heroTitle)}
+              {getHeroTitle(meeting.type?.id || 'training', entityName, meeting.heroTitle)}
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-foreground/80 font-medium max-w-xl">
-              {getHeroDescription(meeting.type?.id || 'training', school.name, meeting.heroDescription)}
+              {getHeroDescription(meeting.type?.id || 'training', entityName, meeting.heroDescription)}
             </p>
 
             <div className="my-8 w-full">
@@ -116,7 +121,7 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
             </div>
             
             {meetingState === 'UPCOMING' && (
-              <MeetingJoinSection meeting={meeting} entityId={school.id} />
+              <MeetingJoinSection meeting={meeting} entityId={entity.id} />
             )}
             
             {meetingState === 'ENDED_NO_RECORDING' && (
@@ -148,7 +153,7 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
                   <div className="relative aspect-square w-full">
                       <Image
                           src={meeting.heroImageUrl || DEFAULT_HERO}
-                          alt={`Hero image for ${school.name}`}
+                          alt={`Hero image for ${entityName}`}
                           fill
                           className="object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(59,95,255,0.3)]"
                           priority

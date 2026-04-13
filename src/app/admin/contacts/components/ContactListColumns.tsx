@@ -44,7 +44,7 @@ function InstitutionColumns({ contacts }: { contacts: ContactListItem[] }) {
       {contacts.map((contact) => (
         <div 
           key={contact.id} 
- className="grid grid-cols-6 gap-4 p-4 bg-white rounded-lg border hover:shadow-md transition-shadow"
+ className="grid grid-cols-6 gap-4 p-4 bg-card rounded-lg border hover:shadow-md transition-shadow"
         >
           {/* Name & Logo */}
  <div className="col-span-2 flex items-center gap-3">
@@ -105,7 +105,7 @@ function FamilyColumns({ contacts }: { contacts: ContactListItem[] }) {
       {contacts.map((contact) => (
         <div 
           key={contact.id} 
- className="grid grid-cols-6 gap-4 p-4 bg-white rounded-lg border hover:shadow-md transition-shadow"
+ className="grid grid-cols-6 gap-4 p-4 bg-card rounded-lg border hover:shadow-md transition-shadow"
         >
           {/* Family Name */}
  <div className="col-span-2 flex items-center gap-3">
@@ -169,7 +169,7 @@ function PersonColumns({ contacts }: { contacts: ContactListItem[] }) {
       {contacts.map((contact) => (
         <div 
           key={contact.id} 
- className="grid grid-cols-6 gap-4 p-4 bg-white rounded-lg border hover:shadow-md transition-shadow"
+ className="grid grid-cols-6 gap-4 p-4 bg-card rounded-lg border hover:shadow-md transition-shadow"
         >
           {/* Full Name */}
  <div className="col-span-2 flex items-center gap-3">
@@ -233,7 +233,7 @@ function PersonColumns({ contacts }: { contacts: ContactListItem[] }) {
 export function ContactListHeaders({ contactScope }: { contactScope: ContactScope }) {
   if (contactScope === 'institution') {
     return (
- <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-muted/50 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
+ <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-background0 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
  <div className="col-span-2">Institution</div>
         <div>Nominal Roll</div>
         <div>Rate</div>
@@ -245,7 +245,7 @@ export function ContactListHeaders({ contactScope }: { contactScope: ContactScop
 
   if (contactScope === 'family') {
     return (
- <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-muted/50 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
+ <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-background0 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
  <div className="col-span-2">Family</div>
         <div>Guardians</div>
         <div>Children</div>
@@ -257,7 +257,7 @@ export function ContactListHeaders({ contactScope }: { contactScope: ContactScop
 
   if (contactScope === 'person') {
     return (
- <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-muted/50 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
+ <div className="grid grid-cols-6 gap-4 px-4 py-2 bg-background0 rounded-lg text-xs font-bold tracking-wider text-muted-foreground">
  <div className="col-span-2">Name</div>
         <div>Company</div>
         <div>Job Title</div>

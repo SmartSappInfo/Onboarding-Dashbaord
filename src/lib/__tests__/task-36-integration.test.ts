@@ -29,7 +29,6 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         entityId: 'school_1',
         entityName: 'Test School',
         // New field
-        entityId: 'entity_1',
       };
 
       expect(pdfForm.entityId).toBe('school_1');
@@ -52,7 +51,6 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         entityId: 'school_1',
         entityName: 'Test School',
         // New field
-        entityId: 'entity_1',
       };
 
       expect(survey.entityId).toBe('school_1');

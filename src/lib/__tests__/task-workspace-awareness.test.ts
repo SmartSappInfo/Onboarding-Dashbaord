@@ -151,7 +151,6 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         expect.objectContaining({
           entityId: 'school_123', // Legacy field maintained
           entityName: 'Test Institution',
-          entityId: 'entity_456', // New field populated
           entityType: 'institution',
         })
       );
@@ -196,7 +195,6 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         expect.objectContaining({
           entityId: 'school_123',
           entityName: 'Legacy School',
-          entityId: null, // No entity for legacy records
           entityType: null,
         })
       );

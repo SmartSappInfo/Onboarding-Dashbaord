@@ -320,8 +320,8 @@ function TagsClientInner() {
   );
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-8">
         {/* Header */}
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -443,7 +443,7 @@ function TagsClientInner() {
                     ))}
                   </div>
                 ) : filteredTags.length === 0 ? (
- <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-muted/10">
+ <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-background">
  <TagIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
  <p className="text-[10px] font-semibold text-muted-foreground">
                       {searchTerm ? 'No tags match your search' : 'No tags in this category'}

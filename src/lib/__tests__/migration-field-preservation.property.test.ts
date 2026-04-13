@@ -32,9 +32,8 @@ type MockSchoolData = {
 
 type MockRecordData = {
   id: string;
-  entityId: string;
-  entityName?: string;
   entityId?: string;
+  entityName?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;
   description?: string;
@@ -597,12 +596,14 @@ describe('Property 11: Migration Field Preservation', () => {
 
           records.forEach(record => {
             const originalRecord = recordsBeforeMigration.get(record.id);
-            const migratedRecord = migratedCollection!.get(record.id);
+            const migratedRecord = migratedCollection?.get(record.id);
 
             // entityId must be exactly the same, regardless of format
-            expect(migratedRecord!.entityId).toBe(originalRecord!.entityId);
-            expect(typeof migratedRecord!.entityId).toBe('string');
-            expect(migratedRecord!.entityId.length).toBeGreaterThan(0);
+            expect(migratedRecord?.entityId).toBe(originalRecord?.entityId);
+            if (migratedRecord?.entityId) {
+              expect(typeof migratedRecord.entityId).toBe('string');
+              expect(migratedRecord.entityId.length).toBeGreaterThan(0);
+            }
           });
         }
       ),

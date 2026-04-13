@@ -18,7 +18,7 @@ import { useTenant } from '@/context/TenantContext';
  * @fileOverview Remodeled Task Widget: "Critical Focus".
  * Contextualized to the active workspace.
  */
-export function TaskWidget() {
+export function TaskWidget({ terminology = { singular: 'Entity', plural: 'Entities' } }: { terminology?: { singular: string, plural: string } }) {
     const firestore = useFirestore();
     const { activeWorkspaceId } = useTenant();
 

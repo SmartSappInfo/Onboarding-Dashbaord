@@ -126,7 +126,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       
       // Verify adapter was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -135,7 +135,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'entity_456',
           entityType: 'institution',
-          entityId: 'school_789', // Resolved from adapter
           entityName: 'Test Institution',
         })
       );
@@ -182,7 +181,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'entity_456',
           entityType: 'family',
-          entityId: null, // No legacy school
           entityName: 'New Family',
         })
       );
@@ -242,7 +240,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       
       // Verify adapter was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -251,7 +249,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'school_789',
           entityName: 'Migrated School',
-          entityId: 'entity_999', // Resolved from adapter
           entityType: 'institution',
         })
       );
@@ -310,7 +307,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'school_888',
           entityName: 'Legacy School',
-          entityId: null, // Not migrated yet
           entityType: null,
         })
       );
@@ -371,7 +367,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       
       // Verify adapter was called with both identifiers
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -380,7 +376,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'school_789',
           entityName: 'Test Institution',
-          entityId: 'entity_456',
           entityType: 'institution',
         })
       );
@@ -454,7 +449,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       const results = await getTasksForContact(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -474,7 +469,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       const results = await getTasksForContact(
-        { entityId: 'entity_nonexistent' },
+        'entity_nonexistent',
         'workspace_1'
       );
 
@@ -499,7 +494,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       await getTasksForContact(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -533,7 +528,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       const results = await getTasksForContact(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -553,7 +548,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       const results = await getTasksForContact(
-        { entityId: 'school_nonexistent' },
+        'school_nonexistent',
         'workspace_1'
       );
 
@@ -578,7 +573,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       });
 
       await getTasksForContact(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -634,7 +629,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -731,7 +726,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
       // Verify adapter resolved legacy contact
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'school_123' },
+        'school_123',
         'workspace_1'
       );
 
@@ -740,7 +735,6 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         expect.objectContaining({
           entityId: 'school_123',
           entityName: 'Legacy School',
-          entityId: null,
           entityType: null,
         })
       );
@@ -775,7 +769,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
       mockGet.mockRejectedValue(new Error('Query failed'));
 
       const results = await getTasksForContact(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -785,7 +779,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
 
     it('should return empty array when no identifier provided', async () => {
       const results = await getTasksForContact(
-        {},
+        '',
         'workspace_1'
       );
 

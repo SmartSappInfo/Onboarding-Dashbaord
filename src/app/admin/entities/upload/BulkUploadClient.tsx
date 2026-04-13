@@ -253,8 +253,8 @@ export default function BulkUploadClient() {
     const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
                         <motion.div key="upload" {...stepTransition}>

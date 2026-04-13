@@ -39,7 +39,7 @@ import {
     useEditor, 
     LocalPDFFormField 
 } from './Editor';
-import type { PDFForm, PDFFormField, School } from '@/lib/types';
+import type { PDFForm, PDFFormField, WorkspaceEntity } from '@/lib/types';
 
 interface FieldMapperProps {
   pdf: PDFForm;
@@ -62,7 +62,7 @@ interface FieldMapperProps {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  school?: School;
+  entity?: WorkspaceEntity;
 }
 
 function EditorLayout() {
@@ -314,7 +314,7 @@ function ToolButton({ icon: Icon, label, onClick, disabled }: { icon: any, label
 
 export default function FieldMapper(props: FieldMapperProps) {
   return (
-    <EditorProvider {...props}>
+    <EditorProvider {...props} entity={props.entity}>
       <EditorLayout />
     </EditorProvider>
   );

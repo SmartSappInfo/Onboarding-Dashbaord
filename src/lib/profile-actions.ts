@@ -15,7 +15,6 @@ import type { FocalPerson, EntityType } from './types';
 
 interface UpdateProfileInput {
   entityId: string;
-  entityId?: string;
   workspaceId: string;
   updates: {
     // Identity fields (go to entities)

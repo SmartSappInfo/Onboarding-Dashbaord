@@ -210,10 +210,8 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
           entityId: 'school_123', // Legacy field maintained
           entityName: 'Migrated School',
           entitySlug: 'migrated-school',
-          entityId: 'entity_456', // New field populated
           entityType: 'institution',
           displayName: 'Migrated School',
-          entitySlug: 'migrated-school',
         })
       );
     });

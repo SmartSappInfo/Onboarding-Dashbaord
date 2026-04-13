@@ -330,7 +330,7 @@ export default function SubmissionsPage() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10 text-left">
+ <div className="h-full overflow-y-auto  bg-background text-left">
  <Tabs value={activeTab} onValueChange={(v) => router.push(`${pathname}?view=${v}`)} className="space-y-8">
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
  <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
@@ -462,7 +462,7 @@ export default function SubmissionsPage() {
                                             return val;
                                         };
                                         const content = field.type === 'signature' ? (
- <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="S" className="w-full h-full object-contain" />}</div>
+ <div className="h-8 w-16 relative bg-background0 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="S" className="w-full h-full object-contain" />}</div>
  ) : <span className="truncate max-w-[200px] block font-bold text-sm">{value ? applyTransform(String(value)) : <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                                         const verticalAlign = field.verticalAlignment || 'center';
@@ -523,8 +523,8 @@ export default function SubmissionsPage() {
                     <StatCard label="Performance" value={`${sessions?.length ? Math.round(((submissions?.length || 0) / sessions.length) * 100) : 0}%`} sub="Completion Velocity" icon={Zap} color="text-orange-600" bg="bg-orange-50" />
                 </div>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
- <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <TrendingDown className="h-4 w-4" /> Document Progression Funnel
                             </CardTitle>
@@ -558,8 +558,8 @@ export default function SubmissionsPage() {
                             )}
                         </CardContent>
                     </Card>
- <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8"><CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Drop-off Audit</CardTitle></CardHeader>
+ <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8"><CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Drop-off Audit</CardTitle></CardHeader>
  <CardContent className="p-0">
                             {dropoffInsights.length > 0 ? (
                                 <Table>
@@ -600,7 +600,7 @@ export default function SubmissionsPage() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all">
  <CardContent className="p-6 flex items-center gap-5">
  <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}><Icon className="h-7 w-7" /></div>
  <div><p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p><p className="text-3xl font-semibold tabular-nums tracking-tighter">{value}</p><p className="text-[10px] font-bold text-muted-foreground/60 tracking-tighter mt-1">{sub}</p></div>
@@ -734,7 +734,7 @@ function HighFidelityDownloader({
  <div className="flex-1 overflow-hidden relative">
  <ScrollArea className="h-full w-full">
  <div ref={containerRef} className="p-8 flex flex-col items-center">
- {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] bg-white rounded-lg" /> : (
+ {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] bg-card rounded-lg" /> : (
  <div className="flex flex-col gap-8">
                                 {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
  <div key={index} className="page-capture-wrapper">
@@ -778,7 +778,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
     }, [pdf, pageNumber]);
 
     return (
- <div className="relative mx-auto bg-white border border-border/50 flex-shrink-0 shadow-lg" style={{ width: dimensions.width, height: dimensions.height }}>
+ <div className="relative mx-auto bg-card border border-border/50 flex-shrink-0 shadow-lg" style={{ width: dimensions.width, height: dimensions.height }}>
  {isRendering && <Skeleton className="absolute inset-0" />}
  <canvas ref={canvasRef} className="w-full h-full block" />
             {!isRendering && (

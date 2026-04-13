@@ -33,7 +33,6 @@ type MockSchoolData = {
 
 type MockRecordData = {
   id: string;
-  entityId: string;
   entityId?: string;
   entityType?: 'institution' | 'family' | 'person';
   title: string;

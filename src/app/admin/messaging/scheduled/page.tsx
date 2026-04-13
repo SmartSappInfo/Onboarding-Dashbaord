@@ -168,7 +168,7 @@ export default function ScheduledMessagesPage() {
     const isLoading = isLoadingSms || isLoadingEmails;
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  bg-background">
  <div className="max-w-6xl mx-auto">
  <div className="mb-8 flex justify-end">
  <Button variant="outline" onClick={loadSms} disabled={isLoading} className="rounded-xl font-bold h-10 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
@@ -177,7 +177,7 @@ export default function ScheduledMessagesPage() {
                     </Button>
                 </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
  <CardContent className="p-0">
                         <Table>
  <TableHeader className="bg-muted/30">
@@ -252,7 +252,7 @@ export default function ScheduledMessagesPage() {
                                     <TableRow>
  <TableCell colSpan={6} className="h-64 text-center">
  <div className="flex flex-col items-center justify-center gap-3">
- <div className="p-6 bg-muted/50 rounded-[2rem] text-muted-foreground/30 shadow-inner">
+ <div className="p-6 bg-background0 rounded-[2rem] text-muted-foreground/30 shadow-inner">
  <CalendarClock className="h-12 w-12" />
                                                 </div>
  <p className="text-muted-foreground font-semibold text-xs">Queue Clear</p>

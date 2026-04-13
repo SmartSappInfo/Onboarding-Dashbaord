@@ -255,12 +255,13 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
 
     // 4. Update entity name
     const newName = 'Updated School Name';
-    const updateResult = await updateEntityAction({
-      entityId: entityRef.id,
-      name: newName,
-      userId: testUserId,
-      workspaceId: workspaceRef.id,
-    });
+    const updateResult = await updateEntityAction(
+      entityRef.id,
+      { name: newName },
+      testUserId,
+      workspaceRef.id,
+      'smartsapp-hq'
+    );
 
     expect(updateResult.success).toBe(true);
 
@@ -350,12 +351,13 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       },
     ];
 
-    const updateResult = await updateEntityAction({
-      entityId: entityRef.id,
-      contacts: newContacts,
-      userId: testUserId,
-      workspaceId: workspaceRef.id,
-    });
+    const updateResult = await updateEntityAction(
+      entityRef.id,
+      { contacts: newContacts },
+      testUserId,
+      workspaceRef.id,
+      'smartsapp-hq'
+    );
 
     expect(updateResult.success).toBe(true);
 
@@ -475,13 +477,14 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       },
     ];
 
-    const updateResult = await updateEntityAction({
-      entityId: entityRef.id,
-      name: newName,
-      contacts: newContacts,
-      userId: testUserId,
-      workspaceId: workspaceRefs[0].id,
-    });
+    const updateResult = await updateEntityAction(
+      entityRef.id,
+      { name: newName,
+      contacts: newContacts },
+      testUserId,
+      workspaceRefs[0].id,
+      'smartsapp-hq'
+    );
 
     expect(updateResult.success).toBe(true);
 
@@ -557,12 +560,13 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
 
     // 4. Update entity name
     const newName = 'Updated School Without Contacts';
-    const updateResult = await updateEntityAction({
-      entityId: entityRef.id,
-      name: newName,
-      userId: testUserId,
-      workspaceId: workspaceRef.id,
-    });
+    const updateResult = await updateEntityAction(
+      entityRef.id,
+      { name: newName },
+      testUserId,
+      workspaceRef.id,
+      'smartsapp-hq'
+    );
 
     expect(updateResult.success).toBe(true);
 

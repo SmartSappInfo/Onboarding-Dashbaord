@@ -1,3 +1,4 @@
+/**
  * Property-Based Tests: Task Unified Entity Architecture
  * 
  * **Property 1: Unified Entity Consistency**
@@ -11,6 +12,7 @@
  * 
  * For any task query that filters by contact, the system should accept a string-based
  * entityId and successfully return matching records.
+ */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';

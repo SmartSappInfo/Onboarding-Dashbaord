@@ -125,7 +125,7 @@ export default function MessagingClient() {
             icon: History,
             href: '/admin/messaging/logs',
             color: 'text-slate-500',
-            bg: 'bg-slate-500/10',
+            bg: 'bg-muted/100/10',
             border: 'hover:border-slate-500/50'
         }
     ];
@@ -203,8 +203,8 @@ export default function MessagingClient() {
     }, [logs, emailStats, reportData]);
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
- <div className="max-w-7xl mx-auto space-y-12">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-12">
  <Tabs defaultValue="overview" className="space-y-12">
  <TabsList className="bg-card/50 backdrop-blur-md border shadow-sm h-12 p-1 rounded-xl">
  <TabsTrigger value="overview" className="rounded-lg font-semibold text-[10px] px-6">Hub Overview</TabsTrigger>
@@ -385,7 +385,7 @@ export default function MessagingClient() {
                                             </ResponsiveContainer>
                                         </ChartContainer>
                                     ) : (
- <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/10 p-8">
+ <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-background p-8">
  <Info className="h-10 w-10 mb-4 opacity-20" />
  <p className="font-semibold text-xs">No throughput data recorded</p>
  <p className="text-[10px] tracking-tighter mt-1 opacity-60">Campaign metrics will appear here after dispatch</p>

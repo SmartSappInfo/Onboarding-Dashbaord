@@ -14,7 +14,7 @@ import type { PDFForm, Submission } from './types';
  */
 export async function getPdfsByContact(params: {
   entityId?: string | null;
-  entityId?: string | null;
+  schoolId?: string | null;
   workspaceId?: string;
   status?: 'draft' | 'published' | 'archived';
 }): Promise<PDFForm[]> {
@@ -50,7 +50,7 @@ export async function getPdfsByContact(params: {
 export async function getSubmissionsByContact(params: {
   pdfId: string;
   entityId?: string | null;
-  entityId?: string | null;
+  schoolId?: string | null;
   status?: 'submitted' | 'partial';
 }): Promise<Submission[]> {
   const { pdfId, entityId, status } = params;
@@ -84,7 +84,7 @@ export async function getSubmissionsByContact(params: {
 export async function getPdfsForWorkspace(params: {
   workspaceId: string;
   entityId?: string | null;
-  entityId?: string | null;
+  schoolId?: string | null;
   status?: 'draft' | 'published' | 'archived';
   limit?: number;
 }): Promise<PDFForm[]> {

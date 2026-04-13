@@ -188,10 +188,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create institution entity
-      const createResult = await createEntityAction({
-        organizationId: 'org_1',
-        entityType: 'institution',
-        name: 'Test Institution',
+      const createResult = await createEntityAction(
+      {name: 'Test Institution',
         contacts: [
           {
             name: 'John Principal',
@@ -213,13 +211,16 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         ],
           implementationDate: '2024-01-01',
           referee: 'District Office',
-        },
-        userId: 'user_1',
-        workspaceId: 'workspace_institution_1',
-      });
+        }
+      },
+      'user_1',
+      'workspace_institution_1',
+      'institution',
+      'org_1'
+    );
 
       expect(createResult.success).toBe(true);
-      expect(createResult.entityId).toBe(mockEntityId);
+      expect(createResult.id).toBe(mockEntityId);
       expect(mockEntityCollection.add).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
@@ -426,10 +427,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create family entity
-      const createResult = await createEntityAction({
-        organizationId: 'org_1',
-        entityType: 'family',
-        name: 'Smith Family',
+      const createResult = await createEntityAction(
+      {name: 'Smith Family',
         contacts: [
           {
             name: 'Jane Smith',
@@ -477,13 +476,16 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
             status: 'accepted',
             notes: 'Siblings enrolled',
           },
-        },
-        userId: 'user_1',
-        workspaceId: 'workspace_family_1',
-      });
+        }
+      },
+      'user_1',
+      'workspace_family_1',
+      'family',
+      'org_1'
+    );
 
       expect(createResult.success).toBe(true);
-      expect(createResult.entityId).toBe(mockEntityId);
+      expect(createResult.id).toBe(mockEntityId);
       expect(mockEntityCollection.add).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
@@ -661,23 +663,24 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
       (adminDb.collection as any) = mockCollection;
 
       // Step 1: Create person entity
-      const createResult = await createEntityAction({
-        organizationId: 'org_1',
-        entityType: 'person',
-        name: 'Sarah Johnson', // Will be overridden by firstName + lastName
+      const createResult = await createEntityAction(
+      {name: 'Sarah Johnson', // Will be overridden by firstName + lastName
         personData: {
           firstName: 'Sarah',
           lastName: 'Johnson',
           company: 'Tech Corp',
           jobTitle: 'CTO',
           leadSource: 'Website',
-        },
-        userId: 'user_1',
-        workspaceId: 'workspace_person_1',
-      });
+        }
+      },
+      'user_1',
+      'workspace_person_1',
+      'person',
+      'org_1'
+    );
 
       expect(createResult.success).toBe(true);
-      expect(createResult.entityId).toBe(mockEntityId);
+      expect(createResult.id).toBe(mockEntityId);
       expect(mockEntityCollection.add).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',

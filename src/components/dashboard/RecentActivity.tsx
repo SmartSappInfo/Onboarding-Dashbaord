@@ -15,12 +15,14 @@ export function RecentActivity({
   activities, 
   users, 
   schools, 
-  entities 
+  entities,
+  terminology = { singular: 'Entity', plural: 'Entities' }
 }: { 
   activities: Activity[], 
   users: UserProfile[], 
   schools: School[],
-  entities?: any[] // workspace_entities for migrated contacts
+  entities?: any[], // workspace_entities for migrated contacts
+  terminology?: { singular: string, plural: string }
 }) {
   
   const usersMap = React.useMemo(() => {
@@ -62,13 +64,13 @@ export function RecentActivity({
                     activities.map(activity => {
                         const contact = resolveContact(activity);
                         return (
-                            <ActivityItem
-                                key={activity.id}
-                                activity={activity}
-                                user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                                school={contact}
-                                showSchoolName={true}
-                            />
+                                <ActivityItem
+                                    key={activity.id}
+                                    activity={activity}
+                                    user={activity.userId ? usersMap.get(activity.userId) : undefined}
+                                    entity={contact}
+                                    showEntityName={true}
+                                />
                         );
                     })
                 ) : (

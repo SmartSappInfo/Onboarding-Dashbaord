@@ -174,7 +174,7 @@ export default function TestDispatchDialog({
                                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] font-semibold uppercase h-5">{detectedTags.length} Dynamic Tags</Badge>
                                     </div>
                                     
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 rounded-3xl bg-muted/10 border-2 border-dashed border-border shadow-inner">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 rounded-3xl bg-background border-2 border-dashed border-border shadow-inner">
                                         {detectedTags.map(tag => (
  <div key={tag} className="space-y-2">
  <Label className="text-[9px] font-semibold text-muted-foreground flex items-center gap-1.5 ml-1">
@@ -185,7 +185,7 @@ export default function TestDispatchDialog({
                                                     value={localVariables[tag] || ''} 
                                                     onChange={e => setLocalVariables(prev => ({ ...prev, [tag]: e.target.value }))}
                                                     placeholder={`Value for {{${tag}}}`}
- className="h-10 rounded-xl bg-white border border-primary/5 shadow-sm font-bold text-sm px-4"
+ className="h-10 rounded-xl bg-card border border-primary/5 shadow-sm font-bold text-sm px-4"
                                                 />
                                             </div>
                                         ))}
@@ -194,7 +194,7 @@ export default function TestDispatchDialog({
                             )}
 
  <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-sm">
- <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
+ <div className="p-3 bg-card rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
  <div className="space-y-1">
  <p className="text-sm font-semibold text-blue-900 tracking-tight">Institutional Fidelity</p>
  <p className="text-[10px] text-blue-700 leading-relaxed font-bold opacity-80">

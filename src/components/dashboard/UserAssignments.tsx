@@ -3,12 +3,6 @@ import DashboardCard from "./DashboardCard";
 import { Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Progress } from "@/components/ui/progress";
 
@@ -21,12 +15,22 @@ const CHART_COLORS = [
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
-export function UserAssignments({ data, totalSchools, totalStudents }: { data: any[], totalSchools: number, totalStudents: number }) {
+export function UserAssignments({ 
+    data, 
+    totalSchools, 
+    totalStudents,
+    terminology = { singular: 'Entity', plural: 'Entities' }
+}: { 
+    data: any[], 
+    totalSchools: number, 
+    totalStudents: number,
+    terminology?: { singular: string; plural: string }
+}) {
     const isMobile = useIsMobile();
     
     if (!data) {
         return (
-            <DashboardCard title="School Distribution by User">
+            <DashboardCard title={`${terminology.singular} Distribution by User`}>
                 <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
                     <p>No user data available.</p>
                 </div>
@@ -46,7 +50,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
         
     if (isMobile) {
         return (
-            <DashboardCard title="School Distribution by User">
+            <DashboardCard title={`${terminology.singular} Distribution by User`}>
                 <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                          <div className="flex items-center gap-4">
@@ -55,7 +59,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                             </div>
                             <div>
                                 <p className="text-3xl font-bold">{totalSchools}</p>
-                                <p className="text-sm text-muted-foreground">Total Schools</p>
+                                <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
                             </div>
                         </div>
                          <div className="flex items-center gap-4">
@@ -82,7 +86,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                                             <span className="text-sm font-medium">{item.user.name?.split(' ')[0]}</span>
                                         </div>
                                         <span className="text-sm font-semibold text-muted-foreground">
-                                            {item.totalAssigned} / {totalSchools} schools ({item.percentage.toFixed(0)}%)
+                                            {item.totalAssigned} / {totalSchools} {item.totalAssigned === 1 ? terminology.singular.toLowerCase() : terminology.plural.toLowerCase()} ({item.percentage.toFixed(0)}%)
                                         </span>
                                     </div>
                                     <Progress value={item.percentage} style={{'--indicator-color': item.color} as React.CSSProperties} className="h-2 [&>div]:bg-[--indicator-color]" />
@@ -91,7 +95,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground pt-4">
-                            <p>No schools assigned to any users.</p>
+                            <p>No {terminology.plural.toLowerCase()} assigned to any users.</p>
                         </div>
                     )}
                 </div>
@@ -100,8 +104,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
     }
 
     return (
-        <TooltipProvider>
-            <DashboardCard title="School Distribution by User">
+        <DashboardCard title={`${terminology.singular} Distribution by User`}>
                 <div className="space-y-6">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-4">
@@ -110,7 +113,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                             </div>
                             <div>
                                 <p className="text-3xl font-bold">{totalSchools}</p>
-                                <p className="text-sm text-muted-foreground">Total Schools</p>
+                                <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
                             </div>
                         </div>
                         <div className="mx-4 h-12 w-px bg-border" />
@@ -130,20 +133,15 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                             {/* Segmented Bar */}
                             <div className="flex w-full h-8 gap-1">
                                 {displayData.map((item) => (
-                                <Tooltip key={item.user.id}>
-                                    <TooltipTrigger asChild>
                                     <div
+                                        key={item.user.id}
+                                        title={`${item.percentage.toFixed(1)}%`}
                                         className="h-full rounded-md transition-all hover:brightness-110"
                                         style={{
-                                        width: `${item.percentage}%`,
-                                        backgroundColor: item.color,
+                                            width: `${item.percentage}%`,
+                                            backgroundColor: item.color,
                                         }}
                                     />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                    <p>{item.percentage.toFixed(1)}%</p>
-                                    </TooltipContent>
-                                </Tooltip>
                                 ))}
                             </div>
 
@@ -163,7 +161,7 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                                             <span className="text-xs font-medium text-muted-foreground">{item.user.name?.split(' ')[0]}</span>
                                         </div>
                                          <p className="text-sm font-semibold text-foreground mt-1">
-                                            {item.totalAssigned} School{item.totalAssigned === 1 ? '' : 's'}
+                                            {item.totalAssigned} {item.totalAssigned === 1 ? terminology.singular : terminology.plural}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                             ({item.totalStudents.toLocaleString()} Students)
@@ -174,11 +172,10 @@ export function UserAssignments({ data, totalSchools, totalStudents }: { data: a
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground pt-4">
-                            <p>No schools assigned to any users.</p>
+                            <p>No {terminology.plural.toLowerCase()} assigned to any users.</p>
                         </div>
                     )}
                 </div>
             </DashboardCard>
-        </TooltipProvider>
     );
 }

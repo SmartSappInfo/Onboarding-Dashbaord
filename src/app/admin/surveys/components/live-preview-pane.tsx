@@ -59,14 +59,14 @@ export default function LivePreviewPane() {
                     <button 
                         type="button"
                         onClick={() => setDevice('desktop')}
- className={cn("p-2 rounded-lg transition-all", device === 'desktop' ? "bg-white shadow-sm text-primary" : "text-muted-foreground opacity-40")}
+ className={cn("p-2 rounded-lg transition-all", device === 'desktop' ? "bg-card shadow-sm text-primary" : "text-muted-foreground opacity-40")}
                     >
  <Monitor className="h-3.5 w-3.5" />
                     </button>
                     <button 
                         type="button"
                         onClick={() => setDevice('mobile')}
- className={cn("p-2 rounded-lg transition-all", device === 'mobile' ? "bg-white shadow-sm text-primary" : "text-muted-foreground opacity-40")}
+ className={cn("p-2 rounded-lg transition-all", device === 'mobile' ? "bg-card shadow-sm text-primary" : "text-muted-foreground opacity-40")}
                     >
  <Smartphone className="h-3.5 w-3.5" />
                     </button>
@@ -76,7 +76,7 @@ export default function LivePreviewPane() {
  <div className="flex-1 overflow-hidden p-8 flex justify-center">
                 <div 
  className={cn(
-                        "transition-all duration-700 bg-white shadow-2xl rounded-[3rem] overflow-hidden relative ring-1 ring-black/5",
+                        "transition-all duration-700 bg-card shadow-2xl rounded-[3rem] overflow-hidden relative ring-1 ring-black/5",
                         device === 'mobile' ? "w-[375px] h-[667px]" : "w-full h-full max-w-4xl"
                     )}
                     style={{ backgroundColor: backgroundColor || '#F1F5F9' }}
@@ -105,7 +105,7 @@ export default function LivePreviewPane() {
                                     />
                                 </div>
                             ) : bannerImageUrl ? (
- <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-white">
+ <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-card">
  <img src={bannerImageUrl} alt="banner" className="w-full h-full object-cover" />
                                 </div>
                             ) : null}

@@ -324,7 +324,7 @@ function AiChatPanel() {
                                 {/* Header */}
  <CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-3 px-5 shrink-0 flex flex-row items-center justify-between space-y-0 gap-2">
  <div className="flex items-center gap-2.5 min-w-0">
- <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+ <div className="h-8 w-8 rounded-xl bg-card/10 flex items-center justify-center shrink-0">
  <BrainCircuit className="h-4 w-4" />
                                         </div>
  <div className="min-w-0">
@@ -343,7 +343,7 @@ function AiChatPanel() {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
- className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
+ className="h-7 w-7 hover:bg-card/10 text-primary-foreground rounded-lg"
                                             onClick={() => setIsFullScreen(!isFullScreen)}
                                             title={isFullScreen ? 'Minimize' : 'Maximize'}
                                         >
@@ -353,7 +353,7 @@ function AiChatPanel() {
                                             type="button"
                                             variant="ghost"
                                             size="icon"
- className="h-7 w-7 hover:bg-white/10 text-primary-foreground rounded-lg"
+ className="h-7 w-7 hover:bg-card/10 text-primary-foreground rounded-lg"
                                             onClick={() => { setIsOpen(false); setIsFullScreen(false); }}
                                         >
  <ChevronDown className="h-3.5 w-3.5" />

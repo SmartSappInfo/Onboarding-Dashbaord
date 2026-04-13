@@ -144,7 +144,7 @@ function SelectionCard({ title, href, option, image, icon: Icon, delay, color, l
             <h3 className="text-xl md:text-3xl font-black text-white leading-tight uppercase tracking-tighter">{title}</h3>
           </div>
         </div>
-        <CardContent className="p-6 md:p-8 flex-grow flex flex-col justify-center bg-white dark:bg-card">
+        <CardContent className="p-6 md:p-8 flex-grow flex flex-col justify-center bg-card">
           <div className="flex items-center justify-center gap-3 text-primary font-black uppercase text-[16px] tracking-[0.2em] leading-tight">
             Select
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">

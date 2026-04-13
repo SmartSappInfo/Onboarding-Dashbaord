@@ -169,7 +169,6 @@ describe('API Integration Tests - Activities Endpoint', () => {
           description: 'Test activity',
           entityId: 'entity_123',
           entityType: 'institution',
-          entityId: 'school_123',
           userId: 'user1',
           timestamp: '2024-01-01T00:00:00Z',
           createdAt: '2024-01-01T00:00:00Z'
@@ -184,7 +183,6 @@ describe('API Integration Tests - Activities Endpoint', () => {
       const data = await response.json();
 
       expect(data.activities[0].entityId).toBe('entity_123');
-      expect(data.activities[0].entityId).toBe('school_123');
     });
 
     it('should require workspaceId', async () => {
@@ -238,8 +236,7 @@ describe('API Integration Tests - Activities Endpoint', () => {
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({
           entityId: 'entity_123',
-          entityType: 'institution',
-          entityId: null
+          entityType: 'institution'
         })
       );
     });
@@ -283,7 +280,6 @@ describe('API Integration Tests - Activities Endpoint', () => {
           description: 'Test activity',
           entityId: 'entity_123',
           entityType: 'institution',
-          entityId: 'school_123',
           userId: 'user1'
         })
       });
@@ -293,7 +289,6 @@ describe('API Integration Tests - Activities Endpoint', () => {
 
       expect(response.status).toBe(201);
       expect(data.entityId).toBe('entity_123');
-      expect(data.entityId).toBe('school_123');
     });
   });
 });
@@ -450,8 +445,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
           workspaceId: 'workspace1',
           title: 'Test task',
           entityId: 'entity_123',
-          entityType: 'institution',
-          entityId: 'school_123'
+          entityType: 'institution'
         })
       });
 
@@ -459,7 +453,7 @@ describe('API Integration Tests - Tasks Endpoint', () => {
 
       expect(createTaskAction).toHaveBeenCalledWith(
         expect.objectContaining({
-          entityId: 'school_123'
+          entityId: 'entity_123'
         })
       );
     });
@@ -675,7 +669,7 @@ describe('API Integration Tests - Contacts Endpoint', () => {
 
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_new123'
+        id: 'entity_new123'
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({
@@ -732,7 +726,7 @@ describe('API Integration Tests - Contacts Endpoint', () => {
 
       vi.mocked(createEntityAction).mockResolvedValue({
         success: true,
-        entityId: 'entity_new123'
+        id: 'entity_new123'
       });
 
       vi.mocked(linkEntityToWorkspaceAction).mockResolvedValue({

@@ -129,12 +129,12 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
                         </div>
  <div className="text-left">
  <DialogTitle className="text-2xl font-semibold tracking-tight text-rose-950">Record Withdrawal</DialogTitle>
- <DialogDescription className="text-xs font-bold text-rose-700 opacity-70">Auditing legal submissions for {school.name}</DialogDescription>
+ <DialogDescription className="text-xs font-bold text-rose-700 opacity-70">Auditing legal submissions for {entity.displayName}</DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
 
- <div className="flex-1 overflow-hidden relative bg-white">
+ <div className="flex-1 overflow-hidden relative bg-card">
                     {isLoadingData ? (
  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
  <Loader2 className="h-10 w-10 animate-spin text-rose-600 opacity-20" />
@@ -145,7 +145,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
  <div className="p-8 space-y-10">
                                 {/* Institutional Context */}
  <div className="flex items-center gap-5 p-5 rounded-2xl bg-muted/30 border border-border shadow-inner text-left">
- <div className="p-3 bg-white rounded-xl shadow-sm shrink-0"><Building className="h-6 w-6 text-rose-600" /></div>
+ <div className="p-3 bg-card rounded-xl shadow-sm shrink-0"><Building className="h-6 w-6 text-rose-600" /></div>
  <div className="min-w-0">
  <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1">Target Institution</p>
  <p className="text-lg font-semibold text-foreground truncate">{entity.displayName}</p>
@@ -174,7 +174,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
                                                 >
  <div className="flex items-center gap-4">
                                                         <Checkbox checked={selectedSubIds.includes(sub.id)} />
- <div className="p-2 bg-white rounded-lg shadow-sm border"><FileText className="h-4 w-4 text-rose-600" /></div>
+ <div className="p-2 bg-card rounded-lg shadow-sm border"><FileText className="h-4 w-4 text-rose-600" /></div>
  <div className="text-left">
  <p className="text-sm font-semibold tracking-tight text-foreground">{sub.pdfName}</p>
  <p className="text-[9px] font-bold text-muted-foreground opacity-60">{format(new Date(sub.date), 'MMMM d, yyyy HH:mm')}</p>
@@ -194,7 +194,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
 
                                 {/* Warning Block */}
  <div className="p-6 rounded-[2rem] bg-rose-50 border border-rose-100 flex items-start gap-5 shadow-inner text-left">
- <div className="p-2.5 bg-white rounded-xl text-rose-600 shadow-sm border border-rose-100 mt-1 shrink-0"><AlertTriangle className="h-5 w-5" /></div>
+ <div className="p-2.5 bg-card rounded-xl text-rose-600 shadow-sm border border-rose-100 mt-1 shrink-0"><AlertTriangle className="h-5 w-5" /></div>
  <div className="space-y-1">
  <p className="text-sm font-semibold text-rose-900 tracking-tight">Purge Policy Notice</p>
  <p className="text-[10px] text-rose-700 leading-relaxed font-bold opacity-80">

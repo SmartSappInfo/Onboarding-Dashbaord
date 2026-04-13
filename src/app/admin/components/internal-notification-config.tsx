@@ -60,7 +60,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
  <div className="space-y-4">
  <div className={cn(
                 "rounded-[2rem] border-2 transition-all duration-500",
-                enabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-muted/10"
+                enabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-background"
             )}>
  <div className="flex items-center justify-between p-6">
  <div className="flex items-center gap-4">
@@ -97,7 +97,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
  <div className="space-y-4">
  <Label className="text-[10px] font-semibold text-primary ml-1">1. Recipient Intelligence</Label>
  <div className="space-y-3">
- <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-primary/10 shadow-sm">
+ <div className="flex items-center justify-between p-4 bg-card rounded-2xl border border-primary/10 shadow-sm">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-lg text-primary"><UserCheck className="h-4 w-4" /></div>
  <span className="text-xs font-bold tracking-tight">Notify Assigned Manager</span>
@@ -144,7 +144,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                                     onClick={() => field.onChange(c)}
  className={cn(
                                                         "h-10 rounded-xl font-semibold uppercase text-[9px]  transition-all",
-                                                        field.value === c ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
+                                                        field.value === c ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
                                                     )}
                                                 >
                                                     {c}
@@ -204,7 +204,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         control={control}
                                         render={({ field }) => (
                                             <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-11 rounded-xl bg-white border-primary/10 font-bold transition-all">
+ <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all">
                                                     <SelectValue placeholder="Select template..." />
                                                 </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -257,7 +257,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         control={control}
                                         render={({ field }) => (
                                             <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-11 rounded-xl bg-white border-primary/10 font-bold transition-all">
+ <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all">
                                                     <SelectValue placeholder="Select template..." />
                                                 </SelectTrigger>
  <SelectContent className="rounded-xl">

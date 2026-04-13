@@ -102,7 +102,7 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Invoice History */}
  <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card/10 backdrop-blur-md">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8 text-left">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-primary"><Receipt className="h-5 w-5" /></div>
@@ -125,9 +125,9 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
                         ) : invoices && invoices.length > 0 ? (
  <div className="divide-y divide-border/50 text-left">
                                 {invoices.map((invoice) => (
- <div key={invoice.id} className="p-6 flex items-center justify-between group hover:bg-muted/5 transition-colors text-left">
+ <div key={invoice.id} className="p-6 flex items-center justify-between group hover:bg-background transition-colors text-left">
  <div className="flex items-center gap-5 text-left">
- <div className="p-3 bg-muted/10 rounded-2xl border border-border/50 group-hover:bg-card transition-colors">
+ <div className="p-3 bg-background rounded-2xl border border-border/50 group-hover:bg-card transition-colors">
  <FileText className="h-5 w-5 text-muted-foreground" />
                                             </div>
  <div className="text-left">
@@ -166,7 +166,7 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
 
                 {/* Subscription Meta */}
  <div className="space-y-8 text-left">
- <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white text-left">
+ <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-card text-left">
  <CardHeader className="bg-primary/5 border-b pb-6 p-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <ShieldCheck className="h-4 w-4" /> Subscription Protocol

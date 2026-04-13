@@ -128,7 +128,7 @@ export default function AssignUserModal({ entity, open, onOpenChange }: AssignUs
  className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 pl-10 font-bold"
                 />
             </div>
- <ScrollArea className="h-80 border-2 border-dashed rounded-2xl bg-muted/10">
+ <ScrollArea className="h-80 border-2 border-dashed rounded-2xl bg-background">
  <div className="p-2 space-y-1">
                 {isLoading ? (
  <div className="space-y-2 p-2">
@@ -146,7 +146,7 @@ export default function AssignUserModal({ entity, open, onOpenChange }: AssignUs
                 <>
                     <button
                     onClick={() => handleAssign(null)}
- className="w-full text-left flex items-center gap-4 p-3 rounded-xl hover:bg-white hover:shadow-md transition-all group"
+ className="w-full text-left flex items-center gap-4 p-3 rounded-xl hover:bg-card hover:shadow-md transition-all group"
                     disabled={isAssigning}
                     >
  <div className="h-10 w-10 rounded-full bg-muted border flex items-center justify-center text-muted-foreground/40 font-semibold">?</div>
@@ -158,7 +158,7 @@ export default function AssignUserModal({ entity, open, onOpenChange }: AssignUs
                     <button
                         key={user.id}
                         onClick={() => handleAssign(user)}
- className="w-full text-left flex items-center gap-4 p-3 rounded-xl hover:bg-white hover:shadow-md transition-all group"
+ className="w-full text-left flex items-center gap-4 p-3 rounded-xl hover:bg-card hover:shadow-md transition-all group"
                         disabled={isAssigning}
                     >
  <Avatar className="h-10 w-10 border-2 border-white shadow-sm">

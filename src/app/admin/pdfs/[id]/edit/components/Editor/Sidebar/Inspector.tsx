@@ -72,7 +72,7 @@ export function Inspector() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
- <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground cursor-help">
+ <div className="p-2 rounded-lg bg-background0 text-muted-foreground cursor-help">
  <FileText className="h-5 w-5" />
                 </div>
               </TooltipTrigger>
@@ -326,7 +326,7 @@ export function Inspector() {
                                         <Button 
                                             type="button" 
                                             variant={!selectedField.textTransform || selectedField.textTransform === 'none' ? 'secondary' : 'ghost'} 
- className={cn("h-8 rounded-lg text-[9px] font-semibold ", (!selectedField.textTransform || selectedField.textTransform === 'none') && "bg-white shadow-sm")} 
+ className={cn("h-8 rounded-lg text-[9px] font-semibold ", (!selectedField.textTransform || selectedField.textTransform === 'none') && "bg-card shadow-sm")} 
                                             onClick={() => updateField(selectedField.id, { textTransform: 'none' })}
                                         >
  <Baseline className="h-3 w-3 mr-1" /> Aa
@@ -339,7 +339,7 @@ export function Inspector() {
                                         <Button 
                                             type="button" 
                                             variant={selectedField.textTransform === 'uppercase' ? 'secondary' : 'ghost'} 
- className={cn("h-8 rounded-lg text-[9px] font-semibold ", selectedField.textTransform === '' && "bg-white shadow-sm")} 
+ className={cn("h-8 rounded-lg text-[9px] font-semibold ", selectedField.textTransform === 'uppercase' && "bg-card shadow-sm")} 
                                             onClick={() => updateField(selectedField.id, { textTransform: 'uppercase' })}
                                         >
  <CaseUpper className="h-3 w-3 mr-1" /> ABC
@@ -352,7 +352,7 @@ export function Inspector() {
                                         <Button 
                                             type="button" 
                                             variant={selectedField.textTransform === 'capitalize' ? 'secondary' : 'ghost'} 
- className={cn("h-8 rounded-lg text-[9px] font-semibold ", selectedField.textTransform === 'capitalize' && "bg-white shadow-sm")} 
+ className={cn("h-8 rounded-lg text-[9px] font-semibold ", selectedField.textTransform === 'capitalize' && "bg-card shadow-sm")} 
                                             onClick={() => updateField(selectedField.id, { textTransform: 'capitalize' })}
                                         >
  <CaseSensitive className="h-3 w-3 mr-1" /> Title
@@ -420,7 +420,7 @@ export function Inspector() {
               )}
 
               {selectedField.type !== 'static-text' && selectedField.type !== 'variable' && (
- <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-white shadow-sm mt-4">
+ <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-card shadow-sm mt-4">
  <div className="space-y-0.5">
  <Label className="text-xs flex items-center gap-1.5 font-semibold text-primary tracking-tighter"><Key className="h-3 w-3" /> Naming Field</Label>
  <p className="text-[9px] text-muted-foreground leading-none font-medium">Use for submission titles</p>
@@ -500,7 +500,7 @@ export function Inspector() {
         ) : (
           <>
             <Card>
- <CardHeader className="py-4 border-b bg-muted/5">
+ <CardHeader className="py-4 border-b bg-background">
  <CardTitle className="text-sm font-semibold text-foreground">Document Fields</CardTitle>
  <CardDescription className="text-[10px] font-bold">{(fields || []).length} active mapping points</CardDescription>
               </CardHeader>

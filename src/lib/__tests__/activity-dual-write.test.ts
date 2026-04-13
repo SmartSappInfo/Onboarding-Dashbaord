@@ -77,7 +77,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
 
       // Verify resolveContact was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -88,7 +88,6 @@ describe('Activity Module - Dual-Write and Queries', () => {
           entityName: 'Test School',
           entitySlug: 'test-school',
           displayName: 'Test School',
-          entitySlug: 'test-school',
           entityType: 'institution',
         })
       );
@@ -129,7 +128,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
 
       // Verify resolveContact was called with entityId
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'school_456' },
+        'school_456',
         'workspace_1'
       );
 
@@ -140,7 +139,6 @@ describe('Activity Module - Dual-Write and Queries', () => {
           entityName: 'Migrated School',
           entitySlug: 'migrated-school',
           displayName: 'Migrated School',
-          entitySlug: 'migrated-school',
           entityType: 'institution',
         })
       );
@@ -184,7 +182,6 @@ describe('Activity Module - Dual-Write and Queries', () => {
           entityName: 'Legacy School',
           entitySlug: 'legacy-school',
           displayName: 'Legacy School',
-          entitySlug: 'legacy-school',
           // entityId should be undefined for legacy contacts
         })
       );
@@ -252,7 +249,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -286,7 +283,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'school_456' },
+        'school_456',
         'workspace_1'
       );
 
@@ -320,7 +317,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -331,7 +328,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
     });
 
     it('should return empty array when no identifier provided', async () => {
-      const result = await getActivitiesForContact({}, 'workspace_1');
+      const result = await getActivitiesForContact('', 'workspace_1');
       expect(result).toEqual([]);
     });
 
@@ -356,7 +353,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1',
         25
       );
@@ -471,7 +468,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
 
       // Verify resolveContact was called with both identifiers
       expect(resolveContact).toHaveBeenCalledWith(
-        { entityId: 'school_both' },
+        'school_both',
         'workspace_1'
       );
 
@@ -507,7 +504,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -547,7 +544,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
       (adminDb.collection as any).mockReturnValue({ where: mockWhere1 });
 
       const result = await getActivitiesForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 
@@ -656,7 +653,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
 
       // Call without limit parameter (should use default of 50)
       const result = await getActivitiesForContact(
-        { entityId: 'entity_123' },
+        'entity_123',
         'workspace_1'
       );
 

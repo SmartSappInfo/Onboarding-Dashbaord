@@ -25,14 +25,21 @@ import {
     ZoneDistribution,
     MessagingWidget,
     TaskWidget,
+    PipelineWidget,
 } from "@/components/dashboard";
 import { DraggableCard } from './DraggableCard';
-import type { DashboardLayout } from '@/lib/types';
+import type { DashboardLayout, Pipeline } from '@/lib/types';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFeatures } from '@/hooks/use-features';
+import { useTenant } from '@/context/TenantContext';
+import { STATIC_WIDGETS, filterWidgetsByFeatures, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
+import WidgetSelector from './WidgetSelector';
+import { Button } from '@/components/ui/button';
+import { LayoutGrid, Plus } from 'lucide-react';
 
 
-const componentMap: Record<string, React.FC<any>> = {
+const staticComponentMap: Record<string, React.FC<any>> = {
   taskWidget: TaskWidget,
   pipelinePieChart: PipelinePieChart,
   latestSurveys: LatestSurveys,
@@ -45,76 +52,110 @@ const componentMap: Record<string, React.FC<any>> = {
   messagingWidget: MessagingWidget,
 };
 
-const componentPropsMap = (data: any) => ({
-  taskWidget: {},
-  pipelinePieChart: { stages: data.pipelineCounts },
-  latestSurveys: { surveys: data.latestSurveys },
-  upcomingMeetings: { meetings: data.upcomingMeetings },
-  userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools, totalStudents: data.metrics.totalStudents },
-  monthlySchoolsChart: { data: data.monthlySchools },
-  moduleRadarChart: { data: data.moduleImplementations },
-  recentActivity: {
-    activities: data.activities,
-    users: data.recentActivityUsers,
-    schools: data.recentActivitySchools,
-    entities: data.recentActivityEntities, // New: workspace_entities for migrated contacts
-  },
-  zoneDistribution: { data: data.zoneDistribution },
-  messagingWidget: { ...data.messagingMetrics },
-});
-
-const componentGridConfig: Record<string, string> = {
-  userAssignments: 'md:col-span-2 lg:col-span-4',
-  taskWidget: 'md:col-span-2 lg:col-span-2',
-  messagingWidget: 'md:col-span-2 lg:col-span-2',
-  pipelinePieChart: 'md:col-span-2 lg:col-span-2 lg:row-span-2',
-  upcomingMeetings: 'lg:col-span-2',
-  moduleRadarChart: 'lg:col-span-2',
-  latestSurveys: 'lg:col-span-2',
-  monthlySchoolsChart: 'md:col-span-4',
-  recentActivity: 'md:col-span-4 lg:col-span-2 lg:row-span-2',
-  zoneDistribution: 'lg:col-span-2',
-};
-
-const DEFAULT_LAYOUT = [
-    'userAssignments',
-    'taskWidget',
-    'messagingWidget',
-    'pipelinePieChart',
-    'upcomingMeetings',
-    'recentActivity',
-    'zoneDistribution',
-    'moduleRadarChart',
-    'latestSurveys',
-    'monthlySchoolsChart',
-];
-
-export default function DashboardGrid({ initialData }: { initialData: any }) {
+export default function DashboardGrid({ 
+    initialData, 
+    pipelines = [], 
+    isCustomizerOpen, 
+    onCustomizerChange 
+}: { 
+    initialData: any; 
+    pipelines?: Pipeline[];
+    isCustomizerOpen: boolean;
+    onCustomizerChange: (open: boolean) => void;
+}) {
     const { user } = useUser();
     const firestore = useFirestore();
-    const [orderedComponents, setOrderedComponents] = useState<string[]>(DEFAULT_LAYOUT);
+    const { activeWorkspaceId, activeWorkspace, hasPermission } = useTenant();
+    const { isFeatureEnabled } = useFeatures();
+    const canManageDashboard = hasPermission('dashboard_manage');
+
+    const terminology = activeWorkspace?.terminology || { singular: 'Entity', plural: 'Entities' };
+
+    const componentPropsMap = (data: any) => ({
+      taskWidget: { terminology },
+      pipelinePieChart: { stages: data.pipelineCounts, terminology },
+      latestSurveys: { surveys: data.latestSurveys, terminology },
+      upcomingMeetings: { meetings: data.upcomingMeetings, terminology },
+      userAssignments: { 
+        data: data.userAssignments, 
+        totalSchools: data.metrics.totalSchools, 
+        totalStudents: data.metrics.totalStudents,
+        terminology 
+      },
+      monthlySchoolsChart: { data: data.monthlySchools, terminology },
+      moduleRadarChart: { data: data.moduleImplementations, terminology },
+      recentActivity: {
+        activities: data.activities,
+        users: data.recentActivityUsers,
+        schools: data.recentActivitySchools,
+        entities: data.recentActivityEntities,
+        terminology
+      },
+      zoneDistribution: { data: data.zoneDistribution, terminology },
+      messagingWidget: { ...data.messagingMetrics },
+    });
+    const [orderedComponents, setOrderedComponents] = useState<string[]>(DEFAULT_WIDGET_IDS);
     const [isLayoutLoaded, setIsLayoutLoaded] = useState(false);
     const isMobile = useIsMobile();
+    const isInitialLoadDoneRef = React.useRef(false);
+
+    // Reset load state when workspace changes
+    useEffect(() => {
+        isInitialLoadDoneRef.current = false;
+        setIsLayoutLoaded(false);
+    }, [activeWorkspaceId]);
+
+    // Workspace-specific shared layout
+    const layoutDocId = activeWorkspaceId ? `workspace_${activeWorkspaceId}` : null;
 
     const layoutDocRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return doc(firestore, 'dashboardLayouts', user.uid);
-    }, [user, firestore]);
+        if (!layoutDocId || !firestore) return null;
+        return doc(firestore, 'dashboardLayouts', layoutDocId);
+    }, [layoutDocId, firestore]);
 
     const { data: layoutData, isLoading: isLayoutLoading } = useDoc<DashboardLayout>(layoutDocRef);
 
+    // Build the full set of valid widget IDs (static + pipeline)
+    const allWidgetDefinitions = React.useMemo(() => {
+        return getAllWidgets(pipelines.map(p => ({ id: p.id, name: p.name })));
+    }, [pipelines]);
+
+    // Filter by enabled features
+    const featureFilteredWidgets = React.useMemo(() => {
+        return filterWidgetsByFeatures(allWidgetDefinitions, isFeatureEnabled);
+    }, [allWidgetDefinitions, isFeatureEnabled]);
+
+    const validWidgetIds = React.useMemo(() => {
+        return new Set(featureFilteredWidgets.map(w => w.id));
+    }, [featureFilteredWidgets]);
+
+    // Grid class lookup from widget definitions
+    const gridClassMap = React.useMemo(() => {
+        const map: Record<string, string> = {};
+        allWidgetDefinitions.forEach(w => { map[w.id] = w.gridClass; });
+        return map;
+    }, [allWidgetDefinitions]);
+
     useEffect(() => {
-        if (!isLayoutLoading) {
+        if (!isLayoutLoading && !isInitialLoadDoneRef.current) {
+            let nextOrder: string[] = [];
             if (layoutData?.componentIds) {
-                const validIds = layoutData.componentIds.filter((id: string) => DEFAULT_LAYOUT.includes(id));
-                const newIds = DEFAULT_LAYOUT.filter(id => !validIds.includes(id));
-                setOrderedComponents([...validIds, ...newIds]);
+                // Keep only valid (feature-enabled) IDs, preserve order
+                const validIds = layoutData.componentIds.filter((id: string) => validWidgetIds.has(id));
+                // Add any new default widget IDs not already in the layout
+                const existingSet = new Set(validIds);
+                const newDefaults = DEFAULT_WIDGET_IDS.filter(id => !existingSet.has(id) && validWidgetIds.has(id));
+                nextOrder = [...validIds, ...newDefaults];
             } else {
-                setOrderedComponents(DEFAULT_LAYOUT);
+                // Fresh workspace: start with defaults that are feature-enabled
+                nextOrder = DEFAULT_WIDGET_IDS.filter(id => validWidgetIds.has(id));
             }
+
+            setOrderedComponents(nextOrder);
             setIsLayoutLoaded(true);
+            isInitialLoadDoneRef.current = true;
         }
-    }, [layoutData, isLayoutLoading]);
+    }, [layoutData, isLayoutLoading, validWidgetIds]);
     
     const sensors = useSensors(useSensor(PointerSensor, {
         activationConstraint: {
@@ -122,65 +163,139 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
         },
     }));
 
+    const persistLayout = React.useCallback((newOrder: string[]) => {
+        if (layoutDocId && firestore && isInitialLoadDoneRef.current) {
+            setDoc(doc(firestore, 'dashboardLayouts', layoutDocId), { componentIds: newOrder });
+        }
+    }, [layoutDocId, firestore]);
+
+    // Persist layout changes to Firestore
+    useEffect(() => {
+        if (isLayoutLoaded && isInitialLoadDoneRef.current) {
+            persistLayout(orderedComponents);
+        }
+    }, [orderedComponents, isLayoutLoaded, persistLayout]);
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            setOrderedComponents((items) => {
-                const oldIndex = items.indexOf(active.id as string);
-                const newIndex = items.indexOf(over.id as string);
-                const newOrder = arrayMove(items, oldIndex, newIndex);
-                
-                if (user && firestore) {
-                    setDoc(doc(firestore, 'dashboardLayouts', user.uid), { componentIds: newOrder });
-                }
-                
-                return newOrder;
+            setOrderedComponents((prev) => {
+                const oldIndex = prev.indexOf(active.id as string);
+                const newIndex = prev.indexOf(over.id as string);
+                return arrayMove(prev, oldIndex, newIndex);
             });
         }
+    };
+
+    const handleToggleWidget = (widgetId: string, action: 'add' | 'remove') => {
+        setOrderedComponents((prev) => {
+            if (action === 'add') {
+                if (prev.includes(widgetId)) return prev;
+                return [...prev, widgetId];
+            } else {
+                return prev.filter(id => id !== widgetId);
+            }
+        });
+    };
+
+    // Resolve component and props for a widget ID
+    const resolveWidget = (id: string): { Component: React.FC<any>; props: any } | null => {
+        // Static widget
+        if (staticComponentMap[id]) {
+            const props = (componentPropsMap(initialData) as Record<string, any>)[id];
+            return { Component: staticComponentMap[id], props: props || {} };
+        }
+
+        // Pipeline widget (dynamic)
+        if (id.startsWith('pipeline_')) {
+            const pipelineId = id.replace('pipeline_', '');
+            const pipeline = pipelines.find(p => p.id === pipelineId);
+            if (!pipeline) return null;
+
+            // Get per-pipeline stage data from initialData
+            const pipelineStages = initialData.pipelinesByPipeline?.[pipelineId] || [];
+            return {
+                Component: PipelineWidget,
+                props: {
+                    pipelineId,
+                    pipelineName: pipeline.name,
+                    stages: pipelineStages,
+                    terminology,
+                },
+            };
+        }
+
+        return null;
     };
 
     if (!isLayoutLoaded) {
         return <DashboardSkeleton />;
     }
 
+    // Only render widgets that are currently feature-enabled
+    const visibleComponents = orderedComponents.filter(id => validWidgetIds.has(id));
+
     if (isMobile) {
         return (
- <div className="grid grid-cols-1 gap-6">
-                {orderedComponents.map((id) => {
-                    const Component = componentMap[id];
-                    if (!Component) return null;
-
-                    const props = (componentPropsMap(initialData) as Record<string, any>)[id];
-
-                    return (
-                        <div key={id}>
-                            <Component {...props} />
-                        </div>
-                    );
-                })}
-            </div>
+            <>
+                <div className="grid grid-cols-1 gap-6">
+                    {visibleComponents.map((id) => {
+                        const resolved = resolveWidget(id);
+                        if (!resolved) return null;
+                        const { Component, props } = resolved;
+                        return (
+                            <div key={id}>
+                                <Component {...props} />
+                            </div>
+                        );
+                    })}
+                </div>
+                <WidgetSelector
+                    open={isCustomizerOpen}
+                    onOpenChange={onCustomizerChange}
+                    activeWidgetIds={visibleComponents}
+                    pipelines={pipelines}
+                    onToggleWidget={handleToggleWidget}
+                />
+            </>
         );
     }
 
     return (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <SortableContext items={orderedComponents} strategy={rectSortingStrategy}>
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {orderedComponents.map((id) => {
-                        const Component = componentMap[id];
-                        if (!Component) return null;
+        <div className="relative">
+            {/* Dynamic Atmosphere Gradient */}
+            <div 
+                className="fixed inset-0 pointer-events-none opacity-[0.03] transition-colors duration-1000"
+                style={{ 
+                    background: `radial-gradient(circle at 50% 50%, ${activeWorkspace?.color || '#3B5FFF'} 0%, transparent 70%)` 
+                }}
+            />
 
-                        const props = (componentPropsMap(initialData) as Record<string, any>)[id];
-                        const gridClass = componentGridConfig[id] || 'lg:col-span-2';
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <SortableContext items={visibleComponents} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+                        {visibleComponents.map((id) => {
+                            const resolved = resolveWidget(id);
+                            if (!resolved) return null;
+                            const { Component, props } = resolved;
+                            const gridClass = gridClassMap[id] || 'lg:col-span-2';
 
-                        return (
- <DraggableCard key={id} id={id} className={gridClass}>
-                                <Component {...props} />
-                            </DraggableCard>
-                        );
-                    })}
-                </div>
-            </SortableContext>
-        </DndContext>
+                            return (
+                                <DraggableCard key={id} id={id} className={gridClass} disabled={!canManageDashboard}>
+                                    <Component {...props} />
+                                </DraggableCard>
+                            );
+                        })}
+                    </div>
+                </SortableContext>
+            </DndContext>
+            <WidgetSelector
+                open={isCustomizerOpen}
+                onOpenChange={onCustomizerChange}
+                activeWidgetIds={visibleComponents}
+                pipelines={pipelines}
+                onToggleWidget={handleToggleWidget}
+            />
+        </div>
     );
 }

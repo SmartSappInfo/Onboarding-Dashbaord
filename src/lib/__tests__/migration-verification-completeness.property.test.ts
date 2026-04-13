@@ -30,7 +30,6 @@ import type { Firestore } from 'firebase/firestore';
 type MockDocumentData = {
   id: string;
   entityId?: string;
-  entityId?: string;
   entityType?: string;
   [key: string]: any;
 };
@@ -134,7 +133,6 @@ describe.skip('Property 14: Verification Completeness', () => {
     id: fc.string({ minLength: 10, maxLength: 20 }),
     entityId: fc.string({ minLength: 15, maxLength: 30 }).filter(id => id.startsWith('orphan_')),
     entityType: fc.constantFrom('institution', 'family', 'person'),
-    entityId: fc.option(fc.string({ minLength: 10, maxLength: 20 }), { nil: undefined }),
     title: fc.string(),
   });
 
@@ -361,7 +359,6 @@ describe.skip('Property 14: Verification Completeness', () => {
             const entityId = `entity_valid_${i}`;
             const record: MockDocumentData = {
               id: `migrated_${i}`,
-              entityId: `school_${i}`,
               entityId,
               entityType: 'institution',
               title: `Task ${i}`,

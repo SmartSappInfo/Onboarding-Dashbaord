@@ -239,8 +239,8 @@ export default function PdfsClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
  <div className="flex flex-col">
  <h1 className="text-3xl font-semibold tracking-tight">Doc Signing Studio</h1>

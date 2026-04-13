@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function NewSchoolAiPage() {
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  bg-background">
  <div className="max-w-5xl mx-auto space-y-8">
         <AiSchoolGenerator />
       </div>

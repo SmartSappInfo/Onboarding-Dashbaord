@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm, School } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity } from '@/lib/types';
 import PdfFormRenderer from './PdfFormRenderer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -20,10 +20,10 @@ const passwordSchema = z.object({
 
 interface PasswordGatedFormProps {
   pdfForm: PDFForm;
-  school?: School;
+  entity?: WorkspaceEntity;
 }
 
-export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedFormProps) {
+export default function PasswordGatedForm({ pdfForm, entity }: PasswordGatedFormProps) {
   const [isUnlocked, setIsUnlocked] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   
@@ -43,18 +43,18 @@ export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedForm
   };
 
   if (isUnlocked) {
-    return <PdfFormRenderer pdfForm={pdfForm} school={school} />;
+    return <PdfFormRenderer pdfForm={pdfForm} entity={entity} />;
   }
 
   const bgColor = pdfForm.backgroundColor || '#F1F5F9';
-  const logoUrl = school?.logoUrl || pdfForm.logoUrl;
+  const logoUrl = entity?.logoUrl || pdfForm.logoUrl;
 
   return (
     <div className="flex flex-col min-h-screen relative overflow-hidden" style={{ backgroundColor: bgColor }}>
       <div className="flex-grow flex items-center justify-center p-4 relative z-10">
         <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
           <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl overflow-hidden p-0">
-            <DialogHeader className="p-8 bg-muted/30 border-b">
+            <DialogHeader className="p-8 bg-slate-50 border-b">
               <div className="flex justify-center mb-4">
                 {logoUrl ? (
                     <div className="relative h-12 w-48">
@@ -66,7 +66,7 @@ export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedForm
               </div>
               <DialogTitle className="text-center font-black uppercase tracking-tight">{pdfForm.publicTitle || pdfForm.name}</DialogTitle>
               <DialogDescription className="text-center text-xs font-medium uppercase tracking-widest">
-                This document from <strong>{school?.name || pdfForm.entityName || 'SmartSapp'}</strong> is password protected.
+                This document from <strong>{entity?.displayName || pdfForm.entityName || 'SmartSapp'}</strong> is password protected.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -78,7 +78,7 @@ export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedForm
                     <FormItem>
                       <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Access Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter password to unlock..." {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                        <Input type="password" placeholder="Enter password to unlock..." {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -101,7 +101,7 @@ export default function PasswordGatedForm({ pdfForm, school }: PasswordGatedForm
         </div>
       </div>
       
-      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t relative z-10">
+      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-slate-50 border-t relative z-10">
           <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
           <p>&copy; {new Date().getFullYear()} SmartSapp</p>
       </footer>

@@ -33,7 +33,7 @@ export function TagConditionNode({ data, selected }: any) {
 
       <Card
  className={cn(
-          'w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden shadow-sm text-left',
+          'w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left',
           selected
             ? 'border-violet-500 shadow-2xl ring-4 ring-violet-500/10'
             : 'border-violet-200'
@@ -44,7 +44,7 @@ export function TagConditionNode({ data, selected }: any) {
  <Tag className="h-4 w-4" />
  <span className="text-[10px] font-semibold ">Tag Condition</span>
           </div>
- <div className="h-1.5 w-1.5 rounded-full bg-white opacity-40" />
+ <div className="h-1.5 w-1.5 rounded-full bg-card opacity-40" />
         </div>
 
  <div className="p-4 space-y-2">
@@ -62,14 +62,14 @@ export function TagConditionNode({ data, selected }: any) {
             ) : (
               <Badge
                 variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 bg-muted/50 border-none text-muted-foreground"
+ className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none text-muted-foreground"
               >
                 Select Logic
               </Badge>
             )}
             <Badge
               variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 bg-muted/50 border-none"
+ className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none"
             >
               {tagIds.length} tag{tagIds.length !== 1 ? 's' : ''}
             </Badge>

@@ -308,7 +308,7 @@ export default function QuickTemplateDialog({
                             key={v.id}
                             type="button"
                             onClick={() => handleInsert(v.key)}
- className="w-full text-left p-3 rounded-xl bg-white border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-all group shadow-sm"
+ className="w-full text-left p-3 rounded-xl bg-card border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-all group shadow-sm"
                         >
  <p className="text-xs font-bold truncate leading-none text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-muted-foreground opacity-60 mt-1.5 block">{"{{" + v.key + "}}"}</code>
@@ -384,7 +384,7 @@ export default function QuickTemplateDialog({
                                             value={aiPrompt} 
                                             onChange={e => setAiPrompt(e.target.value)}
                                             placeholder="Describe the tone and goal... e.g. A friendly email confirming enrollment and mentioning the orientation date."
- className="min-h-[180px] rounded-[2rem] bg-white border-none shadow-inner p-6 leading-relaxed text-lg"
+ className="min-h-[180px] rounded-[2rem] bg-card border-none shadow-inner p-6 leading-relaxed text-lg"
                                         />
                                     </div>
                                     <Button 
@@ -447,7 +447,7 @@ export default function QuickTemplateDialog({
                     </div>
 
                     {/* VARIABLE PANEL */}
- <div className="w-full lg:w-80 border-l bg-muted/10 p-6 shrink-0 overflow-hidden flex flex-col gap-6 text-left">
+ <div className="w-full lg:w-80 border-l bg-background p-6 shrink-0 overflow-hidden flex flex-col gap-6 text-left">
  <div className="space-y-4 shrink-0">
  <div className="flex items-center gap-2">
  <Database className="h-4 w-4 text-primary" />
@@ -458,7 +458,7 @@ export default function QuickTemplateDialog({
  <div className="space-y-1.5">
  <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Source Survey Filter</Label>
                                     <Select value={selectedSurveyId || 'none'} onValueChange={setSelectedSurveyId}>
- <SelectTrigger className="h-10 rounded-xl border-primary/10 bg-white font-bold text-xs shadow-sm">
+ <SelectTrigger className="h-10 rounded-xl border-primary/10 bg-card font-bold text-xs shadow-sm">
                                             <SelectValue placeholder="All Sources" />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl">

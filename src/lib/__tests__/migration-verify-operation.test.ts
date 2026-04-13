@@ -77,14 +77,12 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
         entityId: 'entity_test_2',
         entityType: 'family',
-        entityId: 'school2',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task3'), {
@@ -122,7 +120,6 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -165,14 +162,12 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_orphaned',
         entityType: 'institution',
-        entityId: 'school1',
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
         title: 'Task 2',
         entityId: 'entity_test_2',
         entityType: 'family',
-        entityId: 'school2',
       });
 
       // Create entity only for task2
@@ -366,7 +361,6 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
         title: 'Task 1',
         entityId: 'entity_test_1',
         entityType: 'institution',
-        entityId: 'school1',
       });
 
       // 2. Unmigrated record

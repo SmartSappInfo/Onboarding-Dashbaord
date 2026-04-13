@@ -135,8 +135,8 @@ export default function AutomationsClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-10 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-10 pb-32">
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
  <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground ">
@@ -185,7 +185,7 @@ export default function AutomationsClient() {
  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2.5rem]" />)
                             ) : filteredAutomations.length > 0 ? filteredAutomations.map((auth) => (
  <Card key={auth.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border glass-card overflow-hidden group hover:ring-primary/20 transition-all">
- <CardHeader className="bg-muted/10 border-b p-6 pb-4">
+ <CardHeader className="bg-background border-b p-6 pb-4">
  <div className="flex items-center justify-between">
  <div className={cn(
                                                 "p-2.5 rounded-xl transition-all shadow-sm",
@@ -237,7 +237,7 @@ export default function AutomationsClient() {
                                     </CardContent>
                                 </Card>
                             )) : (
- <div className="col-span-full py-24 text-center border-4 border-dashed rounded-[3rem] bg-muted/10 opacity-30 flex flex-col items-center gap-4">
+ <div className="col-span-full py-24 text-center border-4 border-dashed rounded-[3rem] bg-background opacity-30 flex flex-col items-center gap-4">
  <Zap className="h-12 w-12" />
  <p className="text-[10px] font-semibold ">No matching blueprints</p>
                                 </div>
@@ -247,7 +247,7 @@ export default function AutomationsClient() {
 
  <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
  <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
- <div className="p-6 border-b bg-muted/10 flex items-center justify-between">
+ <div className="p-6 border-b bg-background flex items-center justify-between">
  <div className="flex items-center gap-3">
  <Activity className="h-4 w-4 text-primary" />
  <h3 className="text-[10px] font-semibold text-foreground">Real-time Execution Stream</h3>
@@ -388,7 +388,7 @@ export default function AutomationsClient() {
                                             <SearchCode size={14} />
                                         </Button>
                                     </div>
- <div className="p-6 rounded-[2rem] bg-slate-950/80 text-blue-500 overflow-hidden shadow-2xl ring-1 ring-white/10 backdrop-blur-md">
+ <div className="p-6 rounded-[2rem] bg-slate-950/80 text-blue-500 overflow-hidden shadow-2xl ring-1 ring-border/50/10 backdrop-blur-md">
  <pre className="text-[11px] font-mono leading-relaxed max-h-[300px] overflow-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {JSON.stringify(selectedRun?.triggerData, null, 2)}
                                         </pre>

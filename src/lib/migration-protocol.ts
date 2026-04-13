@@ -1,4 +1,5 @@
 import { adminDb } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const BATCH_SIZE = 450;
 
@@ -45,8 +46,8 @@ export async function migrateCollectionForeignKeys(
                     continue;
                 }
                 
-                const entityId = data.entityId;
-                const entityId = data.entityId || `entity_${entityId}`;
+                const schoolId = data.schoolId;
+                const entityId = data.entityId || `entity_${schoolId}`;
                 
                 // ENRICH: Prepare metadata
                 const backupData = {
@@ -80,16 +81,13 @@ export async function migrateCollectionForeignKeys(
 
                 // Optional: Deletion of legacy fields
                 const deletePayload: { [key: string]: any } = {
-                    ["entityId"]: adminDb.FieldValue ? adminDb.FieldValue.delete() : null, // Fallback if FieldValue is missing
-                    ...(data.entityName && { ["entityName"]: adminDb.FieldValue ? adminDb.FieldValue.delete() : null }),
-                    ...(data.entitySlug && { ["entitySlug"]: adminDb.FieldValue ? adminDb.FieldValue.delete() : null })
+                    ["schoolId"]: FieldValue.delete(),
+                    ...(data.entityName && { ["entityName"]: FieldValue.delete() }),
+                    ...(data.entitySlug && { ["entitySlug"]: FieldValue.delete() })
                 };
                 
-                // Handle deletion only if FieldValue is properly loaded
-                if (adminDb.FieldValue) {
-                     batch.update(doc.ref, deletePayload);
-                     operationCount++;
-                }
+                // Handle deletion
+                batch.update(doc.ref, deletePayload);
                 
                 if (operationCount >= BATCH_SIZE) {
                     await batch.commit();

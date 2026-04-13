@@ -140,7 +140,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
     if (meetingError || attendeesError) {
         const error = meetingError || attendeesError;
         return (
- <div className="p-8 max-w-7xl mx-auto">
+ <div className="p-8 ">
  <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
  <AlertCircle className="h-4 w-4" />
  <AlertTitle className="font-semibold text-[10px]">Intelligence Error</AlertTitle>
@@ -158,8 +158,8 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-10 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-10 pb-32">
 
                 {/* Executive Header */}
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -202,7 +202,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Attendance Velocity Chart */}
  <Card className="lg:col-span-2 rounded-[2.5rem] glass-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-card rounded-xl shadow-sm border border-border/20"><Zap className="h-4 w-4 text-primary" /></div>
@@ -243,7 +243,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
                     {/* Operational Details */}
  <Card className="rounded-[2.5rem] glass-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <CalendarCheck className="h-4 w-4" /> Session Blueprint
                             </CardTitle>
@@ -314,7 +314,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                                                     {children.length > 0 ? children.map((child: any, idx: number) => {
                                                         const childName = typeof child === 'string' ? child : child?.value || child?.name || 'Unknown Child';
                                                         return (
-                                                            <Badge key={idx} variant="secondary" className="bg-muted/50 border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
+                                                            <Badge key={idx} variant="secondary" className="bg-background0 border-none font-bold text-[9px] uppercase tracking-tighter text-foreground/70 h-5">
                                                                 {childName}
                                                             </Badge>
                                                         );

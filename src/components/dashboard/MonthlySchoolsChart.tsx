@@ -6,7 +6,13 @@ import DashboardCard from "./DashboardCard";
 
 const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function MonthlySchoolsChart({ data }: { data: { name: string, total: number }[] }) {
+export function MonthlySchoolsChart({ 
+    data,
+    terminology = { singular: 'Entity', plural: 'Entities' }
+}: { 
+    data: { name: string, total: number }[],
+    terminology?: { singular: string, plural: string }
+}) {
 
     const chartData = monthOrder.map(month => {
         const monthData = data.find(d => d.name === month);
@@ -19,7 +25,10 @@ export function MonthlySchoolsChart({ data }: { data: { name: string, total: num
     const hasData = data.some(d => d.total > 0);
 
     return (
-        <DashboardCard title="Schools Added Per Month">
+        <DashboardCard 
+            title={`${terminology.plural} Added Per Month`}
+            description={`Monthly trend of new ${terminology.singular.toLowerCase()} registrations.`}
+        >
              <div className="w-full h-72">
                 {hasData ? (
                     <ResponsiveContainer>
@@ -38,12 +47,12 @@ export function MonthlySchoolsChart({ data }: { data: { name: string, total: num
                                     fontSize: "12px"
                                 }}
                             />
-                            <Bar dataKey="total" name="Schools Added" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="total" name={`${terminology.plural} Added`} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
                      <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
-                        <p>No schools added this year to display.</p>
+                        <p>No {terminology.plural.toLowerCase()} added this year to display.</p>
                     </div>
                 )}
             </div>

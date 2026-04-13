@@ -211,7 +211,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
                                         key={a}
                                         type="button" 
                                         variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
- className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")} 
+ className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")} 
                                         onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
                                         title={a.charAt(0).toUpperCase() + a.slice(1)}
                                     >

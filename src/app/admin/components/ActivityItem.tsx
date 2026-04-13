@@ -12,8 +12,8 @@ import { getActivityIcon } from '@/lib/activity-icons';
 interface ActivityItemProps {
   activity: Activity;
   user?: UserProfile;
-  showSchoolName?: boolean;
-  school?: School;
+  showEntityName?: boolean;
+  entity?: any;
 }
 
 // Entity type icons for visual distinction
@@ -34,7 +34,7 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
  * 
  * Requirements: 4.3, 4.5, 23.1, 23.3, 23.5 (Task 35.2)
  */
-export default function ActivityItem({ activity, user, showSchoolName = false }: ActivityItemProps) {
+export default function ActivityItem({ activity, user, showEntityName = false }: ActivityItemProps) {
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
@@ -80,7 +80,7 @@ export default function ActivityItem({ activity, user, showSchoolName = false }:
             
  <span className="text-muted-foreground">
                 {activity.description}
-                {showSchoolName && contactName && contactId && (
+                {showEntityName && contactName && contactId && (
  <> in <Link href={`/admin/entities/${contactId}`} className="font-semibold text-foreground hover:underline inline-flex items-center gap-1">
  <EntityIcon className="h-3 w-3" />
                         {contactName}

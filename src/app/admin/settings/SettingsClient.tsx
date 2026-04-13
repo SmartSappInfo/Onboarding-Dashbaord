@@ -5,6 +5,7 @@ import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 import RoleEditor from './components/RoleEditor';
 import WorkspaceEditor from './components/WorkspaceEditor';
+import FeatureManager from './components/FeatureManager';
 import { useTenant } from '@/context/TenantContext';
 import { Building, Globe, Mail, Phone, MapPin, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,8 +18,8 @@ export default function SettingsClient() {
   const [isOrgDialogOpen, setIsOrgDialogOpen] = React.useState(false);
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-12">
+ <div className="h-full overflow-y-auto  space-y-12 bg-background text-left">
+ <div className=" space-y-12">
         {/* Organization Profile Header */}
  <Card className="rounded-[2.5rem] glass-card overflow-hidden">
  <div className="h-2 w-full bg-primary" />
@@ -95,6 +96,8 @@ export default function SettingsClient() {
         </Card>
 
         <WorkspaceEditor />
+
+        <FeatureManager />
 
  <div className="space-y-8">
           <RoleEditor />

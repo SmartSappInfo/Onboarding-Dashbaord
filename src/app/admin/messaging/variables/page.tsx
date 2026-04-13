@@ -199,7 +199,7 @@ export default function VariableRegistryPage() {
         const isHidden = !!v.hidden;
 
         return (
- <TableRow className={cn("group hover:bg-accent/5 transition-colors", isHidden && "opacity-50 grayscale bg-muted/5")}>
+ <TableRow className={cn("group hover:bg-accent/5 transition-colors", isHidden && "opacity-50 grayscale bg-background")}>
  <TableCell className="pl-6 w-[350px]">
  <div className="flex flex-col gap-0.5 text-left">
  <div className="flex items-center gap-2">
@@ -348,8 +348,8 @@ export default function VariableRegistryPage() {
     }, [variables, templates, usageMap]);
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
  <div className="flex items-center gap-3">
  <Button variant="outline" onClick={() => setIsAddingConstant(true)} className="rounded-xl font-semibold h-12 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
@@ -571,7 +571,7 @@ export default function VariableRegistryPage() {
  <span className="text-[10px] font-semibold text-muted-foreground">Used in {item.templates.length} templates:</span>
  <div className="flex flex-wrap gap-1.5">
                                                             {item.templates.map(t => (
-                                                                <Badge key={t.id} variant="outline" className="text-[8px] h-4 font-bold bg-white">{t.name}</Badge>
+                                                                <Badge key={t.id} variant="outline" className="text-[8px] h-4 font-bold bg-card">{t.name}</Badge>
                                                             ))}
                                                         </div>
                                                     </div>

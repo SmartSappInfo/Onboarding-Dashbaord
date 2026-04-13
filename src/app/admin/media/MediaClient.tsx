@@ -75,8 +75,8 @@ export default function MediaClient() {
   const isLoading = isWorkspaceLoading || isMediaLoading;
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
- <div className="max-w-7xl mx-auto space-y-8 text-left">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-8 text-left">
         
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
  <div className="flex flex-col items-start">

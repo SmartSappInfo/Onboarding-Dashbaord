@@ -103,7 +103,7 @@ export function ScopeSelector({
                 'hover:shadow-md hover:scale-105',
                 isSelected 
                   ? 'border-primary bg-primary/5 shadow-lg' 
-                  : 'border-border bg-white',
+                  : 'border-border bg-card',
                 disabled && 'opacity-50 cursor-not-allowed hover:scale-100'
               )}
             >

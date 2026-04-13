@@ -392,10 +392,7 @@ describe('Contact Adapter Edge Cases', () => {
   describe('Edge Case 4: Resolution with invalid identifiers', () => {
     it('should handle empty string entityId', async () => {
       const result = await resolveContact(
-
-    it('should handle empty string entityId', async () => {
-      const result = await resolveContact(
-        { entityId: '' },
+        { entityId: '' } as any,
         'workspace_test_empty'
       );
 
@@ -642,7 +639,7 @@ describe('Contact Adapter Edge Cases', () => {
 
       mockEntities.set(entityId, entity);
 
-      const exists = await contactExists({ entityId });
+      const exists = await contactExists(entityId);
       expect(exists).toBe(true);
     });
 
@@ -666,7 +663,7 @@ describe('Contact Adapter Edge Cases', () => {
 
       mockSchools.set(entityId, school);
 
-      const exists = await contactExists({ entityId });
+      const exists = await contactExists(entityId);
       expect(exists).toBe(true);
     });
 

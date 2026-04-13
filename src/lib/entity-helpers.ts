@@ -14,20 +14,22 @@ import type { School, WorkspaceEntity } from './types';
 export function getPrimaryContact(entity: School | WorkspaceEntity): { name: string; email?: string; phone?: string; isSignatory?: boolean } | undefined {
   if ('entityId' in entity) {
     // WorkspaceEntity branch
+    const workspaceEntity = entity as WorkspaceEntity;
     return {
-      name: entity.primaryContactName || '',
-      email: entity.primaryEmail,
-      phone: entity.primaryPhone,
+      name: workspaceEntity.primaryContactName || '',
+      email: workspaceEntity.primaryEmail,
+      phone: workspaceEntity.primaryPhone,
       isSignatory: true 
     };
   }
 
   // Legacy School branch
-  if (!(entity as School).focalPersons || (entity as School).focalPersons.length === 0) {
+  const school = entity as School;
+  if (!school.focalPersons || school.focalPersons.length === 0) {
     return undefined;
   }
   
-  const signatory = (entity as School).focalPersons.find(fp => fp.isSignatory);
+  const signatory = school.focalPersons.find(fp => fp.isSignatory);
   return signatory || (entity as School).focalPersons[0];
 }
 
@@ -35,7 +37,7 @@ export function getPrimaryContact(entity: School | WorkspaceEntity): { name: str
  * Gets the primary email address.
  */
 export function getEntityEmail(entity: School | WorkspaceEntity): string | undefined {
-  if ('entityId' in entity) return entity.primaryEmail;
+  if ('entityId' in entity) return (entity as WorkspaceEntity).primaryEmail;
   const primary = getPrimaryContact(entity);
   return primary?.email;
 }
@@ -44,7 +46,7 @@ export function getEntityEmail(entity: School | WorkspaceEntity): string | undef
  * Gets the primary phone number.
  */
 export function getEntityPhone(entity: School | WorkspaceEntity): string | undefined {
-  if ('entityId' in entity) return entity.primaryPhone;
+  if ('entityId' in entity) return (entity as WorkspaceEntity).primaryPhone;
   const primary = getPrimaryContact(entity);
   return primary?.phone;
 }
@@ -53,7 +55,7 @@ export function getEntityPhone(entity: School | WorkspaceEntity): string | undef
  * Gets the primary contact person's name.
  */
 export function getContactPerson(entity: School | WorkspaceEntity): string | undefined {
-  if ('entityId' in entity) return entity.primaryContactName;
+  if ('entityId' in entity) return (entity as WorkspaceEntity).primaryContactName;
   const primary = getPrimaryContact(entity);
   return primary?.name;
 }
@@ -63,10 +65,12 @@ export function getContactPerson(entity: School | WorkspaceEntity): string | und
  */
 export function getAllEntityEmails(entity: School | WorkspaceEntity): string[] {
   if ('entityId' in entity) {
-    return entity.primaryEmail ? [entity.primaryEmail] : [];
+    const workspaceEntity = entity as WorkspaceEntity;
+    return workspaceEntity.primaryEmail ? [workspaceEntity.primaryEmail] : [];
   }
-  if (!(entity as School).focalPersons) return [];
-  return (entity as School).focalPersons
+  const school = entity as School;
+  if (!school.focalPersons) return [];
+  return school.focalPersons
     .map(fp => fp.email)
     .filter((email): email is string => !!email);
 }
@@ -75,7 +79,10 @@ export function getAllEntityEmails(entity: School | WorkspaceEntity): string[] {
  * Checks if a record has a valid primary contact.
  */
 export function hasValidContact(entity: School | WorkspaceEntity): boolean {
-  if ('entityId' in entity) return !!(entity.primaryEmail || entity.primaryPhone);
+  if ('entityId' in entity) {
+    const workspaceEntity = entity as WorkspaceEntity;
+    return !!(workspaceEntity.primaryEmail || workspaceEntity.primaryPhone);
+  }
   const primary = getPrimaryContact(entity);
   return !!(primary && primary.email);
 }

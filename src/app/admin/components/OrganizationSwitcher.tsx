@@ -75,12 +75,12 @@ export default function OrganizationSwitcher() {
                             onClick={() => setActiveOrganization(org.id)}
  className={cn(
                                 "rounded-xl p-3 gap-4 group transition-all mb-1",
-                                activeOrganizationId === org.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-muted/50"
+                                activeOrganizationId === org.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-background0"
                             )}
                         >
  <div className={cn(
                                 "p-2 rounded-lg", 
-                                activeOrganizationId === org.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                activeOrganizationId === org.id ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                             )}>
                                 <Building size={16} />
                             </div>

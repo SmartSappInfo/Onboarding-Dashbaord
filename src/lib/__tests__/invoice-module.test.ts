@@ -256,7 +256,6 @@ describe('Invoice Module Migration', () => {
       const existingInvoice: Invoice = {
         id: 'invoice_123',
         invoiceNumber: 'INV-2024-ABC',
-        entityId: 'school_123',
         entityName: 'Test School',
         entityId: 'entity_123',
         entityType: 'institution',
@@ -322,7 +321,6 @@ describe('Invoice Module Migration', () => {
       const existingInvoice: Invoice = {
         id: 'invoice_123',
         invoiceNumber: 'INV-2024-ABC',
-        entityId: 'school_123',
         entityName: 'Test School',
         entityId: 'entity_123',
         entityType: 'institution',

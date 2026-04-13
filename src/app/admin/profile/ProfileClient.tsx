@@ -118,7 +118,7 @@ export default function ProfileClient() {
 
   if (isUserLoading || isLoadingProfile) {
     return (
- <div className="p-4 sm:p-6 md:p-8">
+ <div className="">
  <Card className="max-w-2xl mx-auto">
                 <CardHeader>
                     <CardTitle>Account Profile</CardTitle>
@@ -138,7 +138,7 @@ export default function ProfileClient() {
   }
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  bg-background">
  <div className="max-w-2xl mx-auto space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
  <CardHeader className="bg-muted/30 border-b pb-6">

@@ -47,7 +47,7 @@ export function TagActionNode({ data, selected }: any) {
 
       <Card
  className={cn(
-          'w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden text-left',
+          'w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden text-left',
           colorScheme.border,
           colorScheme.shadow,
           selected && `ring-4 ${colorScheme.ring}`
@@ -60,7 +60,7 @@ export function TagActionNode({ data, selected }: any) {
               {isAdd ? 'Add Tags' : 'Remove Tags'}
             </span>
           </div>
- <div className="h-1.5 w-1.5 rounded-full bg-white opacity-40" />
+ <div className="h-1.5 w-1.5 rounded-full bg-card opacity-40" />
         </div>
 
  <div className="p-4 space-y-2">
@@ -76,7 +76,7 @@ export function TagActionNode({ data, selected }: any) {
             </Badge>
             <Badge
               variant="outline"
- className="text-[7px] font-semibold px-1.5 h-4 bg-muted/50 border-none"
+ className="text-[7px] font-semibold px-1.5 h-4 bg-background0 border-none"
             >
               {tagIds.length} tag{tagIds.length !== 1 ? 's' : ''}
             </Badge>

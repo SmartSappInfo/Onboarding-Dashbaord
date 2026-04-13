@@ -77,7 +77,7 @@ export default function EditAutomationPage() {
     }
 
     return (
- <div className="h-full flex flex-col overflow-hidden bg-muted/10">
+ <div className="h-full flex flex-col overflow-hidden bg-background">
             {/* Executive Canvas Header */}
  <header className="h-16 shrink-0 bg-background border-b px-6 flex items-center justify-between z-30 shadow-sm">
  <div className="flex items-center gap-4 min-w-0">

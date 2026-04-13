@@ -63,8 +63,8 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
     const handleToday = () => setCurrentMonth(new Date());
 
     return (
- <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white ring-1 ring-black/5">
- <div className="flex items-center justify-between p-6 border-b bg-muted/10">
+ <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-card ring-1 ring-black/5">
+ <div className="flex items-center justify-between p-6 border-b bg-background">
  <div className="flex items-center gap-4">
  <div className="p-2.5 bg-primary/10 rounded-xl text-primary shadow-sm">
  <CalendarIcon className="h-5 w-5" />
@@ -89,7 +89,7 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
                 </div>
             </div>
 
- <div className="grid grid-cols-7 border-b bg-muted/5">
+ <div className="grid grid-cols-7 border-b bg-background">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
  <div key={day} className="py-3 text-center text-[10px] font-semibold text-muted-foreground opacity-60">
                         {day}
@@ -108,7 +108,7 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
                             key={day.toString()} 
  className={cn(
                                 "min-h-[120px] border-r border-b p-2 transition-colors flex flex-col gap-2 group",
-                                !isSelectedMonth && "bg-muted/10 grayscale-[0.5] opacity-30",
+                                !isSelectedMonth && "bg-background grayscale-[0.5] opacity-30",
                                 isTodayDate && "bg-primary/[0.02] ring-1 ring-inset ring-primary/10",
                                 idx % 7 === 6 && "border-r-0"
                             )}
@@ -121,7 +121,7 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
                                     {format(day, 'd')}
                                 </span>
                                 {dayTasks.length > 0 && (
-                                    <Badge variant="outline" className="h-4 text-[8px] font-semibold px-1 border-none bg-muted/50">
+                                    <Badge variant="outline" className="h-4 text-[8px] font-semibold px-1 border-none bg-background0">
                                         {dayTasks.length}
                                     </Badge>
                                 )}
@@ -138,7 +138,7 @@ export default function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) 
                                             onClick={() => onTaskClick(task)}
  className={cn(
                                                 "w-full text-left p-1.5 rounded-lg border shadow-sm transition-all hover:scale-[1.02] active:scale-95 group/task",
-                                                isDone ? "bg-emerald-50 border-emerald-100 opacity-40" : "bg-white border-border/50 hover:border-primary/30"
+                                                isDone ? "bg-emerald-50 border-emerald-100 opacity-40" : "bg-card border-border/50 hover:border-primary/30"
                                             )}
                                         >
  <div className="flex items-start gap-1.5">

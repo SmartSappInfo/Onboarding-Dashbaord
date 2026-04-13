@@ -117,7 +117,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-white rounded-xl text-base", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-white rounded-xl text-base border-slate-200", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-3 h-5 w-5" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -240,7 +240,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-12 px-6 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-base font-bold uppercase tracking-tight">
+      <Button asChild variant="outline" disabled={disabled} className="h-12 px-6 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-base font-bold uppercase tracking-tight border-slate-200">
         <div className="cursor-pointer">
             <Upload className="mr-3 h-4 w-4 text-primary" />
             <span>Upload a file</span>
@@ -315,7 +315,7 @@ const ElementRenderer = ({
                                 type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || (question.type === 'email' ? 'email@example.com' : question.type === 'phone' ? 'e.g. +233 20 000 0000' : "Type your answer here...")} 
-                                className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -337,16 +337,16 @@ const ElementRenderer = ({
                             render={({ field }) => (
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                        field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                        field.value === 'Yes' ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                        field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                        field.value === 'No' ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
@@ -364,8 +364,8 @@ const ElementRenderer = ({
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                            field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                            field.value === opt ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
@@ -387,8 +387,8 @@ const ElementRenderer = ({
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                                isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                                isChecked ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
                                                 errors[question.id] && "border-destructive bg-destructive/5"
                                             )}>
                                                 <Checkbox
@@ -415,7 +415,7 @@ const ElementRenderer = ({
                                     {question.allowOther && (
                                         <div className={cn(
                                             "flex items-center gap-4 rounded-xl border-2 py-2.5 px-4 transition-all active:scale-[0.98]",
-                                            (field.value?.other || '') ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                            (field.value?.other || '') ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
                                             <Checkbox
@@ -542,7 +542,7 @@ const ElementRenderer = ({
                     </div>
                 );
             case 'divider':
-                return <hr className="my-6 sm:my-8 border-slate-100" />;
+                return <hr className="my-6 sm:my-8 border-border/30" />;
             case 'image':
                 return block.url ? (
                     <div className={cn("relative my-6 rounded-xl overflow-hidden shadow-xl border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
@@ -552,7 +552,7 @@ const ElementRenderer = ({
             case 'video':
                  return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
-                return block.url ? <div className="my-6 p-6 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full text-sm">Your browser does not support the audio element.</audio></div> : null;
+                return block.url ? <div className="my-6 p-6 bg-muted/10 border border-border/30 rounded-xl"><audio controls src={block.url} className="w-full text-sm">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                 return (
                     <div className={cn("my-6", alignmentClass)}>
@@ -1275,7 +1275,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                             videoCaption={survey.videoCaption}
                                         />
                                     ) : survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
+                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-card shadow-2xl">
                                             <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
                                         </div>
                                     )}

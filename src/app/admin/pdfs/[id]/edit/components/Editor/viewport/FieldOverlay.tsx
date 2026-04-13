@@ -46,7 +46,7 @@ interface FieldOverlayProps {
 
 export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimensions }: FieldOverlayProps) {
   const { 
-    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, school
+    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, entity
   } = useEditor();
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -157,7 +157,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     } else if (field.type === 'variable') {
         const tag = `{{${field.variableKey || 'context'}}}`;
         if (viewMode === 'preview' && field.variableKey) {
-            text = resolveVariableValue(field.variableKey, school) || tag;
+            text = resolveVariableValue(field.variableKey, entity) || tag;
         } else {
             text = tag;
         }
@@ -168,7 +168,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     if (field.textTransform === 'uppercase') return text.toUpperCase();
     if (field.textTransform === 'capitalize') return toTitleCase(text);
     return text;
-  }, [field, viewMode, school]);
+  }, [field, viewMode, entity]);
 
   return (
     <div 
@@ -365,7 +365,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                             <TooltipTrigger asChild>
                                 <DropdownMenuTrigger asChild>
  <Button type="button" variant={field.textTransform && field.textTransform !== 'none' ? 'secondary' : 'ghost'} size="icon" className={cn("h-8 w-8 rounded-lg", field.textTransform && field.textTransform !== 'none' && "text-primary bg-primary/10")}>
- {field.textTransform === '' ? <CaseUpper className="h-4 w-4" /> : field.textTransform === 'capitalize' ? <CaseSensitive className="h-4 w-4" /> : <Baseline className="h-4 w-4" />}
+ {field.textTransform === 'uppercase' ? <CaseUpper className="h-4 w-4" /> : field.textTransform === 'capitalize' ? <CaseSensitive className="h-4 w-4" /> : <Baseline className="h-4 w-4" />}
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
@@ -375,7 +375,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
  <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'none' })}>
  <Baseline className="h-3.5 w-3.5" /> Normal
                             </DropdownMenuItem>
- <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: '' })}>
+ <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'uppercase' })}>
  <CaseUpper className="h-3.5 w-3.5" /> UPPERCASE
                             </DropdownMenuItem>
  <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'capitalize' })}>

@@ -56,7 +56,7 @@ export default function MessageJobsView() {
 
     if (!jobs || jobs.length === 0) {
         return (
- <div className="py-20 text-center border-2 border-dashed rounded-[2rem] bg-muted/10">
+ <div className="py-20 text-center border-2 border-dashed rounded-[2rem] bg-background">
  <Layers className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
  <p className="text-muted-foreground font-semibold text-[10px] ">No bulk jobs found in history.</p>
             </div>

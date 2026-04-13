@@ -117,7 +117,7 @@ export default function WebhookManager() {
                                             control={control}
                                             render={({ field }) => (
                                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
- <SelectTrigger className="h-10 bg-white rounded-xl shadow-sm border-primary/10 font-bold transition-all">
+ <SelectTrigger className="h-10 bg-card rounded-xl shadow-sm border-primary/10 font-bold transition-all">
                                                         <SelectValue placeholder="Choose a webhook..." />
                                                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -143,7 +143,7 @@ export default function WebhookManager() {
                                 </div>
 
                                 {selectedWebhook && (
- <div className="p-3 rounded-xl bg-white/50 border border-primary/10 space-y-1 shadow-inner">
+ <div className="p-3 rounded-xl bg-card/50 border border-primary/10 space-y-1 shadow-inner">
  <p className="text-[9px] font-semibold text-primary/60">Active Endpoint URL</p>
  <p className="text-[10px] font-mono break-all text-foreground/80 leading-relaxed">{selectedWebhook.url}</p>
                                     </div>

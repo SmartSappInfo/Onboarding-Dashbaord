@@ -85,7 +85,7 @@ export default function ActivitiesClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+ <div className="h-full overflow-y-auto  bg-background text-left">
  <div className="max-w-5xl mx-auto space-y-8 text-left">
  <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6 text-left">
  <div className="flex justify-end shrink-0 text-left">
@@ -97,7 +97,7 @@ export default function ActivitiesClient() {
                     </div>
                 </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white text-left">
+ <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card text-left">
  <CardContent className="p-4 sm:p-6 text-left">
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
  <div className="space-y-2 text-left">

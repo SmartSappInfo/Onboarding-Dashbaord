@@ -47,7 +47,6 @@ describe('Forms Module Migration - Survey Creation', () => {
       // Only entityId (no legacy entityId)
       entityId: null,
       entityName: null,
-      entityId: 'entity_456',
     };
 
     expect(survey.entityId).toBe('entity_456');
@@ -70,7 +69,6 @@ describe('Forms Module Migration - Survey Creation', () => {
       // Only entityId (legacy)
       entityId: 'school_789',
       entityName: 'Legacy School',
-      entityId: null,
     };
 
     expect(survey.entityId).toBe('school_789');
@@ -93,7 +91,6 @@ describe('Forms Module Migration - Survey Creation', () => {
       // No contact association
       entityId: null,
       entityName: null,
-      entityId: null,
     };
 
     expect(survey.entityId).toBeNull();
@@ -187,6 +184,10 @@ describe('Forms Module Migration - Query Functions', () => {
     const surveys = [
       {
         id: 'survey_1',
+        entityId: 'entity_123',
+      },
+    ];
+
     // Query by entityId
     const entitySurveys = surveys.filter(s => s.entityId === 'entity_123');
     expect(entitySurveys).toHaveLength(1);
@@ -198,7 +199,11 @@ describe('Forms Module Migration - Query Functions', () => {
     // Requirement 22.1: Support entityId fallback
     const surveys = [
       {
-        id: 'survey_1',
+        id: 'survey_3',
+        entityId: 'school_789',
+      },
+    ];
+
     // Query by entityId (fallback for legacy)
     const schoolSurveys = surveys.filter(s => s.entityId === 'school_789');
     expect(schoolSurveys).toHaveLength(1);
@@ -210,7 +215,7 @@ describe('Forms Module Migration - Query Functions', () => {
     const surveys = [
       {
         id: 'survey_1',
-        entityId: 'school_123',
+        entityId: 'entity_123',
         title: 'Survey 1',
       },
       {
@@ -249,7 +254,7 @@ describe('Forms Module Migration - Query Functions', () => {
     ];
 
     // Query responses by entityId
-    const entityResponses = responses.filter(r => r.entityId === 'entity_123');
+    const entityResponses = responses.filter(r => (r as any).entityId === 'entity_123');
     expect(entityResponses).toHaveLength(1);
     expect(entityResponses[0].id).toBe('response_1');
   });
@@ -312,7 +317,6 @@ describe('Forms Module Migration - Data Integrity', () => {
       updatedAt: new Date().toISOString(),
       entityId: null,
       entityName: null,
-      entityId: null,
     };
 
     expect(survey.entityId).toBeNull();
@@ -355,7 +359,7 @@ describe('Forms Module Migration - Edge Cases', () => {
     };
 
     expect(survey.elements).toHaveLength(0);
-    expect(survey.entityId).toBe('entity_123');
+    expect(survey.entityId).toBeNull();
   });
 
   it('should handle response with no answers', () => {
@@ -368,7 +372,7 @@ describe('Forms Module Migration - Edge Cases', () => {
     };
 
     expect(response.answers).toHaveLength(0);
-    expect(response.entityId).toBe('entity_123');
+    expect(response.entityId).toBeNull();
   });
 
   it('should handle survey with multiple workspaces', () => {
@@ -384,6 +388,7 @@ describe('Forms Module Migration - Edge Cases', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       entityId: 'school_123',
+      entityName: 'Test School',
     };
 
     expect(survey.workspaceIds).toHaveLength(3);

@@ -107,13 +107,13 @@ export default function WorkspaceSwitcher() {
                                     onClick={() => setActiveWorkspace(w.id)}
  className={cn(
                                         "rounded-xl p-3 gap-4 group transition-all mb-1",
-                                        activeWorkspaceId === w.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-muted/50"
+                                        activeWorkspaceId === w.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-background0"
                                     )}
                                     style={activeWorkspaceId === w.id ? { backgroundColor: w.color } : {}}
                                 >
  <div className={cn(
                                         "p-2 rounded-lg", 
-                                        activeWorkspaceId === w.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                        activeWorkspaceId === w.id ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                                     )}>
                                         {w.id === 'prospect' ? <Target size={16} /> : <Zap size={16} />}
                                     </div>
@@ -124,7 +124,7 @@ export default function WorkspaceSwitcher() {
  <span className={cn(
                                                     "text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
                                                     activeWorkspaceId === w.id 
-                                                        ? "bg-white/20 text-white" 
+                                                        ? "bg-card/20 text-white" 
                                                         : "bg-muted text-muted-foreground"
                                                 )}>
                                                     {scopeLabel}

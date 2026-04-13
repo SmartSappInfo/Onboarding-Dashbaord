@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase-admin';
-import type { PDFForm, School, Contract, Submission } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity, Entity, Contract, Submission } from '@/lib/types';
 import PdfFormRenderer from './components/PdfFormRenderer';
 import { notFound } from 'next/navigation';
 import PasswordGatedForm from './components/PasswordGatedForm';
@@ -7,7 +7,8 @@ import { Metadata } from 'next';
 
 interface PageData {
     pdfForm: PDFForm;
-    school?: School;
+    entity?: WorkspaceEntity;
+    identity?: Entity;
     initialData?: Record<string, any>;
     isLocked: boolean;
     submissionId?: string;
@@ -25,12 +26,26 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
         if (!docSnap.exists || docSnap.data()?.status !== 'published') return null;
         const pdfForm = { ...docSnap.data(), id: docSnap.id } as PDFForm;
         
-        // 2. Resolve associated School
-        let school: School | undefined = undefined;
-        const targetSchoolId = querySchoolId || pdfForm.entityId;
-        if (targetSchoolId) {
-            const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();
-            if (schoolSnap.exists) school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+        // 2. Resolve associated Entity (Operational & Identity)
+        let entity: WorkspaceEntity | undefined = undefined;
+        let identity: Entity | undefined = undefined;
+        
+        const targetEntityId = querySchoolId || pdfForm.entityId;
+        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
+
+        if (targetEntityId) {
+            // Fetch identity
+            const entitySnap = await adminDb.collection('entities').doc(targetEntityId).get();
+            if (entitySnap.exists) {
+                identity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
+            }
+
+            // Fetch workspace-specific operational data
+            const workspaceEntityId = `${workspaceId}_${targetEntityId}`;
+            const workspaceEntitySnap = await adminDb.collection('workspace_entities').doc(workspaceEntityId).get();
+            if (workspaceEntitySnap.exists) {
+                entity = { id: workspaceEntitySnap.id, ...workspaceEntitySnap.data() } as WorkspaceEntity;
+            }
         }
 
         // 3. Multi-Stage Signing Logic (Agreements Only)
@@ -38,9 +53,9 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
         let isLocked = false;
         let submissionId: string | undefined = undefined;
 
-        if (pdfForm.isContractDocument && targetSchoolId) {
+        if (pdfForm.isContractDocument && targetEntityId) {
             const contractQuery = await adminDb.collection('contracts')
-                .where('entityId', '==', targetSchoolId)
+                .where('entityId', '==', targetEntityId)
                 .limit(1)
                 .get();
             
@@ -59,7 +74,7 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
             }
         }
 
-        return { pdfForm, school, initialData, isLocked, submissionId };
+        return { pdfForm, entity, identity, initialData, isLocked, submissionId };
     } catch (error) {
         console.error("Error fetching PDF form:", error);
         return null;
@@ -73,9 +88,11 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 
     if (!data) return { title: 'Form Not Found' };
 
-    const title = data.school 
-        ? `${data.school.name} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
-        : data.pdfForm.publicTitle || data.pdfForm.name;
+    const title = data.entity 
+        ? `${data.entity.displayName} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
+        : data.identity?.name 
+            ? `${data.identity.name} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
+            : data.pdfForm.publicTitle || data.pdfForm.name;
 
     return {
         title,
@@ -91,13 +108,14 @@ export default async function PublicPdfFormPage({ params, searchParams }: { para
     if (!data) notFound();
     
     if (data.pdfForm.passwordProtected && data.pdfForm.password && !data.isLocked) {
-        return <PasswordGatedForm pdfForm={data.pdfForm} school={data.school} />;
+        return <PasswordGatedForm pdfForm={data.pdfForm} entity={data.entity} />;
     }
 
     return (
         <PdfFormRenderer 
             pdfForm={data.pdfForm} 
-            school={data.school} 
+            entity={data.entity}
+            identity={data.identity}
             initialData={data.initialData}
             isLocked={data.isLocked}
             existingSubmissionId={data.submissionId}

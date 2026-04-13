@@ -51,7 +51,7 @@ export default function NewAutomationPage() {
     }, [user, router, toast, activeWorkspaceId, singular]);
 
     return (
- <div className="h-full flex flex-col items-center justify-center gap-4 bg-muted/5">
+ <div className="h-full flex flex-col items-center justify-center gap-4 bg-background">
  <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
  <div className="text-center">
  <p className="text-[10px] font-semibold tracking-[0.3em] animate-pulse">Architecting Workflow Space...</p>

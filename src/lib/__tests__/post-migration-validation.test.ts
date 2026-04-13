@@ -144,7 +144,6 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_123',
             entityType: 'institution',
-            entityId: 'school_123',
           }),
         },
         {
@@ -152,7 +151,6 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_456',
             entityType: 'family',
-            entityId: 'school_456',
           }),
         },
         {
@@ -160,7 +158,6 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_789',
             entityType: 'person',
-            entityId: 'school_789',
           }),
         },
       ],
@@ -200,7 +197,6 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_123',
             entityType: 'institution',
-            entityId: 'school_123',
           }),
         },
         {
@@ -208,7 +204,6 @@ describe('Task 37.1: Verify all collections migrated successfully', () => {
           data: () => ({
             entityId: 'entity_456',
             entityType: 'family',
-            entityId: 'school_456',
           }),
         },
       ],
@@ -252,7 +247,6 @@ describe('Task 37.2: Test critical user workflows', () => {
         title: 'Test Task',
         entityId: 'entity_123',
         entityType: 'institution',
-        entityId: 'school_123',
         workspaceId: 'workspace_123',
         status: 'todo',
         createdAt: Timestamp.now(),
@@ -265,7 +259,6 @@ describe('Task 37.2: Test critical user workflows', () => {
       title: 'Test Task',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      entityId: 'school_123',
       workspaceId: 'workspace_123',
       status: 'todo' as const,
       createdAt: Timestamp.now(),
@@ -367,7 +360,6 @@ describe('Task 37.2: Test critical user workflows', () => {
       formId: 'form_123',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      entityId: 'school_123',
       responses: { question1: 'answer1' },
       submittedAt: Timestamp.now(),
     };
@@ -412,7 +404,6 @@ describe('Task 37.2: Test critical user workflows', () => {
       invoiceNumber: 'INV-001',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      entityId: 'school_123',
       organizationId: 'org_123',
       total: 1000,
       status: 'sent' as const,
@@ -499,7 +490,6 @@ describe('Task 37.2: Test critical user workflows', () => {
       id: 'message_123',
       entityId: 'entity_123',
       entityType: 'institution' as const,
-      entityId: 'school_123',
       workspaceId: 'workspace_123',
       messageType: 'email' as const,
       recipient: 'test@example.com',

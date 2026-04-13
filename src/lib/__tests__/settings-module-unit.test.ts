@@ -92,7 +92,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -115,7 +115,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { entityId: 'entity_nonexistent' },
+        'entity_nonexistent',
         'workspace_1'
       );
 
@@ -145,7 +145,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { entityId: 'entity_789' },
+        'entity_789',
         'workspace_1'
       );
 
@@ -174,7 +174,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       await loadSettings(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 
@@ -210,7 +210,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -232,7 +232,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       const result = await loadSettings(
-        { entityId: 'school_nonexistent' },
+        'school_nonexistent',
         'workspace_1'
       );
 
@@ -260,7 +260,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       });
 
       await loadSettings(
-        { entityId: 'school_789' },
+        'school_789',
         'workspace_1'
       );
 
@@ -275,7 +275,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
 
     it('should return error when neither entityId nor entityId provided', async () => {
       const result = await loadSettings(
-        {},
+        '',
         'workspace_1'
       );
 
@@ -635,7 +635,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
       mockGet.mockRejectedValue(new Error('Query failed'));
 
       const result = await loadSettings(
-        { entityId: 'entity_456' },
+        'entity_456',
         'workspace_1'
       );
 

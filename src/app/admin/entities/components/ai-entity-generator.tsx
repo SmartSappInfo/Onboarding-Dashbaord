@@ -196,7 +196,7 @@ export default function AiEntityGenerator() {
   };
 
   return (
- <Card className="max-w-3xl mx-auto shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
+ <Card className="max-w-3xl mx-auto shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
  <CardHeader className="text-center pb-10 pt-12 border-b bg-muted/30 relative">
  <div className="mx-auto bg-primary/10 w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/5">
  <Sparkles className="h-8 w-8 text-primary" />
@@ -223,7 +223,7 @@ export default function AiEntityGenerator() {
                                             field.value === 'onboarding' ? "border-primary bg-primary/5 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
                                         )}
                                     >
- <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-white text-muted-foreground")}>
+ <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'onboarding' ? "bg-primary text-white" : "bg-card text-muted-foreground")}>
  <Building className="h-5 w-5" />
                                         </div>
  <div className="flex flex-col">
@@ -239,7 +239,7 @@ export default function AiEntityGenerator() {
                                             field.value === 'prospect' ? "border-emerald-600 bg-emerald-50 shadow-md" : "border-transparent bg-muted/20 hover:bg-muted/40"
                                         )}
                                     >
- <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground")}>
+ <div className={cn("p-2.5 rounded-xl shadow-sm", field.value === 'prospect' ? "bg-emerald-600 text-white" : "bg-card text-muted-foreground")}>
  <Target className="h-5 w-5" />
                                         </div>
  <div className="flex flex-col">

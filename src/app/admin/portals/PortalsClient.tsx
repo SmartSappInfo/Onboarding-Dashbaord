@@ -109,7 +109,7 @@ export default function PortalsClient() {
  <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
  <CardHeader className="p-5 pb-3">
  <div className="flex items-start justify-between gap-4">
- <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-background transition-colors">
+ <div className="p-2.5 rounded-xl bg-muted/20 border border-border/50 group-hover:bg-background transition-colors">
  <Icon className={cn("h-5 w-5", color.replace('bg-', 'text-'))} />
                     </div>
  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -158,9 +158,9 @@ export default function PortalsClient() {
     );
 
     const StatCard = ({ label, value, icon: Icon }: { label: string, value: number, icon: any }) => (
- <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white text-left">
+ <Card className="rounded-2xl border-none ring-1 ring-border shadow-md overflow-hidden bg-card/40 backdrop-blur-sm text-left transition-all hover:shadow-lg">
  <CardContent className="p-5 flex items-center gap-4">
- <div className="p-3 bg-muted/50 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
+ <div className="p-3 bg-muted/20 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
                 <div>
  <p className="text-[9px] font-semibold text-muted-foreground leading-none mb-1.5">Total {label}</p>
  <p className="text-2xl font-semibold tabular-nums tracking-tighter">{isLoading ? '...' : value}</p>
@@ -170,8 +170,8 @@ export default function PortalsClient() {
     );
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
- <div className="max-w-7xl mx-auto space-y-12 pb-32 text-left">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-12 pb-32 text-left">
                 
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
@@ -189,7 +189,7 @@ export default function PortalsClient() {
                             placeholder="Filter by school or portal title..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
- className="pl-11 h-12 rounded-2xl bg-white border-none shadow-xl ring-1 ring-border focus:ring-primary/20 font-bold"
+                            className="pl-11 h-12 rounded-2xl bg-muted/20 border-border/50 shadow-inner ring-1 ring-border focus:ring-primary/20 font-bold transition-all"
                         />
                     </div>
                 </div>
@@ -206,24 +206,28 @@ export default function PortalsClient() {
  {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
                     </div>
                 ) : (
- <div className="space-y-16">
+                    <div className="space-y-16">
                         
                         {!searchTerm && (
                             <section>
                                 <SectionHeader title="Core Custom Pages" icon={Zap} />
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
-                                    <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
-                                    <PortalCard title="Campaign Stats" path="/campaign/school-comparison/statistics" icon={BarChart3} color="bg-emerald-600" />
-                                    <PortalCard title="Choice Selection Page" path="/campaign/school-comparison" icon={GraduationCap} color="bg-orange-50" />
-                                    <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
-                                    <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />
+                                    {activeWorkspaceId === 'onboarding' && (
+                                        <>
+                                            <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
+                                            <PortalCard title="Campaign Stats" path="/campaign/school-comparison/statistics" icon={BarChart3} color="bg-emerald-600" />
+                                            <PortalCard title="Choice Selection Page" path="/campaign/school-comparison" icon={GraduationCap} color="bg-orange-500" />
+                                            <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
+                                            <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />
+                                        </>
+                                    )}
                                 </div>
                             </section>
                         )}
 
                         {filteredSurveys.length > 0 && (
- <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <SectionHeader title="Intelligent Surveys" badge={filteredSurveys.length} icon={ClipboardList} />
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredSurveys.map(s => (
@@ -233,7 +237,7 @@ export default function PortalsClient() {
                                             school={s.entityName || 'SmartSapp'} 
                                             path={`/surveys/${s.slug}`} 
                                             icon={ClipboardList} 
-                                            color="bg-blue-50" 
+                                            color="bg-blue-500" 
                                         />
                                     ))}
                                 </div>
@@ -251,7 +255,7 @@ export default function PortalsClient() {
                                             school={p.entityName || 'SmartSapp'} 
                                             path={`/forms/${p.slug || p.id}`} 
                                             icon={FileText} 
-                                            color="bg-orange-50" 
+                                            color="bg-orange-500" 
                                         />
                                     ))}
                                 </div>
@@ -268,10 +272,10 @@ export default function PortalsClient() {
                                             <PortalCard 
                                                 key={m.id} 
                                                 title={m.type?.name || 'Session'} 
-                                                school={m.entityName} 
+                                                school={m.entityName || undefined} 
                                                 path={`/meetings/${typeSlug}/${m.entitySlug}`} 
                                                 icon={Calendar} 
-                                                color="bg-purple-50" 
+                                                color="bg-purple-500" 
                                             />
                                         );
                                     })}
@@ -281,7 +285,7 @@ export default function PortalsClient() {
 
                         {(searchTerm && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) || 
                          (!isLoading && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) ? (
- <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/10 flex flex-col items-center justify-center gap-4 opacity-40">
+ <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-40">
  <LayoutList className="h-16 w-16" />
  <p className="font-semibold text-lg">
                                     {searchTerm ? 'No portals matched your search' : `No active portals in the ${activeWorkspaceId} hub`}

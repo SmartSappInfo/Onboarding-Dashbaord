@@ -75,7 +75,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                     institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
                                     family: { label: 'Family', icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
                                     person: { label: 'Person', icon: User, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-                                    other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-slate-500/10' },
+                                    other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
                                 };
 
                                 // Normalize entities for searching and grouping
@@ -228,7 +228,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                                 if (checked) {
                                                     const entityId = watch('entityId');
                                                     const institution = institutions?.find(i => i.entityId === entityId);
-                                                    const logo = institution?.schoolData?.logoUrl || institution?.schoolData?.branding?.logoUrl;
+                                                    const logo = institution?.logoUrl;
                                                     if (logo) setValue('logoUrl', logo, { shouldDirty: true });
                                                 }
                                             }} 

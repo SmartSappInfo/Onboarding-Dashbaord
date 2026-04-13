@@ -254,10 +254,9 @@ describe('Property 19: Automation Dual-Write', () => {
             status: 'todo',
             category: config.category,
             workspaceId: context.workspaceId,
-            entityId, // Dual-write: legacy field
-            entityName: entity.name, // Dual-write: legacy field
-            entityId: context.entityId, // Dual-write: new field
-            entityType: context.entityType, // Dual-write: new field
+            entityId: context.entityId,
+            entityName: entity.name,
+            entityType: context.entityType,
             assignedTo: config.assignedTo,
             dueDate: new Date(Date.now() + config.dueOffsetDays * 24 * 60 * 60 * 1000).toISOString(),
             source: 'automation',
@@ -339,7 +338,6 @@ describe('Property 19: Automation Dual-Write', () => {
             workspaceId: context.workspaceId,
             entityId: context.entityId, // Dual-write: legacy field
             entityName: school.name, // Dual-write: legacy field
-            entityId: entityId, // Dual-write: new field (resolved from entityId)
             entityType: 'institution', // Dual-write: new field
             assignedTo: config.assignedTo,
             dueDate: new Date(Date.now() + config.dueOffsetDays * 24 * 60 * 60 * 1000).toISOString(),

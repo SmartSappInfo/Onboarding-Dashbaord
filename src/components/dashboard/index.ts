@@ -10,3 +10,4 @@ export * from './RecentActivity';
 export * from './ZoneDistribution';
 export * from './MessagingWidget';
 export * from './TaskWidget';
+export * from './PipelineWidget';

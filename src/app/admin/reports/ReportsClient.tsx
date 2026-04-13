@@ -231,8 +231,8 @@ export default function ReportsClient() {
     }
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-12 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-12 pb-32">
                 
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
  <div className="text-left">
@@ -270,7 +270,7 @@ export default function ReportsClient() {
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                     {/* CRM Resolution Trend */}
  <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
  <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
                             </CardTitle>
@@ -295,7 +295,7 @@ export default function ReportsClient() {
 
                     {/* Regional Performance */}
  <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card text-left">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8 text-left">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
  <MapPin className="h-4 w-4" /> Regional Strategic Density
                             </CardTitle>
@@ -351,7 +351,7 @@ export default function ReportsClient() {
 
                     {/* Operational Insights */}
  <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
- <CardHeader className="bg-muted/10 border-b p-8 text-left">
+ <CardHeader className="bg-background border-b p-8 text-left">
  <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-3 text-left">
  <Zap className="h-5 w-5 text-primary text-left" /> Executive Snapshot
                             </CardTitle>

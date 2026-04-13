@@ -133,7 +133,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
       });
@@ -183,7 +183,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
       });
@@ -235,7 +235,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
       });
@@ -244,7 +244,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getTasksForContact(
-          { entityId: 'entity_1' },
+          'entity_1',
           'workspace_1'
         );
 
@@ -255,7 +255,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getTasksForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -268,7 +268,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         mockGet.mockResolvedValue({ docs: [] });
 
         await getTasksForContact(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
 
@@ -463,14 +463,13 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         });
 
         expect(resolveContact).toHaveBeenCalledWith(
-          { entityId: 'school_1' },
+          'school_1',
           'workspace_1'
         );
         expect(mockAdd).toHaveBeenCalledWith(
           expect.objectContaining({
             entityId: 'school_1',
             entityName: 'Legacy School',
-            entityId: null,
             entityType: null,
           })
         );

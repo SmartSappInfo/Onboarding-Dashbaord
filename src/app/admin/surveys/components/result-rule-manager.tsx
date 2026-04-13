@@ -123,7 +123,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                 control={control}
                                 render={({ field }) => (
                                     <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-9 bg-white border-blue-200 text-xs font-bold shadow-sm">
+ <SelectTrigger className="h-9 bg-card border-blue-200 text-xs font-bold shadow-sm">
                                             <SelectValue placeholder="Choose email template..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -139,7 +139,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     control={control}
                                     render={({ field }) => (
                                         <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-9 bg-white border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
+ <SelectTrigger className="h-9 bg-card border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
  <ShieldCheck className="h-3 w-3" />
                                                 <SelectValue placeholder="Resolved From Identity" />
                                             </SelectTrigger>
@@ -192,7 +192,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                 control={control}
                                 render={({ field }) => (
                                     <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-9 bg-white border-orange-200 text-xs font-bold shadow-sm">
+ <SelectTrigger className="h-9 bg-card border-orange-200 text-xs font-bold shadow-sm">
                                             <SelectValue placeholder="Choose SMS template..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -208,7 +208,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     control={control}
                                     render={({ field }) => (
                                         <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-9 bg-white border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
+ <SelectTrigger className="h-9 bg-card border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
  <ShieldCheck className="h-3 w-3" />
                                                 <SelectValue placeholder="Resolved From Identity" />
                                             </SelectTrigger>
@@ -315,8 +315,8 @@ export default function ResultRuleManager() {
                     </SortableContext>
                 </DndContext>
             ) : (
- <div className="text-center py-24 border-4 border-dashed rounded-[2.5rem] bg-muted/10 border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
- <div className="p-6 bg-white rounded-full shadow-inner"><ArrowUp className="h-10 w-10 text-muted-foreground/30 animate-bounce" /></div>
+ <div className="text-center py-24 border-4 border-dashed rounded-[2.5rem] bg-background border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
+ <div className="p-6 bg-card rounded-full shadow-inner"><ArrowUp className="h-10 w-10 text-muted-foreground/30 animate-bounce" /></div>
  <div className="space-y-1">
  <p className="text-muted-foreground font-semibold text-xs">No active logic thresholds</p>
  <p className="text-[10px] font-medium text-muted-foreground/60 tracking-tighter">All respondents will view the default result page</p>

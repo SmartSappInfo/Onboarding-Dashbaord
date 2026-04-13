@@ -21,13 +21,11 @@ const TEST_WORKSPACE_2 = 'test-workspace-prod-2';
 
 interface MigrationTestData {
   entityIds: string[];
-  entityIds: string[];
   workspaceEntityIds: string[];
 }
 
 describe('Task 41.5: Migration Script on Production-Like Data', () => {
   const testData: MigrationTestData = {
-    entityIds: [],
     entityIds: [],
     workspaceEntityIds: [],
   };
@@ -277,11 +275,11 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
   /**
    * Migrate a single school (simulating the migration script logic)
    */
-  async function migrateSchool(entityId: string): Promise<void> {
-    const schoolDoc = await adminDb.collection('schools').doc(entityId).get();
+  async function migrateSchool(schoolId: string): Promise<void> {
+    const schoolDoc = await adminDb.collection('schools').doc(schoolId).get();
     
     if (!schoolDoc.exists) {
-      throw new Error(`School ${entityId} not found`);
+      throw new Error(`School ${schoolId} not found`);
     }
     
     const school = { id: schoolDoc.id, ...schoolDoc.data() } as School;

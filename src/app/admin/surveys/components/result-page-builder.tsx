@@ -86,7 +86,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
  {block.type === 'quote' && <div className="p-8 bg-card border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
                                     {block.type === 'score-card' && (
  <Card className="w-full bg-primary text-white border-none shadow-xl rounded-3xl p-8 flex flex-col items-center text-center">
-                                            <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-semibold  uppercase">Sample Result</Badge>
+                                            <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-semibold  uppercase">Sample Result</Badge>
  <div className="flex flex-col gap-1">
  <div className="flex items-center justify-center">
  <span className="text-7xl font-semibold tabular-nums tracking-tighter">
@@ -98,8 +98,8 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                                                     {displayMode === 'percentage' ? 'Overall Accuracy' : `out of ${maxScore} points`}
                                                 </span>
                                             </div>
- <div className="mt-6 w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
- <div className="h-full bg-white w-[85%]" />
+ <div className="mt-6 w-full h-1.5 bg-card/20 rounded-full overflow-hidden">
+ <div className="h-full bg-card w-[85%]" />
                                             </div>
                                         </Card>
                                     )}
@@ -153,7 +153,7 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
     };
 
     return (
- <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted/50 p-1 rounded-md mb-2")}>
+ <div className={cn("flex items-center gap-0.5", !minimal && "bg-background0 p-1 rounded-md mb-2")}>
  <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('b')} title="Bold">
  <Bold className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
@@ -340,7 +340,7 @@ function SortableResultBlock({
  <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
  <Card className="bg-card shadow-none border hover:border-primary/50 transition-colors">
- <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
+ <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-background">
  <div className="flex items-center gap-3 text-[10px] font-semibold text-muted-foreground">
  <div className="flex items-center justify-center rounded border p-1 bg-background">
  <Icon className="h-4 w-4 text-primary" />

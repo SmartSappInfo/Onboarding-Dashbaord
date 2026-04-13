@@ -365,8 +365,8 @@ export default function NewSurveyPage() {
                     </div>
                 </header>
 
- <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
- <div className="max-w-7xl mx-auto">
+ <div className="flex-1 overflow-y-auto ">
+ <div className="">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />
 
                         <AnimatePresence mode="wait">
@@ -410,7 +410,7 @@ export default function NewSurveyPage() {
                         </AnimatePresence>
 
  <div className="mt-8 p-4 sm:p-6 bg-card border-t border-border/50 rounded-t-[2.5rem] shadow-[0_-12px_40px_-5px_rgba(0,0,0,0.05)]">
- <div className="max-w-7xl mx-auto flex items-center justify-between text-left">
+ <div className=" flex items-center justify-between text-left">
  <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
  <div className="flex items-center gap-4 text-left">
  {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}

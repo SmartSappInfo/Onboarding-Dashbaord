@@ -198,8 +198,8 @@ export default function MessageStylesPage() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <div className="flex items-center gap-2">
  <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl">
@@ -222,7 +222,7 @@ export default function MessageStylesPage() {
  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Style Label</Label>
- <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Standard Branded Hub" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" />
+ <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Standard Branded Hub" className="h-12 rounded-xl bg-card border-none shadow-inner font-bold" />
                                 </div>
  <div className="space-y-4">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><Share2 className="h-3 w-3" /> Shared Context</Label>
@@ -270,7 +270,7 @@ export default function MessageStylesPage() {
                                     )}
                                 </div>
                                 
- <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0 bg-white grow">
+ <CardHeader className="p-5 flex flex-row items-center justify-between space-y-0 bg-card grow">
  <div className="min-w-0">
  <CardTitle className="text-sm font-semibold truncate pr-2 text-foreground group-hover:text-primary transition-colors">{style.name}</CardTitle>
  <CardDescription className="text-[8px] font-bold mt-1">{style.workspaceIds?.length || 1} Workspace(s)</CardDescription>
@@ -284,7 +284,7 @@ export default function MessageStylesPage() {
                             </Card>
                         ))
                     ) : (
- <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4 opacity-30">
+ <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
  <Palette className="h-16 w-16" />
  <p className="font-semibold text-xs">No styles in this workspace hub</p>
                         </div>
@@ -318,7 +318,7 @@ export default function MessageStylesPage() {
                         </div>
 
  <Tabs defaultValue="code" className="flex-1 flex flex-col min-h-0">
- <div className="px-8 py-2 bg-muted/10 border-b shrink-0 flex items-center justify-between">
+ <div className="px-8 py-2 bg-background border-b shrink-0 flex items-center justify-between">
  <TabsList className="bg-background border p-1 h-9 rounded-xl shadow-sm">
  <TabsTrigger value="code" className="text-[9px] font-semibold px-4 gap-2"><Code size={14} /> Source</TabsTrigger>
  <TabsTrigger value="preview" className="text-[9px] font-semibold px-4 gap-2"><Eye size={14} /> Render</TabsTrigger>
@@ -333,7 +333,7 @@ export default function MessageStylesPage() {
  <TabsContent value="preview" className="flex-1 m-0 bg-slate-100 overflow-hidden relative">
  <ScrollArea className="h-full w-full">
  <div className="p-12 flex justify-center min-h-full">
- <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-3xl overflow-hidden border">
+ <div className="w-full max-w-[600px] bg-card shadow-2xl rounded-3xl overflow-hidden border">
  <iframe srcDoc={editHtml.replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: ; letter-spacing: 1px;">Resolved Content Block</p></div>')} className="w-full h-[800px] border-none" title="Live Sync Preview" />
                                         </div>
                                     </div>
@@ -366,14 +366,14 @@ export default function MessageStylesPage() {
                     </DialogHeader>
                     
  <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
- <div className="w-full lg:w-1/2 p-8 border-r flex flex-col gap-8 overflow-y-auto bg-slate-50">
+ <div className="w-full lg:w-1/2 p-8 border-r flex flex-col gap-8 overflow-y-auto bg-muted/10">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Identity Label</Label>
- <Input value={aiName} onChange={e => setAiName(e.target.value)} placeholder="e.g. Modern Campus Dark Theme" className="h-12 rounded-xl bg-white border-primary/10 shadow-sm font-bold" />
+ <Input value={aiName} onChange={e => setAiName(e.target.value)} placeholder="e.g. Modern Campus Dark Theme" className="h-12 rounded-xl bg-card border-primary/10 shadow-sm font-bold" />
                             </div>
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Design Directives</Label>
- <Textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. Create a clean design with a deep blue header, centered white logo, and a minimal footer." className="min-h-[180px] rounded-2xl text-sm leading-relaxed bg-white border-primary/10 shadow-inner p-4" />
+ <Textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. Create a clean design with a deep blue header, centered white logo, and a minimal footer." className="min-h-[180px] rounded-2xl text-sm leading-relaxed bg-card border-primary/10 shadow-inner p-4" />
                             </div>
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Visual Inspiration (Optional)</Label>
@@ -385,14 +385,14 @@ export default function MessageStylesPage() {
                             </RainbowButton>
                         </div>
 
- <div className="w-full lg:w-1/2 p-8 flex flex-col bg-white">
+ <div className="w-full lg:w-1/2 p-8 flex flex-col bg-card">
  <div className="flex items-center justify-between mb-6">
  <Label className="text-[10px] font-semibold text-primary flex items-center gap-2"><Eye className="h-3 w-3" /> Live Render</Label>
                                 {generatedHtml && <Badge className="bg-emerald-50 text-emerald-600 border-none font-semibold text-[8px] uppercase ">Logic Verified</Badge>}
                             </div>
- <div className="flex-1 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden shadow-inner p-4">
+ <div className="flex-1 rounded-[2.5rem] bg-muted/10 border-2 border-dashed border-border flex items-center justify-center relative overflow-hidden shadow-inner p-4">
                                 {generatedHtml ? (
- <div className="w-full h-full bg-white rounded-2xl shadow-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: generatedHtml.replace('{{content}}', '<div style="background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-weight: 900; border-radius: 12px; margin: 20px;">[ PROTOTYPE CONTENT ]</div>') }} />
+ <div className="w-full h-full bg-card rounded-2xl shadow-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: generatedHtml.replace('{{content}}', '<div style="background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-weight: 900; border-radius: 12px; margin: 20px;">[ PROTOTYPE CONTENT ]</div>') }} />
                                 ) : (
  <div className="text-center space-y-4 opacity-20">
  <Palette size={64} className="mx-auto" />
@@ -426,7 +426,7 @@ export default function MessageStylesPage() {
                         </div>
                     </DialogHeader>
  <div className="flex-1 overflow-hidden relative bg-slate-100 p-12 flex justify-center">
- <div className="w-full max-w-[600px] bg-white rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden border">
+ <div className="w-full max-w-[600px] bg-card rounded-3xl shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden border">
  <ScrollArea className="h-full">
  <div className="p-4">
                                     {previewStyle && (
@@ -436,7 +436,7 @@ export default function MessageStylesPage() {
                             </ScrollArea>
                         </div>
                     </div>
- <DialogFooter className="p-4 bg-white border-t shrink-0">
+ <DialogFooter className="p-4 bg-card border-t shrink-0">
  <Button onClick={() => setPreviewStyle(null)} className="w-full h-14 rounded-2xl font-semibold text-xs">Exit Preview</Button>
                     </DialogFooter>
                 </DialogContent>

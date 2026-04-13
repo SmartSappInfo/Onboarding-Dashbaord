@@ -97,7 +97,6 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       render(
         <ContactDisplay
           entityId="entity_456"
-          entityId="school_789"
           workspaceId={mockWorkspaceId}
         />
       );
@@ -106,7 +105,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         expect(screen.getByText('Migrated Contact')).toBeInTheDocument();
       });
 
-      // Should resolve using entityId, not entityId
+      // Should resolve using entityId
       expect(resolveContact).toHaveBeenCalledWith('entity_456', mockWorkspaceId);
     });
   });
@@ -546,10 +545,9 @@ describe('ContactDisplay Component (Task 35.3)', () => {
       });
     });
 
-    it('should handle null entityId and entityId', () => {
+    it('should handle null entityId', () => {
       render(
         <ContactDisplay
-          entityId={null}
           entityId={null}
           workspaceId={mockWorkspaceId}
         />

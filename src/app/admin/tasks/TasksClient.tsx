@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
+import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
 import { format, isToday, isPast, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -103,7 +103,7 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon
     urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
     high: { label: 'High', color: 'text-orange-600 bg-orange-500/10 border-orange-200/20', icon: AlertTriangle },
     medium: { label: 'Medium', color: 'text-blue-600 bg-blue-500/10 border-blue-200/20', icon: Clock },
-    low: { label: 'Low', color: 'text-slate-500 bg-slate-500/10 border-slate-200/20', icon: Circle }
+    low: { label: 'Low', color: 'text-slate-500 bg-muted/100/10 border-slate-200/20', icon: Circle }
 };
 
 const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
@@ -112,7 +112,7 @@ const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: stri
     document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
     training: { label: 'Training', icon: GraduationCap, color: 'text-purple-500 bg-purple-500/10' },
     follow_up: { label: 'Follow Up', icon: Clock, color: 'text-indigo-500 bg-indigo-500/10' },
-    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-slate-500/10' }
+    general: { label: 'General Task', icon: CheckCircle2, color: 'text-slate-500 bg-muted/100/10' }
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -330,8 +330,8 @@ export default function TasksClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-background text-left">
- <div className="max-w-7xl mx-auto space-y-12 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-12 pb-32">
                 
                 {/* Executive KPI Stats */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -377,7 +377,7 @@ export default function TasksClient() {
                             <button 
                                 key={key}
                                 onClick={() => handleQuickCategorySelect(key)}
- className="group flex items-center gap-4 p-5 rounded-2xl bg-white border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
+ className="group flex items-center gap-4 p-5 rounded-2xl bg-card/50 border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
                             >
  <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", config.color)}>
  <config.icon className="h-5 w-5" />
@@ -423,12 +423,12 @@ export default function TasksClient() {
                             exit={{ y: 50, opacity: 0 }}
  className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
                         >
- <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
+ <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-border/50/10">
  <span className="px-4 text-[10px] font-semibold border-r border-white/10">{selectedIds.length} Selected</span>
- <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl">
+ <div className="flex gap-1.5 p-1 bg-card/5 rounded-xl">
  <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>
  <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold text-[9px] h-9 px-4">Purge Selected</Button>
- <Separator orientation="vertical" className="h-9 bg-white/10" />
+ <Separator orientation="vertical" className="h-9 bg-card/10" />
  <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
                                 </div>
                             </Card>
@@ -555,7 +555,7 @@ export default function TasksClient() {
                                                 </div>
                                             );
                                         }) : (
- <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
+ <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-background opacity-30 flex flex-col items-center gap-2">
  <EyeOff className="h-8 w-8 text-muted-foreground" />
  <p className="text-[10px] font-semibold ">No matching tasks in this phase</p>
                                             </div>
@@ -567,7 +567,7 @@ export default function TasksClient() {
                                                     setEditingTask({ status } as any);
                                                     setEditorOpen(true);
                                                 }}
- className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-white hover:border-primary/20 hover:text-primary transition-all group"
+ className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
                                             >
  <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
                                             </button>

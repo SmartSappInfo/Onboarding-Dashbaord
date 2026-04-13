@@ -231,7 +231,7 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                     onClick={() => toggleInclude(tag.id)}
  className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left',
-                      includeTagIds.includes(tag.id) ? 'bg-emerald-50' : 'hover:bg-muted/50'
+                      includeTagIds.includes(tag.id) ? 'bg-emerald-50' : 'hover:bg-background0'
                     )}
                   >
  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
@@ -318,7 +318,7 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                     onClick={() => toggleExclude(tag.id)}
  className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-xl transition-colors text-left',
-                      excludeTagIds.includes(tag.id) ? 'bg-rose-50' : 'hover:bg-muted/50'
+                      excludeTagIds.includes(tag.id) ? 'bg-rose-50' : 'hover:bg-background0'
                     )}
                   >
  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
@@ -407,7 +407,7 @@ export function TagAudienceSelector({ onChange, className }: TagAudienceSelector
                   </p>
  <div className="space-y-1.5">
                     {previewResult.preview.map(contact => (
- <div key={contact.id} className="flex items-center gap-3 p-2 rounded-xl bg-white border">
+ <div key={contact.id} className="flex items-center gap-3 p-2 rounded-xl bg-card border">
  <div className="h-7 w-7 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
  <Users className="h-3.5 w-3.5 text-primary" />
                         </div>

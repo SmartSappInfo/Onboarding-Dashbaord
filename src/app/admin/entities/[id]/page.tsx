@@ -207,7 +207,7 @@ export default function EntityDetailPage() {
 
     return (
  <div className={cn("h-full overflow-y-auto bg-background pb-32", weData.status === 'archived' && "grayscale opacity-80")}>
- <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
+ <div className="  space-y-8">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
  <div className="flex items-center gap-3">
                         <Button 
@@ -247,22 +247,22 @@ export default function EntityDetailPage() {
  <div className="absolute bottom-6 right-8 flex gap-3">
                              <Badge 
                                 variant={getStatusBadgeVariant(weData.status)} 
- className="h-10 px-6 text-[10px] font-semibold rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md"
+ className="h-10 px-6 text-[10px] font-semibold rounded-xl shadow-2xl border-none ring-4 ring-border/50/10 backdrop-blur-md"
                              >
                                 {weData.status}
                              </Badge>
                              {weData.lifecycleStatus && (
                                 <Badge 
  className={cn(
-                                        "h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md",
+                                        "h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-border/50/10 backdrop-blur-md",
                                         weData.lifecycleStatus === 'Active' ? "bg-emerald-500" : 
-                                        weData.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-slate-500"
+                                        weData.lifecycleStatus === 'Onboarding' ? "bg-blue-500" : "bg-muted/100"
                                     )}
                                 >
                                     {weData.lifecycleStatus}
                                 </Badge>
                              )}
-                             <Badge className="h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-white/10 backdrop-blur-md bg-primary/80">
+                             <Badge className="h-10 px-6 text-[10px] font-semibold uppercase  rounded-xl shadow-2xl border-none text-white ring-4 ring-border/50/10 backdrop-blur-md bg-primary/80">
                                 {weData.currentStageName || 'Welcome'}
                              </Badge>
                         </div>
@@ -336,7 +336,7 @@ export default function EntityDetailPage() {
                                             
                                             return contacts.length > 0 ? (
                                                 contacts.map((person, idx) => (
- <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors text-left">
+ <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-background transition-colors text-left">
  <div className="flex items-center gap-4 text-left">
  <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-semibold text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
  <div className="text-left">

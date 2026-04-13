@@ -106,7 +106,7 @@ export default function MediaSelectorDialog({
         </DialogHeader>
         
  <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-background">
- <div className="p-6 border-b bg-muted/5 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+ <div className="p-6 border-b bg-background flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
  <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full sm:w-auto">
  <TabsList className="bg-background border shadow-sm h-10 p-1 rounded-xl">
                         {TABS.map(tab => (

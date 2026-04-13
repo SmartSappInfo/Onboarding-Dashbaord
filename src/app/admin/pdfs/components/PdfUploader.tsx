@@ -125,7 +125,7 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
       {!stagedFile && (
  <div onDragEnter={handleDrag} className="relative">
  <Input ref={inputRef} id="pdf-upload" type="file" accept="application/pdf" onChange={(e) => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
- <label htmlFor="pdf-upload" className={cn("flex min-h-[250px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/30 hover:bg-muted/50', isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
+ <label htmlFor="pdf-upload" className={cn("flex min-h-[250px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/30 hover:bg-background0', isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer')}>
  <Upload className="h-12 w-12 text-muted-foreground mb-4" />
  <p className="text-lg font-medium">Drag & drop your PDF here</p>
  <p className="text-sm text-muted-foreground mt-1">or click to browse</p>

@@ -328,7 +328,7 @@ export default function NewMeetingPage() {
 
   if (isLoadingEntities) {
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  space-y-8 bg-background">
  <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
  <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
  <CardContent className="space-y-8">
@@ -342,7 +342,7 @@ export default function NewMeetingPage() {
   }
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  bg-background">
  <div className="max-w-5xl mx-auto space-y-8 text-left">
         
         {/* Header */}
@@ -372,7 +372,7 @@ export default function NewMeetingPage() {
                     "flex-1 flex items-center gap-3 p-3 rounded-xl transition-all duration-300 text-left min-w-[140px]",
                     isActive && "bg-primary/10 ring-1 ring-primary/20 shadow-sm",
                     isCompleted && "bg-emerald-50 dark:bg-emerald-950/20",
-                    !isActive && !isCompleted && "hover:bg-muted/50 opacity-60"
+                    !isActive && !isCompleted && "hover:bg-background0 opacity-60"
                   )}
                 >
  <div className={cn(
@@ -434,7 +434,7 @@ export default function NewMeetingPage() {
                                                 const entity = entities?.find((s) => s.id === entityId);
                                                 field.onChange(entity);
                                                 if (entity && !form.getValues('entitySlug')) {
-                                                    form.setValue('entitySlug', entity.slug, { shouldValidate: true });
+                                                    form.setValue('entitySlug', entity.slug || '', { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
@@ -532,7 +532,7 @@ export default function NewMeetingPage() {
                                                 <Input 
                                                     {...field} 
                                                     placeholder="e.g. school-name" 
- className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
+ className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-card border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4 transition-all" 
                                                 />
                                             </FormControl>
                                         </div>
@@ -618,7 +618,7 @@ export default function NewMeetingPage() {
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Approval Mode</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
- <SelectTrigger className="h-10 rounded-xl bg-white focus:ring-1 focus:ring-primary/20">
+ <SelectTrigger className="h-10 rounded-xl bg-card focus:ring-1 focus:ring-primary/20">
                                                             <SelectValue placeholder="Approval mode..." />
                                                         </SelectTrigger>
                                                     </FormControl>

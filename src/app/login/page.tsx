@@ -364,9 +364,9 @@ export default function LoginPage() {
           className="!absolute inset-0 opacity-70"
         />
         <div className="relative z-10 flex h-full flex-col items-center justify-center p-8 text-center text-white">
-          <div className="relative rounded-full bg-white/20 p-2 backdrop-blur-sm">
-            <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-fade"></div>
-            <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-white">
+          <div className="relative rounded-full bg-primary/20 p-2 backdrop-blur-sm">
+            <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse-fade"></div>
+            <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-card border border-white/5 shadow-2xl">
               <SmartSappIcon className="h-20 w-20 text-primary" variant="primary" />
             </div>
           </div>

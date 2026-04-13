@@ -36,7 +36,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, School, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables } from '@/lib/messaging-utils';
 import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
@@ -50,7 +50,7 @@ interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
     variables: VariableDefinition[];
     styles: MessageStyle[];
-    schools?: School[];
+    entities?: WorkspaceEntity[];
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
@@ -63,7 +63,7 @@ export function TemplateWorkshop({
     initialTemplate,
     variables,
     styles,
-    schools,
+    entities,
     meetings,
     surveys,
     pdfs,
@@ -213,7 +213,7 @@ export function TemplateWorkshop({
                     {step === 1 && (
  <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
  <div className="max-w-3xl mx-auto space-y-8 pb-20 text-left">
- <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
+ <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
@@ -246,8 +246,8 @@ export function TemplateWorkshop({
  <div className="space-y-4">
  <Label className="text-[10px] font-semibold text-primary ml-1">Channel Logic</Label>
  <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
- <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'email' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
- <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
+ <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'email' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
+ <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
                                                 </div>
                                             </div>
  <div className="space-y-4">
@@ -295,9 +295,9 @@ export function TemplateWorkshop({
  <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
  <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
  <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
- <div className="px-2 py-2 border-b bg-muted/10 shrink-0 text-left">
+ <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
                                         {channel === 'email' ? (
- <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
+ <TabsList className="grid w-full grid-cols-3 h-10 bg-background0 p-1 rounded-xl">
  <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
  <TabsTrigger value="tags" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
  <TabsTrigger value="properties" className="text-[9px] font-semibold gap-1.5"><Settings2 className="h-3 w-3" /> Props</TabsTrigger>
@@ -307,7 +307,7 @@ export function TemplateWorkshop({
                                         )}
                                     </div>
                                     
- <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-muted/5 border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
+ <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-background border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
  <ScrollArea className="flex-1">
  <div className="p-4 space-y-8 text-left">
  <div className="grid grid-cols-2 gap-3">
@@ -322,11 +322,11 @@ export function TemplateWorkshop({
                                         </ScrollArea>
                                     </TabsContent>
                                     
- <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-muted/5 border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
+ <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
  <ScrollArea className="flex-1">
  <div className="p-4 space-y-2">
                                                 {filteredVars.map(v => (
- <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-white shadow-sm">
+ <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
  <span className="text-[8px] font-semibold text-primary opacity-60">{v.sourceName || 'Core'}</span>
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
@@ -336,7 +336,7 @@ export function TemplateWorkshop({
                                         </ScrollArea>
                                     </TabsContent>
                                     
- <TabsContent value="properties" className="m-0 flex-1 min-h-0 bg-muted/5 border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
+ <TabsContent value="properties" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
  <ScrollArea className="flex-1">
  <div className="p-4">
                                                 {selectedBlockId ? (
@@ -356,12 +356,12 @@ export function TemplateWorkshop({
  <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
                             </div>
 
- <div className="flex-1 flex flex-col bg-muted/10 min-w-0">
+ <div className="flex-1 flex flex-col bg-background min-w-0">
  <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
  <div className="flex items-center gap-4">
                                         {channel === 'email' && (
                                             <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)}>
- <TabsList className="bg-muted/50 p-1 rounded-xl h-9 border">
+ <TabsList className="bg-background0 p-1 rounded-xl h-9 border">
  <TabsTrigger value="designer" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
  <TabsTrigger value="code" className="text-[9px] font-semibold gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
                                                 </TabsList>
@@ -394,7 +394,7 @@ export function TemplateWorkshop({
  <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
  <div className="max-w-4xl mx-auto p-8 pb-64">
                                         {channel === 'email' && editorMode === 'designer' ? (
- <div className="max-w-[600px] mx-auto bg-white shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden text-left">
+ <div className="max-w-[600px] mx-auto bg-card shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden text-left">
  <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
  <div className="p-12 space-y-2">
                                                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -445,7 +445,7 @@ export function TemplateWorkshop({
                             isSimLoading={isSimLoading} 
                             simEntity={simEntity} setSimEntity={setSimEntity} 
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId} 
-                            schools={schools} meetings={meetings} surveys={surveys} pdfs={pdfs}
+                            entities={entities} meetings={meetings} surveys={surveys} pdfs={pdfs}
                             resolvedPreview={(tmpl, vars) => {
                                 if (channel === 'email') {
                                     const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;

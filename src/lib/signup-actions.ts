@@ -83,15 +83,17 @@ export async function handleSignupAction(input: SignupInput) {
     };
     
     // Step 1: Create entity record (Requirement 10.1)
-    const createResult = await createEntityAction({
-      organizationId: input.organizationId,
-      entityType: 'institution',
-      name: input.name,
-      contacts: input.focalPersons,
-      institutionData,
-      userId: input.userId || 'system',
-      workspaceId: input.workspaceId,
-    });
+    const createResult = await createEntityAction(
+      {
+        name: input.name,
+        contacts: input.focalPersons,
+        institutionData,
+      },
+      input.userId || 'system',
+      input.workspaceId,
+      'institution',
+      input.organizationId
+    );
     
     if (!createResult.success) {
       return {
@@ -100,7 +102,14 @@ export async function handleSignupAction(input: SignupInput) {
       };
     }
     
-    const createdEntityId = createResult.entityId!;
+    if (!createResult.id) {
+      return {
+        success: false,
+        error: 'Entity creation succeeded but no ID was returned',
+      };
+    }
+    
+    const createdEntityId = createResult.id;
     
     // Step 2: Link entity to workspace (Requirement 10.2)
     const linkResult = await linkEntityToWorkspaceAction({

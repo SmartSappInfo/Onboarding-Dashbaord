@@ -50,29 +50,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 1: Create entity record (Requirement 24.5)
-    const entityResult = await createEntityAction({
-      organizationId,
+    const entityResult = await createEntityAction(
+      {
+        name,
+        contacts: contacts || [],
+        globalTags: globalTags || [],
+        institutionData: entityType === 'institution' ? institutionData : undefined,
+        familyData: entityType === 'family' ? familyData : undefined,
+        personData: entityType === 'person' ? personData : undefined,
+        userName,
+        userEmail
+      },
+      userId || 'system',
       workspaceId,
-      entityType: entityType as EntityType,
-      name,
-      contacts: contacts || [],
-      globalTags: globalTags || [],
-      institutionData: entityType === 'institution' ? institutionData : undefined,
-      familyData: entityType === 'family' ? familyData : undefined,
-      personData: entityType === 'person' ? personData : undefined,
-      userId: userId || 'system',
-      userName,
-      userEmail
-    });
+      entityType as EntityType,
+      organizationId
+    );
 
-    if (!entityResult.success || !entityResult.entityId) {
+    if (!entityResult.success || !entityResult.id) {
       return NextResponse.json(
         { error: entityResult.error || 'Failed to create entity' },
         { status: 500 }
       );
     }
 
-    const entityId = entityResult.entityId;
+    const entityId = entityResult.id;
 
     // Step 2: Create workspace_entity record (Requirement 24.5)
     const workspaceEntityResult = await linkEntityToWorkspaceAction({

@@ -49,7 +49,7 @@ export default function ValidationErrorModal({ open, onOpenChange, errors, onFix
                         {errors.map((error, idx) => (
                             <div 
                                 key={idx} 
- className="p-4 hover:bg-muted/50 transition-colors cursor-pointer group"
+ className="p-4 hover:bg-background0 transition-colors cursor-pointer group"
                                 onClick={() => onFix(error.elementId)}
                             >
  <div className="flex justify-between items-start gap-4">

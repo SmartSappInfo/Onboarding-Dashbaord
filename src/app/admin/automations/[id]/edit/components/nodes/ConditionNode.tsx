@@ -23,7 +23,7 @@ export function ConditionNode({ data, selected }: any) {
  <Handle type="target" position={Position.Top} className="w-3 h-3 bg-amber-500 border-2 border-white !-top-1.5 shadow-md" />
             
  <Card className={cn(
-                "w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden shadow-sm text-left",
+                "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left",
                 selected ? "border-amber-500 shadow-2xl ring-4 ring-amber-500/10" : "border-amber-200"
             )}>
  <div className="bg-amber-500 p-3 flex items-center justify-between border-b border-amber-600/20">
@@ -31,7 +31,7 @@ export function ConditionNode({ data, selected }: any) {
  <ArrowRightLeft className="h-4 w-4" />
  <span className="text-[10px] font-semibold ">Evaluate Logic</span>
                     </div>
- <div className="h-1.5 w-1.5 rounded-full bg-white opacity-40" />
+ <div className="h-1.5 w-1.5 rounded-full bg-card opacity-40" />
                 </div>
  <div className="p-4 space-y-2">
  <p className="text-xs font-semibold text-foreground leading-tight">{data.label || 'Decision Branch'}</p>

@@ -23,7 +23,7 @@ export function DelayNode({ data, selected }: any) {
  <Handle type="target" position={Position.Top} className="w-3 h-3 bg-purple-500 border-2 border-white !-top-1.5 shadow-md" />
             
  <Card className={cn(
-                "w-64 rounded-2xl border-2 transition-all duration-300 bg-white overflow-hidden shadow-sm text-left",
+                "w-64 rounded-2xl border-2 transition-all duration-300 bg-card overflow-hidden shadow-sm text-left",
                 selected ? "border-purple-500 shadow-2xl ring-4 ring-purple-500/10" : "border-purple-200"
             )}>
  <div className="bg-purple-500 p-3 flex items-center justify-between border-b border-purple-600/20">

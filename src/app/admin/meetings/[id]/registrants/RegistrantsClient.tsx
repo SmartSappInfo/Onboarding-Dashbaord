@@ -135,7 +135,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   if (meetingError || registrantsError) {
       const error = meetingError || registrantsError;
       return (
- <div className="p-8 max-w-7xl mx-auto">
+ <div className="p-8 ">
  <Alert variant="destructive" className="rounded-2xl border-none ring-1 ring-destructive/20 bg-destructive/5">
  <AlertCircle className="h-4 w-4" />
  <AlertTitle className="font-semibold text-[10px]">Database Error</AlertTitle>
@@ -151,8 +151,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
- <div className="max-w-7xl mx-auto space-y-8 text-left">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-8 text-left">
           
         {/* Header */}
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -258,7 +258,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
  <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
- <TableRow className="bg-muted/10 hover:bg-muted/10">
+ <TableRow className="bg-background hover:bg-background">
  <TableHead className="text-[10px] font-semibold h-12">Name</TableHead>
  <TableHead className="text-[10px] font-semibold ">Registered</TableHead>
  <TableHead className="text-[10px] font-semibold ">Status</TableHead>

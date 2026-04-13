@@ -75,13 +75,13 @@ export default function PerspectiveSwitcher() {
                         onClick={() => setActiveTrack(p.id)}
  className={cn(
                             "rounded-xl p-3 gap-4 group transition-all mb-1",
-                            activeTrack === p.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-muted/50"
+                            activeTrack === p.id ? "bg-primary text-white shadow-xl shadow-primary/20" : "hover:bg-background0"
                         )}
                         style={activeTrack === p.id ? { backgroundColor: p.color } : {}}
                     >
  <div className={cn(
                             "p-2 rounded-lg", 
-                            activeTrack === p.id ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                            activeTrack === p.id ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                         )}>
                             {p.id === 'prospect' ? <Target size={16} /> : <Zap size={16} />}
                         </div>

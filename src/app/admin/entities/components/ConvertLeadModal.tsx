@@ -97,7 +97,7 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
 
  <div className="p-8 space-y-8 bg-background text-left">
  <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border shadow-inner text-left">
- <div className="p-2 bg-white rounded-xl shadow-sm shrink-0 text-primary text-left">
+ <div className="p-2 bg-card rounded-xl shadow-sm shrink-0 text-primary text-left">
  <Building className="h-5 w-5" />
                         </div>
  <div className="min-w-0 flex-1 text-left">
@@ -121,7 +121,7 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
                                     onClick={() => setTargetPipelineId(p.id)}
  className={cn(
                                         "w-full flex flex-col items-start p-4 rounded-2xl border-2 transition-all text-left",
-                                        targetPipelineId === p.id ? "bg-primary/5 border-primary shadow-md" : "bg-muted/10 border-transparent hover:bg-muted/30"
+                                        targetPipelineId === p.id ? "bg-primary/5 border-primary shadow-md" : "bg-background border-transparent hover:bg-muted/30"
                                     )}
                                 >
  <div className="flex items-center justify-between w-full mb-1 text-left">

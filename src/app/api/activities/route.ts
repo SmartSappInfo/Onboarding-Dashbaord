@@ -34,11 +34,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Prefer entityId when both provided (Requirement 24.1)
-    const identifier = { entityId };
-
     // Get activities using server action
-    const activities = await getActivitiesForContact(identifier, workspaceId, limit);
+    const activities = await getActivitiesForContact(entityId, workspaceId, limit);
 
     // Apply type filter if provided
     let filteredActivities = activities;

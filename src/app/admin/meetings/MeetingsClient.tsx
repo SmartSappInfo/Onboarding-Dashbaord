@@ -119,7 +119,7 @@ export default function MeetingsHubClient() {
 
   const entityLogoMap = useMemo(() => {
     if (!globalEntities) return new Map<string, string | undefined>();
-    return new Map(globalEntities.map(s => [s.id, s.institutionData?.logoUrl || s.logoUrl]));
+    return new Map(globalEntities.map(s => [s.id, s.institutionData?.logoUrl]));
   }, [globalEntities]);
 
   const entityEmailMap = useMemo(() => {
@@ -297,8 +297,8 @@ export default function MeetingsHubClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background">
+ <div className=" space-y-8">
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
  <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
  <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl">
@@ -373,7 +373,7 @@ export default function MeetingsHubClient() {
                                 return (
                                 <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
-                                        <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                                        <Avatar className="h-10 w-10 ring-2 ring-border/50 shadow-sm">
                                         <AvatarImage src={logoUrl} alt={safeEntityName} />
                                         <AvatarFallback className="font-bold text-xs">{getInitials(safeEntityName)}</AvatarFallback>
                                         </Avatar>

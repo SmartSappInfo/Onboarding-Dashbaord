@@ -127,16 +127,13 @@ export async function PATCH(
     // Update entity if identity fields provided (Requirement 11.4)
     const hasIdentityUpdates = name || contacts || globalTags || institutionData || familyData || personData;
     if (hasIdentityUpdates) {
-      const entityResult = await updateEntityAction({
+      const entityResult = await updateEntityAction(
         entityId,
+        { name, contacts, institutionData, familyData, personData },
+        'api-user',
         workspaceId,
-        userId: 'api-user', // TODO: Get from auth token
-        name,
-        contacts,
-        institutionData,
-        familyData,
-        personData
-      });
+        'default' // organizationId fallback
+      );
 
       if (!entityResult.success) {
         return NextResponse.json(

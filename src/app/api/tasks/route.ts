@@ -34,11 +34,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Prefer entityId when both provided (Requirement 24.1)
-    const identifier = { entityId };
-
     // Get tasks using server action
-    const tasks = await getTasksForContact(identifier, workspaceId);
+    const tasks = await getTasksForContact(entityId, workspaceId);
 
     // Apply additional filters if provided
     let filteredTasks = tasks;

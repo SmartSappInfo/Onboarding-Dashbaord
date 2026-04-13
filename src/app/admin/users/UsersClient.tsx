@@ -91,8 +91,8 @@ export default function UsersClient() {
  if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-10 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-10 pb-32">
         
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
@@ -112,7 +112,7 @@ export default function UsersClient() {
  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Permission Matrix Preview */}
  <div className="lg:col-span-1 space-y-6">
- <Card className="rounded-[2rem] border-none ring-1 ring-border bg-white overflow-hidden shadow-sm">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border bg-card overflow-hidden shadow-sm">
  <CardHeader className="bg-primary/5 border-b pb-4">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Zap className="h-3 w-3" /> Collective Logic
@@ -133,8 +133,8 @@ export default function UsersClient() {
                             </div>
                         ))}
  <Separator className="opacity-50" />
- <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-inner">
- <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+ <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 shadow-inner">
+ <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
  <div className="space-y-1">
  <p className="text-[9px] font-semibold text-blue-900 ">Additive Access</p>
  <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter text-left">
@@ -173,12 +173,12 @@ export default function UsersClient() {
  <TableRow key={user.id} className={cn("group hover:bg-muted/30 transition-colors", updatingId === user.id && "opacity-50")}>
  <TableCell className="pl-8 py-6">
  <div className="relative">
- <Avatar className="h-11 w-11 ring-4 ring-white shadow-xl">
+ <Avatar className="h-11 w-11 ring-4 ring-border/50 shadow-xl">
                                                     <AvatarImage src={user.photoURL} alt={user.name} />
  <AvatarFallback className="font-semibold text-xs">{getInitials(user.name)}</AvatarFallback>
                                                 </Avatar>
                                                 {updatingId === user.id && (
- <div className="absolute inset-0 bg-white/60 rounded-full flex items-center justify-center">
+ <div className="absolute inset-0 bg-card/60 rounded-full flex items-center justify-center">
  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                                                     </div>
                                                 )}

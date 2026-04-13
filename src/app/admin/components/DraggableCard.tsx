@@ -9,9 +9,10 @@ import * as React from 'react';
 interface DraggableCardProps extends React.HTMLAttributes<HTMLDivElement> {
   id: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }
 
-export function DraggableCard({ id, children, className }: DraggableCardProps) {
+export function DraggableCard({ id, children, className, disabled }: DraggableCardProps) {
   const {
     attributes,
     listeners,
@@ -19,7 +20,7 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -29,16 +30,18 @@ export function DraggableCard({ id, children, className }: DraggableCardProps) {
   };
 
   return (
- <div ref={setNodeRef} style={style} className={cn("relative group", className)}>
+    <div ref={setNodeRef} style={style} className={cn("relative group", className)}>
+      {!disabled && (
         <button
-            {...attributes}
-            {...listeners}
- className="absolute top-4 right-4 z-10 p-1 bg-card/50 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Drag to reorder"
+          {...attributes}
+          {...listeners}
+          className="absolute top-4 right-4 z-10 p-1 bg-card/50 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Drag to reorder"
         >
- <GripVertical className="h-5 w-5" />
+          <GripVertical className="h-5 w-5" />
         </button>
-        {children}
+      )}
+      {children}
     </div>
   );
 }

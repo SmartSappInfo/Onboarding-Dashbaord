@@ -442,7 +442,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
                     {/* Rate and Discount Adjustment */}
  <div className={cn(
                         "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500 text-left",
-                        watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border opacity-40 pointer-events-none"
+                        watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-background border-border opacity-40 pointer-events-none"
                     )}>
  <div className="flex items-center gap-3 mb-6 text-left">
  <div className="p-2 bg-primary text-white rounded-lg shadow-sm text-left"><Target className="h-4 w-4" /></div>
@@ -463,7 +463,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
                                                 field.onChange(val);
                                                 handleDiscountChange(val);
                                             }}
- className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-semibold text-xl text-center" 
+ className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-semibold text-xl text-center" 
                                         />
                                     </FormControl>
  <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Specific fee reduction percentage</FormDescription>
@@ -482,7 +482,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
                                                 field.onChange(val);
                                                 handleRateChange(val);
                                             }}
- className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-semibold text-xl text-center" 
+ className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-semibold text-xl text-center" 
                                         />
                                     </FormControl>
  <FormDescription className="text-[9px] font-bold tracking-tighter opacity-60 text-left">Final billed unit cost</FormDescription>
@@ -657,7 +657,7 @@ export default function EditEntityPage() {
   const { singular } = useTerminology();
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+ <div className="h-full overflow-y-auto  bg-background">
  <div className="max-w-5xl mx-auto space-y-8">
  {entityId ? <EditEntityForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">{singular} context not found.</p>}
       </div>

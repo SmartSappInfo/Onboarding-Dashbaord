@@ -30,7 +30,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         workspaceIds: [mockWorkspaceId],
         entityId: 'entity_456',
         entityType: 'institution',
-        entityId: null,
         channel: 'email',
         recipient: 'test@example.com',
         body: 'Test message',
@@ -198,7 +197,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -249,7 +247,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -300,7 +297,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -356,7 +352,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -463,7 +458,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -541,7 +535,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -614,7 +607,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {
@@ -673,7 +665,6 @@ describe('MessageContactDisplay Component (Task 35.3)', () => {
         providerId: null,
         providerStatus: null,
         variables: {},
-        entityId: null
       };
 
       const mockContact: ResolvedContact = {

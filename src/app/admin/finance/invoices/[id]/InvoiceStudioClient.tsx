@@ -126,7 +126,7 @@ export default function InvoiceStudioClient() {
     const isFinalized = invoice.status !== 'draft';
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+ <div className="h-full overflow-y-auto  bg-background text-left">
  <div className="max-w-6xl mx-auto space-y-8 pb-32">
                 
  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -153,7 +153,7 @@ export default function InvoiceStudioClient() {
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Line Items Editor */}
- <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+ <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b p-8">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export default function InvoiceStudioClient() {
                         </CardHeader>
  <CardContent className="p-0">
                             <Table>
- <TableHeader className="bg-muted/10">
+ <TableHeader className="bg-background">
                                     <TableRow>
  <TableHead className="pl-8 text-[10px] font-semibold py-4">Item Detail</TableHead>
  <TableHead className="w-24 text-[10px] font-semibold text-center">Qty</TableHead>
@@ -237,7 +237,7 @@ export default function InvoiceStudioClient() {
 
                     {/* Summary & Adjustments */}
  <div className="space-y-8">
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
  <CardHeader className="bg-primary/5 border-b p-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Calculator className="h-4 w-4" /> Logic Reconciliation

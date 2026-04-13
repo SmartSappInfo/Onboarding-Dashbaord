@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface ContactDisplayProps {
   entityId?: string | null;
-  entityId?: string | null;
+  schoolId?: string | null;
   displayName?: string | null;
   entityName?: string | null;
   entityType?: 'institution' | 'family' | 'person' | null;
@@ -64,6 +64,7 @@ const ENTITY_TYPE_ICONS = {
  */
 export function ContactDisplay({
   entityId,
+  schoolId,
   displayName,
   entityName,
   entityType: providedEntityType,
@@ -86,16 +87,16 @@ export function ContactDisplay({
     if (displayName || entityName) {
       setContactName(displayName ?? entityName ?? null);
       setEntityType(providedEntityType ?? null);
-      setIsLegacy(!entityId && !!entityId);
+      setIsLegacy(!entityId && !!schoolId);
       setShouldResolve(false);
       return;
     }
 
     // If we only have IDs, we need to resolve via adapter
-    if (entityId || entityId) {
+    if (entityId || schoolId) {
       setShouldResolve(true);
     }
-  }, [entityId, displayName, entityName, providedEntityType]);
+  }, [entityId, schoolId, displayName, entityName, providedEntityType]);
 
   // Resolve contact via Contact Adapter if needed
   React.useEffect(() => {
@@ -104,7 +105,7 @@ export function ContactDisplay({
     async function resolveContact() {
       setIsLoading(true);
       try {
-        const identifier = entityId || entityId;
+        const identifier = entityId || schoolId;
         
         if (!identifier) {
           setContactName(null);
@@ -139,7 +140,7 @@ export function ContactDisplay({
     }
 
     resolveContact();
-  }, [shouldResolve, entityId, workspaceId]);
+  }, [shouldResolve, entityId, schoolId, workspaceId]);
 
   if (isLoading) {
     return <Skeleton className={cn("h-4 w-32", className)} />;
@@ -178,6 +179,7 @@ export function ContactDisplay({
  */
 export function ContactDisplayInline({
   entityId,
+  schoolId,
   displayName,
   entityName,
   entityType: providedEntityType,
@@ -189,7 +191,7 @@ export function ContactDisplayInline({
   return (
     <ContactDisplay
       entityId={entityId}
-      entityId={entityId}
+      schoolId={schoolId}
       displayName={displayName}
       entityName={entityName}
       entityType={providedEntityType}

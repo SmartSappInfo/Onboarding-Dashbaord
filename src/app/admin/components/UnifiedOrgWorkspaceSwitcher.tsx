@@ -131,9 +131,9 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                 <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
                         size="lg"
- className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl h-14 bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+ className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl h-14 bg-card/5 hover:bg-card/10 border border-white/10 transition-all group"
                     >
- <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-white text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
+ <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-card text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
                             {activeOrganization?.logoUrl ? (
  <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
                             ) : (
@@ -302,7 +302,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                             >
  <div className={cn(
                                                                     "p-1.5 rounded-lg shrink-0",
-                                                                    isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                                                    isActive ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                                                                 )}>
  <WScopeIcon className="h-4 w-4" />
                                                                 </div>
@@ -319,7 +319,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                                 variant={isActive ? "secondary" : "outline"}
  className={cn(
                                                                                     "text-[8px] font-bold uppercase px-1 h-3.5",
-                                                                                    isActive && "bg-white/20 text-white border-white/30"
+                                                                                    isActive && "bg-card/20 text-white border-white/30"
                                                                                 )}
                                                                             >
                                                                                 {wScopeLabel}
@@ -379,7 +379,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                     >
  <div className={cn(
                                             "p-2 rounded-lg shrink-0",
-                                            isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                            isActive ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                                         )}>
  <WScopeIcon className="h-4 w-4" />
                                         </div>
@@ -391,7 +391,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                         variant={isActive ? "secondary" : "outline"}
  className={cn(
                                                             "text-[8px] font-bold uppercase px-1.5 h-4",
-                                                            isActive && "bg-white/20 text-white border-white/30"
+                                                            isActive && "bg-card/20 text-white border-white/30"
                                                         )}
                                                     >
                                                         {wScopeLabel}

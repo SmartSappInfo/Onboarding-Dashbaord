@@ -139,7 +139,7 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
             );
         case 'image':
             return block.url ? (
-                <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
+                <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border/50 bg-card", containerClasses)}>
                     <Image src={block.url} alt="Result content" fill className="object-cover" />
                 </div>
             ) : null;
@@ -168,7 +168,7 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
                 </div>
             );
         case 'divider':
-            return <hr className="w-full my-8 border-t-2 border-slate-200" />;
+            return <hr className="w-full my-8 border-t-2 border-border/30" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} displayMode={displayMode} />;
         default:
@@ -179,7 +179,7 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
 export default function ResultRenderer({ survey, response, page }: ResultRendererProps) {
     if (!page) {
         return (
-            <div className="text-center py-16 sm:py-20 bg-white rounded-2xl shadow-xl border p-6 sm:p-10">
+            <div className="text-center py-16 sm:py-20 bg-card rounded-2xl shadow-xl border border-border/50 p-6 sm:p-10">
                 <div className="flex justify-center">
                     <SmartSappLogo className="h-10 sm:h-12 mb-8" />
                 </div>

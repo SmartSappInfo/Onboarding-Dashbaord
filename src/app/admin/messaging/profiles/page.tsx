@@ -280,8 +280,8 @@ export default function SenderProfilesPage() {
     }
 
     return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-8">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">
  {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
@@ -305,7 +305,7 @@ export default function SenderProfilesPage() {
  <div className="space-y-6">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
- <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS Uplink" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" />
+ <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS Uplink" className="h-12 rounded-xl bg-card border-none shadow-inner font-bold" />
                                     </div>
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Shared Visibility</Label>
@@ -316,7 +316,7 @@ export default function SenderProfilesPage() {
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel Medium</Label>
                                         <Select value={channel} onValueChange={(v: any) => setChannel(v)}>
- <SelectTrigger className="h-12 rounded-xl bg-white border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
+ <SelectTrigger className="h-12 rounded-xl bg-card border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
  <SelectContent className="rounded-xl">
                                                 <SelectItem value="sms">SMS (Sender ID)</SelectItem>
                                                 <SelectItem value="email">Email (From Addr)</SelectItem>
@@ -329,7 +329,7 @@ export default function SenderProfilesPage() {
                                             value={identifier} 
                                             onChange={e => setIdentifier(e.target.value)} 
                                             placeholder={channel === 'sms' ? 'SMARTSAPP' : 'onboarding@enroll.smartsapp.com'} 
- className="h-12 rounded-xl bg-white border-none shadow-inner font-mono font-bold"
+ className="h-12 rounded-xl bg-card border-none shadow-inner font-mono font-bold"
                                         />
                                     </div>
                                 </div>

@@ -23,7 +23,6 @@ import type { Firestore } from 'firebase/firestore';
 type MockDocumentData = {
   id: string;
   entityId?: string;
-  entityId?: string;
   [key: string]: any;
 };
 

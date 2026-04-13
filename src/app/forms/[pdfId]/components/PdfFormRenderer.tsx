@@ -351,7 +351,7 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
     const applyTransform = (val: string) => field.textTransform === 'uppercase' ? val.toUpperCase() : field.textTransform === 'capitalize' ? toTitleCase(val) : val;
 
     if (field.type === 'static-text' || field.type === 'variable' || isFinalizedView) {
-        let text = field.type === 'static-text' ? field.staticText : field.type === 'variable' ? resolveVariableValue(field.variableKey || '', school) : value;
+        let text = field.type === 'static-text' ? field.staticText : field.type === 'variable' ? resolveVariableValue(field.variableKey || '', entity) : value;
         return <div className="w-full h-full flex overflow-visible" style={fieldStyle}>{(field.type === 'signature' || field.type === 'photo') ? (text && <img src={text} alt="M" className="w-full h-full object-contain" />) : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "text-black/80")}>{field.type === 'date' && text ? format(new Date(text), 'PPP') : applyTransform(String(text || ''))}</span>}</div>;
     }
 
@@ -379,7 +379,7 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
   if (isFinalizedView) {
       const activeSubmissionId = existingSubmissionId || createdSubmissionId;
       return (
-          <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
+          <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
               <AlreadySignedGate 
                 entityName={identity?.name || entity?.displayName} 
@@ -393,9 +393,9 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
 
   return (
     <FormProvider {...methods}>
-        <div className="light flex flex-col h-[100dvh] overflow-hidden relative" style={{ backgroundColor: pdfForm.backgroundColor || '#F1F5F9' }}>
+        <div className="flex flex-col h-[100dvh] overflow-hidden relative" style={{ backgroundColor: pdfForm.backgroundColor || '#F1F5F9' }}>
             <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
-            <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0 text-left">
+            <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0 text-left">
                 {entity?.primaryEmail ? <div className="relative h-9 w-12 shrink-0"><CheckCircle2 className="text-primary h-6 w-6" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
                 <div className="flex flex-col min-w-0 -ml-1">
                     <h1 className="font-black truncate max-w-[200px] leading-tight text-xs uppercase tracking-tight">
@@ -421,7 +421,7 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
             <main className="flex-grow relative overflow-hidden z-10">
                 <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
                     <div ref={pageContainerRef} className="p-2 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }}>
-                        {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] rounded-lg shadow-lg bg-card" /> : (
+                        {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] rounded-lg shadow-lg bg-white" /> : (
                             <div className="flex flex-col gap-4 sm:gap-8 pb-8">
                                 {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                     <div key={index} className="page-capture-wrapper" data-page-number={index + 1}>
@@ -435,7 +435,7 @@ export default function PdfFormRenderer({ pdfForm, entity, identity, initialData
                 </ScrollArea>
 
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3 print:hidden">
-                    <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
+                    <div className="flex flex-col items-center bg-white/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>

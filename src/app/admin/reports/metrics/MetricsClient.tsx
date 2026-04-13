@@ -174,8 +174,8 @@ export default function MetricsClient() {
   }
 
   return (
- <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
- <div className="max-w-7xl mx-auto space-y-12 pb-32">
+ <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className=" space-y-12 pb-32">
         {/* Header */}
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
@@ -268,8 +268,8 @@ export default function MetricsClient() {
  <TabsContent value="overview" className="space-y-8">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Unique Entities by Type */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-sm font-semibold tracking-wide">
                     Unique Entities by Type
                   </CardTitle>
@@ -302,8 +302,8 @@ export default function MetricsClient() {
               </Card>
 
               {/* Workspace Memberships */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-sm font-semibold tracking-wide">
                     Workspace Memberships
                   </CardTitle>
@@ -331,8 +331,8 @@ export default function MetricsClient() {
  <TabsContent value="workspaces" className="space-y-8">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Pipeline Activity */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-sm font-semibold tracking-wide">
                     Active in Pipeline
                   </CardTitle>
@@ -355,8 +355,8 @@ export default function MetricsClient() {
               </Card>
 
               {/* Workspace Details Table */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-sm font-semibold tracking-wide">
                     Workspace Details
                   </CardTitle>
@@ -369,7 +369,7 @@ export default function MetricsClient() {
                     {workspaceMetrics.map((workspace) => (
                       <div
                         key={workspace.workspaceId}
- className="flex items-center justify-between p-4 bg-muted/5 rounded-xl"
+ className="flex items-center justify-between p-4 bg-background rounded-xl"
                       >
                         <div>
  <p className="font-bold text-sm">{workspace.workspaceName}</p>
@@ -404,8 +404,8 @@ export default function MetricsClient() {
 
           {/* Shared Contacts Tab - Requirement 21.5 */}
  <TabsContent value="shared" className="space-y-8">
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
- <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+ <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-sm font-semibold tracking-wide">
                   Shared Contacts Report
                 </CardTitle>
@@ -425,7 +425,7 @@ export default function MetricsClient() {
                       return (
                         <div
                           key={contact.entityId}
- className="p-6 bg-muted/5 rounded-xl space-y-4"
+ className="p-6 bg-background rounded-xl space-y-4"
                         >
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
@@ -449,7 +449,7 @@ export default function MetricsClient() {
                             {contact.workspaces.map((workspace) => (
                               <div
                                 key={workspace.workspaceId}
- className="p-3 bg-white rounded-lg border text-sm"
+ className="p-3 bg-card rounded-lg border text-sm"
                               >
  <p className="font-semibold">{workspace.workspaceName}</p>
                                 {workspace.stageName && (
@@ -495,7 +495,7 @@ function StatCard({
   bg: string;
 }) {
   return (
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+ <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all">
  <CardContent className="p-6 flex items-center gap-5">
         <div
  className={cn(

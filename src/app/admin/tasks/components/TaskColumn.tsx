@@ -45,7 +45,7 @@ export default function TaskColumn({ status, tasks, onTaskClick }: TaskColumnPro
             )}>
  <CardHeader className="p-5 pb-3 shrink-0 flex flex-row items-center justify-between">
  <div className="flex items-center gap-3">
- <div className="p-2 bg-white rounded-xl shadow-sm">
+ <div className="p-2 bg-card rounded-xl shadow-sm">
  <Icon className="h-4 w-4 text-muted-foreground" />
                         </div>
  <CardTitle className="text-xs font-semibold text-foreground/80">{config.label}</CardTitle>
