@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { collection, query, getDocs, doc, setDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ export default function NewPageClient() {
     const [isCreating, setIsCreating] = useState(false);
 
     // Fetch templates
-    const templatesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'page_templates')) : null, [firestore]);
+    const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'page_templates')) : null, [firestore]);
     const { data: templates, isLoading: templatesLoading } = useCollection<PageTemplate>(templatesQuery);
 
     React.useEffect(() => {
@@ -142,19 +142,27 @@ export default function NewPageClient() {
                                         <Card 
                                             key={t.id} 
                                             className={cn(
-                                                "cursor-pointer hover:border-primary/50 transition-all rounded-2xl overflow-hidden shadow-sm",
-                                                selectedTemplateId === t.id ? "ring-2 ring-primary border-primary" : "border-border/50"
+                                                "cursor-pointer group hover:border-primary transition-all rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 duration-300",
+                                                selectedTemplateId === t.id ? "ring-2 ring-primary border-primary bg-primary/5" : "border-border/50 bg-card"
                                             )}
                                             onClick={() => setSelectedTemplateId(t.id)}
                                         >
-                                            <div className="h-24 bg-muted/30 flex items-center justify-center border-b border-border/50">
-                                                {t.id === 'blank-page' ? <PlusCircle className="text-muted-foreground w-8 h-8 opacity-50" /> : <Layout className="text-primary/40 w-8 h-8" />}
+                                            <div className="h-32 bg-muted/20 flex items-center justify-center border-b border-border/50 group-hover:bg-primary/5 transition-colors">
+                                                {t.id === 'blank-page' ? (
+                                                    <PlusCircle className="text-muted-foreground w-10 h-10 opacity-30 group-hover:opacity-100 transition-opacity" />
+                                                ) : (
+                                                    <Layout className="text-primary/30 w-10 h-10 group-hover:scale-110 transition-transform duration-500" />
+                                                )}
                                             </div>
-                                            <CardHeader className="p-4">
-                                                <CardTitle className="text-sm">{t.name}</CardTitle>
-                                                <CardDescription className="text-[10px] leading-tight mt-1">{t.description}</CardDescription>
+                                            <CardHeader className="p-5">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <CardTitle className="text-sm font-bold">{t.name}</CardTitle>
+                                                    {t.goal === 'lead_capture' && <Badge className="text-[8px] h-4 bg-emerald-500 hover:bg-emerald-500">ROI+</Badge>}
+                                                </div>
+                                                <CardDescription className="text-[10px] font-medium leading-relaxed">{t.description}</CardDescription>
                                             </CardHeader>
                                         </Card>
+
                                     ))}
                                 </div>
                             )}

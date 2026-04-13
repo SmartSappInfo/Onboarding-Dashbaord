@@ -4,6 +4,8 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
+import { recordConversion } from './analytics-actions';
+
 import type { Survey, SurveyResponse, Webhook, FocalPerson } from './types';
 
 /**
@@ -162,6 +164,9 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
     }
 }
 
+import { processLeadCaptureAction } from './lead-actions';
+
+
 /**
  * Submits a public survey response using the Admin SDK.
  * Bypasses client-side security rules to ensure reliability for public paths.
@@ -173,8 +178,38 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     // 1. Add the response to the subcollection
     const docRef = await surveyRef.collection('responses').add({
       ...responseData,
+      sourcePageId: responseData.sourcePageId || null,
       submittedAt: new Date().toISOString()
     });
+
+    // 2. Fetch survey context for organization/workspace
+    const surveySnap = await surveyRef.get();
+    let organizationId = 'default';
+    let workspaceId = 'default';
+
+    if (surveySnap.exists) {
+      const surveyData = surveySnap.data() as Survey;
+      organizationId = surveyData.organizationId || 'default';
+      workspaceId = surveyData.workspaceIds[0] || 'default';
+    }
+
+    // 1.1 Handle Analytics if submitted from a campaign page
+    if (responseData.sourcePageId) {
+      await recordConversion(responseData.sourcePageId);
+      
+      // Process as CRM lead in the background
+      processLeadCaptureAction({
+          submissionId: docRef.id,
+          collection: 'survey_responses',
+          data: responseData,
+          organizationId,
+          workspaceId,
+          sourcePageId: responseData.sourcePageId,
+          surveyId
+      }).catch(console.error);
+    }
+
+
 
     // 2. If session exists, mark as submitted
     if (sessionId) {
@@ -185,7 +220,6 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     }
     
     // 3. Handle Notifications (Admin & External)
-    const surveySnap = await surveyRef.get();
     if (surveySnap.exists) {
       const surveyData = surveySnap.data() as Survey;
       const workspaceId = surveyData.workspaceIds[0] || 'default';

@@ -192,12 +192,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
     }
 
-    // 5. Resolve Global Constants
-    const constantsSnap = await adminDb.collection('messaging_variables').where('source', '==', 'constant').get();
-    constantsSnap.forEach(doc => {
-        const v = doc.data() as VariableDefinition;
-        if (v.constantValue !== undefined && finalVariables[v.key] === undefined) {
-            finalVariables[v.key] = v.constantValue;
+    // 5. Resolve Global Fields & Constants from the new Registry
+    const fieldsSnap = await adminDb.collection('app_fields')
+        .where('workspaceId', '==', resolvedWorkspaceId)
+        .where('status', '==', 'active')
+        .get();
+
+    fieldsSnap.forEach(doc => {
+        const field = doc.data() as any;
+        // Use defaultValue as the constant value if it's a global/common field
+        if (field.defaultValue !== undefined && finalVariables[field.variableName] === undefined) {
+            finalVariables[field.variableName] = field.defaultValue;
         }
     });
 

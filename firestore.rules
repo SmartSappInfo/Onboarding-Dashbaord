@@ -14,35 +14,36 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
-      return data != null && data.get('isAuthorized', false) == true;
+      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
+             (data != null && data.get('isAuthorized', false) == true);
     }
 
     function isSystemAdmin() {
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
-      return data != null && data.get('isAuthorized', false) == true && 
-             data.get('permissions', []).hasAny(['system_admin']);
+      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
+             (data != null && data.get('isAuthorized', false) == true && 
+              data.get('permissions', []).hasAny(['system_admin']));
     }
 
     function isOrgMatch(orgId) {
-      if (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') return true;
       let data = getUserData();
-      return data != null && data.get('organizationId', '') == orgId;
+      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
+             (data != null && data.get('organizationId', '') == orgId);
     }
 
     function hasPermission(perm) {
-      if (isSystemAdmin()) return true;
       let data = getUserData();
-      return data != null && data.get('isAuthorized', false) == true && (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin']));
+      return isSystemAdmin() ||
+             (data != null && data.get('isAuthorized', false) == true && 
+              (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin'])));
     }
 
     function canAccessWorkspace(targetWorkspaceIds) {
-      if (isSystemAdmin()) return true;
       let data = getUserData();
       let userWorkspaces = data != null ? data.get('workspaceIds', []) : [];
-      return data != null && data.get('isAuthorized', false) == true && userWorkspaces.hasAny(targetWorkspaceIds);
+      return isSystemAdmin() ||
+             (data != null && data.get('isAuthorized', false) == true && userWorkspaces.hasAny(targetWorkspaceIds));
     }
 
     // --- Base Deny-All ---
@@ -221,9 +222,14 @@ service cloud.firestore {
     
     // Forms collection - dual-write migration support
     match /forms/{formId} {
-      allow read: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
-        resource.data.workspaceId in getUserData().workspaceIds
+        resource.data.workspaceId in getUserData().workspaceIds ||
+        resource.data.status == 'published'
+      );
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasPermission('studios_edit')
       );
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
@@ -234,7 +240,6 @@ service cloud.firestore {
         isSystemAdmin() ||
         (hasPermission('studios_edit') && 
          resource.data.workspaceId in getUserData().workspaceIds &&
-         // Prevent workspace change
          request.resource.data.workspaceId == resource.data.workspaceId)
       );
       allow delete: if isAuthorized() && (
@@ -297,6 +302,93 @@ service cloud.firestore {
     }
     match /messaging_variables/{vId} {
       allow read, write: if isAuthorized();
+    }
+
+    // --- Landing Pages / Campaign Pages ---
+    match /campaign_pages/{pageId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /campaign_page_versions/{vId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /page_templates/{tId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- Contracts ---
+    match /contracts/{contractId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+    }
+
+    // --- Perspectives ---
+    match /perspectives/{pId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- Zones ---
+    match /zones/{zoneId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('schools_edit'));
+    }
+
+    // --- PDF Sessions ---
+    match /pdf_sessions/{sId} {
+      allow read, write: if isAuthorized();
+    }
+
+    // --- Message Jobs ---
+    match /message_jobs/{jobId} {
+      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow write: if isAuthorized();
+    }
+
+    // --- Attendees (top-level) ---
+    match /attendees/{aId} {
+      allow create: if true;
+      allow read, list: if isAuthorized();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- Audit Logs ---
+    match /audit_logs/{logId} {
+      allow read, list: if isAuthorized() && (isSystemAdmin() || hasPermission('activities_view'));
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // --- Dashboard Layouts ---
+    match /dashboardLayouts/{layoutId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('dashboard_manage'));
+    }
+
+    // --- App Fields / Variable Registry ---
+    match /app_fields/{fieldId} {
+      allow get: if isAuthorized();
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && request.resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && resource.data.workspaceId in getUserData().workspaceIds)
+      );
     }
 
     // --- Contact Tagging System ---

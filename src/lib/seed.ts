@@ -441,9 +441,220 @@ export async function enrichMediaWithWorkspace(f: Firestore) { return 0; }
 export async function rollbackMediaMigration(f: Firestore) { return 0; }
 export async function rollbackRolesMigration(f: Firestore) { return 0; }
 
-export async function seedPageTemplates(firestore: Firestore): Promise<number> {
+export async function seedFormTemplates(firestore: Firestore, workspaceId: string, orgId: string): Promise<number> {
+    if (!workspaceId) throw new Error("Workspace ID is required to seed forms.");
+
+    const batch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+
+    // 1. Fetch native fields from the workspace
+    const fieldsSnap = await getDocs(query(
+        collection(firestore, 'app_fields'),
+        where('workspaceId', '==', workspaceId),
+        where('isNative', '==', true)
+    ));
+    
+    // Map variableName to appFieldId
+    const fieldMap = new Map<string, string>();
+    fieldsSnap.forEach(doc => fieldMap.set(doc.data().variableName, doc.id));
+
+    const getField = (vName: string) => fieldMap.get(vName);
+
+    // Helper to generate a field instance if field exists
+    let fieldOrder = 0;
+    const createInstance = (vName: string, label: string, required: boolean = false, width: 'full' | 'half' = 'full'): any | null => {
+        const fieldId = getField(vName);
+        if (!fieldId) return null;
+        return {
+            id: `inst_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+            appFieldId: fieldId,
+            labelOverride: label,
+            required,
+            hidden: false,
+            order: fieldOrder++,
+            width
+        };
+    };
+
+    const formsToSeed: Partial<import('@/lib/types').Form>[] = [];
+
+    // Template 1: Priority Lead Capture (Bound Form)
+    // Needs: Contact Name, Email, Phone
+    const leadFields = [
+        createInstance('contact_name', 'Full Name', true, 'full'),
+        createInstance('contact_email', 'Business Email', true, 'half'),
+        createInstance('contact_phone', 'Phone Number', false, 'half'),
+        createInstance('school_name', 'Company / Institution Name', false, 'full')
+    ].filter(Boolean);
+
+    if (leadFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_lead_capture_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId || DEFAULT_ORG_ID,
+            internalName: 'Priority Request',
+            title: 'Priority Request form',
+            slug: `priority-request-${workspaceId.substring(0, 6)}`,
+            description: 'A focused lead-capture form bound to the CRM.',
+            formType: 'bound',
+            contactScope: 'institution',
+            fields: leadFields,
+            theme: {
+                preset: 'minimal',
+                cardWidth: 'md',
+                inputStyle: 'outline',
+                labelPlacement: 'floating',
+                accentColor: '#8b5cf6', // Indigo/Purple
+                ctaLabel: 'Request Access',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'glass'
+            },
+            successBehavior: { type: 'message', value: 'Thank you! A member of our team will be in touch shortly.' },
+            actions: {
+                tags: ['Inbound Lead', 'Priority'],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: [],
+                entityHandling: 'create_or_update'
+            },
+            status: 'draft',
+            submissionCount: 0,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    // Template 2: General Inquiry / Contact Us
+    const contactFields = [
+        createInstance('contact_name', 'Name', true, 'full'),
+        createInstance('contact_email', 'Email Address', true, 'full'),
+    ].filter(Boolean);
+
+    if (contactFields.length > 0) {
+        formsToSeed.push({
+            id: `seed_contact_us_${workspaceId}`,
+            workspaceId,
+            organizationId: orgId || DEFAULT_ORG_ID,
+            internalName: 'Contact Us',
+            title: 'Contact Us',
+            slug: `contact-us-${workspaceId.substring(0, 6)}`,
+            description: 'Standard inbound contact form.',
+            formType: 'global',
+            fields: contactFields,
+            theme: {
+                preset: 'card',
+                cardWidth: 'sm',
+                inputStyle: 'filled',
+                labelPlacement: 'top',
+                accentColor: '#10b981', // Emerald
+                ctaLabel: 'Send Message',
+                ctaStyle: 'solid',
+                ctaWidth: 'full',
+                ctaAlignment: 'center',
+                backgroundStyle: 'solid'
+            },
+            successBehavior: { type: 'message', value: 'Message received. We will get back to you soon.' },
+            actions: {
+                tags: [],
+                automations: [],
+                notifications: { internalUserIds: [], sendConfirmationEmail: false },
+                webhooks: []
+            },
+            status: 'draft',
+            submissionCount: 0,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+    }
+
+    for (const f of formsToSeed) {
+        batch.set(doc(collection(firestore, 'forms'), f.id), f);
+    }
+
+    if (formsToSeed.length > 0) {
+        await batch.commit();
+    }
+    
+    return formsToSeed.length;
+}
+
+export async function seedPageTemplates(firestore: Firestore, workspaceId: string, orgId: string): Promise<number> {
     const list: Partial<import('@/lib/types').PageTemplate>[] = [
         {
+            id: 'blank-page',
+            name: 'Blank Page',
+            description: 'Start from scratch with a blank canvas.',
+            goal: 'information',
+            isGlobal: true,
+            structureJson: { sections: [] }
+        },
+        {
+            id: 'lead-capture-premium',
+            name: 'Premium Lead Capture',
+            description: 'A high-converting landing page with a hero, stats, and embedded form.',
+            goal: 'lead_capture',
+            isGlobal: true,
+            structureJson: {
+                sections: [
+                    {
+                        id: 'section-hero',
+                        type: 'section',
+                        props: { padding: 'lg', background: 'default', layout: 'contained' },
+                        blocks: [
+                            {
+                                id: 'hero-block-1',
+                                type: 'hero',
+                                props: {
+                                    title: 'Unlock Your Institutional Potential',
+                                    subtitle: 'Join leading organizations that have transformed their operations with our platform.',
+                                    align: 'center',
+                                    primaryCtaLabel: 'Get Started'
+                                }
+                            },
+                        ]
+                    },
+                    {
+                        id: 'section-split',
+                        type: 'section',
+                        props: { padding: 'md', background: 'muted', layout: 'contained' },
+                        blocks: [
+                            {
+                                id: 'columns-1',
+                                type: 'columns',
+                                props: { variant: '1-1' },
+                                blocks: [
+                                    {
+                                        id: 'text-left',
+                                        type: 'text',
+                                        props: { content: '<h3>Request Priority Access</h3><p>Fill out the form to get immediate access to our deployment team.</p>' }
+                                    },
+                                    {
+                                        id: 'form-embed-1',
+                                        type: 'form',
+                                        props: { formId: `seed_lead_capture_${workspaceId}` } // Binds to the seed form dynamically
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ];
+
+    const batch = writeBatch(firestore);
+    for (const t of list) {
+        batch.set(doc(collection(firestore, 'page_templates'), t.id), {
+            ...t,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        });
+    }
+    await batch.commit();
+    return list.length;
+}        {
             id: 'blank-page',
             name: 'Blank Page',
             description: 'Start from scratch with a blank canvas.',

@@ -9,7 +9,8 @@ import {
     PlusCircle, 
     CalendarPlus, 
     FilePlus, 
-    LayoutGrid
+    LayoutGrid,
+    Database
 } from "lucide-react";
 import Link from "next/link";
 import { useTenant } from "@/context/TenantContext";
@@ -71,7 +72,7 @@ export default function AdminDashboardPage() {
     }, [activeWorkspaceId, isTenantLoading, firestore]);
 
     // Premature return for loading states
-    if (isTenantLoading || (isLoadingData && !dashboardData)) {
+    if (isTenantLoading || (isLoadingData && !dashboardData && activeWorkspaceId)) {
         return (
             <div className="h-full overflow-y-auto bg-background p-8">
                 <div className="space-y-8">
@@ -80,6 +81,34 @@ export default function AdminDashboardPage() {
                         <Skeleton className="h-10 w-48 rounded-xl" />
                     </div>
                     <DashboardSkeleton />
+                </div>
+            </div>
+        );
+    }
+
+    if (!activeWorkspaceId) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-background">
+                <div className="max-w-md space-y-6">
+                    <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
+                        <LayoutGrid className="h-8 w-8 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-semibold tracking-tight">Welcome to Intelligence Hub</h2>
+                    <p className="text-muted-foreground">
+                        You do not currently have an active workspace selected, or your organization has no workspaces. Please select or create a workspace to view dashboard metrics.
+                    </p>
+                    <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button asChild className="rounded-xl font-semibold transform hover:scale-105 transition-all shadow-lg text-xs gap-2 h-11 px-6">
+                            <Link href="/admin/seeds">
+                                <Database className="w-4 h-4" /> Seed Essential Data
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild className="rounded-xl font-semibold border-primary/20 text-primary hover:bg-primary/5 gap-2 h-11 px-6">
+                            <Link href="/admin/settings?tab=workspaces">
+                                <LayoutGrid className="w-4 h-4" /> Create Workspace
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         );

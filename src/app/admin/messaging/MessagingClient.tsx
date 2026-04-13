@@ -132,10 +132,10 @@ export default function MessagingClient() {
 
     const infrastructure = [
         {
-            title: 'Variable Registry',
-            description: `Map ${singular}, Meeting, and Survey fields to dynamic message tags.`,
+            title: 'Fields & Variables',
+            description: `Manage ${singular}, Meeting, and Survey fields globally.`,
             icon: Database,
-            href: '/admin/messaging/variables',
+            href: '/admin/settings/fields',
             color: 'text-primary',
             bg: 'bg-primary/10',
             border: 'hover:border-primary/50'

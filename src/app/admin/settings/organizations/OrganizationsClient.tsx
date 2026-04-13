@@ -4,6 +4,8 @@ import * as React from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Organization } from '@/lib/types';
+import { useTenant } from '@/context/TenantContext';
+import { useRouter } from 'next/navigation';
 import { 
     Building, 
     Plus, 
@@ -13,7 +15,8 @@ import {
     Globe,
     Mail,
     Phone,
-    MapPin
+    MapPin,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,11 +40,13 @@ import {
 
 export default function OrganizationsClient() {
     const firestore = useFirestore();
+    const router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
+    const { setActiveOrganization } = useTenant();
     
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-    const [activeOrganization, setActiveOrganization] = React.useState<Organization | null>(null);
+    const [editingOrganization, setEditingOrganization] = React.useState<Organization | null>(null);
     const [deleteConfirmOrg, setDeleteConfirmOrg] = React.useState<Organization | null>(null);
 
     const organizationsQuery = useMemoFirebase(() => 
@@ -49,8 +54,14 @@ export default function OrganizationsClient() {
     [firestore]);
     const { data: organizations, isLoading } = useCollection<Organization>(organizationsQuery);
 
+    const handleSelectOrganization = (orgId: string) => {
+        setActiveOrganization(orgId);
+        toast({ title: 'Organization Selected' });
+        router.push('/admin');
+    };
+
     const handleOpenEdit = (org?: Organization) => {
-        setActiveOrganization(org || null);
+        setEditingOrganization(org || null);
         setIsDialogOpen(true);
     };
 
@@ -207,8 +218,8 @@ export default function OrganizationsClient() {
                                     </div>
                                 )}
 
- <div className="flex items-center justify-between pt-2">
- <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">
+                                <div className="flex items-center justify-between pt-2">
+                                    <span className="text-[9px] font-bold text-muted-foreground/40 tabular-nums">
                                         {(() => {
                                             try {
                                                 if (!org.updatedAt) return 'Recently created';
@@ -223,6 +234,14 @@ export default function OrganizationsClient() {
                                             }
                                         })()}
                                     </span>
+                                </div>
+                                <div className="pt-2">
+                                    <Button 
+                                        onClick={() => handleSelectOrganization(org.id)}
+                                        className="w-full rounded-xl font-semibold bg-primary/10 hover:bg-primary/20 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all gap-2"
+                                    >
+                                        Launch Organization <ArrowRight className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -248,7 +267,7 @@ export default function OrganizationsClient() {
             <OrganizationManagementDialog 
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
-                organization={activeOrganization}
+                organization={editingOrganization}
             />
 
             {/* Delete Confirmation */}

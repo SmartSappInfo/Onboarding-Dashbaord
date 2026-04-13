@@ -86,7 +86,7 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPat
     );
 };
 
-export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
+export default function SurveyDisplay({ survey, sourcePageId }: SurveyDisplayProps) {
     const [isSubmitted, setIsSubmitted] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
 

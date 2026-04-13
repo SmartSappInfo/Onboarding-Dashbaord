@@ -63,13 +63,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 
-export default async function PublicSurveyPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PublicSurveyPage({ 
+    params,
+    searchParams 
+}: { 
+    params: Promise<{ slug: string }>,
+    searchParams: Promise<{ sourcePageId?: string }>
+}) {
     const { slug } = await params;
+    const { sourcePageId } = await searchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
         notFound();
     }
     
-    return <SurveyDisplay survey={survey} />;
+    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} />;
 }
+

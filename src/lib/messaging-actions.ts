@@ -16,131 +16,69 @@ import { getContactEmail, getContactPhone } from './migration-status-utils';
 
 /**
  * Synchronizes the Variable Registry by scanning Schools, Meetings, Surveys, and PDFs.
- * Includes a cleanup phase to remove orphaned dynamic variables while preserving constants.
+ * Harvests dynamic fields into the main workspace-scoped 'app_fields' registry.
+ * This ensures that Survey questions and PDF fields are available for messaging and forms.
  */
 export async function syncVariableRegistry() {
   try {
-    const variablesCol = adminDb.collection('messaging_variables');
+    const fieldsCol = adminDb.collection('app_fields');
+    const timestamp = new Date().toISOString();
 
-    // 1. CLEANUP PHASE: Fetch all dynamic variables first (excluding constants)
-    const existingDynamicSnap = await variablesCol
-      .where('source', 'in', ['survey', 'pdf', 'static'])
-      .get();
-
-    const existingVarIds = new Set(existingDynamicSnap.docs.map(d => d.id));
-    const varsToKeep = new Set<string>();
-
-    const batch = adminDb.batch();
-
-    // 2. STATIC CORE VARIABLES (Always Sync/Update)
-    const staticVariables: Omit<VariableDefinition, 'id'>[] = [
-      // School (General)
-      // Entity (General)
-      { key: 'school_name', label: 'Entity Name', category: 'general', source: 'static', entity: 'Entity', path: 'displayName', type: 'string' },
-      { key: 'school_initials', label: 'Entity Initials', category: 'general', source: 'static', entity: 'Entity', path: 'initials', type: 'string' },
-      { key: 'school_location', label: 'Physical Location', category: 'general', source: 'static', entity: 'Entity', path: 'locationString', type: 'string' },
-      { key: 'school_phone', label: 'Primary Phone', category: 'general', source: 'static', entity: 'Entity', path: 'primaryPhone', type: 'string' },
-      { key: 'school_email', label: 'Primary Email', category: 'general', source: 'static', entity: 'Entity', path: 'primaryEmail', type: 'string' },
-
-      // Signatory Data (General Context)
-      { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'signatory.name', type: 'string' },
-      { key: 'contact_position', label: 'Primary Contact Role', category: 'general', source: 'static', entity: 'School', path: 'signatory.type', type: 'string' },
-      { key: 'contact_email', label: 'Primary Contact Email', category: 'general', source: 'static', entity: 'School', path: 'signatory.email', type: 'string' },
-      { key: 'contact_phone', label: 'Primary Contact Phone', category: 'general', source: 'static', entity: 'School', path: 'signatory.phone', type: 'string' },
-
-      // Finance Hub Variables
-      { key: 'agreement_url', label: 'Institutional Signing Link', category: 'finance', source: 'static', entity: 'Contract', path: 'publicUrl', type: 'string' },
-      { key: 'school_package', label: 'Subscription Tier', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
-      { key: 'subscription_rate', label: 'Effective Unit Rate', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionRate', type: 'number' },
-      { key: 'subscription_total', label: 'Total Amount', category: 'finance', source: 'static', entity: 'School', path: 'nominalRoll * subscriptionRate', type: 'number' },
-      { key: 'nominal_roll', label: 'Student Count', category: 'finance', source: 'static', entity: 'School', path: 'nominalRoll', type: 'number' },
-      { key: 'arrears_balance', label: 'Outstanding Arrears', category: 'finance', source: 'static', entity: 'School', path: 'arrearsBalance', type: 'number' },
-      { key: 'credit_balance', label: 'Available Credit', category: 'finance', source: 'static', entity: 'School', path: 'creditBalance', type: 'number' },
-      { key: 'currency', label: 'Billing Currency', category: 'finance', source: 'static', entity: 'School', path: 'currency', type: 'string' },
-
-      // Contact Tags (FR5.2.1, FR5.2.2)
-      { key: 'contact_tags', label: 'Contact Tags (Comma-Separated)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags', type: 'string' },
-      { key: 'tag_count', label: 'Tag Count', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags.length', type: 'number' },
-      { key: 'tag_list', label: 'Tag List (Array)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags[]', type: 'array' },
-      { key: 'has_tag', label: 'Has Tag (Conditional)', category: 'general', source: 'static', entity: 'Entity', path: 'workspaceTags.includes', type: 'boolean' },
-
-      // Meetings
-      { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
-      { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
-      { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
-
-      // Survey Results
-      { key: 'survey_score', label: 'Respondent Score', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'score', type: 'number' },
-      { key: 'max_score', label: 'Survey Max Points', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'maxScore', type: 'number' },
-      { key: 'outcome_label', label: 'Logic Result Name', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'outcome.label', type: 'string' },
-      { key: 'result_url', label: 'Public Result Link', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'resultUrl', type: 'string' },
-    ];
-
-    staticVariables.forEach(v => {
-      const ref = variablesCol.doc(v.key);
-      batch.set(ref, v, { merge: true });
-      varsToKeep.add(v.key);
-    });
-
-    // 3. DYNAMIC SURVEY HARVESTING
+    // 1. DYNAMIC SURVEY HARVESTING
     const surveysSnap = await adminDb.collection('surveys').where('status', '!=', 'archived').get();
-    surveysSnap.forEach(doc => {
+    for (const doc of surveysSnap.docs) {
       const survey = doc.data() as Survey;
+      const workspaceId = survey.workspaceIds?.[0] || 'onboarding'; // Surveys can be multi-workspace, but we map to primary for field registry
+      const organizationId = survey.organizationId || 'default';
+      
       const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
 
-      questions.forEach(q => {
-        const varId = `survey_${doc.id}_${q.id}`;
-        varsToKeep.add(varId);
-        const ref = variablesCol.doc(varId);
-        batch.set(ref, {
-          key: q.id,
+      for (const q of questions) {
+        const fieldId = `survey_${doc.id}_${q.id}`;
+        await fieldsCol.doc(fieldId).set({
+          workspaceId,
+          organizationId,
+          name: q.title.replace(/<[^>]*>?/gm, ''),
           label: q.title.replace(/<[^>]*>?/gm, ''),
-          category: 'surveys',
-          source: 'survey',
-          sourceId: doc.id,
-          sourceName: survey.internalName || survey.title,
-          entity: 'SurveyResponse',
-          path: q.id,
-          type: 'string'
-        } as Omit<VariableDefinition, 'id'>, { merge: true });
-      });
-    });
+          variableName: q.id,
+          type: 'short_text', // Defaulting to text for survey answers
+          section: 'surveys',
+          isNative: false,
+          compatibilityScope: ['submission-only'],
+          status: 'active',
+          updatedAt: timestamp
+        }, { merge: true });
+      }
+    }
 
-    // 4. DYNAMIC PDF FORM HARVESTING
+    // 2. DYNAMIC PDF FORM HARVESTING
     const pdfsSnap = await adminDb.collection('pdfs').where('status', '!=', 'archived').get();
-    pdfsSnap.forEach(doc => {
+    for (const doc of pdfsSnap.docs) {
       const pdf = doc.data() as PDFForm;
+      const workspaceId = pdf.workspaceIds?.[0] || 'onboarding';
+      const organizationId = pdf.organizationId || 'default';
       const fields = pdf.fields || [];
 
-      fields.forEach(f => {
-        if (f.type === 'signature' || f.type === 'photo') return;
+      for (const f of fields) {
+        if (f.type === 'signature' || f.type === 'photo') continue;
 
-        const varId = `pdf_${doc.id}_${f.id}`;
-        varsToKeep.add(varId);
-        const ref = variablesCol.doc(varId);
-        batch.set(ref, {
-          key: f.id,
+        const fieldId = `pdf_${doc.id}_${f.id}`;
+        await fieldsCol.doc(fieldId).set({
+          workspaceId,
+          organizationId,
+          name: f.label || f.placeholder || f.id,
           label: f.label || f.placeholder || f.id,
-          category: 'forms',
-          source: 'pdf',
-          sourceId: doc.id,
-          sourceName: pdf.name,
-          entity: 'Submission',
-          path: f.id,
-          type: 'string'
-        } as Omit<VariableDefinition, 'id'>, { merge: true });
-      });
-    });
-
-    // 5. PURGE ORPHANS
-    existingVarIds.forEach(id => {
-      if (!varsToKeep.has(id)) {
-        batch.delete(variablesCol.doc(id));
+          variableName: f.id,
+          type: 'short_text',
+          section: 'forms',
+          isNative: false,
+          compatibilityScope: ['submission-only'],
+          status: 'active',
+          updatedAt: timestamp
+        }, { merge: true });
       }
-    });
+    }
 
-    await batch.commit();
-    revalidatePath('/admin/messaging/variables');
     return { success: true };
   } catch (error: any) {
     console.error(">>> [VARIABLES] Sync Failed:", error.message);
@@ -237,21 +175,35 @@ export async function syncAllLogStatuses() {
 }
 
 /**
- * Creates or updates a Global Constant variable.
+ * Creates or updates a Global Constant variable in the App Fields registry.
  */
-export async function upsertConstantVariable(data: Partial<VariableDefinition>) {
+export async function upsertConstantVariable(data: {
+  workspaceId: string;
+  organizationId: string;
+  key: string;
+  label: string;
+  value: string;
+}) {
   try {
-    const id = data.id || `const_${data.key}`;
-    const finalData = {
-      ...data,
-      source: 'constant',
-      entity: 'Global',
-      category: 'general',
-      type: 'string',
-      updatedAt: new Date().toISOString()
-    };
-    await adminDb.collection('messaging_variables').doc(id).set(finalData, { merge: true });
-    revalidatePath('/admin/messaging/variables');
+    const id = `const_${data.key}`;
+    const timestamp = new Date().toISOString();
+    
+    await adminDb.collection('app_fields').doc(id).set({
+      workspaceId: data.workspaceId,
+      organizationId: data.organizationId,
+      name: data.label,
+      label: data.label,
+      variableName: data.key,
+      defaultValue: data.value,
+      type: 'hidden',
+      section: 'common',
+      isNative: false,
+      compatibilityScope: ['common'],
+      status: 'active',
+      updatedAt: timestamp
+    }, { merge: true });
+
+    revalidatePath('/admin/settings/fields');
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message };
@@ -259,15 +211,15 @@ export async function upsertConstantVariable(data: Partial<VariableDefinition>) 
 }
 
 /**
- * Updates the global visibility of a variable.
+ * Updates the global visibility of a field.
  */
 export async function updateVariableVisibility(id: string, hidden: boolean) {
   try {
-    await adminDb.collection('messaging_variables').doc(id).update({
-      hidden,
+    await adminDb.collection('app_fields').doc(id).update({
+      status: hidden ? 'inactive' : 'active',
       updatedAt: new Date().toISOString()
     });
-    revalidatePath('/admin/messaging/variables');
+    revalidatePath('/admin/settings/fields');
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message };
@@ -275,12 +227,12 @@ export async function updateVariableVisibility(id: string, hidden: boolean) {
 }
 
 /**
- * Deletes a manual constant variable.
+ * Deletes a manual constant field.
  */
 export async function deleteVariable(id: string) {
   try {
-    await adminDb.collection('messaging_variables').doc(id).delete();
-    revalidatePath('/admin/messaging/variables');
+    await adminDb.collection('app_fields').doc(id).delete();
+    revalidatePath('/admin/settings/fields');
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message };

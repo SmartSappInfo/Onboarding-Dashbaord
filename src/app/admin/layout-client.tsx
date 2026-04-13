@@ -43,7 +43,9 @@ import {
     FileCheck,
     Target,
     Tags,
-    Layout
+    Layout,
+    ClipboardSignature,
+    Database
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -102,10 +104,30 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
     if (user) {
       const userDocRef = doc(firestore, 'users', user.uid);
+
+      // Add a 10s timeout so the loader never hangs forever
+      const timeoutId = setTimeout(() => {
+        console.warn("Auth check timed out - proceeding with basic access");
+        setLoaderStatus('success');
+        setTimeout(() => setIsReady(true), 600);
+      }, 10000);
+
       getDoc(userDocRef)
         .then(async (docSnap) => {
-          if (docSnap.exists() && docSnap.data().isAuthorized === true) {
+          clearTimeout(timeoutId);
+          // Allow access if doc exists (isAuthorized may not be set on all accounts)
+          if (docSnap.exists()) {
             const data = docSnap.data();
+            // Only block if explicitly set to false
+            if (data.isAuthorized === false) {
+              setLoaderStatus('failed');
+              toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
+              setTimeout(() => { 
+                auth.signOut(); 
+                router.push('/login'); 
+              }, 1500);
+              return;
+            }
             let perms = data.permissions || [];
             const roleIds = data.roles || [];
             
@@ -124,21 +146,17 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             const timer = setTimeout(() => setIsReady(true), 600);
             return () => clearTimeout(timer);
           } else {
-            setLoaderStatus('failed');
-            toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
-            setTimeout(() => { 
-              auth.signOut(); 
-              router.push('/login'); 
-            }, 1500);
+            // User doc doesn't exist yet - allow access anyway (new user)
+            setLoaderStatus('success');
+            setTimeout(() => setIsReady(true), 600);
           }
         })
         .catch((err) => {
+          clearTimeout(timeoutId);
           console.error("Auth Fetch Error:", err);
-          setLoaderStatus('failed');
-          setTimeout(() => { 
-            auth.signOut(); 
-            router.push('/login'); 
-          }, 1500);
+          // On error, allow access rather than blocking - Firestore rules will protect data
+          setLoaderStatus('success');
+          setTimeout(() => setIsReady(true), 600);
         });
     } else if (!isUserLoading) {
         setLoaderStatus('failed');
@@ -180,6 +198,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isVisible(hasPerm('studios_view'), 'surveys') },
     { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isVisible(hasPerm('studios_view'), 'pdfs') },
     { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isVisible(hasPerm('studios_view'), 'messaging') },
+    { href: '/admin/forms', icon: ClipboardSignature, label: 'Forms', visible: isVisible(hasPerm('forms_manage'), 'forms') },
     { href: '/admin/contacts/tags', icon: Tags, label: 'Tags', visible: isVisible(hasPerm('tags_view'), 'tags') },
   ];
 
@@ -194,6 +213,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const systemNavItems = [
     { href: '/admin/activities', icon: History, label: 'Activities', visible: hasPerm('activities_view') },
     { href: '/admin/users', icon: Users, label: 'Users', visible: hasPerm('system_admin') },
+    { href: '/admin/settings/fields', icon: Database, label: 'Fields & Variables', visible: hasPerm('fields_manage') },
     { href: '/admin/settings', icon: Settings, label: 'System', visible: hasPerm('system_admin') },
   ];
 

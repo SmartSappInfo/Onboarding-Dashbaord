@@ -16,7 +16,10 @@ import {
     LayoutList,
     Activity,
     Settings2,
-    Eye
+    Eye,
+    MousePointerClick,
+    Target,
+    Loader2
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -30,12 +33,19 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
 import Link from 'next/link';
+import { duplicatePageAction } from '@/lib/page-actions';
+import { useUser } from '@/firebase';
+
+
 
 export default function PagesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const { activeWorkspaceId } = useTenant();
+    const { user } = useUser();
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
+
 
     const pagesQuery = useMemoFirebase(() => 
         firestore && activeWorkspaceId ? query(
@@ -63,6 +73,25 @@ export default function PagesClient() {
             description: 'Public page URL copied to clipboard.',
         });
     };
+
+    const handleDuplicate = async (e: React.MouseEvent, pageId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user) return;
+
+        setDuplicatingId(pageId);
+        try {
+            const res = await duplicatePageAction(pageId, user.uid);
+            if (res.success) {
+                toast({ title: 'Page Duplicated', description: 'A draft copy has been created.' });
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: res.error });
+            }
+        } finally {
+            setDuplicatingId(null);
+        }
+    };
+
 
     const PageCard = ({ page }: { page: CampaignPage }) => {
         const publicPath = `/p/${page.slug}`;
@@ -104,12 +133,39 @@ export default function PagesClient() {
                 <CardContent className="px-5 pb-5 mt-auto pt-4 space-y-3">
                     <div className="flex gap-2">
                         <Badge variant="outline" className={cn("text-[9px] font-semibold border-border/50")}>
-                            {page.status}
-                        </Badge>
-                        <Badge variant="outline" className={cn("text-[9px] font-semibold border-border/50")}>
                             {page.pageGoal?.replace('_', ' ')}
                         </Badge>
                     </div>
+
+                    {/* Performance Stats Overlay */}
+                    {/* Performance Stats */}
+                    {page.stats && (
+                        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                            <div className="flex gap-4">
+                                <div className="text-center">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase leading-none">{page.stats.views || 0}</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Views</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase leading-none">{page.stats.conversions || 0}</p>
+                                    <p className="text-[8px] font-bold text-emerald-600 uppercase tracking-tighter">Leads</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase leading-none">
+                                        {page.stats.views ? ((page.stats.conversions || 0) / page.stats.views * 100).toFixed(1) : 0}%
+                                    </p>
+                                    <p className="text-[8px] font-bold text-indigo-600 uppercase tracking-tighter">CVR</p>
+                                </div>
+                            </div>
+                            <Button asChild variant="ghost" size="sm" className="h-8 px-3 rounded-lg font-black text-[10px] uppercase tracking-wider text-slate-500 hover:text-primary hover:bg-primary/5 gap-2 group/btn">
+                                <Link href={`/admin/pages/${page.id}/leads`}>
+                                    View Leads
+                                    <ArrowRight className="h-3 w-3 group-hover/btn:translate-x-0.5 transition-transform" />
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2 pt-2">
                         <Button asChild variant="outline" className="flex-1 h-10 rounded-xl font-bold shadow-sm transition-all text-[10px] border-primary/20 text-primary">
                             <Link href={`/admin/pages/${page.id}/builder`}>
@@ -123,7 +179,21 @@ export default function PagesClient() {
                                 </a>
                             </Button>
                         )}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10 text-muted-foreground hover:text-primary transition-colors"
+                            onClick={(e) => handleDuplicate(e, page.id)}
+                            disabled={duplicatingId === page.id}
+                        >
+                            {duplicatingId === page.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                                <Copy className="h-4 w-4" />
+                            )}
+                        </Button>
                     </div>
+
                 </CardContent>
             </Card>
         );

@@ -160,7 +160,9 @@ export type AutomationTrigger =
   | 'WEBHOOK_RECEIVED'
   | 'MEETING_CREATED'
   | 'TAG_ADDED'
-  | 'TAG_REMOVED';
+  | 'TAG_REMOVED'
+  | 'CAMPAIGN_PAGE_SUBMITTED'
+  | 'FORM_SUBMITTED';
 
 /**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
@@ -1526,6 +1528,7 @@ export const APP_FEATURES = [
   { id: 'pdfs', label: 'Doc Signing', category: 'Studios', icon: 'FileText', defaultEnabled: true },
   { id: 'messaging', label: 'Messaging', category: 'Studios', icon: 'MessageSquareText', defaultEnabled: true },
   { id: 'tags', label: 'Tags', category: 'Studios', icon: 'Tags', defaultEnabled: true },
+  { id: 'forms', label: 'Forms', category: 'Studios', icon: 'ClipboardSignature', defaultEnabled: true },
   // Finance
   { id: 'agreements', label: 'Agreements', category: 'Finance', icon: 'FileCheck', defaultEnabled: true },
   { id: 'invoices', label: 'Invoices', category: 'Finance', icon: 'Receipt', defaultEnabled: true },
@@ -1558,7 +1561,7 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html';
 
 export interface PageBlock {
   id: string;
@@ -1576,6 +1579,25 @@ export interface PageSection {
 
 export interface CampaignPageStructure {
   sections: PageSection[];
+}
+
+export interface PageTriggerAction {
+  id: string;
+  type: 'trigger_automation' | 'open_modal' | 'redirect' | 'trigger_webhook';
+  config: {
+    automationId?: string;
+    modalType?: 'survey' | 'form' | 'agreement';
+    targetId?: string; // SurveyId, FormId, AgreementId
+    url?: string;
+  };
+}
+
+export interface PageTrigger {
+  id: string;
+  name: string; // Human-readable label e.g. "Welcome popup"
+  event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit';
+  targetBlockId?: string; // Which block fires this (for block_click/form_submitted)
+  actions: PageTriggerAction[]; // Multiple actions per trigger
 }
 
 export interface CampaignPage {
@@ -1596,10 +1618,29 @@ export interface CampaignPage {
   };
   settings: {
     customScriptsAllowed: boolean;
+    customHead?: string;
+    customBody?: string;
     showHeader: boolean;
     showFooter: boolean;
+    triggers?: PageTrigger[];
+    themeOverrides?: {
+      primary?: string;
+      secondary?: string;
+      background?: string;
+      accent?: string;
+      typography?: {
+        primaryFont?: string;
+      };
+    };
+  };
+  stats?: {
+    views: number;
+    uniques: number;
+    conversions: number;
+    clicks: number;
   };
   publishedVersionId?: string | null;
+
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -1628,6 +1669,41 @@ export interface PageTemplate {
   organizationId?: string;
 }
 
+export interface PageSectionTemplate {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  category: string;
+  structure: PageSection;
+  createdAt: string;
+}
+
+export interface CampaignPageTheme {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  name: string;
+  colors: {
+    primary: string;
+    secondary: string;
+    background: string;
+    text: string;
+    accent: string;
+  };
+  typography: {
+    headingFont: string;
+    bodyFont: string;
+    baseSize: string;
+  };
+  ui: {
+    borderRadius: string;
+    buttonStyle: 'flat' | 'glow' | 'glass';
+  };
+  isSystem?: boolean;
+}
+
+
 export interface PageSubmission {
   id: string;
   pageId: string;
@@ -1644,4 +1720,112 @@ export interface PageSubmission {
     referrer?: string;
   };
   createdAt: string;
+}
+
+/**
+ * Fields Manager Data Models
+ */
+export interface AppField {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string; // Internal name
+  label: string; // Display label
+  variableName: string; // Used in liquid/mustache templates
+  type: 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'currency' | 'date' | 'datetime' | 'select' | 'multi_select' | 'radio' | 'checkbox' | 'yes_no' | 'address' | 'url' | 'hidden';
+  section: 'common' | 'institution' | 'family' | 'child' | 'custom_admissions' | 'custom_marketing' | string;
+  isNative: boolean; // System fields are immutable
+  compatibilityScope: ('common' | 'institution' | 'family' | 'person' | 'submission-only' | 'internal-only')[];
+  helpText?: string;
+  placeholder?: string;
+  defaultValue?: any;
+  options?: { value: string; label: string }[]; // For select/radio
+  validationRules?: {
+    required?: boolean;
+    min?: number;
+    max?: number;
+    pattern?: string;
+  };
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Form Builder Data Models
+ */
+export interface Form {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  internalName: string;
+  title: string;
+  slug: string;
+  description?: string;
+  formType: 'bound' | 'global';
+  contactScope?: 'institution' | 'family' | 'person'; // Only populated if bound
+  fields: FormFieldInstance[];
+  theme: FormThemeConfig;
+  successBehavior: {
+    type: 'message' | 'redirect';
+    value: string; // The message text or redirect URL
+  };
+  actions: FormSubmissionActions;
+  status: 'draft' | 'published' | 'archived';
+  submissionCount: number;
+  createdAt: string;
+  updatedAt?: string;
+  publishedAt?: string;
+}
+
+export interface FormFieldInstance {
+  id: string; // Unique ID within the form
+  appFieldId: string; // Reference to the AppField
+  labelOverride?: string;
+  placeholderOverride?: string;
+  helpTextOverride?: string;
+  required: boolean;
+  hidden: boolean;
+  defaultValueOverride?: any;
+  order: number;
+  width?: 'full' | 'half'; // Form layout option
+}
+
+export interface FormThemeConfig {
+  preset: 'minimal' | 'professional' | 'card' | 'embedded';
+  cardWidth?: 'sm' | 'md' | 'lg' | 'full';
+  borderRadius?: string;
+  inputStyle?: 'outline' | 'filled' | 'flushed';
+  labelPlacement?: 'top' | 'left' | 'floating';
+  accentColor?: string;
+  ctaLabel?: string;
+  ctaStyle?: 'solid' | 'outline' | 'ghost';
+  ctaWidth?: 'auto' | 'full';
+  ctaAlignment?: 'left' | 'center' | 'right';
+  backgroundStyle?: 'transparent' | 'solid' | 'glass';
+}
+
+export interface FormSubmissionActions {
+  tags: string[]; // Appled immediately or post-creation
+  automations: string[]; // Triggers 'form_submitted:<formId>' or these explicitly
+  notifications: {
+    internalUserIds: string[];
+    respondentEmailField?: string; // which field holds the respondent's email
+    sendConfirmationEmail?: boolean;
+  };
+  webhooks: string[]; // URLs or Webhook document IDs
+  entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // only if 'bound'
+}
+
+export interface FormSubmission {
+  id: string;
+  formId: string;
+  workspaceId: string;
+  organizationId: string;
+  data: Record<string, any>; // The parsed JSON answers { variableName: value }
+  entityId?: string; // Linked entity if created/updated
+  sourcePageId?: string; // Campaign page that embedded this form (indirect tracking)
+  ipAddress?: string;
+  userAgent?: string;
+  submittedAt: string;
 }

@@ -71,7 +71,12 @@ export default function LoginPage() {
       if (docSnap.exists()) {
         if (docSnap.data().isAuthorized === true) {
           toast({ title: 'Login Successful', description: 'Welcome back!' });
-          router.push('/admin');
+          const data = docSnap.data();
+          if (data.permissions?.includes('system_admin')) {
+            router.push('/admin/settings/organizations');
+          } else {
+            router.push('/admin');
+          }
         } else {
           await auth.signOut();
           toast({
@@ -156,7 +161,12 @@ export default function LoginPage() {
 
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
         toast({ title: 'Login Successful', description: 'Welcome back!' });
-        router.push('/admin');
+        const data = docSnap.data();
+        if (data.permissions?.includes('system_admin')) {
+          router.push('/admin/settings/organizations');
+        } else {
+          router.push('/admin');
+        }
       } else {
         await auth.signOut();
         toast({

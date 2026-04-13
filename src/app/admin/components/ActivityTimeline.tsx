@@ -174,7 +174,7 @@ export default function ActivityTimeline({ entityId, userId, type, zoneId, limit
                               key={activity.id}
                               activity={activity}
                               user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                              showSchoolName={!entityId || entityId === 'all'}
+                              showEntityName={!entityId || entityId === 'all'}
                            />
                       ))}
                     </div>

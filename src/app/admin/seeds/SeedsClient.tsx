@@ -18,7 +18,8 @@ import {
     rollbackSchoolsMigration,
     rollbackTasksMigration,
     rollbackActivitiesMigration,
-    seedPageTemplates
+    seedPageTemplates,
+    seedFormTemplates
 } from '@/lib/seed';
 import {
     migrateSchoolsToEntities,
@@ -65,6 +66,7 @@ import { Label } from '@/components/ui/label';
 import { SmartSappLogo } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/context/TenantContext';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -73,6 +75,7 @@ export default function SeedsClient() {
   const router = useRouter();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspaceId, activeOrganizationId } = useTenant();
   
   const [password, setPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -91,7 +94,8 @@ export default function SeedsClient() {
     verify_entities: 'idle',
     migrate_all_features: 'idle',
     migrate_settings: 'idle',
-    templates: 'idle'
+    templates: 'idle',
+    forms: 'idle'
   });
 
   // Feature migration state
@@ -381,6 +385,50 @@ export default function SeedsClient() {
         </header>
 
  <main className=" p-8 space-y-12">
+            {/* Growth Suite / Builders Section */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-fuchsia-50 font-semibold text-[10px] uppercase px-3 py-1 border-fuchsia-200 text-fuchsia-600">Growth Suite Blueprints</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-fuchsia-200 to-transparent" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <ProtocolButton 
+                        label="Form Templates" 
+                        icon={ClipboardList} 
+                        status={seedingStatus.forms} 
+                        onClick={() => handleAction('forms', (f: any) => seedFormTemplates(f, activeWorkspaceId || '', activeOrganizationId || ''))} 
+                    />
+                    <ProtocolButton 
+                        label="Campaign Page Blueprints" 
+                        icon={Layout} 
+                        status={seedingStatus.templates} 
+                        onClick={() => handleAction('templates', (f: any) => seedPageTemplates(f, activeWorkspaceId || '', activeOrganizationId || ''))} 
+                    />
+                </div>
+            </section>
+
+            {/* Essential Core Seeds Section */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-primary/5 font-semibold text-[10px] uppercase px-3 py-1 border-primary/20 text-primary">Essential Core Seeds</Badge>
+                    <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <ProtocolButton 
+                        label="Workspaces" 
+                        icon={Layout} 
+                        status={seedingStatus.workspaces} 
+                        onClick={() => handleAction('workspaces', seedWorkspaces)} 
+                    />
+                    <ProtocolButton 
+                        label="Billing Profiles" 
+                        icon={Banknote} 
+                        status={seedingStatus.billing} 
+                        onClick={() => handleAction('billing', seedBillingData)} 
+                    />
+                </div>
+            </section>
+
             {/* Operational Integrity Section */}
  <section className="space-y-6">
  <div className="flex items-center gap-3">
@@ -910,9 +958,6 @@ export default function SeedsClient() {
                     <ProtocolButton label="User Identity Sync" icon={Users} status={seedingStatus.users} onClick={() => handleAction('users', enrichUsers)} />
                     <ProtocolButton label="CRM Task Sync" icon={CheckSquare} status={seedingStatus.tasks} onClick={() => handleAction('tasks', enrichTasksWithWorkspace)} />
                     <ProtocolButton label="Roles & Governance" icon={ShieldCheck} status={seedingStatus.roles} onClick={() => handleAction('roles', enrichRolesWithWorkspaces)} />
-                    <ProtocolButton label="Workspaces" icon={Layout} status={seedingStatus.workspaces} onClick={() => handleAction('workspaces', seedWorkspaces)} />
-                    <ProtocolButton label="Billing Profiles" icon={Banknote} status={seedingStatus.billing} onClick={() => handleAction('billing', seedBillingData)} />
-                    <ProtocolButton label="Page Templates" icon={FileText} status={seedingStatus.templates} onClick={() => handleAction('templates', seedPageTemplates)} />
                 </div>
             </section>
 

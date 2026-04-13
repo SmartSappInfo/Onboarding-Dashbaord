@@ -4,7 +4,7 @@ import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
-import type { UserProfile, Workspace, Organization } from '@/lib/types';
+import type { UserProfile, Workspace, Organization, AppPermissionId } from '@/lib/types';
 
 /**
  * @fileOverview Tenant Context Provider (Sovereignty Layer).
@@ -89,7 +89,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             initialOrgId = profile.organizationId; // Force non-super-admins to their assigned org
         }
 
-        setActiveOrganizationIdState(initialOrgId);
+        if (isSuperAdmin && !initialOrgId && organizations.length > 0) {
+            initialOrgId = organizations[0].id;
+        }
+
+        setActiveOrganizationIdState(initialOrgId || '');
 
         // Resolve Active Workspace
         const storedWs = localStorage.getItem('activeWorkspaceId');
