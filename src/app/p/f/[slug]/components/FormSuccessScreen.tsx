@@ -34,14 +34,15 @@ export default function FormSuccessScreen({ form }: FormSuccessScreenProps) {
 
   const theme = form.theme;
   const isGlass = theme.backgroundStyle === 'glass';
-  const radiusMap = { none: 'rounded-none', small: 'rounded-md', medium: 'rounded-xl', large: 'rounded-3xl' };
+  const radiusMap: Record<string, string> = { none: 'rounded-none', small: 'rounded-md', medium: 'rounded-xl', large: 'rounded-3xl' };
   const cardRadius = radiusMap[theme.borderRadius || 'medium'];
+  const cardWidthClass = theme.cardWidth === 'sm' ? 'max-w-md' : theme.cardWidth === 'lg' ? 'max-w-4xl' : 'max-w-2xl';
 
   return (
     <div className="flex flex-col items-center justify-center p-4 min-h-screen transition-all duration-500">
       <div className={cn(
         "w-full transition-all duration-700 animate-in fade-in zoom-in-95",
-        theme.cardWidth === 'narrow' ? 'max-w-md' : theme.cardWidth === 'wide' ? 'max-w-4xl' : 'max-w-2xl',
+        cardWidthClass,
         isGlass ? "glass shadow-2xl border border-white/20 p-12 sm:p-20" : "bg-white shadow-xl border border-slate-200 p-12 sm:p-20",
         cardRadius,
         "text-center"

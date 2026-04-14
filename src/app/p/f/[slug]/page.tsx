@@ -71,7 +71,7 @@ export default async function PublicFormPage({
   
   const resolvedFields = form.fields.map(instance => ({
     ...instance,
-    fieldDefinition: registryMap.get(instance.fieldId)
+    fieldDefinition: registryMap.get(instance.appFieldId)
   })).filter(f => !!f.fieldDefinition);
 
   const isEmbed = embed === 'true';

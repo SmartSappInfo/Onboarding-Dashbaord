@@ -72,7 +72,7 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import type { CampaignPage, CampaignPageVersion, CampaignPageStructure, PageSection, PageTrigger, PageTriggerAction } from '@/lib/types';
+import type { CampaignPage, CampaignPageVersion, CampaignPageStructure, PageSection, PageTrigger, PageTriggerAction, PageBlock, PageBlockType } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
@@ -92,7 +92,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [publishing, setPublishing] = useState(false);
     const [activeTab, setActiveTab] = useState<'add' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'performance'>('add');
     const [leads, setLeads] = useState<any[]>([]);
+    const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+
 
     const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -129,7 +132,18 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 } else {
                     throw new Error('No structure found for this page.');
                 }
+
+                // Fetch all versions for the History tab
+                const allVQuery = query(
+                    collection(firestore, 'campaign_page_versions'),
+                    where('pageId', '==', id),
+                    orderBy('versionNumber', 'desc')
+                );
+                const allVSnap = await getDocs(allVQuery);
+                setVersions(allVSnap.docs.map(d => d.data() as CampaignPageVersion));
+
             } catch (err: any) {
+
                 toast({ variant: 'destructive', title: 'Error loading page', description: err.message });
             } finally {
                 setLoading(false);
@@ -434,6 +448,33 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         }
     };
 
+    const restoreVersion = async (targetVersion: CampaignPageVersion) => {
+        if (!firestore || !id || !version) return;
+        setIsRestoring(true);
+        try {
+            // Recommendation: Overwrite the current working snapshot
+            setVersion({
+                ...version,
+                structureJson: targetVersion.structureJson
+            });
+
+            toast({
+                title: 'Version Restored',
+                description: 'The canvas has been updated to the selected version. Save Draft to persist.'
+            });
+            setActiveTab('edit');
+        } catch (e) {
+            toast({
+                title: 'Restoration Failed',
+                description: 'Could not load historical structure.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
+
     const addSection = (template?: any) => {
         if (!version) return;
         const newSection: PageSection = template ? {
@@ -605,7 +646,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         >
                             <Settings2 className="w-4 h-4 mr-2" /> Setup
                         </Button>
+                        <Button 
+                            variant="ghost" 
+                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'library' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            onClick={() => setActiveTab('library')}
+                        >
+                            <History className="w-4 h-4 mr-2" /> History
+                        </Button>
                     </div>
+
 
                     <div className="flex-1 overflow-y-auto p-4 placeholder-text text-left">
                         {activeTab === 'performance' && (
@@ -724,12 +773,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                 <div className="flex gap-2">
                                                     <Input 
                                                         type="color" 
-                                                        value={page?.settings.themeOverrides?.[key as any] || '#000000'}
+                                                        value={(page?.settings.themeOverrides as any)?.[key] || '#000000'}
                                                         onChange={(e) => updateThemeOverride(key, e.target.value)}
                                                         className="h-8 w-8 p-0 rounded-lg border-0 cursor-pointer overflow-hidden"
                                                     />
                                                     <Input 
-                                                        value={page?.settings.themeOverrides?.[key as any] || ''}
+                                                        value={(page?.settings.themeOverrides as any)?.[key] || ''}
                                                         placeholder="Hex code"
                                                         onChange={(e) => updateThemeOverride(key, e.target.value)}
                                                         className="h-8 text-[10px] items-center py-0 rounded-lg bg-slate-50"
@@ -773,14 +822,73 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                     </div>
                                 </div>
                             </div>
-
-                            </div>
                         )}
 
                         {activeTab === 'library' && (
                             <div className="space-y-6 animate-in fade-in duration-300">
+
                                 <section>
-                                    <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Saved Sections</Label>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="p-1.5 bg-primary/10 rounded-lg">
+                                            <History className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Version History</h4>
+                                    </div>
+                                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {versions.length > 0 ? (
+                                            versions.map((v) => (
+                                                <div 
+                                                    key={v.id} 
+                                                    className={cn(
+                                                        "p-4 rounded-2xl border transition-all space-y-3",
+                                                        v.id === version?.id ? "bg-emerald-50/30 border-emerald-100 ring-1 ring-emerald-500/20" : "bg-slate-50 border-slate-100 hover:border-primary/20 hover:bg-white"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn(
+                                                                "w-2 h-2 rounded-full",
+                                                                v.id === version?.id ? "bg-emerald-500" : "bg-slate-300"
+                                                            )} />
+                                                            <span className="text-sm font-bold text-slate-900">v{v.versionNumber || 0}</span>
+                                                            <Badge variant="outline" className="text-[9px] uppercase font-black px-2 py-0 h-4 border-slate-200 text-slate-400">
+                                                                {v.isPublishedVersion ? 'published' : 'draft'}
+                                                            </Badge>
+                                                        </div>
+                                                        {v.id !== version?.id && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => restoreVersion(v)}
+                                                                className="h-7 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg"
+                                                                disabled={isRestoring}
+                                                            >
+                                                                Restore
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[10px] font-medium text-slate-400">
+                                                        <span>{v.createdAt ? new Date(v.createdAt).toLocaleDateString() : 'Draft'}</span>
+                                                        <span>{v.structureJson.sections?.length || 0} Secs</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="py-8 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
+                                                <History className="w-8 h-8 text-slate-200 mx-auto mb-2" />
+                                                <p className="text-[10px] text-slate-400 font-medium">No history yet.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="p-1.5 bg-pink-500/10 rounded-lg">
+                                            <FolderHeart className="h-4 w-4 text-pink-500" />
+                                        </div>
+                                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Library</h4>
+                                    </div>
                                     {savedSections.length > 0 ? (
                                         <div className="grid grid-cols-1 gap-3">
                                             {savedSections.map(s => (
@@ -805,12 +913,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                     ) : (
                                         <div className="py-8 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
                                             <FolderHeart className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                                            <p className="text-[10px] text-slate-400 font-medium px-4 leading-relaxed">Your library is empty. Save a section from the canvas to reuse it here.</p>
+                                            <p className="text-[10px] text-slate-400 font-medium px-4 leading-relaxed">Your library is empty.</p>
                                         </div>
                                     )}
                                 </section>
                             </div>
                         )}
+
                         {activeTab === 'add' ? (
 
                             <div>
@@ -1274,8 +1383,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                                     <SelectContent className="rounded-xl">
                                                                         <SelectItem value="open_modal" className="text-[10px]">Open Modal</SelectItem>
                                                                         <SelectItem value="trigger_automation" className="text-[10px]">Start Automation</SelectItem>
+                                                                        <SelectItem value="scroll_to" className="text-[10px]">Scroll to Section</SelectItem>
                                                                         <SelectItem value="redirect" className="text-[10px]">Go to URL</SelectItem>
                                                                         <SelectItem value="trigger_webhook" className="text-[10px]">Fire Webhook</SelectItem>
+
                                                                     </SelectContent>
                                                                 </Select>
 
@@ -1305,6 +1416,27 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                                     </div>
                                                                 )}
 
+                                                                {action.type === 'scroll_to' && (
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[9px] font-bold text-slate-400 uppercase">Target Section</Label>
+                                                                        <Select 
+                                                                            value={action.config.targetId || ''} 
+                                                                            onValueChange={(val) => updateAction(trigger.id, action.id, { config: { ...action.config, targetId: val } })}
+                                                                        >
+                                                                            <SelectTrigger className="h-7 text-[9px] font-semibold bg-white border-none rounded-lg">
+                                                                                <SelectValue placeholder="Select section..." />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent className="rounded-xl">
+                                                                                {(version?.structureJson.sections || []).map((s, si) => (
+                                                                                    <SelectItem key={s.id} value={s.id} className="text-[10px]">
+                                                                                        Section {si + 1} ({s.type})
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                )}
+
                                                                 {action.type === 'trigger_automation' && (
                                                                     <Select value={action.config.automationId || ''} onValueChange={(val: any) => updateAction(trigger.id, action.id, { config: { automationId: val } })}>
                                                                         <SelectTrigger className="h-7 text-[9px] font-semibold bg-white border-none rounded-lg">
@@ -1324,6 +1456,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                                         className="h-7 text-[9px] bg-white border-none font-semibold rounded-lg"
                                                                     />
                                                                 )}
+
                                                             </div>
                                                         ))}
                                                     </div>

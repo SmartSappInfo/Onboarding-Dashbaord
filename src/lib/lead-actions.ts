@@ -180,6 +180,7 @@ export async function processLeadCaptureAction(params: {
                 organizationId,
                 entityType: 'person',
                 name,
+                contacts: [],
                 globalTags: [],
                 status: 'active',
                 createdAt: timestamp,

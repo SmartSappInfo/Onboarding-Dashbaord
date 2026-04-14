@@ -725,8 +725,8 @@ export default function EditFormPage() {
                         <Switch
                           checked={formData.actions?.notifications?.sendConfirmationEmail || false}
                           onCheckedChange={v => {
-                            const currentActions = formData.actions || {};
-                            const currentNotifications = currentActions.notifications || {};
+                            const currentActions = (formData.actions || {}) as FormSubmissionActions;
+                            const currentNotifications = currentActions.notifications || {} as FormSubmissionActions['notifications'];
                             updateField('actions', {
                               ...currentActions,
                               notifications: { ...currentNotifications, sendConfirmationEmail: v }
@@ -740,8 +740,8 @@ export default function EditFormPage() {
                           <Input
                             value={formData.actions?.notifications?.respondentEmailField || ''}
                             onChange={e => {
-                              const currentActions = formData.actions || {};
-                              const currentNotifications = currentActions.notifications || {};
+                              const currentActions = (formData.actions || {}) as FormSubmissionActions;
+                              const currentNotifications = currentActions.notifications || {} as FormSubmissionActions['notifications'];
                               updateField('actions', {
                                 ...currentActions,
                                 notifications: { ...currentNotifications, respondentEmailField: e.target.value }

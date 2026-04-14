@@ -5,11 +5,11 @@ import { CampaignPage } from '@/lib/types';
 import { getLeadsForPageAction } from '@/lib/lead-actions';
 
 interface LeadsPageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 export default async function LeadsPage({ params }: LeadsPageProps) {
-    const { id } = params;
+    const { id } = await params;
 
     const pageSnap = await adminDb.collection('campaign_pages').doc(id).get();
     if (!pageSnap.exists) {

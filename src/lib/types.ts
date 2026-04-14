@@ -858,6 +858,7 @@ export interface MediaAsset {
 
 export interface Survey {
   id: string;
+  organizationId?: string;
   workspaceIds: string[]; // Shared
   internalName: string;
   title: string;
@@ -1583,7 +1584,7 @@ export interface CampaignPageStructure {
 
 export interface PageTriggerAction {
   id: string;
-  type: 'trigger_automation' | 'open_modal' | 'redirect' | 'trigger_webhook';
+  type: 'trigger_automation' | 'open_modal' | 'redirect' | 'trigger_webhook' | 'scroll_to';
   config: {
     automationId?: string;
     modalType?: 'survey' | 'form' | 'agreement';
@@ -1595,7 +1596,7 @@ export interface PageTriggerAction {
 export interface PageTrigger {
   id: string;
   name: string; // Human-readable label e.g. "Welcome popup"
-  event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit';
+  event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit' | 'scroll_to';
   targetBlockId?: string; // Which block fires this (for block_click/form_submitted)
   actions: PageTriggerAction[]; // Multiple actions per trigger
 }

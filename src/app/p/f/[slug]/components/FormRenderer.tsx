@@ -51,9 +51,9 @@ export default function FormRenderer({
       fieldSchema = z.string().min(1, 'Date is required');
     }
     
-    if (field.isRequired) {
+    if (field.required) {
       if (type !== 'number' && type !== 'currency') {
-        fieldSchema = fieldSchema.min(1, `${field.label || field.fieldDefinition.label} is required`);
+        fieldSchema = fieldSchema.min(1, `${field.labelOverride || field.fieldDefinition.label} is required`);
       }
     } else {
       fieldSchema = fieldSchema.optional().nullable();
@@ -103,8 +103,9 @@ export default function FormRenderer({
   // 4. Styles based on Theme
   const theme = form.theme;
   const isGlass = theme.backgroundStyle === 'glass';
-  const radiusMap = { none: 'rounded-none', small: 'rounded-md', medium: 'rounded-xl', large: 'rounded-3xl' };
+  const radiusMap: Record<string, string> = { none: 'rounded-none', small: 'rounded-md', medium: 'rounded-xl', large: 'rounded-3xl' };
   const cardRadius = radiusMap[theme.borderRadius || 'medium'];
+  const cardWidthClass = theme.cardWidth === 'sm' ? 'max-w-md' : theme.cardWidth === 'lg' ? 'max-w-4xl' : 'max-w-2xl';
 
   return (
     <div className={cn(
@@ -114,7 +115,7 @@ export default function FormRenderer({
       
       <div className={cn(
         "w-full transition-all duration-700",
-        theme.cardWidth === 'narrow' ? 'max-w-md' : theme.cardWidth === 'wide' ? 'max-w-4xl' : 'max-w-2xl',
+        cardWidthClass,
         isGlass ? "glass shadow-2xl border border-white/20 p-8 sm:p-12 mb-10" : "bg-white shadow-xl border border-slate-200 p-8 sm:p-12 mb-10",
         cardRadius
       )}>
@@ -142,14 +143,14 @@ export default function FormRenderer({
                     htmlFor={field.fieldDefinition.variableName} 
                     className="text-sm font-semibold text-slate-700 ml-1"
                   >
-                    {field.label || field.fieldDefinition.label}
-                    {field.isRequired && <span className="text-rose-500 ml-1">*</span>}
+                    {field.labelOverride || field.fieldDefinition.label}
+                    {field.required && <span className="text-rose-500 ml-1">*</span>}
                   </Label>
                   
                   {type === 'long_text' ? (
                     <Textarea
                       id={field.fieldDefinition.variableName}
-                      placeholder={field.placeholder || field.fieldDefinition.placeholder}
+                      placeholder={field.placeholderOverride || field.fieldDefinition.placeholder}
                       {...register(field.fieldDefinition.variableName)}
                       className={cn(
                         "min-h-[120px] transition-all focus:ring-2",
@@ -167,7 +168,7 @@ export default function FormRenderer({
                         type === 'date' ? 'date' :
                         'text'
                       }
-                      placeholder={field.placeholder || field.fieldDefinition.placeholder}
+                      placeholder={field.placeholderOverride || field.fieldDefinition.placeholder}
                       {...register(field.fieldDefinition.variableName)}
                       className={cn(
                         "h-12 transition-all focus:ring-2",

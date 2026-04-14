@@ -1,7 +1,6 @@
 import { adminDb } from './firebase-admin';
 import { cache } from 'react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase-admin/firestore';
-import type { Workspace, DashboardLayout, OnboardingStage, Entity, WorkspaceEntity, Meeting, Survey, Task, Activity, MessageLog, Zone, UserProfile } from './types';
+import type { Workspace, DashboardLayout, OnboardingStage, Entity, WorkspaceEntity, Meeting, Survey, Task, Activity, MessageLog, Zone, UserProfile, Pipeline } from './types';
 import { startOfToday, format, isAfter } from 'date-fns';
 
 /**
@@ -20,7 +19,7 @@ export const getDashboardLayout = cache(async (workspaceId: string): Promise<Das
     const docId = `workspace_${workspaceId}`;
     const snap = await adminDb.collection('dashboardLayouts').doc(docId).get();
     if (!snap.exists) return null;
-    return { id: snap.id, ...snap.data() } as DashboardLayout;
+    return { id: snap.id, ...snap.data() } as unknown as DashboardLayout;
 });
 
 /**
@@ -133,6 +132,156 @@ export const getUpcomingMeetings = async (workspaceId: string) => {
             date: format(new Date(meeting.meetingTime), 'MMM dd, yyyy'),
             status: 'Upcoming',
         }));
+};
+
+/**
+ * Fetch latest surveys.
+ */
+export const getLatestSurveys = async (workspaceId: string) => {
+    const snap = await adminDb.collection('surveys')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .orderBy('createdAt', 'desc')
+        .limit(3)
+        .get();
+
+    return snap.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        responseCount: 0
+    } as unknown as Survey));
+};
+
+/**
+ * Fetch monthly registration trends.
+ */
+export const getMonthlyTrend = async (workspaceId: string) => {
+    const entities = await getWorkspaceEntities(workspaceId);
+    const monthlyTrends: Record<string, number> = {};
+    
+    entities.forEach((we: any) => {
+        if (!we.addedAt && !we.createdAt) return;
+        const date = new Date(we.addedAt || we.createdAt);
+        const month = format(date, 'MMM');
+        monthlyTrends[month] = (monthlyTrends[month] || 0) + 1;
+    });
+
+    return [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ].map(month => ({
+        name: month,
+        total: monthlyTrends[month] || 0
+    }));
+};
+
+/**
+ * Fetch workspace pipelines.
+ */
+export const getWorkspacePipelines = async (workspaceId: string) => {
+    const snap = await adminDb.collection('pipelines')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .orderBy('createdAt', 'desc')
+        .get();
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pipeline));
+};
+
+/**
+ * Fetch module implementation footprint.
+ */
+export const getModuleFootprint = async (workspaceId: string) => {
+    const entities = await getWorkspaceEntities(workspaceId);
+    const moduleCounts: Record<string, { abbreviation: string; name: string; count: number }> = {};
+    
+    entities.forEach((we: any) => {
+        we.modules?.forEach((m: { id: string; name: string; abbreviation: string }) => {
+            if (!moduleCounts[m.id]) {
+                moduleCounts[m.id] = { name: m.name, abbreviation: m.abbreviation, count: 0 };
+            }
+            moduleCounts[m.id].count++;
+        });
+    });
+    
+    return Object.values(moduleCounts);
+};
+
+/**
+ * Fetch zone distribution metrics.
+ */
+export const getZoneDistribution = async (workspaceId: string) => {
+    const snap = await adminDb.collection('zones').get();
+    const zones = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
+    const entities = await getWorkspaceEntities(workspaceId);
+    
+    return zones.map((zone: Zone) => {
+        const entitiesInZone = entities.filter((we: any) => we.zone?.id === zone.id);
+        const totalCount = entitiesInZone.length;
+        const studentCount = entitiesInZone.reduce((sum: number, we: any) => sum + (we.nominalRoll || 0), 0);
+        
+        return {
+          name: zone.name,
+          schoolCount: totalCount,
+          studentCount: studentCount
+        };
+    }).filter((zd: any) => zd.schoolCount > 0);
+};
+
+/**
+ * Fetch authorized users.
+ */
+export const getAuthorizedUsers = cache(async () => {
+    const snap = await adminDb.collection('users')
+        .where('isAuthorized', '==', true)
+        .get();
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+});
+
+/**
+ * Fetch user assignments.
+ */
+export const getUserAssignments = async (workspaceId: string) => {
+    const [entities, users] = await Promise.all([
+        getWorkspaceEntities(workspaceId),
+        getAuthorizedUsers()
+    ]);
+
+    const totalEntities = entities.length;
+
+    return users.map((user: UserProfile) => {
+        const assignedEntities = entities.filter((we: any) => we.assignedTo?.userId === user.id);
+        const totalAssigned = assignedEntities.length;
+        const totalStudentsAssigned = assignedEntities.reduce((acc: number, we: any) => acc + (we.nominalRoll || 0), 0);
+
+        return {
+            user,
+            totalAssigned,
+            totalStudents: totalStudentsAssigned,
+            assignmentPercentage: totalEntities > 0 ? (totalAssigned / totalEntities) * 100 : 0,
+        };
+    }).filter((ua: any) => ua.totalAssigned > 0);
+};
+
+/**
+ * Fetch messaging metrics.
+ */
+export const getMessagingMetrics = async (workspaceId: string) => {
+    const snap = await adminDb.collection('message_logs')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .orderBy('sentAt', 'desc')
+        .limit(100)
+        .get();
+    
+    const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageLog));
+    const emailLogs = logs.filter(l => l.channel === 'email');
+    const smsLogs = logs.filter(l => l.channel === 'sms');
+    
+    const emailSuccess = emailLogs.length > 0 ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 : 100;
+    const smsSuccess = smsLogs.length > 0 ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 : 100;
+
+    return {
+        emailSuccess: Math.round(emailSuccess),
+        smsSuccess: Math.round(smsSuccess),
+        recentLogs: logs.slice(0, 5)
+    };
 };
 
 /**

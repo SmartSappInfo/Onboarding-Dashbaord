@@ -203,8 +203,8 @@ export async function processFormSubmissionAction(input: {
       workspaceId: form.workspaceId,
       organizationId: form.organizationId,
       data: input.data,
-      entityId: input.entityId || null,
-      sourcePageId: input.sourcePageId || null,
+      entityId: input.entityId || undefined,
+      sourcePageId: input.sourcePageId || undefined,
       submittedAt: timestamp,
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
@@ -253,7 +253,7 @@ export async function processFormSubmissionAction(input: {
         const { applyTagsAction } = await import('./tag-actions');
         await applyTagsAction(
           input.entityId,
-          form.contactScope === 'institution' ? 'school' : 'entity',
+          form.contactScope === 'institution' ? 'school' : 'prospect',
           form.actions.tags,
           'system-form-engine',
           'Form Submission Engine'
@@ -338,7 +338,6 @@ export async function processFormSubmissionAction(input: {
         submissionId: subRef.id,
         sourcePageId: input.sourcePageId
       },
-      timestamp
     });
 
     // Indirect Conversion Tracking (Requirement 11, PRD Section 10)
@@ -355,7 +354,6 @@ export async function processFormSubmissionAction(input: {
           formId: input.formId,
           submissionId: subRef.id
         },
-        timestamp
       });
     }
 

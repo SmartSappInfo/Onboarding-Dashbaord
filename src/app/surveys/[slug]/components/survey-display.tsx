@@ -13,6 +13,7 @@ import SurveyLoader from '../../components/survey-loader';
 
 interface SurveyDisplayProps {
     survey: Survey;
+    sourcePageId?: string;
 }
 
 const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPattern'], color?: string }) => {

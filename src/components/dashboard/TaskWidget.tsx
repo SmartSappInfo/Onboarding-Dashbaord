@@ -18,13 +18,19 @@ import { useTenant } from '@/context/TenantContext';
  * @fileOverview Remodeled Task Widget: "Critical Focus".
  * Contextualized to the active workspace.
  */
-export function TaskWidget({ terminology = { singular: 'Entity', plural: 'Entities' } }: { terminology?: { singular: string, plural: string } }) {
+export function TaskWidget({ 
+    initialTasks,
+    terminology = { singular: 'Entity', plural: 'Entities' } 
+}: { 
+    initialTasks?: Task[],
+    terminology?: { singular: string, plural: string } 
+}) {
     const firestore = useFirestore();
     const { activeWorkspaceId } = useTenant();
 
     // Query for unresolved tasks strictly within this workspace
     const tasksQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!firestore || !activeWorkspaceId || initialTasks) return null;
         return query(
             collection(firestore, 'tasks'),
             where('workspaceId', '==', activeWorkspaceId),
@@ -33,9 +39,12 @@ export function TaskWidget({ terminology = { singular: 'Entity', plural: 'Entiti
             orderBy('dueDate', 'asc'),
             limit(5)
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [firestore, activeWorkspaceId, initialTasks]);
 
-    const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
+    const { data: fetchedTasks, isLoading: isFetching } = useCollection<Task>(tasksQuery);
+    
+    const tasks = initialTasks || fetchedTasks;
+    const isLoading = initialTasks ? false : isFetching;
 
     const handleComplete = (id: string) => {
         if (firestore) completeTaskNonBlocking(firestore, id);

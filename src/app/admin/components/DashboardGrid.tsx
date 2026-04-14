@@ -14,19 +14,17 @@ import {
 } from '@dnd-kit/sortable';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import {
-    LatestSurveys,
-    UpcomingMeetings,
-    PipelinePieChart,
-    UserAssignments,
-    MonthlySchoolsChart,
-    ModuleRadarChart,
-    RecentActivity,
-    ZoneDistribution,
-    MessagingWidget,
-    TaskWidget,
-    PipelineWidget,
-} from "@/components/dashboard";
+import { LatestSurveys } from "@/components/dashboard/LatestSurveys";
+import { UpcomingMeetings } from "@/components/dashboard/UpcomingMeetings";
+import { PipelinePieChart } from "@/components/dashboard/PipelinePieChart";
+import { UserAssignments } from "@/components/dashboard/UserAssignments";
+import { MonthlySchoolsChart } from "@/components/dashboard/MonthlySchoolsChart";
+import { ModuleRadarChart } from "@/components/dashboard/ModuleRadarChart";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { ZoneDistribution } from "@/components/dashboard/ZoneDistribution";
+import { MessagingWidget } from "@/components/dashboard/MessagingWidget";
+import { TaskWidget } from "@/components/dashboard/TaskWidget";
+import { PipelineWidget } from "@/components/dashboard/PipelineWidget";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout, Pipeline } from '@/lib/types';
 import { DashboardSkeleton } from './DashboardSkeleton';
@@ -53,12 +51,12 @@ const staticComponentMap: Record<string, React.FC<any>> = {
 };
 
 export default function DashboardGrid({ 
-    initialData, 
+    widgets,
     pipelines = [], 
     isCustomizerOpen, 
     onCustomizerChange 
 }: { 
-    initialData: any; 
+    widgets: Record<string, React.ReactNode>;
     pipelines?: Pipeline[];
     isCustomizerOpen: boolean;
     onCustomizerChange: (open: boolean) => void;
@@ -69,31 +67,6 @@ export default function DashboardGrid({
     const { isFeatureEnabled } = useFeatures();
     const canManageDashboard = hasPermission('dashboard_manage');
 
-    const terminology = activeWorkspace?.terminology || { singular: 'Entity', plural: 'Entities' };
-
-    const componentPropsMap = (data: any) => ({
-      taskWidget: { terminology },
-      pipelinePieChart: { stages: data.pipelineCounts, terminology },
-      latestSurveys: { surveys: data.latestSurveys, terminology },
-      upcomingMeetings: { meetings: data.upcomingMeetings, terminology },
-      userAssignments: { 
-        data: data.userAssignments, 
-        totalSchools: data.metrics.totalSchools, 
-        totalStudents: data.metrics.totalStudents,
-        terminology 
-      },
-      monthlySchoolsChart: { data: data.monthlySchools, terminology },
-      moduleRadarChart: { data: data.moduleImplementations, terminology },
-      recentActivity: {
-        activities: data.activities,
-        users: data.recentActivityUsers,
-        schools: data.recentActivitySchools,
-        entities: data.recentActivityEntities,
-        terminology
-      },
-      zoneDistribution: { data: data.zoneDistribution, terminology },
-      messagingWidget: { ...data.messagingMetrics },
-    });
     const [orderedComponents, setOrderedComponents] = useState<string[]>(DEFAULT_WIDGET_IDS);
     const [isLayoutLoaded, setIsLayoutLoaded] = useState(false);
     const isMobile = useIsMobile();
@@ -198,36 +171,6 @@ export default function DashboardGrid({
         });
     };
 
-    // Resolve component and props for a widget ID
-    const resolveWidget = (id: string): { Component: React.FC<any>; props: any } | null => {
-        // Static widget
-        if (staticComponentMap[id]) {
-            const props = (componentPropsMap(initialData) as Record<string, any>)[id];
-            return { Component: staticComponentMap[id], props: props || {} };
-        }
-
-        // Pipeline widget (dynamic)
-        if (id.startsWith('pipeline_')) {
-            const pipelineId = id.replace('pipeline_', '');
-            const pipeline = pipelines.find(p => p.id === pipelineId);
-            if (!pipeline) return null;
-
-            // Get per-pipeline stage data from initialData
-            const pipelineStages = initialData.pipelinesByPipeline?.[pipelineId] || [];
-            return {
-                Component: PipelineWidget,
-                props: {
-                    pipelineId,
-                    pipelineName: pipeline.name,
-                    stages: pipelineStages,
-                    terminology,
-                },
-            };
-        }
-
-        return null;
-    };
-
     if (!isLayoutLoaded) {
         return <DashboardSkeleton />;
     }
@@ -240,12 +183,11 @@ export default function DashboardGrid({
             <>
                 <div className="grid grid-cols-1 gap-6">
                     {visibleComponents.map((id) => {
-                        const resolved = resolveWidget(id);
-                        if (!resolved) return null;
-                        const { Component, props } = resolved;
+                        const widget = widgets[id];
+                        if (!widget) return null;
                         return (
                             <div key={id}>
-                                <Component {...props} />
+                                {widget}
                             </div>
                         );
                     })}
@@ -275,14 +217,13 @@ export default function DashboardGrid({
                 <SortableContext items={visibleComponents} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
                         {visibleComponents.map((id) => {
-                            const resolved = resolveWidget(id);
-                            if (!resolved) return null;
-                            const { Component, props } = resolved;
+                            const widget = widgets[id];
+                            if (!widget) return null;
                             const gridClass = gridClassMap[id] || 'lg:col-span-2';
 
                             return (
                                 <DraggableCard key={id} id={id} className={gridClass} disabled={!canManageDashboard}>
-                                    <Component {...props} />
+                                    {widget}
                                 </DraggableCard>
                             );
                         })}
@@ -292,7 +233,7 @@ export default function DashboardGrid({
             <WidgetSelector
                 open={isCustomizerOpen}
                 onOpenChange={onCustomizerChange}
-                activeWidgetIds={visibleComponents}
+                activeWidgetIds={orderedComponents}
                 pipelines={pipelines}
                 onToggleWidget={handleToggleWidget}
             />

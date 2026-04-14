@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { submitStandaloneFormAction } from '@/lib/form-actions';
 import { getThemesAction } from '@/lib/theme-actions';
 import { recordPageViewAction, recordInteractionAction } from '@/lib/analytics-actions';
+import { useSearchParams } from 'next/navigation';
 import type { CampaignPageTheme } from '@/lib/types';
 
 
@@ -48,7 +49,14 @@ function useTriggerEngine(page: CampaignPage | null) {
                     // Server-side only — handled by form/survey submission actions
                     console.log(`>>> [TRIGGER] Automation ${action.config.automationId} queued (handled server-side)`);
                     break;
+                case 'scroll_to':
+                    if (action.config.targetId) {
+                        const el = document.getElementById(action.config.targetId);
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    break;
                 case 'trigger_webhook':
+
                     if (action.config.url) {
                         try {
                             await fetch(action.config.url, {
@@ -129,6 +137,24 @@ function useTriggerEngine(page: CampaignPage | null) {
 
     return { modalState, setModalState, fireTrigger };
 }
+
+// ─── Personalization Engine ──────────────────────────────────────────────
+function usePersonalization(page: CampaignPage | null) {
+    const searchParams = useSearchParams();
+
+    const interpolate = useCallback((text: string = '') => {
+        if (!text || !text.includes('{{')) return text;
+        
+        return text.replace(/\{\{([^}]+)\}\}/g, (_, match) => {
+            const [key, defaultValue] = match.split('|').map((s: string) => s.trim());
+            const value = searchParams?.get(key);
+            return value || defaultValue || '';
+        });
+    }, [searchParams]);
+
+    return { interpolate };
+}
+
 
 
 // ─── Embedded Form Modal ──────────────────────────────────────────────────
@@ -303,6 +329,8 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
     const { toast } = useToast();
 
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page);
+    const { interpolate } = usePersonalization(page);
+
 
     useEffect(() => {
         if (!db) return;
@@ -365,10 +393,16 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
         };
         trackView();
 
-        // 2. Custom Scripts & Fonts
+        // 2. Custom Scripts, Fonts & Title Personalization
         const inject = () => {
+            // Document Title Personalization
+            if (page.seo.title) {
+                document.title = interpolate(page.seo.title);
+            }
+
             // Fonts
             const font = page.settings.themeOverrides?.typography?.primaryFont || 'Inter';
+
             if (font && !['Inter', 'Roboto'].includes(font)) {
                 let fontLink = document.querySelector(`link[href*="family=${font.replace(' ', '+')}"]`);
                 if (!fontLink) {
@@ -421,20 +455,6 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
 
 
 
-    if (loading) {
-        return <div className="h-screen flex flex-col items-center justify-center bg-white"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-    }
-
-    if (error || !page || !version) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-                <SmartSappLogo className="h-10 mb-8" />
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">404 - Not Found</h1>
-                <p className="text-muted-foreground font-medium max-w-sm">{error || "The page you are looking for doesn't exist."}</p>
-            </div>
-        );
-    }
-
     // ─── Theme Variable Injection ──────────────────────────────────────────
     const themeStyles = React.useMemo(() => {
         if (!page) return '';
@@ -472,21 +492,37 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
         `;
     }, [page, theme]);
 
+    if (loading) {
+        return <div className="h-screen flex flex-col items-center justify-center bg-white"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    }
+
+    if (error || !page || !version) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+                <SmartSappLogo className="h-10 mb-8" />
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">404 - Not Found</h1>
+                <p className="text-muted-foreground font-medium max-w-sm">{error || "The page you are looking for doesn't exist."}</p>
+            </div>
+        );
+    }
+
+
+
     return (
         <div className="min-h-screen flex flex-col bg-white relative">
             <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
             {!page.seo.noIndex ? (
-
-                <head>
-                    <title>{page.seo.title}</title>
-                    <meta name="description" content={page.seo.description} />
+                <>
+                    <title>{interpolate(page.seo.title)}</title>
+                    <meta name="description" content={interpolate(page.seo.description)} />
                     {page.seo.ogImageUrl && <meta property="og:image" content={page.seo.ogImageUrl} />}
-                </head>
+                </>
             ) : (
-                <head>
+                <>
                     <meta name="robots" content="noindex, nofollow" />
-                </head>
+                </>
             )}
+
 
             {page.settings.showHeader && (
                 <header className="h-16 border-b flex items-center px-6 md:px-12 bg-white sticky top-0 z-50">
@@ -518,19 +554,21 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                                                     </div>
                                                 )}
                                                 <h1 className="text-4xl md:text-7xl font-bold tracking-tighter text-slate-900 leading-[1.1]">
-                                                    {block.props.title}
+                                                    {interpolate(block.props.title)}
                                                 </h1>
                                                 <p className="text-lg md:text-2xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-                                                    {block.props.subtitle}
+                                                    {interpolate(block.props.subtitle)}
                                                 </p>
                                             </div>
                                         )}
 
+
                                         {block.type === 'text' && (
                                             <div className="max-w-3xl mx-auto prose prose-slate">
-                                                <div dangerouslySetInnerHTML={{ __html: block.props.content || '<p>Enter your content...</p>' }} />
+                                                <div dangerouslySetInnerHTML={{ __html: interpolate(block.props.content || '<p>Enter your content...</p>') }} />
                                             </div>
                                         )}
+
                                         {block.type === 'cta' && (
                                             <div className="flex justify-center py-6">
                                                 <Button 
