@@ -161,6 +161,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             contacts: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           testStorage.workspaceEntities.set(`${entityId}-${workspaceId}`, {
@@ -176,6 +177,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             displayName: 'Test Entity',
             addedAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           // Setup tags with proper scopes
@@ -242,6 +244,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             contacts: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           testStorage.workspaceEntities.set(`${entityId}-${workspaceId}`, {
@@ -257,6 +260,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             displayName: 'Test Entity',
             addedAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           // Setup tags with proper scopes
@@ -323,6 +327,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             contacts: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           testStorage.workspaceEntities.set(`${entityId}-${workspaceId}`, {
@@ -338,6 +343,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             displayName: 'Test Entity',
             addedAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           // Setup tags with proper scopes
@@ -405,6 +411,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             contacts: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           testStorage.workspaceEntities.set(`${entityId}-${workspaceId}`, {
@@ -420,6 +427,7 @@ describe('Property 4: Tag Partition Invariant', () => {
             displayName: 'Test Entity',
             addedAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           });
 
           // Setup: Create global-scoped tags

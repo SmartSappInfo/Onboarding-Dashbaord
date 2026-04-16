@@ -58,6 +58,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
           slug: 'test-school',
         } as any,
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -109,6 +110,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
           slug: 'migrated-school',
         } as any,
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -158,6 +160,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
           slug: 'legacy-school',
         } as any,
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -197,6 +200,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
         entityId: 'entity_999',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -407,6 +411,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
           entityId: `entity_${entityType}`,
           migrationStatus: 'migrated',
           tags: [],
+        entityContacts: [],
         };
 
         (resolveContact as any).mockResolvedValue(mockContact);
@@ -449,6 +454,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
           slug: 'both-identifiers',
         } as any,
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -562,6 +568,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
         entityId: 'entity_automation',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);
@@ -599,6 +606,7 @@ describe('Activity Module - Dual-Write and Queries', () => {
         entityId: 'entity_metadata',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       (resolveContact as any).mockResolvedValue(mockContact);

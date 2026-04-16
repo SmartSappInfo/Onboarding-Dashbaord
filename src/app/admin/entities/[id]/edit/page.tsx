@@ -27,7 +27,7 @@ import { useFirestore, useDoc, useMemoFirebase, useUser, useCollection } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
-import { FocalPersonManager } from '../../components/FocalPersonManager';
+import { EntityContactManager } from '../../components/EntityContactManager';
 import { ManagerSelect } from '../../components/ManagerSelect';
 import { PackageSelect } from '../../components/PackageSelect';
 import { MediaSelect } from '../../components/media-select';
@@ -54,14 +54,17 @@ const entityEditSchema = z.object({
   }, { required_error: 'Please assign a geographic zone.' }),
   locationString: z.string().optional(),
   nominalRoll: z.coerce.number().optional(),
-  contacts: z.array(z.object({
+  entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.').optional().or(z.literal('')),
     phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
-    type: z.string().min(1, 'Role required.'),
+    typeKey: z.string().min(1, 'Role required.'),
+    typeLabel: z.string().min(1, 'Role label required.'),
     isSignatory: z.boolean().default(false),
-  })).min(1, 'At least one focal person is required.')
-    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one focal person must be selected.' }),
+    isPrimary: z.boolean().default(false),
+  })).min(1, 'At least one contact is required.')
+    .refine(people => people.filter(p => p.isSignatory).length === 1, { message: 'Exactly one signatory must be selected.' })
+    .refine(people => people.filter(p => p.isPrimary).length === 1, { message: 'Exactly one primary contact must be selected.' }),
   modules: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -140,7 +143,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
     resolver: zodResolver(entityEditSchema),
     defaultValues: {
       name: '', initials: '', slogan: '', status: 'active', lifecycleStatus: 'Onboarding',
-      nominalRoll: 0, contacts: [], modules: [],
+      nominalRoll: 0, entityContacts: [], modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
       subscriptionPackageId: 'none'
@@ -164,7 +167,15 @@ function EditEntityForm({ entityId }: EditFormProps) {
         zone: institutionData?.location?.zone || undefined,
         locationString: institutionData?.location?.locationString || '',
         nominalRoll: institutionData?.nominalRoll || 0,
-        contacts: (entityData.contacts && entityData.contacts.length > 0) ? entityData.contacts : (institutionData?.focalPersons || []),
+        entityContacts: (entityData.entityContacts && entityData.entityContacts.length > 0) ? entityData.entityContacts : (entityData.contacts?.map((c: any, i: number) => ({
+          name: c.name || '',
+          email: c.email || '',
+          phone: c.phone || '',
+          typeKey: c.type?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'other',
+          typeLabel: c.type || 'Other',
+          isSignatory: !!c.isSignatory,
+          isPrimary: i === 0,
+        })) || []),
         modules: weData.interests || institutionData?.modules || [],
         assignedToId: weData.assignedTo?.userId || 'unassigned',
         billingAddress: institutionData?.billingAddress || '',
@@ -208,7 +219,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         name: data.name,
         status: data.status,
         lifecycleStatus: data.lifecycleStatus,
-        contacts: data.contacts,
+        entityContacts: data.entityContacts,
         assignedTo,
         institutionData: {
             initials: data.initials,
@@ -554,17 +565,16 @@ function EditEntityForm({ entityId }: EditFormProps) {
 
             {/* Contacts & Modules Section */}
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
- <CardHeader className="bg-muted/30 border-b pb-6 text-left">
- <div className="flex items-center gap-3 text-left">
+ <CardHeader className="bg-muted/30 border-b pb-6 text-left">  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
  <div className="text-left">
  <CardTitle className="text-lg font-semibold tracking-tight text-left">Administrative stakeholders</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Primary directory of focal persons.</CardDescription>
+ <CardDescription className="text-xs font-medium text-left">Primary directory of entity contacts.</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
  <CardContent className="p-6 text-left">
-                    <FocalPersonManager />
+                    <EntityContactManager />
                 </CardContent>
             </Card>
 

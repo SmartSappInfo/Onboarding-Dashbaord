@@ -1,7 +1,11 @@
+import { getModuleFootprint, getActiveWorkspace } from '@/lib/dashboard-server';
 import { ModuleRadarChart } from '@/components/dashboard/ModuleRadarChart';
-import { getModuleFootprint } from '@/lib/dashboard-server';
 
 export async function ModuleChartWidgetServer({ workspaceId }: { workspaceId: string }) {
-    const data = await getModuleFootprint(workspaceId);
-    return <ModuleRadarChart data={data} />;
+    const [data, workspace] = await Promise.all([
+        getModuleFootprint(workspaceId),
+        getActiveWorkspace(workspaceId)
+    ]);
+    const terminology = workspace?.terminology || { singular: 'Entity', plural: 'Entities' };
+    return <ModuleRadarChart data={data} terminology={terminology} />;
 }

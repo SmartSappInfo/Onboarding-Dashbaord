@@ -25,20 +25,35 @@ function hexToRgb(hex: string) {
     } : { r: 0, g: 0, b: 0 };
 }
 
+/**
+ * Resolves template variables in PDF text.
+ * FER-01: Uses dynamic contact variable generation from entityContacts.
+ */
 function resolvePdfVariables(text: string, school?: School): string {
     if (!text || !school) return text;
     
+    // Pre-compute contact variables using FER-01 helpers
+    const { getContactVariables, resolveEntityContacts, focalPersonToEntityContact } = require('./entity-contact-helpers');
+    
+    // Build an entity-shaped object for the helper
+    const entityContacts = (school as any).entityContacts 
+        || (school.focalPersons || []).map((fp: any, i: number) => focalPersonToEntityContact(fp, i));
+    
+    const contactVars = getContactVariables({ entityContacts, contacts: [] });
+    
     return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
         const cleanKey = key.trim();
+        // Check static school fields first
         switch (cleanKey) {
             case 'school_name': return school.name || '';
             case 'school_initials': return school.initials || '';
             case 'school_location': return school.location || '';
-            case 'school_phone': return school.focalPersons[0]?.phone || '';
-            case 'school_email': return school.focalPersons[0]?.email || '';
-            case 'contact_name': return school.focalPersons[0]?.name || '';
-            default: return match;
         }
+        // Then check dynamic contact variables
+        if (contactVars[cleanKey] !== undefined) {
+            return contactVars[cleanKey];
+        }
+        return match;
     });
 }
 

@@ -1,0 +1,453 @@
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m72[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m72[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m72[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m72[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m80[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m80[0m       };
+[7m  [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m82[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m82[0m       const { resolveContact } = await import('../contact-adapter');
+[7m  [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m82[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m82[0m       const { resolveContact } = await import('../contact-adapter');
+[7m  [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m83[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m83[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m  [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m83[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m83[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m  [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m85[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m85[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m  [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m92[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m92[0m       });
+[7m  [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m94[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m94[0m       (adminDb.collection as any) = mockCollection;
+[7m  [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m193[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m193[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m193[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m193[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m201[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m201[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m203[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m203[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m203[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m203[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m204[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m204[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m204[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m204[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m206[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m206[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m218[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m218[0m       });
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m220[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m220[0m       (adminDb.collection as any) = mockCollection;
+[7m   [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m313[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m313[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m313[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m313[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m321[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m321[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m323[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m323[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m323[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m323[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m324[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m324[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m324[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m324[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m326[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m326[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m434[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m434[0m       });
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m436[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m436[0m       (adminDb.collection as any) = mockCollection;
+[7m   [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m613[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m613[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m613[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m613[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m621[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m621[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m623[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m623[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m623[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m623[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m624[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m624[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m624[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m624[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m626[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m626[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m713[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m713[0m       });
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m715[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m715[0m       (adminDb.collection as any) = mockCollection;
+[7m   [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m865[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m865[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m865[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m865[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m873[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m873[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m875[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m875[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m875[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m875[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m876[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m876[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m876[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m876[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m878[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m878[0m       const mockPdfForm = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m885[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m885[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m887[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m887[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m889[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m889[0m       });
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m891[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m891[0m       (adminDb.collection as any) = mockCollection;
+[7m   [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m975[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m975[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m975[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m975[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m983[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m983[0m       };
+[7m   [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m985[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m985[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m985[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m985[0m       const { resolveContact } = await import('../contact-adapter');
+[7m   [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m986[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m986[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m986[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m986[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m989[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m989[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m996[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m996[0m       });
+[7m   [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m998[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m998[0m       (adminDb.collection as any) = mockCollection;
+[7m   [0m [91m      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1068[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1068[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1068[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1068[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1076[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1076[0m       };
+[7m    [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1078[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1078[0m       const { resolveContact } = await import('../contact-adapter');
+[7m    [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1078[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1078[0m       const { resolveContact } = await import('../contact-adapter');
+[7m    [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1079[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1079[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1079[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1079[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1081[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1081[0m       const contact = await resolveContact('school_1', 'workspace_1');
+[7m    [0m [91m            ~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1081[0m:[93m70[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1081[0m       const contact = await resolveContact('school_1', 'workspace_1');
+[7m    [0m [91m                                                                     ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1083[0m:[93m22[0m - [91merror[0m[90m TS1005: [0m'{' expected.
+
+[7m1083[0m       expect(contact).not.toBeNull();
+[7m    [0m [91m                     ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1083[0m:[93m37[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1083[0m       expect(contact).not.toBeNull();
+[7m    [0m [91m                                    ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1084[0m:[93m21[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1084[0m       expect(contact?.slug).toBe('legacy-school');
+[7m    [0m [91m                    ~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1084[0m:[93m28[0m - [91merror[0m[90m TS1005: [0m'{' expected.
+
+[7m1084[0m       expect(contact?.slug).toBe('legacy-school');
+[7m    [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1084[0m:[93m50[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1084[0m       expect(contact?.slug).toBe('legacy-school');
+[7m    [0m [91m                                                 ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1085[0m:[93m21[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1085[0m       expect(contact?.migrationStatus).toBe('legacy');
+[7m    [0m [91m                    ~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1085[0m:[93m39[0m - [91merror[0m[90m TS1005: [0m'{' expected.
+
+[7m1085[0m       expect(contact?.migrationStatus).toBe('legacy');
+[7m    [0m [91m                                      ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1085[0m:[93m54[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1085[0m       expect(contact?.migrationStatus).toBe('legacy');
+[7m    [0m [91m                                                     ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1086[0m:[93m6[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1086[0m     });
+[7m    [0m [91m     ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1133[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1133[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1133[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1133[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m                       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1141[0m:[93m8[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1141[0m       };
+[7m    [0m [91m       ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1143[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1143[0m       const { resolveContact } = await import('../contact-adapter');
+[7m    [0m [91m            ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1143[0m:[93m68[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1143[0m       const { resolveContact } = await import('../contact-adapter');
+[7m    [0m [91m                                                                   ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1144[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1144[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1144[0m:[93m63[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1144[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m                                                              ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1146[0m:[93m13[0m - [91merror[0m[90m TS1005: [0m':' expected.
+
+[7m1146[0m       const mockCollection = vi.fn((collectionName: string) => {
+[7m    [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1162[0m:[93m9[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m1162[0m       });
+[7m    [0m [91m        ~[0m
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1164[0m:[93m7[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m1164[0m       (adminDb.collection as any) = mockCollection;
+[7m    [0m [91m      ~[0m
+
+
+Found 90 errors in the same file, starting at: src/lib/__tests__/task-41-2-adapter-integration.test.ts[90m:72[0m
+

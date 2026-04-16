@@ -87,6 +87,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const entity: Entity = {
@@ -102,6 +103,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       },
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     mockWorkspaceEntityGet.mockResolvedValue({
@@ -169,6 +171,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const entity: Entity = {
@@ -184,6 +187,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       },
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     mockWorkspaceEntityGet.mockResolvedValue({
@@ -246,6 +250,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const entity: Entity = {
@@ -259,6 +264,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       institutionData: {},
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     mockWorkspaceEntityGet.mockResolvedValue({
@@ -316,6 +322,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const entity: Entity = {
@@ -329,6 +336,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       institutionData: {},
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     mockWorkspaceEntityGet.mockResolvedValue({
@@ -390,6 +398,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const entity: Entity = {
@@ -403,6 +412,7 @@ describe('Stage Change Actions - workspace_entities Only', () => {
       institutionData: {},
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     mockWorkspaceEntityGet.mockResolvedValue({

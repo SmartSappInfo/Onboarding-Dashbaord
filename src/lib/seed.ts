@@ -441,6 +441,39 @@ export async function enrichMediaWithWorkspace(f: Firestore) { return 0; }
 export async function rollbackMediaMigration(f: Firestore) { return 0; }
 export async function rollbackRolesMigration(f: Firestore) { return 0; }
 
+/**
+ * CONTACT TYPE TEMPLATES: System Defaults (FER-01)
+ * Seeds the base contact type definitions for institution, family, and person entity types.
+ * These serve as the foundation for org/workspace overrides.
+ */
+export async function seedContactTypeTemplates(firestore: Firestore): Promise<number> {
+    const { getSystemContactTypes, getContactTypeTemplateId } = await import('./contact-type-defaults');
+    const batch = writeBatch(firestore);
+    const timestamp = new Date().toISOString();
+    const entityTypes: Array<'institution' | 'family' | 'person'> = ['institution', 'family', 'person'];
+    let count = 0;
+
+    for (const entityType of entityTypes) {
+        const types = getSystemContactTypes(entityType);
+        const templateId = getContactTypeTemplateId('system', entityType);
+        const templateRef = doc(firestore, 'contact_type_templates', templateId);
+
+        batch.set(templateRef, {
+            id: templateId,
+            scopeType: 'system',
+            entityType,
+            types,
+            updatedAt: timestamp,
+            updatedBy: 'system_seed',
+        }, { merge: true });
+        count++;
+    }
+
+    await batch.commit();
+    console.log(`✅ Seeded ${count} contact type templates (system defaults)`);
+    return count;
+}
+
 export async function seedFormTemplates(firestore: Firestore, workspaceId: string, orgId: string): Promise<number> {
     if (!workspaceId) throw new Error("Workspace ID is required to seed forms.");
 

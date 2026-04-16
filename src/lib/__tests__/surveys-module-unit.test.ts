@@ -729,6 +729,7 @@ describe('Surveys Module Unit Tests (Task 21.4)', () => {
         entityId: 'school_123',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const updatedSurvey = {

@@ -21,7 +21,8 @@ export function serializeInstitutionEntity(
   entity: Entity,
   workspaceEntity?: WorkspaceEntity
 ): InstitutionImportRow {
-  const focalPerson = entity.contacts[0];
+  const contacts = entity.entityContacts || [];
+  const focalPerson = contacts[0];
 
   return {
     name: entity.name,
@@ -32,7 +33,7 @@ export function serializeInstitutionEntity(
     focalPerson_name: focalPerson?.name,
     focalPerson_phone: focalPerson?.phone,
     focalPerson_email: focalPerson?.email,
-    focalPerson_type: focalPerson?.type,
+    focalPerson_type: focalPerson?.typeLabel || focalPerson?.typeKey || 'Contact',
   };
 }
 
@@ -65,7 +66,8 @@ export function serializePersonEntity(
   entity: Entity,
   workspaceEntity?: WorkspaceEntity
 ): PersonImportRow {
-  const contact = entity.contacts[0];
+  const contacts = entity.entityContacts || [];
+  const contact = contacts[0];
 
   return {
     firstName: entity.personData?.firstName || '',

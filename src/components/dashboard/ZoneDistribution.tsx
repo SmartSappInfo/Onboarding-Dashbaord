@@ -35,8 +35,8 @@ export function ZoneDistribution({
     }
 
     return (
-        <DashboardCard title="Zone Distribution" description={`${terminology.singular} and student density across organizational areas.`}>
-            <div className="space-y-8">
+        <DashboardCard title="{Entity} distribution" terminology={terminology}>
+            <div className="space-y-6">
                 <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
@@ -61,15 +61,15 @@ export function ZoneDistribution({
                                     if (active && payload && payload.length) {
                                         const d = payload[0].payload;
                                         return (
-                                            <div className="rounded-xl border bg-background p-3 shadow-xl text-xs space-y-2">
+                                            <div className="rounded-2xl border bg-background/80 backdrop-blur-xl p-3 shadow-2xl text-[10px] space-y-2">
                                                 <p className="font-black uppercase tracking-widest text-primary">{d.name}</p>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {terminology.plural}:</span>
-                                                    <span className="font-bold">{d.schoolCount}</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-bold uppercase tracking-tighter"><MapPin className="h-2 w-2" /> {terminology.plural}:</span>
+                                                    <span className="font-black">{d.schoolCount}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <span className="text-muted-foreground flex items-center gap-1.5"><Users className="h-3 w-3" /> Students:</span>
-                                                    <span className="font-bold">{d.studentCount.toLocaleString()}</span>
+                                                    <span className="text-muted-foreground flex items-center gap-1.5 font-bold uppercase tracking-tighter"><Users className="h-2 w-2" /> Students:</span>
+                                                    <span className="font-black">{d.studentCount.toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         );
@@ -86,16 +86,18 @@ export function ZoneDistribution({
                     </ResponsiveContainer>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                     {data.slice(0, 4).map((zone, idx) => (
-                        <div key={idx} className="p-3 rounded-xl bg-muted/20 border border-border/50 flex flex-col gap-1">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate max-w-[120px]">{zone.name}</span>
-                                <Badge variant="secondary" className="h-4 text-[8px] px-1.5">{zone.schoolCount} {zone.schoolCount === 1 ? terminology.singular : terminology.plural}</Badge>
+                        <div key={idx} className="p-4 rounded-3xl bg-muted/10 border border-transparent hover:border-primary/10 hover:bg-white transition-all group">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 truncate max-w-[120px]">{zone.name}</span>
+                                <Badge className="bg-primary/10 text-primary border-none text-[8px] h-4 px-1.5 font-bold">
+                                    {zone.schoolCount} {zone.schoolCount === 1 ? terminology.singular : terminology.plural}
+                                </Badge>
                             </div>
                             <div className="flex items-end justify-between">
-                                <span className="text-lg font-black tabular-nums">{zone.studentCount.toLocaleString()}</span>
-                                <span className="text-[8px] font-bold text-muted-foreground uppercase mb-1">Students</span>
+                                <span className="text-xl font-black tracking-tight tabular-nums">{zone.studentCount.toLocaleString()}</span>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-40 mb-1">Students</span>
                             </div>
                         </div>
                     ))}

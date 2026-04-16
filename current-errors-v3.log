@@ -1,0 +1,18 @@
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m52[0m:[93m37[0m - [91merror[0m[90m TS2304: [0mCannot find name 'EntityContact'.
+
+[7m52[0m   entityContacts: fc.constant([] as EntityContact[]),
+[7m  [0m [91m                                    ~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m91[0m:[93m37[0m - [91merror[0m[90m TS2304: [0mCannot find name 'EntityContact'.
+
+[7m91[0m   entityContacts: fc.constant([] as EntityContact[]),
+[7m  [0m [91m                                    ~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m109[0m:[93m37[0m - [91merror[0m[90m TS2304: [0mCannot find name 'EntityContact'.
+
+[7m109[0m   entityContacts: fc.constant([] as EntityContact[]),
+[7m   [0m [91m                                    ~~~~~~~~~~~~~[0m
+
+
+Found 3 errors in the same file, starting at: src/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[90m:52[0m
+

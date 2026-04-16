@@ -50,47 +50,52 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
   const EntityIcon = entityType ? ENTITY_TYPE_ICONS[entityType] : Building;
 
   return (
- <div className="relative pl-10">
+    <div className="relative pl-10 group/item">
       {/* Icon on the timeline */}
- <div className="absolute -left-1 top-0.5 transform">
- <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted ring-4 ring-background">
+      <div className="absolute -left-[18px] top-0 transform z-10">
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-4 ring-background transition-all group-hover/item:scale-110 group-hover/item:bg-primary group-hover/item:text-white">
           {isSystemEvent ? (
- <Bot className="h-4 w-4" />
+            <Bot className="h-4 w-4" />
           ) : (
- <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4" />
           )}
         </div>
       </div>
       
       {/* Main Content */}
- <div className="ml-4">
+      <div className="ml-6 flex flex-col gap-1.5">
         {/* Header Line */}
- <div className="flex items-center flex-wrap gap-x-2 text-sm">
+        <div className="flex items-center flex-wrap gap-x-2 text-[11px] font-bold uppercase tracking-tight">
             {!isSystemEvent && user ? (
- <div className="flex items-center gap-2">
- <Avatar className="h-6 w-6">
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6 rounded-lg ring-2 ring-primary/5">
                         <AvatarImage src={user.photoURL} alt={user.name} />
- <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{getInitials(user.name)}</AvatarFallback>
                     </Avatar>
- <span className="font-semibold">{user.name}</span>
+                    <span className="font-black text-foreground">{user.name}</span>
                 </div>
             ) : (
- <span className="font-semibold flex items-center gap-2"><Bot className="h-4 w-4" /> System</span>
+                <span className="font-black flex items-center gap-2 text-primary opacity-60">
+                  <Bot className="h-3.5 w-3.5" /> 
+                  System Core
+                </span>
             )}
             
- <span className="text-muted-foreground">
+            <span className="text-muted-foreground/80 font-medium normal-case tracking-normal">
                 {activity.description}
                 {showEntityName && contactName && contactId && (
- <> in <Link href={`/admin/entities/${contactId}`} className="font-semibold text-foreground hover:underline inline-flex items-center gap-1">
- <EntityIcon className="h-3 w-3" />
+                    <> in <Link href={`/admin/entities/${contactId}`} className="font-black text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5 group/link">
+                        <div className="p-1 rounded-md bg-muted/30 group-hover/link:bg-primary/10 transition-colors">
+                          <EntityIcon className="h-3 w-3" />
+                        </div>
                         {contactName}
                         {entityType && (
-                            <Badge variant="outline" className="text-[8px] h-4 px-1 ml-1">
+                            <Badge className="bg-primary/10 text-primary border-none text-[8px] h-4 px-1.5 font-bold ml-1">
                                 {entityType}
                             </Badge>
                         )}
                         {isLegacy && (
-                            <Badge variant="secondary" className="text-[8px] h-4 px-1 ml-1">
+                            <Badge variant="outline" className="text-[8px] h-4 px-1.5 opacity-20 ml-1">
                                 legacy
                             </Badge>
                         )}
@@ -98,12 +103,12 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
                 )}
             </span>
             
- <span className="text-muted-foreground/80">&middot;</span>
+            <span className="text-muted-foreground/30">&middot;</span>
             
             <time
                 dateTime={activity.timestamp}
                 title={format(new Date(activity.timestamp), "PPP p")}
- className="text-muted-foreground/80 whitespace-nowrap"
+                className="text-muted-foreground/50 tabular-nums font-bold"
             >
                 {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
             </time>
@@ -111,12 +116,10 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
 
         {/* Content Card for Notes/Calls etc. */}
         {hasContent && (
- <div className="mt-2">
- <Card className="bg-background shadow-none border">
- <CardContent className="p-4 text-sm">
- <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p>{activity.metadata.content}</p>
-                    </div>
+          <div className="mt-1">
+            <Card className="bg-muted/10 border-none rounded-2xl shadow-inner">
+                <CardContent className="p-4 text-xs font-medium leading-relaxed italic text-muted-foreground/80">
+                    <p className="before:content-['“'] after:content-['”']">{activity.metadata.content}</p>
                 </CardContent>
             </Card>
           </div>

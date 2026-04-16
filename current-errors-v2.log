@@ -1,0 +1,49 @@
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m57[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m57[0m         entityContacts: fc.constant([]),
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m97[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m97[0m         entityContacts: fc.constant([]),
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m116[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m116[0m         entityContacts: fc.constant([]),
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m131[0m:[93m49[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; institutionData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    The type 'readonly []' is 'readonly' and cannot be assigned to the mutable type 'EntityContact[]'.
+
+[7m131[0m       const csvRow = serializeInstitutionEntity(entity);
+[7m   [0m [91m                                                ~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m159[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; familyData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    The type 'readonly []' is 'readonly' and cannot be assigned to the mutable type 'EntityContact[]'.
+
+[7m159[0m       const csvRow = serializeFamilyEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m199[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; personData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    The type 'readonly []' is 'readonly' and cannot be assigned to the mutable type 'EntityContact[]'.
+
+[7m199[0m       const csvRow = serializePersonEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m240[0m:[93m9[0m - [91merror[0m[90m TS2740: [0mType 'Arbitrary<readonly []>' is missing the following properties from type 'EntityContact[]': length, pop, push, concat, and 33 more.
+
+[7m240[0m         entityContacts: fc.constant([]),
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type 'Entity'
+
+
+Found 7 errors in the same file, starting at: src/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[90m:57[0m
+

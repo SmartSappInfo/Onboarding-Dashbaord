@@ -121,6 +121,7 @@ describe('Automation Integration with Adapter Layer', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity = {
@@ -136,6 +137,7 @@ describe('Automation Integration with Adapter Layer', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;
@@ -284,6 +286,7 @@ describe('Automation Integration with Adapter Layer', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity = {
@@ -299,6 +302,7 @@ describe('Automation Integration with Adapter Layer', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockEntityUpdate = vi.fn().mockResolvedValue(undefined);

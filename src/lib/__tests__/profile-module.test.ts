@@ -63,6 +63,7 @@ describe('Profile Module Migration - Task 19', () => {
         entityId: 'entity_123',
         workspaceEntityId: 'we_123',
         migrationStatus: 'migrated',
+        entityContacts: [],
       };
 
       // Mock the resolveContact function
@@ -97,6 +98,7 @@ describe('Profile Module Migration - Task 19', () => {
         assignedTo: undefined,
         status: 'active',
         tags: [],
+        entityContacts: [],
         globalTags: ['strategic-account'],
         entityType: 'institution',
         entityId: 'entity_123',
@@ -112,7 +114,7 @@ describe('Profile Module Migration - Task 19', () => {
       // Verify entity information is present
       expect(result?.name).toBe('Test School');
       expect(result?.contacts).toHaveLength(1);
-      expect(result?.contacts[0].name).toBe('Jane Smith');
+      expect(result?.contacts?.[0].name).toBe('Jane Smith');
       expect(result?.globalTags).toContain('strategic-account');
     });
 
@@ -137,6 +139,7 @@ describe('Profile Module Migration - Task 19', () => {
         entityId: 'entity_123',
         workspaceEntityId: 'we_123',
         migrationStatus: 'migrated',
+        entityContacts: [],
       };
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -167,6 +170,7 @@ describe('Profile Module Migration - Task 19', () => {
         status: 'active',
         tags: ['legacy'],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: {
           id: 'school_456',
           name: 'Legacy School',
@@ -367,6 +371,7 @@ describe('Profile Module Migration - Task 19', () => {
         assignedTo: undefined,
         status: 'active',
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
         schoolData: {
           id: 'school_123',
@@ -405,6 +410,7 @@ describe('Profile Module Migration - Task 19', () => {
         assignedTo: undefined,
         status: 'active',
         tags: [],
+        entityContacts: [],
         globalTags: [],
         entityType: 'institution',
         entityId: 'entity_123',

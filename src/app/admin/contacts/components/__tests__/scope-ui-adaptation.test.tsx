@@ -56,15 +56,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         entityType: 'institution',
         name: 'Test School',
         slug: 'test-school',
-        contacts: [
-          {
-            name: 'John Doe',
-            email: 'john@test.com',
-            phone: '+1234567890',
-            type: 'Principal',
-            isSignatory: true,
-          },
-        ],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -125,7 +117,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'family',
         name: 'The Smith Family',
-        contacts: [],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -203,15 +195,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'person',
         name: 'Jane Doe',
-        contacts: [
-          {
-            name: 'Jane Doe',
-            email: 'jane@example.com',
-            phone: '+1234567890',
-            type: 'Contact',
-            isSignatory: false,
-          },
-        ],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -285,7 +269,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
             organizationId: 'org_1',
             entityType: 'institution',
             name: 'Test School',
-            contacts: [],
+            entityContacts: [],
             globalTags: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
@@ -332,7 +316,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
             organizationId: 'org_1',
             entityType: 'family',
             name: 'The Smith Family',
-            contacts: [],
+            entityContacts: [],
             globalTags: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
@@ -381,7 +365,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
             organizationId: 'org_1',
             entityType: 'person',
             name: 'Jane Doe',
-            contacts: [],
+            entityContacts: [],
             globalTags: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
@@ -445,15 +429,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         entityType: 'institution',
         name: 'Test School',
         slug: 'test-school',
-        contacts: [
-          {
-            name: 'John Doe',
-            email: 'john@test.com',
-            phone: '+1234567890',
-            type: 'Principal',
-            isSignatory: true,
-          },
-        ],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -482,6 +458,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
         assignedTo: { userId: 'user_1', name: 'John Doe', email: 'john@test.com' },
+        entityContacts: [],
       };
 
       render(<ContactDetailPage entity={mockEntity} workspaceEntity={mockWorkspaceEntity} />);
@@ -502,7 +479,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'family',
         name: 'The Smith Family',
-        contacts: [],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -542,6 +519,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         stageId: 'stage_2',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       render(<ContactDetailPage entity={mockEntity} workspaceEntity={mockWorkspaceEntity} />);
@@ -562,15 +540,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'person',
         name: 'Jane Doe',
-        contacts: [
-          {
-            name: 'Jane Doe',
-            email: 'jane@example.com',
-            phone: '+1234567890',
-            type: 'Contact',
-            isSignatory: false,
-          },
-        ],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -597,6 +567,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         stageId: 'stage_3',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       render(<ContactDetailPage entity={mockEntity} workspaceEntity={mockWorkspaceEntity} />);
@@ -617,7 +588,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'family',
         name: 'The Smith Family',
-        contacts: [],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -640,6 +611,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         stageId: 'stage_2',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       render(<ContactDetailPage entity={mockEntity} workspaceEntity={mockWorkspaceEntity} />);
@@ -657,7 +629,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         organizationId: 'org_1',
         entityType: 'person',
         name: 'Jane Doe',
-        contacts: [],
+        entityContacts: [],
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -680,6 +652,7 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         stageId: 'stage_3',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       render(<ContactDetailPage entity={mockEntity} workspaceEntity={mockWorkspaceEntity} />);

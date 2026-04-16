@@ -66,7 +66,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -74,6 +78,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: [],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -116,6 +121,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         globalTags: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -131,6 +137,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         status: 'active',
         addedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        entityContacts: [],
       };
 
       const mockContact: ResolvedContact = {
@@ -140,7 +147,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         contacts: [],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -182,7 +190,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -190,6 +202,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: [],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -239,7 +252,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         contacts: [],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -299,7 +313,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
             isSignatory: true,
           },
         ],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -307,6 +325,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: mockSchool.focalPersons,
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -454,7 +473,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         ],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -596,7 +616,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -604,6 +628,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: [],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -718,7 +743,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         contacts: [],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -845,7 +871,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
             isSignatory: true,
           },
         ],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -853,6 +883,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: mockSchool.focalPersons,
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -899,6 +930,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         entityType: 'institution',
         entityId: 'entity_1',
         migrationStatus: 'migrated',
+        entityContacts: [],
         schoolData: {
           id: 'entity_1',
           name: 'Migrated School',
@@ -910,6 +942,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
           focalPersons: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+        entityContacts: [],
         } as School,
       };
 
@@ -951,7 +984,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -959,6 +996,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: [],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -998,7 +1036,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         contacts: [],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -1041,7 +1080,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -1049,6 +1092,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: [],
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -1070,7 +1114,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         contacts: [],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -1103,7 +1148,11 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
             isSignatory: true,
           },
         ],
-        migrationStatus: 'legacy',      createdAt: new Date().toISOString(),      updatedAt: new Date().toISOString(),      };
+        migrationStatus: 'legacy',
+        entityContacts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
       const mockContact: ResolvedContact = {
         id: 'school_1',
@@ -1111,6 +1160,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         slug: 'legacy-school',
         contacts: mockSchool.focalPersons,
         migrationStatus: 'legacy',
+        entityContacts: [],
         schoolData: mockSchool,
       };
 
@@ -1168,7 +1218,8 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         ],
         entityType: 'institution',
         entityId: 'entity_1',
-        migrationStatus: 'migrated',      };
+        migrationStatus: 'migrated',
+        entityContacts: [],      };
 
       const { resolveContact } = await import('../contact-adapter');
       vi.mocked(resolveContact).mockResolvedValue(mockContact);

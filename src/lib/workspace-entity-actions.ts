@@ -24,17 +24,17 @@ import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
  */
 
 /**
- * Extracts primary contact information from an entity's contacts array
+ * Extracts primary contact information from an entity's contacts.
+ * FER-01: Now resolves from entityContacts (isPrimary flag) via helpers.
  */
-function extractPrimaryContact(entity: Entity): { primaryEmail?: string; primaryPhone?: string } {
-  if (!entity.contacts || entity.contacts.length === 0) {
-    return {};
-  }
-
-  const primaryContact = entity.contacts[0];
+function extractPrimaryContact(entity: Entity): { primaryContactName?: string; primaryEmail?: string; primaryPhone?: string } {
+  const { extractPrimaryContactFields } = require('./entity-contact-helpers');
+  const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);
+  
   return {
-    primaryEmail: primaryContact.email,
-    primaryPhone: primaryContact.phone,
+    primaryContactName: primaryContactName || undefined,
+    primaryEmail: primaryEmail || undefined,
+    primaryPhone: primaryPhone || undefined,
   };
 }
 
@@ -188,6 +188,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       primaryEmail,
       primaryPhone,
       currentStageName,
+      entityContacts: entity.entityContacts || [],
     };
 
     const workspaceEntityRef = await adminDb.collection('workspace_entities').add(workspaceEntityData);

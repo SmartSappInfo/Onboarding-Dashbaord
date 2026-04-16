@@ -93,6 +93,7 @@ describe('Invoice Module Migration', () => {
         entityType: 'institution' as const,
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {
@@ -187,6 +188,7 @@ describe('Invoice Module Migration', () => {
         entityType: null,
         schoolData: mockSchool,
         migrationStatus: 'legacy' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {
@@ -544,6 +546,7 @@ describe('Invoice Module Migration', () => {
         entityType: 'institution' as const,
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
       };
 
       vi.mocked(resolveContact).mockResolvedValue(mockContact);
@@ -603,6 +606,7 @@ describe('Invoice Module Migration', () => {
         entityType: 'institution' as const,
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {
@@ -698,6 +702,7 @@ describe('Invoice Module Migration', () => {
         entityType: 'institution' as const,
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {
@@ -804,6 +809,7 @@ describe('Invoice Module Migration', () => {
         entityType: null,
         schoolData: mockSchool,
         migrationStatus: 'legacy' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {
@@ -901,6 +907,7 @@ describe('Invoice Module Migration', () => {
         entityType: 'institution' as const,
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
       };
 
       const mockProfile: BillingProfile = {

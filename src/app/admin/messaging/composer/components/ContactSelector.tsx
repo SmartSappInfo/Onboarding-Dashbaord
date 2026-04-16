@@ -1,17 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import type { FocalPerson } from '@/lib/types';
+import type { EntityContact } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Contact, Mail, Phone, AlertCircle } from 'lucide-react';
+import { Contact, Mail, Phone, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ContactSelectorProps {
-  contacts: FocalPerson[];
+  contacts: EntityContact[];
   channel: 'email' | 'sms';
   onSelectionChange: (contactIndices: number[]) => void;
   selectedContactIndices: number[];
@@ -145,11 +145,17 @@ export function ContactSelector({
                   >
  <div className="space-y-1">
                       {/* Contact Name and Type (Requirement 2.2) */}
- <div className="flex items-center gap-2">
- <p className="text-sm font-medium">{contact.name}</p>
+  <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{contact.name}</p>
                         <Badge variant="outline" className="text-xs">
-                          {contact.type}
+                          {contact.typeLabel || contact.typeKey || (contact as any).type || 'Contact'}
                         </Badge>
+                        {contact.isPrimary && (
+                          <Badge variant="secondary" className="text-[9px] h-4 bg-blue-50 text-blue-700 border-blue-200">Primary</Badge>
+                        )}
+                        {contact.isSignatory && (
+                          <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+                        )}
                       </div>
                       
                       {/* Contact Details (Requirement 2.2) */}

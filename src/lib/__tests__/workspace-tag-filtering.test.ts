@@ -322,6 +322,7 @@ describe('Workspace-Scoped Tag Filtering', () => {
         contacts: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       });
 
       testStorage.workspaceEntities.set('we-1', {
@@ -337,6 +338,7 @@ describe('Workspace-Scoped Tag Filtering', () => {
         displayName: 'Test Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       });
 
       testStorage.tags.set(globalTag1, { id: globalTag1, name: 'Global Tag 1' });
@@ -378,6 +380,7 @@ describe('Workspace-Scoped Tag Filtering', () => {
         contacts: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       });
 
       testStorage.workspaceEntities.set('we-1', {
@@ -393,6 +396,7 @@ describe('Workspace-Scoped Tag Filtering', () => {
         displayName: 'Test Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       });
 
       testStorage.tags.set(globalTag1, { id: globalTag1, name: 'Global Tag 1' });

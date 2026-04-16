@@ -131,13 +131,24 @@ export default function AiEntityGenerator() {
                 nominalRoll: result.nominalRoll || 0,
                 logoUrl: null
             },
-            contacts: (result.focalPersons || []).map((p: any) => ({
-                name: p.name,
-                type: p.role || 'Contact',
-                email: p.email || '',
-                phone: p.phone || '',
-                isSignatory: true
-            })),
+            entityContacts: (result.focalPersons || []).map((p: any, index: number) => {
+                const typeLabel = p.role || 'Contact';
+                const typeKey = typeLabel.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
+                const ec: any = {
+                    id: `ec_ai_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+                    name: p.name || '',
+                    typeKey,
+                    typeLabel,
+                    isPrimary: index === 0,
+                    isSignatory: true,
+                    order: index,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                if (p.email) ec.email = p.email;
+                if (p.phone) ec.phone = p.phone;
+                return ec;
+            }),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };

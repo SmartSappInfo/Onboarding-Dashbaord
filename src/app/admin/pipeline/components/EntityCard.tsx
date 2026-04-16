@@ -23,6 +23,7 @@ import {
     ArrowRight,
     Edit
 } from 'lucide-react';
+import { getSignatoryContact, getPrimaryContact } from '@/lib/entity-contact-helpers';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
 import {
@@ -71,7 +72,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
     opacity: isDragging && !isOverlay ? 0 : 1,
   };
 
-  const signatory = entity.focalPersons?.find(p => p.isSignatory) || entity.focalPersons?.[0];
+  const signatory = getSignatoryContact(entity);
   const displayName = toTitleCase(entity.displayName);
 
   // Resolve status color from active workspace config

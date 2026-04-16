@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import { test } from '@fast-check/vitest';
 import fc from 'fast-check';
-import type { Entity } from '../../types';
+import type { Entity, EntityContact } from '../../types';
 import {
   serializeInstitutionEntity,
   serializeFamilyEntity,
@@ -49,6 +49,7 @@ const institutionEntityArbitrary = fc.record({
   name: fc.string({ minLength: 1, maxLength: 100 }),
   slug: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: undefined }),
   contacts: fc.array(focalPersonArbitrary, { minLength: 0, maxLength: 3 }),
+  entityContacts: fc.constant([] as EntityContact[]),
   globalTags: fc.array(fc.uuid(), { maxLength: 5 }),
   status: fc.option(fc.constantFrom('active' as const, 'archived' as const), { nil: undefined }),
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()),
@@ -87,6 +88,7 @@ const familyEntityArbitrary = fc.record({
   entityType: fc.constant('family' as const),
   name: fc.string({ minLength: 1, maxLength: 100 }),
   contacts: fc.array(focalPersonArbitrary, { minLength: 0, maxLength: 3 }),
+  entityContacts: fc.constant([] as EntityContact[]),
   globalTags: fc.array(fc.uuid(), { maxLength: 5 }),
   status: fc.option(fc.constantFrom('active' as const, 'archived' as const), { nil: undefined }),
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()),
@@ -104,6 +106,7 @@ const personEntityArbitrary = fc.record({
   entityType: fc.constant('person' as const),
   name: fc.string({ minLength: 1, maxLength: 100 }),
   contacts: fc.array(focalPersonArbitrary, { minLength: 0, maxLength: 3 }),
+  entityContacts: fc.constant([] as EntityContact[]),
   globalTags: fc.array(fc.uuid(), { maxLength: 5 }),
   status: fc.option(fc.constantFrom('active' as const, 'archived' as const), { nil: undefined }),
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()),
@@ -231,6 +234,7 @@ describe('Property 6: Import Round-Trip Property', () => {
         status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        entityContacts: [],
         institutionData: {
           nominalRoll: 500,
           billingAddress: '123 Main St',

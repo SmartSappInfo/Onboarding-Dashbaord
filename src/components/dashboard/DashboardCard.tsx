@@ -1,21 +1,29 @@
 'use client';
-
+import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 export default function DashboardCard({
   title,
-  description,
   children,
   className,
+  terminology,
   ...props
 }: {
   title: string
-  description?: string
   children: React.ReactNode
   className?: string
+  terminology?: { singular: string; plural: string }
 } & React.HTMLAttributes<HTMLDivElement>) {
+  // Process title for dynamic terminology
+  const displayTitle = React.useMemo(() => {
+    if (!terminology) return title;
+    return title
+      .replace(/{Entity}/g, terminology.singular)
+      .replace(/{Entities}/g, terminology.plural);
+  }, [title, terminology]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -25,7 +33,7 @@ export default function DashboardCard({
     >
       <Card 
         className={cn(
-          "h-full rounded-[2rem] border-none bg-background/50 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden relative group",
+          "h-full rounded-[2.5rem] border-none bg-background/50 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden relative group",
           className
         )} 
         {...props}
@@ -33,15 +41,12 @@ export default function DashboardCard({
         {/* Premium internal glow */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         
-        <CardHeader className="space-y-1 pb-4">
-          <CardTitle className="text-sm font-semibold tracking-tight uppercase opacity-80">{title}</CardTitle>
-          {description && (
-            <CardDescription className="text-[10px] font-bold text-muted-foreground/60 leading-relaxed uppercase tracking-wider">
-              {description}
-            </CardDescription>
-          )}
+        <CardHeader className="h-16 flex items-center justify-start py-0 px-6 border-b border-border/5">
+          <CardTitle className="text-[11px] font-black tracking-[0.1em] uppercase opacity-50">
+            {displayTitle}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow pt-0">
+        <CardContent className="flex-grow pt-6 p-6">
           {children}
         </CardContent>
       </Card>

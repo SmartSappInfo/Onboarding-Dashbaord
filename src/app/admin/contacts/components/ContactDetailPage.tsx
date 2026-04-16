@@ -113,7 +113,7 @@ export function ContactDetailPage({
 
 /**
  * Institution detail view
- * Shows: profile, focal persons, pipeline stage, tags, billing, contracts
+ * Shows: profile, entity contacts, pipeline stage, tags, billing, contracts
  */
 function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; workspaceEntity: WorkspaceEntity }) {
   const institutionData = entity.institutionData;
@@ -172,40 +172,40 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
         </CardContent>
       </Card>
 
-      {/* Focal Persons */}
- <Card className="lg:col-span-2">
-        <CardHeader>
- <div className="flex items-center gap-3">
- <Users className="h-5 w-5 text-primary" />
-            <CardTitle>Focal Persons</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {entity.contacts.map((person, index) => (
- <div key={index} className="p-4 bg-muted/20 rounded-lg space-y-2">
- <div className="flex items-center justify-between">
- <p className="font-bold">{person.name}</p>
-                  <Badge variant="outline" className="text-xs">{person.type}</Badge>
-                </div>
- <div className="space-y-1 text-sm text-muted-foreground">
- <p className="flex items-center gap-2">
- <Mail className="h-3 w-3" />
-                    {person.email}
-                  </p>
- <p className="flex items-center gap-2">
- <Phone className="h-3 w-3" />
-                    {person.phone}
-                  </p>
-                  {person.isSignatory && (
-                    <Badge variant="secondary" className="text-xs">Signatory</Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Entity Contacts */}
+  <Card className="lg:col-span-2">
+         <CardHeader>
+  <div className="flex items-center gap-3">
+  <Users className="h-5 w-5 text-primary" />
+             <CardTitle>Entity Contacts</CardTitle>
+           </div>
+         </CardHeader>
+         <CardContent>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             {(entity.entityContacts || []).map((person, index) => (
+  <div key={index} className="p-4 bg-muted/20 rounded-lg space-y-2">
+  <div className="flex items-center justify-between">
+  <p className="font-bold">{person.name}</p>
+                   <Badge variant="outline" className="text-xs">{person.typeLabel || person.typeKey || (person as any).type}</Badge>
+                 </div>
+  <div className="space-y-1 text-sm text-muted-foreground">
+  <p className="flex items-center gap-2">
+  <Mail className="h-3 w-3" />
+                     {person.email}
+                   </p>
+  <p className="flex items-center gap-2">
+  <Phone className="h-3 w-3" />
+                     {person.phone}
+                   </p>
+                   {person.isSignatory && (
+                     <Badge variant="secondary" className="text-xs">Signatory</Badge>
+                   )}
+                 </div>
+               </div>
+             ))}
+           </div>
+         </CardContent>
+       </Card>
 
       {/* Pipeline Stage */}
  <Card className="lg:col-span-2">
@@ -351,7 +351,7 @@ function FamilyDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
  */
 function PersonDetailView({ entity, workspaceEntity }: { entity: Entity; workspaceEntity: WorkspaceEntity }) {
   const personData = entity.personData;
-  const primaryContact = entity.contacts[0];
+  const primaryContact = (entity.entityContacts || []).find(c => c.isPrimary) || entity.entityContacts?.[0];
 
   return (
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

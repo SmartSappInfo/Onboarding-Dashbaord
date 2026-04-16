@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import DashboardCard from "./DashboardCard";
 import { Users, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -104,39 +105,39 @@ export function UserAssignments({
     }
 
     return (
-        <DashboardCard title={`${terminology.singular} Distribution by User`}>
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4">
+        <DashboardCard title="Team Workload" terminology={terminology} className="flex flex-col">
+                <div className="space-y-8">
+                    <div className="flex items-center gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                                <Users className="h-6 w-6 text-primary" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 shadow-inner">
+                                <Users className="h-5 w-5 text-primary" />
                             </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalSchools}</p>
-                                <p className="text-sm text-muted-foreground">Total {terminology.plural}</p>
+                            <div className="space-y-0.5">
+                                <p className="text-2xl font-black tracking-tight">{totalSchools}</p>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Total {terminology.plural}</p>
                             </div>
                         </div>
-                        <div className="mx-4 h-12 w-px bg-border" />
+                        <div className="h-8 w-px bg-border/40" />
                          <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                                <User className="h-6 w-6 text-green-500" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 shadow-inner">
+                                <User className="h-5 w-5 text-emerald-500" />
                             </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalStudents.toLocaleString()}</p>
-                                <p className="text-sm text-muted-foreground">Total Students</p>
+                            <div className="space-y-0.5">
+                                <p className="text-2xl font-black tracking-tight">{totalStudents.toLocaleString()}</p>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Cumulative Nominal Roll</p>
                             </div>
                         </div>
                     </div>
 
                     {displayData.length > 0 ? (
-                        <div className="space-y-3">
-                            {/* Segmented Bar */}
-                            <div className="flex w-full h-8 gap-1">
+                        <div className="space-y-4">
+                            {/* Segmented Bar with Premium styling */}
+                            <div className="flex w-full h-10 gap-1.5 p-1.5 rounded-[1.25rem] bg-muted/20 border border-border/5 shadow-inner overflow-hidden">
                                 {displayData.map((item) => (
                                     <div
                                         key={item.user.id}
-                                        title={`${item.percentage.toFixed(1)}%`}
-                                        className="h-full rounded-md transition-all hover:brightness-110"
+                                        title={`${item.user.name}: ${item.percentage.toFixed(1)}%`}
+                                        className="h-full rounded-lg transition-all hover:brightness-110 hover:scale-[1.02] cursor-pointer"
                                         style={{
                                             width: `${item.percentage}%`,
                                             backgroundColor: item.color,
@@ -145,34 +146,42 @@ export function UserAssignments({
                                 ))}
                             </div>
 
-                            {/* Aligned Labels */}
-                            <div className="flex w-full gap-1 mt-3">
+                            {/* Aligned Labels Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                                 {displayData.map((item) => (
                                     <div
                                         key={item.user.id}
-                                        style={{ width: `${item.percentage}%` }}
-                                        className="flex flex-col"
+                                        className="flex flex-col p-4 rounded-3xl bg-muted/10 border border-transparent hover:border-primary/10 hover:bg-white transition-all group"
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Avatar className="h-8 w-8 rounded-xl ring-2 ring-primary/5">
                                                 <AvatarImage src={item.user.photoURL} alt={item.user.name} />
-                                                <AvatarFallback className="text-xs">{getInitials(item.user.name)}</AvatarFallback>
+                                                <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">{getInitials(item.user.name)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-xs font-medium text-muted-foreground">{item.user.name?.split(' ')[0]}</span>
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-black uppercase tracking-tight text-foreground truncate">{item.user.name}</p>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider opacity-60">
+                                                    {item.percentage.toFixed(0)}% Workload
+                                                </p>
+                                            </div>
                                         </div>
-                                         <p className="text-sm font-semibold text-foreground mt-1">
-                                            {item.totalAssigned} {item.totalAssigned === 1 ? terminology.singular : terminology.plural}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            ({item.totalStudents.toLocaleString()} Students)
-                                        </p>
+                                         <div className="mt-auto space-y-1">
+                                            <p className="text-sm font-black tracking-tight text-primary">
+                                                {item.totalAssigned} <span className="text-[10px] font-bold text-muted-foreground uppercase ml-1">{item.totalAssigned === 1 ? terminology.singular : terminology.plural}</span>
+                                            </p>
+                                            <p className="text-[10px] font-bold text-muted-foreground/80 flex items-center gap-1.5">
+                                                <Users className="h-3 w-3 opacity-40 text-emerald-500" />
+                                                {item.totalStudents.toLocaleString()} Students
+                                            </p>
+                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground pt-4">
-                            <p>No {terminology.plural.toLowerCase()} assigned to any users.</p>
+                        <div className="flex flex-col items-center justify-center py-12 text-center gap-3 opacity-20 border-2 border-dashed rounded-[2.5rem] bg-muted/10">
+                            <Users className="h-10 w-10" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">No assigned operations</p>
                         </div>
                     )}
                 </div>

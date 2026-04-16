@@ -405,6 +405,7 @@ async function createTestEntity(
     status,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    entityContacts: [],
   };
 
   await adminDb.collection('entities').doc(id).set(entity);
@@ -433,6 +434,7 @@ async function createWorkspaceEntity(
     workspaceTags: [],
     addedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    entityContacts: [],
     displayName: entityData.name,
     currentStageName: stageId ? `Stage ${stageId.split('-')[1].charAt(0).toUpperCase() + stageId.split('-')[1].slice(1)}` : undefined,
     assignedTo: assignedToName

@@ -79,6 +79,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         workspaceTags: [],
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
         displayName: 'Test School',
       };
 
@@ -111,6 +112,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         workspaceTags: ['hot-lead', 'priority'],
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
         displayName: 'Important School',
         primaryEmail: 'school@example.com',
         primaryPhone: '+1234567890',
@@ -155,6 +157,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: [],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 1',
         },
         {
@@ -171,6 +174,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: [],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 2',
         },
       ];
@@ -212,6 +216,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: [],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 1',
         },
       ];
@@ -243,6 +248,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: [],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 1',
         },
         {
@@ -259,6 +265,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: [],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 2',
         },
       ];
@@ -292,6 +299,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: ['hot-lead', 'priority'],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 1',
         },
         {
@@ -308,6 +316,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           workspaceTags: ['cold-lead'],
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
           displayName: 'School 2',
         },
       ];
@@ -351,9 +360,8 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           stageName: 'Onboarding',
           assignedTo: undefined,
           status: 'active',
-          tags: ['hot-lead'],
-          globalTags: ['verified'],
           migrationStatus: 'migrated',
+          entityContacts: [],
         },
         {
           id: 'entity_2',
@@ -368,6 +376,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: { userId: 'user_1', name: 'Jane Smith', email: 'jane@example.com' },
           status: 'active',
           tags: [],
+        entityContacts: [],
           migrationStatus: 'migrated',
         },
       ];
@@ -419,6 +428,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         tags: ['hot-lead', 'priority'],
         globalTags: ['verified'],
         migrationStatus: 'migrated',
+        entityContacts: [],
       };
 
       // Simulate mapping to School format for UI display
@@ -450,7 +460,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
       expect(schoolForDisplay.assignedTo?.name).toBe('John Doe');
       expect(schoolForDisplay.tags).toEqual(['hot-lead', 'priority']);
       expect(schoolForDisplay.focalPersons).toHaveLength(1);
-      expect(schoolForDisplay.focalPersons[0].name).toBe('Principal Name');
+      expect(schoolForDisplay.focalPersons?.[0].name).toBe('Principal Name');
     });
 
     it('should handle Contact Adapter returning empty results', async () => {
@@ -497,6 +507,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         tags: ['workspace-tag-1', 'workspace-tag-2'], // Workspace tags
         globalTags: ['global-tag-1', 'global-tag-2'], // Global tags
         migrationStatus: 'migrated',
+        entityContacts: [],
       };
 
       // Map to School format
@@ -576,6 +587,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           order: 0,
         },
         tags: [],
+        entityContacts: [],
         createdAt: '2024-01-01T00:00:00Z',
       };
 
@@ -614,6 +626,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           status: 'active',
           tags: [],
+        entityContacts: [],
           migrationStatus: 'migrated',
         },
         {
@@ -627,6 +640,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           status: 'Active',
           tags: [],
+        entityContacts: [],
           migrationStatus: 'legacy',
           schoolData: {
             id: 'school_legacy',
@@ -694,6 +708,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -708,6 +723,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_2', name: 'Active', order: 1 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -722,6 +738,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
@@ -764,6 +781,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         assignedTo: undefined,
         // No stage assigned
         tags: [],
+        entityContacts: [],
         createdAt: '2024-01-01T00:00:00Z',
       };
 
@@ -786,6 +804,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: { userId: 'user_1', name: 'John Doe', email: 'john@example.com' },
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -800,6 +819,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: { userId: 'user_2', name: 'Jane Smith', email: 'jane@example.com' },
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -814,6 +834,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
@@ -851,6 +872,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -873,6 +895,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
           assignedTo: undefined,
           stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
           tags: [],
+        entityContacts: [],
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
@@ -985,6 +1008,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
         assignedTo: undefined,
         stage: { id: 'stage_nonexistent', name: 'Nonexistent', order: 99 },
         tags: [],
+        entityContacts: [],
         createdAt: '2024-01-01T00:00:00Z',
       };
 
@@ -1058,6 +1082,7 @@ describe('Pipeline Module - Stage Assignment and Queries', () => {
             assignedTo: undefined,
             stage: { id: 'stage_1', name: 'Onboarding', order: 0 },
             tags: [],
+        entityContacts: [],
             createdAt: '2024-01-01T00:00:00Z',
           },
         ],

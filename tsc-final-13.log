@@ -1,0 +1,38 @@
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m96[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m96[0m         entityContacts: [],,
+[7m  [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m191[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m191[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m549[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m549[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m609[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m609[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m705[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m705[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m812[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m812[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m910[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m910[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+
+Found 7 errors in the same file, starting at: src/lib/__tests__/invoice-module.test.ts[90m:96[0m
+

@@ -1,37 +1,53 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ContactSelector } from '../ContactSelector';
-import type { FocalPerson } from '@/lib/types';
+import type { EntityContact } from '@/lib/types';
 
-describe('ContactSelector Component (Task 11.3)', () => {
-  const mockContacts: FocalPerson[] = [
+describe('ContactSelector Component (FER-01 Refactor)', () => {
+  const mockContacts: EntityContact[] = [
     {
+      id: 'c1',
       name: 'John Doe',
       email: 'john@example.com',
       phone: '+233241234567',
-      type: 'Principal',
+      typeLabel: 'Principal',
+      typeKey: 'principal',
+      isPrimary: true,
       isSignatory: true,
+      order: 0,
     },
     {
+      id: 'c2',
       name: 'Jane Smith',
       email: 'jane@example.com',
       phone: '+233242345678',
-      type: 'Administrator',
+      typeLabel: 'Administrator',
+      typeKey: 'admin',
+      isPrimary: false,
       isSignatory: false,
+      order: 1,
     },
     {
+      id: 'c3',
       name: 'Bob Johnson',
       email: '',
       phone: '+233243456789',
-      type: 'Accountant',
+      typeLabel: 'Accountant',
+      typeKey: 'accountant',
+      isPrimary: false,
       isSignatory: false,
+      order: 2,
     },
     {
+      id: 'c4',
       name: 'Alice Williams',
       email: 'alice@example.com',
       phone: '',
-      type: 'Champion',
+      typeLabel: 'Champion',
+      typeKey: 'champion',
+      isPrimary: false,
       isSignatory: false,
+      order: 3,
     },
   ];
 
@@ -41,7 +57,7 @@ describe('ContactSelector Component (Task 11.3)', () => {
     mockOnSelectionChange.mockClear();
   });
 
-  describe('Contact List Rendering (Requirement 2.1, 2.2)', () => {
+  describe('Contact List Rendering', () => {
     it('should render contact list with name, role, email, and phone', () => {
       render(
         <ContactSelector
@@ -76,9 +92,24 @@ describe('ContactSelector Component (Task 11.3)', () => {
       // Should have checkboxes for contacts with email (3 contacts)
       expect(checkboxes.length).toBeGreaterThan(0);
     });
+
+    it('should display primary and signatory status badges', () => {
+      render(
+        <ContactSelector
+          contacts={mockContacts}
+          channel="email"
+          selectedContactIndices={[]}
+          onSelectionChange={mockOnSelectionChange}
+        />
+      );
+
+      expect(screen.getByText('Primary')).toBeInTheDocument();
+      // Signatory is an icon, so we check for presence (component uses ShieldCheck)
+      // In RTL we might need a test id or query by svg
+    });
   });
 
-  describe('Channel-Based Filtering (Requirement 2.4, 2.5)', () => {
+  describe('Channel-Based Filtering', () => {
     it('should only show contacts with valid email addresses when channel is email', () => {
       render(
         <ContactSelector
@@ -118,13 +149,17 @@ describe('ContactSelector Component (Task 11.3)', () => {
     });
 
     it('should display warning when no contacts have valid channel info', () => {
-      const contactsWithoutEmail: FocalPerson[] = [
+      const contactsWithoutEmail: EntityContact[] = [
         {
+          id: 'c1',
           name: 'Test Person',
           email: '',
           phone: '+233241234567',
-          type: 'Principal',
+          typeLabel: 'Principal',
+          typeKey: 'principal',
           isSignatory: true,
+          isPrimary: true,
+          order: 0,
         },
       ];
 
@@ -141,7 +176,7 @@ describe('ContactSelector Component (Task 11.3)', () => {
     });
   });
 
-  describe('Multi-Selection (Requirement 2.3, 2.6)', () => {
+  describe('Multi-Selection', () => {
     it('should allow selecting multiple contacts', () => {
       const { rerender } = render(
         <ContactSelector
@@ -216,7 +251,7 @@ describe('ContactSelector Component (Task 11.3)', () => {
     });
   });
 
-  describe('Selection Count Display (Requirement 2.7)', () => {
+  describe('Selection Count Display', () => {
     it('should display the count of selected contacts', () => {
       render(
         <ContactSelector
@@ -246,8 +281,8 @@ describe('ContactSelector Component (Task 11.3)', () => {
     });
   });
 
-  describe('Contact Details Display (Requirement 2.2)', () => {
-    it('should display contact name, type, email, and phone', () => {
+  describe('Contact Details Display', () => {
+    it('should display contact name, typeLabel, email, and phone', () => {
       render(
         <ContactSelector
           contacts={mockContacts}

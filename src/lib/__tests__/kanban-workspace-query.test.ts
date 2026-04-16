@@ -36,6 +36,7 @@ function hydrateWorkspaceEntities(
       // Map entity + workspace_entity to School format
       const school: School = {
         id: we.entityId,
+        updatedAt: we.updatedAt,
         name: entity.name,
         slug: entity.slug || '',
         workspaceIds: [we.workspaceId],
@@ -43,6 +44,7 @@ function hydrateWorkspaceEntities(
         schoolStatus: we.status === 'active' ? 'Active' : 'Archived',
         pipelineId: we.pipelineId,
         focalPersons: entity.contacts || [],
+        entityContacts: entity.entityContacts || [],
         assignedTo: we.assignedTo,
         stage: {
           id: we.stageId,
@@ -82,6 +84,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       globalTags: ['global-tag-1'],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       // Note: No pipelineId or stageId on entity root
     };
 
@@ -100,6 +103,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: ['workspace-tag-1'],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Test Institution',
     };
 
@@ -125,6 +129,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       globalTags: ['global-tag-1', 'global-tag-2'], // Global tags
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     // Setup: WorkspaceEntity with workspace tags
@@ -142,6 +147,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: ['workspace-tag-1', 'workspace-tag-2'], // Workspace tags
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Test Institution',
     };
 
@@ -175,6 +181,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       institutionData: {
         nominalRoll: 500,
         subscriptionRate: 1000,
@@ -198,6 +205,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: [],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Denormalized Name', // This might be stale
     };
 
@@ -207,8 +215,9 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
     // Assert: Uses fresh entity identity data (Requirement 8)
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Hydrated Entity Name'); // From entity, not workspace_entity
+    expect(result[0].entityContacts).toHaveLength(0); // entityContacts missing in mock entity
     expect(result[0].focalPersons).toHaveLength(1);
-    expect(result[0].focalPersons[0].name).toBe('John Doe');
+    expect(result[0].focalPersons![0].name).toBe('John Doe');
     expect(result[0].nominalRoll).toBe(500);
     expect(result[0].subscriptionRate).toBe(1000);
   });
@@ -225,6 +234,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     // Setup: Same entity in two workspaces with different pipeline states
@@ -242,6 +252,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: ['hot-lead'],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Shared Entity',
     };
 
@@ -259,6 +270,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: ['payment-issue'],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Shared Entity',
     };
 
@@ -304,6 +316,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: [],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: 'Missing Entity',
     };
 
@@ -327,6 +340,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       },
       {
         id: 'entity-2',
@@ -338,6 +352,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       },
       {
         id: 'entity-3',
@@ -349,6 +364,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       },
     ];
 
@@ -367,6 +383,7 @@ describe('KanbanBoard Workspace-Scoped Query Logic (Requirements 5, 8)', () => {
       workspaceTags: [],
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       displayName: entity.name,
     }));
 

@@ -1,0 +1,28 @@
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m124[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m124[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m363[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m363[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m603[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m603[0m         entityContacts: [],,
+[7m   [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m1055[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m1055[0m         entityContacts: [],,
+[7m    [0m [91m                           ~[0m
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m1275[0m:[93m28[0m - [91merror[0m[90m TS1136: [0mProperty assignment expected.
+
+[7m1275[0m         entityContacts: [],,
+[7m    [0m [91m                           ~[0m
+
+
+Found 5 errors in the same file, starting at: src/lib/__tests__/messaging-module-unit.test.ts[90m:124[0m
+

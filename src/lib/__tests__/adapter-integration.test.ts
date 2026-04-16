@@ -122,6 +122,7 @@ describe('Adapter Integration Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity = {
@@ -137,6 +138,7 @@ describe('Adapter Integration Tests', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockAdd = vi.fn().mockResolvedValue({ id: 'activity_2' });
@@ -246,6 +248,7 @@ describe('Adapter Integration Tests', () => {
         isActive: true,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockSenderProfile = {

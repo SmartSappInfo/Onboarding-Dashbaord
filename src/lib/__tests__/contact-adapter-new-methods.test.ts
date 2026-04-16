@@ -51,6 +51,7 @@ describe('Contact Adapter New Methods', () => {
         globalTags: ['tag1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -67,6 +68,7 @@ describe('Contact Adapter New Methods', () => {
         displayName: 'Test Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -119,6 +121,7 @@ describe('Contact Adapter New Methods', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -239,6 +242,7 @@ describe('Contact Adapter New Methods', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;
@@ -295,6 +299,7 @@ describe('Contact Adapter New Methods', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;

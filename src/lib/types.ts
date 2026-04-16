@@ -8,6 +8,7 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
+/** @deprecated Use EntityContact.typeKey instead. Will be removed after contact migration. */
 export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
 
 export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived' | 'archived';
@@ -350,6 +351,7 @@ export interface Child {
   enrollmentStatus?: string;
 }
 
+/** @deprecated Use EntityContact instead. Will be removed after contact migration. */
 export interface FocalPerson {
   name: string;
   phone: string;
@@ -372,6 +374,57 @@ export interface FocalPersonAttachment {
   url: string;
   type: string;
   createdAt: string;
+}
+
+/**
+ * Canonical contact record for an entity.
+ * All contact communication data lives here — no direct phone/email on entity root.
+ *
+ * Rules:
+ * - Exactly one contact must have isPrimary = true
+ * - Exactly one contact must have isSignatory = true
+ * - The same contact may be both primary and signatory
+ * - First contact created defaults to isPrimary + isSignatory
+ * - typeKey is a stable normalized key (e.g. "billing_officer")
+ * - typeLabel is the editable display label (e.g. "Billing Officer")
+ * - Variables are generated from typeKey, never typeLabel
+ */
+export interface EntityContact {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  typeKey: string;
+  typeLabel?: string;
+  isPrimary: boolean;
+  isSignatory: boolean;
+  order: number;
+  notes?: FocalPersonNote[];
+  attachments?: FocalPersonAttachment[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Configurable contact type definitions per entity type.
+ * Supports system/org/workspace override hierarchy.
+ */
+export interface ContactTypeTemplate {
+  id: string;
+  scopeType: 'system' | 'organization' | 'workspace';
+  organizationId?: string;
+  workspaceId?: string;
+  entityType: EntityType;
+  types: ContactTypeEntry[];
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface ContactTypeEntry {
+  key: string;       // stable key: "manager"
+  label: string;     // display: "Manager"
+  active: boolean;
+  order: number;
 }
 
 
@@ -479,9 +532,10 @@ export interface School {
   workspaceId?: string; // Singular for backward compatibility
   status: SchoolStatusState;
   schoolStatus: string;
+  focalPersons?: any[]; // @deprecated - legacy focal persons
+  entityContacts?: EntityContact[]; // Canonical contact data (FER-01)
   pipelineId: string;
   zone?: Zone;
-  focalPersons: FocalPerson[];
   location?: string;
   billingAddress?: string;
   currency?: string;
@@ -546,7 +600,6 @@ export interface InstitutionData {
   subscriptionRate?: number;
   billingAddress?: string;
   currency?: string;
-  focalPersons?: FocalPerson[]; // Legacy field for backward compatibility
   modules?: {
     id: string;
     name: string;
@@ -603,7 +656,8 @@ export interface Entity {
   entityType: EntityType;
   name: string; // Display name (computed from firstName + lastName for person entities)
   slug?: string; // URL-safe identifier (for institution entities)
-  contacts: FocalPerson[]; // Named contact persons
+  entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+  contacts?: any[]; // @deprecated - legacy focal persons fallback
   globalTags: string[]; // Identity-level tags visible across all workspaces (Requirement 7)
   status?: 'active' | 'archived'; // Soft delete status
   createdAt: string;
@@ -646,9 +700,9 @@ export interface WorkspaceEntity {
   // Denormalized read-model fields for performance
   displayName: string;
   primaryContactName?: string;
-  primaryEmail?: string;
-  primaryPhone?: string;
-  focalPersons?: Partial<FocalPerson>[];
+  primaryEmail?: string;  // Denormalized from entityContacts where isPrimary
+  primaryPhone?: string;  // Denormalized from entityContacts where isPrimary
+  entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
   interests?: Partial<Module>[];
   currentStageName?: string;
   entityName?: string; // Snapshot for backward compatibility
@@ -678,13 +732,8 @@ export interface ResolvedContact {
   id: string;
   name: string;
   slug?: string;
-  contacts: Array<{
-    name: string;
-    phone: string;
-    email: string;
-    type: string;
-    isSignatory: boolean;
-  }>;
+  entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+  contacts?: any[]; // @deprecated - legacy focal persons array fallback
   // Workspace-specific operational state
   pipelineId?: string;
   stageId?: string;

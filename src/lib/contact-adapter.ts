@@ -1,7 +1,8 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact } from './types';
+import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact, EntityContact } from './types';
+import { resolveEntityContacts, entityContactToFocalPerson, focalPersonToEntityContact } from './entity-contact-helpers';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -192,6 +193,10 @@ async function resolveFromEntity(
     const workspaceEntityId = workspaceEntity?.id;
     const legacySchoolData = undefined;
 
+    // FER-01: Resolve canonical entityContacts
+    const entityContacts = resolveEntityContacts(entity);
+    const legacyContacts = entityContacts.map(entityContactToFocalPerson);
+
     // Construct virtual school data if this is an institution
     let virtualSchoolData: School | undefined;
     if (entity.entityType === 'institution') {
@@ -213,7 +218,7 @@ async function resolveFromEntity(
           name: workspaceEntity?.currentStageName || '',
           order: 0
         },
-        focalPersons: inst?.focalPersons || entity.contacts || [],
+        focalPersons: legacyContacts, // Derived from entityContacts (FER-01)
         nominalRoll: inst?.nominalRoll || 0,
         subscriptionPackageId: inst?.subscriptionPackageId,
         subscriptionRate: inst?.subscriptionRate,
@@ -234,7 +239,8 @@ async function resolveFromEntity(
       id: entity.id,
       name: entity.name,
       slug: entity.slug,
-      contacts: entity.contacts || [],
+      contacts: legacyContacts, // Legacy backward compat
+      entityContacts, // Canonical (FER-01)
       pipelineId: workspaceEntity?.pipelineId,
       stageId: workspaceEntity?.stageId,
       stageName: workspaceEntity?.currentStageName,
@@ -276,6 +282,7 @@ async function resolveFromSchool(
     status: schoolData.status,
     tags: schoolData.tags || [],
     migrationStatus: forceLegacy ? 'legacy' : (schoolData.migrationStatus || 'legacy'),
+    entityContacts: (schoolData.focalPersons || []).map(focalPersonToEntityContact),
     schoolData,
   };
 

@@ -38,13 +38,17 @@ import {
     CopyPlus,
     Pencil,
     Banknote,
-    FlaskConical
+    FlaskConical,
+    Users,
+    UserCheck,
+    ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import TestDispatchDialog from './TestDispatchDialog';
 import { useTenant } from '@/context/TenantContext';
+import { generateContactVariableDefinitions, groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 
 interface QuickTemplateDialogProps {
     open: boolean;
@@ -177,6 +181,13 @@ export default function QuickTemplateDialog({
             constants: constantVars 
         };
     }, [allVariables, selectedSurveyId, category]);
+
+    // FER-02: Generate dynamic contact variable definitions
+    // TODO: When org/workspace override fetching is added client-side, pass overrides here
+    const contactGroups = React.useMemo(() => {
+        const defs = generateContactVariableDefinitions('institution');
+        return groupContactVariableDefinitions(defs);
+    }, []);
 
     const handleAiArchitect = async () => {
         if (!aiPrompt.trim()) return;
@@ -482,6 +493,11 @@ export default function QuickTemplateDialog({
                                 <VariableSection title="Financial Logic" icon={Banknote} items={groupedVariables.finance} />
                                 <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} />
                                 
+                                {/* FER-02: Contact variable groups */}
+                                <VariableSection title="Primary Contact" icon={UserCheck} items={contactGroups.primary} badge="Dynamic" />
+                                <VariableSection title="Signatory Contact" icon={ShieldCheck} items={contactGroups.signatory} badge="Dynamic" />
+                                <VariableSection title="Role-Based Contacts" icon={Users} items={contactGroups.roles} />
+
                                 {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId && (
  <div className="py-10 text-center opacity-40 space-y-2 border-t mt-4 pt-4">
  <Info className="h-6 w-6 mx-auto" />

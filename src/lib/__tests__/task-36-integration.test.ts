@@ -131,6 +131,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const meeting: Meeting = {
@@ -187,6 +188,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const familyEntity: Entity = {
@@ -199,6 +201,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const personEntity: Entity = {
@@ -211,6 +214,7 @@ describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       expect(institutionEntity.slug).toBeDefined();

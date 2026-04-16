@@ -265,6 +265,7 @@ async function createEntityFromRow(
     organizationId,
     entityType,
     name: entityName,
+    entityContacts: [],
     contacts: [],
     globalTags: [],
     createdAt: timestamp,
@@ -431,6 +432,7 @@ async function linkEntityToWorkspace(
     addedAt: timestamp,
     updatedAt: timestamp,
     displayName,
+    entityContacts: [],
   };
 
   await adminDb.collection('workspace_entities').add(workspaceEntityData);

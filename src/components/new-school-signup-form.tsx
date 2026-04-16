@@ -161,12 +161,18 @@ export default function NewSchoolSignupForm() {
         workspaceId: 'onboarding', // Default workspace for new signups
         name: data.organization,
         location: data.location,
-        focalPersons: [{
-          name: data.contactPerson,
-          email: data.email,
-          phone: data.phone,
-          type: 'School Owner',
+        entityContacts: [{
+          id: `ec_signup_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+          name: data.contactPerson || '',
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+          typeKey: 'school_owner',
+          typeLabel: 'School Owner',
+          isPrimary: true,
           isSignatory: true,
+          order: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         }],
         nominalRoll: data.nominalRoll,
         implementationDate: data.implementationDate.toISOString(),

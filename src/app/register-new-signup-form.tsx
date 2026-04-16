@@ -44,7 +44,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError, useCollection, useMemoFirebase } from "@/firebase";
-import { FocalPersonManager } from "@/app/admin/entities/components/FocalPersonManager";
+import { EntityContactManager } from "@/app/admin/entities/components/EntityContactManager";
 import { PackageSelect } from "@/app/admin/entities/components/PackageSelect";
 import { type SubscriptionPackage } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,14 +59,19 @@ const formSchema = z.object({
     required_error: "An implementation date is required.",
   }),
   referee: z.string().optional(),
-  focalPersons: z.array(z.object({
+  entityContacts: z.array(z.object({
+    id: z.string().optional(),
     name: z.string().min(2, 'Name required.'),
-    email: z.string().email('Invalid email.'),
-    phone: z.string().min(10, 'Invalid phone.'),
-    type: z.string().min(1, 'Role required.'),
+    email: z.string().email('Invalid email.').optional().or(z.literal('')),
+    phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
+    typeKey: z.string().min(1, 'Role required.'),
+    typeLabel: z.string().min(1, 'Role label required.'),
     isSignatory: z.boolean().default(false),
-  })).min(1, 'At least one focal person is required.')
-    .refine(people => people.some(p => p.isSignatory), { message: 'One person must be marked as Signatory.' }),
+    isPrimary: z.boolean().default(false),
+    order: z.number().default(0),
+  })).min(1, 'At least one contact is required.')
+    .refine(people => people.filter(p => p.isSignatory).length === 1, { message: 'Exactly one signatory must be selected.' })
+    .refine(people => people.filter(p => p.isPrimary).length === 1, { message: 'Exactly one primary contact must be selected.' }),
   
   // Financial Profile
   billingAddress: z.string().optional(),
@@ -112,7 +117,7 @@ export default function NewSchoolSignupForm() {
       modules: "",
       includeDroneFootage: false,
       referee: "",
-      focalPersons: [{ name: '', email: '', phone: '', type: 'School Owner', isSignatory: true }],
+      entityContacts: [{ id: 'primary-owner', name: '', email: '', phone: '', typeKey: 'school_owner', typeLabel: 'School Owner', isSignatory: true, isPrimary: true, order: 0 }],
       billingAddress: "",
       currency: "GHS",
       subscriptionPackageId: "none",
@@ -135,10 +140,10 @@ export default function NewSchoolSignupForm() {
   const smsInputRef = React.useRef<HTMLInputElement>(null);
 
   const watchNotifySchool = form.watch("notifySchool");
-  const watchFocalPersons = form.watch("focalPersons");
+  const watchEntityContacts = form.watch("entityContacts");
   const watchPackageId = form.watch("subscriptionPackageId");
   
-  const primarySignatory = watchFocalPersons.find(p => p.isSignatory) || watchFocalPersons[0];
+  const primarySignatory = watchEntityContacts.find(p => p.isPrimary) || watchEntityContacts.find(p => p.isSignatory) || watchEntityContacts[0];
   const watchMainEmail = primarySignatory?.email;
   const isMainEmailValid = z.string().email().safeParse(watchMainEmail).success;
 
@@ -219,7 +224,11 @@ export default function NewSchoolSignupForm() {
         workspaceId: 'onboarding', // Default workspace for new signups
         name: data.organization,
         location: data.location,
-        focalPersons: data.focalPersons,
+        entityContacts: data.entityContacts.map((c, i) => ({
+            ...c,
+            id: c.id || `contact-${Date.now()}-${i}`,
+            order: i
+        })),
         nominalRoll: data.nominalRoll,
         billingAddress: data.billingAddress,
         currency: data.currency,
@@ -324,13 +333,13 @@ export default function NewSchoolSignupForm() {
                         <Users className="h-6 w-6" />
                     </div>
                     <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Staff focal persons</CardTitle>
+                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Administrative Stakeholders</CardTitle>
                         <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Authorized institutional representatives</CardDescription>
                     </div>
                 </div>
             </CardHeader>
             <CardContent className="p-8">
-                <FocalPersonManager />
+                <EntityContactManager />
             </CardContent>
         </Card>
 

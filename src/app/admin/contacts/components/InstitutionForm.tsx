@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FocalPersonManager } from '@/app/admin/entities/components/FocalPersonManager';
+import { EntityContactManager } from '@/app/admin/entities/components/EntityContactManager';
 
 const institutionFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -30,14 +30,17 @@ const institutionFormSchema = z.object({
   subscriptionRate: z.coerce.number().default(0),
   implementationDate: z.date().optional().nullable(),
   referee: z.string().optional(),
-  focalPersons: z.array(z.object({
+  entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
-    email: z.string().email('Invalid email.'),
-    phone: z.string().min(10, 'Invalid phone.'),
-    type: z.string().min(1, 'Role required.'),
+    email: z.string().email('Invalid email.').optional().or(z.literal('')),
+    phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
+    typeKey: z.string().min(1, 'Role required.'),
+    typeLabel: z.string().min(1, 'Role label required.'),
     isSignatory: z.boolean().default(false),
-  })).min(1, 'At least one focal person is required.')
-    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one signatory must be selected.' }),
+    isPrimary: z.boolean().default(false),
+  })).min(1, 'At least one contact is required.')
+    .refine(people => people.filter(p => p.isSignatory).length === 1, { message: 'Exactly one signatory must be selected.' })
+    .refine(people => people.filter(p => p.isPrimary).length === 1, { message: 'Exactly one primary contact must be selected.' }),
 });
 
 type InstitutionFormValues = z.infer<typeof institutionFormSchema>;
@@ -62,7 +65,16 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
         ? new Date(entity.institutionData.implementationDate) 
         : null,
       referee: entity?.institutionData?.referee || '',
-      focalPersons: entity?.contacts || [],
+      // Load entityContacts if available, fallback to legacy contacts map
+      entityContacts: entity?.entityContacts || entity?.contacts?.map((c: any, i: number) => ({
+        name: c.name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        typeKey: c.type?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'other',
+        typeLabel: c.type || 'Other',
+        isSignatory: !!c.isSignatory,
+        isPrimary: i === 0, // Fallback logic
+      })) || [],
     }
   });
 
@@ -260,7 +272,7 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
           </CardContent>
         </Card>
 
-        {/* Focal Persons Card */}
+        {/* Entity Contacts Card */}
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
  <CardHeader className="bg-muted/30 border-b pb-6">
  <div className="flex items-center gap-3">
@@ -268,13 +280,13 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
  <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Focal Persons</CardTitle>
+ <CardTitle className="text-lg font-semibold tracking-tight">Entity Contacts</CardTitle>
  <CardDescription className="text-xs font-medium">Key contacts for this institution</CardDescription>
               </div>
             </div>
           </CardHeader>
  <CardContent className="p-6">
-            <FocalPersonManager />
+            <EntityContactManager />
           </CardContent>
         </Card>
 

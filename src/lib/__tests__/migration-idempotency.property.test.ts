@@ -206,6 +206,7 @@ async function migrateSchool(school: School): Promise<{ entityId: string; worksp
       createdAt: school.createdAt || timestamp,
       updatedAt: timestamp,
       institutionData,
+      entityContacts: [],
       relatedEntityIds: [],
     };
 
@@ -247,6 +248,7 @@ async function migrateSchool(school: School): Promise<{ entityId: string; worksp
       workspaceTags: school.tags || [],
       addedAt: school.createdAt || timestamp,
       updatedAt: timestamp,
+      entityContacts: [],
       displayName: school.name,
       primaryEmail: primaryContact?.email,
       primaryPhone: primaryContact?.phone,
@@ -415,6 +417,7 @@ describe('Property 7: Migration Idempotency', () => {
           status: 'active',
           createdAt: school.createdAt,
           updatedAt: school.createdAt,
+          entityContacts: [],
           institutionData: {},
           relatedEntityIds: [],
         });
@@ -433,6 +436,7 @@ describe('Property 7: Migration Idempotency', () => {
             workspaceTags: school.tags || [],
             addedAt: school.createdAt,
             updatedAt: school.createdAt,
+            entityContacts: [],
             displayName: school.name,
           });
         }

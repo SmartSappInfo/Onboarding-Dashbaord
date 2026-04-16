@@ -1,0 +1,93 @@
+[96msrc/app/register-new-signup-form.tsx[0m:[93m71[0m:[93m5[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m71[0m   })).min(1, 'At least one contact is required.')
+[7m  [0m [91m    ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m71[0m:[93m6[0m - [91merror[0m[90m TS1134: [0mVariable declaration expected.
+
+[7m71[0m   })).min(1, 'At least one contact is required.')
+[7m  [0m [91m     ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m71[0m:[93m10[0m - [91merror[0m[90m TS1005: [0m',' expected.
+
+[7m71[0m   })).min(1, 'At least one contact is required.')
+[7m  [0m [91m         ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m76[0m:[93m17[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m76[0m   billingAddress: z.string().optional(),
+[7m  [0m [91m                ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m77[0m:[93m11[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m77[0m   currency: z.string().default('GHS'),
+[7m  [0m [91m          ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m78[0m:[93m24[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m78[0m   subscriptionPackageId: z.string().optional(),
+[7m  [0m [91m                       ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m79[0m:[93m19[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m79[0m   subscriptionRate: z.coerce.number().default(0),
+[7m  [0m [91m                  ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m80[0m:[93m21[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m80[0m   discountPercentage: z.coerce.number().min(0).max(100).default(0),
+[7m  [0m [91m                    ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m81[0m:[93m17[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m81[0m   arrearsBalance: z.coerce.number().default(0),
+[7m  [0m [91m                ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m82[0m:[93m16[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m82[0m   creditBalance: z.coerce.number().default(0),
+[7m  [0m [91m               ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m84[0m:[93m15[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m84[0m   notifySchool: z.boolean().default(true),
+[7m  [0m [91m              ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m85[0m:[93m21[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m85[0m   notifySchoolEmails: z.array(z.string().email()).default([]),
+[7m  [0m [91m                    ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m86[0m:[93m18[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m86[0m   notifySmartSapp: z.boolean().default(true),
+[7m  [0m [91m                 ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m87[0m:[93m19[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m87[0m   notifyOnboarding: z.boolean().default(true),
+[7m  [0m [91m                  ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m88[0m:[93m20[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m88[0m   notifySchoolBySms: z.boolean().default(true),
+[7m  [0m [91m                   ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m89[0m:[93m25[0m - [91merror[0m[90m TS1005: [0m';' expected.
+
+[7m89[0m   notifySchoolSmsNumbers: z.array(z.string().min(10, { message: "Phone number must be at least 10 digits." })).default([]),
+[7m  [0m [91m                        ~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m90[0m:[93m1[0m - [91merror[0m[90m TS1109: [0mExpression expected.
+
+[7m90[0m });
+[7m  [0m [91m~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m90[0m:[93m2[0m - [91merror[0m[90m TS1128: [0mDeclaration or statement expected.
+
+[7m90[0m });
+[7m  [0m [91m ~[0m
+
+
+Found 18 errors in the same file, starting at: src/app/register-new-signup-form.tsx[90m:71[0m
+

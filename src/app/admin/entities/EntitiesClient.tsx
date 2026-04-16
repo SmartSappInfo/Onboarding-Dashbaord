@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { collection, doc, deleteDoc, query, where, orderBy, updateDoc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
 import type { WorkspaceEntity, Entity, OnboardingStage, Zone, Tag, TagCategory } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
@@ -327,7 +327,7 @@ export default function EntitiesClient() {
  <TableHead><Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
  <TableHead className="text-center"><span className="text-[10px] font-bold ">Status</span></TableHead>
  <TableHead><Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
- <TableHead><span className="text-[10px] font-bold ">Focal Persons</span></TableHead>
+ <TableHead><span className="text-[10px] font-bold ">Contacts</span></TableHead>
  <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
  <TableHead className="text-right pr-6"><span className="text-[10px] font-bold ">Actions</span></TableHead>
                     </TableRow>
@@ -359,7 +359,7 @@ export default function EntitiesClient() {
  <div className="flex flex-col text-left gap-1">
  <Link href={`/admin/entities/${entity.entityId}`} className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors tracking-tight">{entity.displayName}</Link>
  <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
- <User className="h-2 w-2" /> {entity.primaryEmail || 'No Primary Contact'}
+ <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
                                     </span>
                                     {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
                                         <TagBadges
@@ -377,52 +377,7 @@ export default function EntitiesClient() {
                             <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.currentStageName || 'Welcome'}</Badge>
                             </TableCell>
                             <TableCell>
- <div className="flex flex-col gap-1.5 max-w-[200px]">
-                                    {(entity.focalPersons || []).length > 0 ? (
-                                        entity.focalPersons?.map((fp, idx) => (
- <div key={idx} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors group/fp">
- <div className="flex flex-col min-w-0">
- <span className={cn("text-[10px] font-semibold truncate ", fp.isSignatory && "text-primary")}>{fp.name}</span>
- <span className="text-[8px] font-bold opacity-50 truncate">{fp.type}</span>
-                                                </div>
- <div className="flex items-center gap-0.5 opacity-0 group-hover/fp:opacity-100 transition-opacity">
-                                                    {fp.email && (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
- <a href={`mailto:${fp.email}`}><Mail className="h-3 w-3" /></a>
-                                                                </Button>
-                                                            </TooltipTrigger>
- <TooltipContent className="text-[10px]">Email {fp.name}</TooltipContent>
-                                                        </Tooltip>
-                                                    )}
-                                                    {fp.phone && (
-                                                        <>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
- <a href={`tel:${fp.phone}`}><Phone className="h-3 w-3" /></a>
-                                                                    </Button>
-                                                                </TooltipTrigger>
- <TooltipContent className="text-[10px]">Call {fp.name}</TooltipContent>
-                                                            </Tooltip>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" asChild>
- <a href={`https://wa.me/${fp.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-3 w-3" /></a>
-                                                                    </Button>
-                                                                </TooltipTrigger>
- <TooltipContent className="text-[10px]">WhatsApp {fp.name}</TooltipContent>
-                                                          </Tooltip>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
- <span className="text-[10px] italic opacity-40">No Focal Persons</span>
-                                    )}
-                                </div>
+                                <CompactContactList entityId={entity.entityId} />
                             </TableCell>
  <TableCell className="text-xs font-medium text-muted-foreground">
  {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
@@ -533,4 +488,56 @@ export default function EntitiesClient() {
       />
     </TooltipProvider>
   );
+}
+
+function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback?: string }) {
+    const firestore = useFirestore();
+    const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'entities', entityId) : null, [firestore, entityId]);
+    const { data: baseEntity } = useDoc<Entity>(docRef);
+
+    const contacts = baseEntity?.entityContacts || [];
+    const primaryContact = contacts.find(c => c.isPrimary) || contacts[0];
+    const name = primaryContact?.name || fallback;
+
+    if (!name) return <span className="italic opacity-50">No Primary Contact</span>;
+    return <span className="tracking-tight">{name}</span>;
+}
+
+function CompactContactList({ entityId }: { entityId: string }) {
+    const firestore = useFirestore();
+    const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'entities', entityId) : null, [firestore, entityId]);
+    const { data: baseEntity } = useDoc<Entity>(docRef);
+
+    const contacts = baseEntity?.entityContacts || [];
+
+    if (contacts.length === 0) {
+        return <span className="text-[10px] italic opacity-40">No Contacts</span>;
+    }
+
+    return (
+        <div className="flex -space-x-2 overflow-visible py-1">
+            {contacts.slice(0, 4).map((c, i) => (
+                <Tooltip key={i} delayDuration={100}>
+                    <TooltipTrigger asChild>
+                        <Avatar className="inline-block h-8 w-8 rounded-full ring-2 ring-background cursor-pointer hover:-translate-y-1 transition-transform relative z-0 hover:z-10 bg-background border-none">
+                            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">{getInitials(c.name)}</AvatarFallback>
+                        </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent className="p-3 text-left z-50">
+                        <p className="font-bold text-sm tracking-tight">{c.name}</p>
+                        <Badge variant="outline" className="text-[8px] uppercase tracking-tighter mt-1 mb-2">{c.typeLabel || c.typeKey || (c as any).type}</Badge>
+                        <div className="space-y-1">
+                            {c.email && <p className="text-[10px] flex items-center gap-1.5"><Mail className="h-3 w-3 text-muted-foreground" /> {c.email}</p>}
+                            {c.phone && <p className="text-[10px] flex items-center gap-1.5"><Phone className="h-3 w-3 text-muted-foreground" /> {c.phone}</p>}
+                        </div>
+                    </TooltipContent>
+                </Tooltip>
+            ))}
+            {contacts.length > 4 && (
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-[10px] font-bold ring-2 ring-background z-0 relative border border-border/50">
+                    +{contacts.length - 4}
+                </div>
+            )}
+        </div>
+    );
 }

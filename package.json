@@ -10,7 +10,7 @@
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:next": "NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "lint": "next lint",
+    "lint": "next lint --no-cache",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest",

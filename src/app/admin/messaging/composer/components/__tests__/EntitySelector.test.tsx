@@ -32,6 +32,7 @@ describe('EntitySelector Component', () => {
       schoolStatus: 'active',
       pipelineId: 'pipeline-1',
       focalPersons: [],
+      entityContacts: [],
       createdAt: new Date().toISOString(),
     },
     {
@@ -44,6 +45,7 @@ describe('EntitySelector Component', () => {
       schoolStatus: 'active',
       pipelineId: 'pipeline-1',
       focalPersons: [],
+      entityContacts: [],
       createdAt: new Date().toISOString(),
     },
     {
@@ -56,6 +58,7 @@ describe('EntitySelector Component', () => {
       schoolStatus: 'inactive',
       pipelineId: 'pipeline-1',
       focalPersons: [],
+      entityContacts: [],
       createdAt: new Date().toISOString(),
     },
   ];
@@ -112,10 +115,10 @@ describe('EntitySelector Component', () => {
       );
 
       // Check that "Available Schools" header is present
-      expect(screen.getByText('Available Schools')).toBeInTheDocument();
+      expect(screen.getByText('Available Contacts')).toBeInTheDocument();
       
       // Check for loading skeletons (animated pulse elements)
-      const container = screen.getByText('Available Schools').closest('div');
+      const container = screen.getByText('Available Contacts').closest('div');
       expect(container).toBeInTheDocument();
     });
 
@@ -134,7 +137,7 @@ describe('EntitySelector Component', () => {
         />
       );
 
-      expect(screen.getByText('No schools available')).toBeInTheDocument();
+      expect(screen.getByText('No contacts available')).toBeInTheDocument();
     });
   });
 
@@ -208,7 +211,7 @@ describe('EntitySelector Component', () => {
       );
 
       // Check selected schools section
-      const selectedSection = screen.getByText('Selected Schools').closest('div');
+      const selectedSection = screen.getByText('Selected Contacts').closest('div');
       expect(selectedSection).toBeInTheDocument();
       
       // Both schools should appear in selected section
@@ -319,7 +322,7 @@ describe('EntitySelector Component', () => {
 
       // Wait for debounce
       await waitFor(() => {
-        expect(screen.getByText(/No schools found matching your search/i)).toBeInTheDocument();
+        expect(screen.getByText(/No contacts found matching your search/i)).toBeInTheDocument();
       }, { timeout: 500 });
     });
   });
@@ -337,8 +340,8 @@ describe('EntitySelector Component', () => {
       const selectAllButton = screen.getByText('Select All');
       fireEvent.click(selectAllButton);
 
-      expect(screen.getByText('Select All Schools?')).toBeInTheDocument();
-      expect(screen.getByText(/This will select 3 schools/i)).toBeInTheDocument();
+      expect(screen.getByText('Select All Contacts?')).toBeInTheDocument();
+      expect(screen.getByText(/This will select 3 matching contacts/i)).toBeInTheDocument();
     });
 
     it('should select all entities when confirmed', () => {
@@ -391,6 +394,7 @@ describe('EntitySelector Component', () => {
         schoolStatus: 'active',
         pipelineId: 'pipeline-1',
         focalPersons: [],
+        entityContacts: [],
         createdAt: new Date().toISOString(),
       }));
 
@@ -510,7 +514,7 @@ describe('EntitySelector Component', () => {
         />
       );
 
-      expect(screen.getByText(/Maximum selection limit of 2 schools reached/i)).toBeInTheDocument();
+      expect(screen.getByText(/Maximum selection limit of 2 contacts reached/i)).toBeInTheDocument();
     });
 
     it('should disable "Select All" button when at maximum selection limit', () => {
@@ -552,7 +556,7 @@ describe('EntitySelector Component', () => {
       );
 
       // Find the selected schools section
-      const selectedSection = screen.getByText('Selected Schools').closest('div');
+      const selectedSection = screen.getByText('Selected Contacts').closest('div');
       expect(selectedSection).toBeInTheDocument();
 
       // Find all remove buttons (X buttons)

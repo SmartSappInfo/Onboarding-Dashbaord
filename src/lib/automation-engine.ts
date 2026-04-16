@@ -1,11 +1,12 @@
 'use client';
 
 import { collection, query, where, getDocs, doc, getDoc, type Firestore } from 'firebase/firestore';
-import type { AutomationRule, AutomationAction, AutomationTrigger, School, FocalPerson } from './types';
+import type { AutomationRule, AutomationAction, AutomationTrigger, School, FocalPerson, EntityContact } from './types';
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
 import { getContactPerson } from './entity-helpers';
+import { normalizeContactType, resolveEntityContacts, focalPersonToEntityContact } from './entity-contact-helpers';
 
 /**
  * @fileOverview Global Automation Engine.
@@ -109,10 +110,16 @@ async function resolveRecipient(action: AutomationAction, school: School): Promi
     if (action.recipientType === 'fixed') return action.fixedRecipient || null;
     if (action.recipientType === 'manager') return school.assignedTo?.email || null;
     
+    // FER-01: Resolve recipient dynamically using EntityContact model
+    const contacts = resolveEntityContacts(school as any);
+    
     if (action.recipientType === 'focal_person' && action.focalPersonType) {
-        const person = school.focalPersons?.find(p => p.type === action.focalPersonType);
-        return person?.email || null;
+        const targetTypeKey = normalizeContactType(action.focalPersonType);
+        const person = contacts.find(c => c.typeKey === targetTypeKey);
+        if (person?.email) return person.email;
     }
 
-    return school.focalPersons[0].email || null;
+    // Default: use derived primary contact (or fallback to first contact)
+    const primary = contacts.find(c => c.isPrimary) || contacts[0];
+    return primary?.email || null;
 }

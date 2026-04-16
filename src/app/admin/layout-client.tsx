@@ -85,6 +85,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { toast } = useToast();
   const { plural } = useTerminology();
+  const { activeWorkspaceId } = useTenant();
   const { isFeatureEnabled } = useFeatures();
   
   const [mounted, setMounted] = React.useState(false);
@@ -181,40 +182,46 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     return isFeatureEnabled(featureId);
   };
 
+  const wrapHref = (href: string) => {
+    if (!activeWorkspaceId) return href;
+    const separator = href.includes('?') ? '&' : '?';
+    return `${href}${separator}track=${activeWorkspaceId}`;
+  };
+
   const coreNavItems = [
-    { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
-    { href: '/admin/entities', icon: School, label: plural, visible: isVisible(hasPerm('schools_view'), 'entities') },
-    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: isVisible(hasPerm('schools_view') || hasPerm('prospects_view'), 'pipeline') },
-    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: isVisible(hasPerm('tasks_manage'), 'tasks') },
-    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: isVisible(hasPerm('meetings_manage'), 'meetings') },
-    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: isVisible(hasPerm('system_admin'), 'automations') },
-    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isVisible(hasPerm('activities_view'), 'reports') },
+    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: true },
+    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(hasPerm('schools_view'), 'entities') },
+    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: 'Pipeline', visible: isVisible(hasPerm('schools_view') || hasPerm('prospects_view'), 'pipeline') },
+    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(hasPerm('tasks_manage'), 'tasks') },
+    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(hasPerm('meetings_manage'), 'meetings') },
+    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(hasPerm('system_admin'), 'automations') },
+    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isVisible(hasPerm('activities_view'), 'reports') },
   ];
 
   const studioNavItems = [
-    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isVisible(hasPerm('studios_view'), 'portals') },
-    { href: '/admin/pages', icon: Layout, label: 'Landing Pages', visible: isVisible(hasPerm('studios_view'), 'portals') },
-    { href: '/admin/media', icon: Film, label: 'Media', visible: isVisible(true, 'media') },
-    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isVisible(hasPerm('studios_view'), 'surveys') },
-    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isVisible(hasPerm('studios_view'), 'pdfs') },
-    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isVisible(hasPerm('studios_view'), 'messaging') },
-    { href: '/admin/forms', icon: ClipboardSignature, label: 'Forms', visible: isVisible(hasPerm('forms_manage'), 'forms') },
-    { href: '/admin/contacts/tags', icon: Tags, label: 'Tags', visible: isVisible(hasPerm('tags_view'), 'tags') },
+    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isVisible(hasPerm('studios_view'), 'portals') },
+    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isVisible(hasPerm('studios_view'), 'portals') },
+    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isVisible(true, 'media') },
+    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isVisible(hasPerm('studios_view'), 'surveys') },
+    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isVisible(hasPerm('studios_view'), 'pdfs') },
+    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(hasPerm('studios_view'), 'messaging') },
+    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(hasPerm('forms_manage'), 'forms') },
+    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(hasPerm('tags_view'), 'tags') },
   ];
 
   const financeNavItems = [
-    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isVisible(hasPerm('finance_view'), 'agreements') },
-    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isVisible(hasPerm('finance_view'), 'invoices') },
-    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isVisible(hasPerm('finance_view'), 'packages') },
-    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isVisible(hasPerm('finance_view'), 'billing_periods') },
-    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isVisible(hasPerm('finance_manage'), 'billing_setup') },
+    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isVisible(hasPerm('finance_view'), 'agreements') },
+    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isVisible(hasPerm('finance_view'), 'invoices') },
+    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isVisible(hasPerm('finance_view'), 'packages') },
+    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isVisible(hasPerm('finance_view'), 'billing_periods') },
+    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(hasPerm('finance_manage'), 'billing_setup') },
   ];
 
   const systemNavItems = [
-    { href: '/admin/activities', icon: History, label: 'Activities', visible: hasPerm('activities_view') },
-    { href: '/admin/users', icon: Users, label: 'Users', visible: hasPerm('system_admin') },
-    { href: '/admin/settings/fields', icon: Database, label: 'Fields & Variables', visible: hasPerm('fields_manage') },
-    { href: '/admin/settings', icon: Settings, label: 'System', visible: hasPerm('system_admin') },
+    { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: hasPerm('activities_view') },
+    { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: hasPerm('system_admin') },
+    { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: hasPerm('fields_manage') },
+    { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: hasPerm('system_admin') },
   ];
 
   return (

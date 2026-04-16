@@ -160,13 +160,18 @@ export default function SurveyFormBuilder() {
                         title: "Unsaved Changes Found",
                         description: "We found a newer version of this survey in your local cache. Would you like to restore it?",
                         action: (
-                            <Button variant="default" size="sm" onClick={() => {
-                                reset(parsedData);
-                                resetHistory(parsedData);
-                                lastSavedRef.current = JSON.stringify(parsedData);
-                                toast({ title: 'Restored', description: 'Your unsaved changes have been applied.' });
-                                localStorage.removeItem(storageKey);
-                            }}>
+                            <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-all"
+                                onClick={() => {
+                                    reset(parsedData);
+                                    resetHistory(parsedData);
+                                    lastSavedRef.current = JSON.stringify(parsedData);
+                                    toast({ title: 'Restored', description: 'Your unsaved changes have been applied.' });
+                                    localStorage.removeItem(storageKey);
+                                }}
+                            >
                                 Restore Changes
                             </Button>
                         ),

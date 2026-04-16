@@ -110,12 +110,12 @@ export async function scheduleMultiEntityMessages(
              const phone = getContactPhone(contact);
              entityContacts = channel === 'email' ? (email ? [email] : []) : (phone ? [phone] : []);
         } else if (contactScope === 'signatories') {
-             entityContacts = contact.contacts
+             entityContacts = (contact.contacts || [])
                  .filter(c => c.isSignatory)
                  .map(c => channel === 'email' ? c.email : c.phone)
                  .filter(v => !!v);
         } else if (contactScope === 'all') {
-             entityContacts = contact.contacts
+             entityContacts = (contact.contacts || [])
                  .map(c => channel === 'email' ? c.email : c.phone)
                  .filter(v => !!v);
         }

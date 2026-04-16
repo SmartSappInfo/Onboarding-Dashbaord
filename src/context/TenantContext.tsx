@@ -123,14 +123,30 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return orgFiltered.filter(w => profile.workspaceIds?.includes(w.id));
   }, [orgWorkspaces, profile, isSuperAdmin, activeOrganizationId]);
 
-  // 6. Final Workspace Correction
+  // 6. Final Workspace Correction & URL Sync
   React.useEffect(() => {
     if (isInitialized && accessibleWorkspaces.length > 0) {
+        let currentId = activeWorkspaceId;
+        
+        // 6.1. If we don't have a valid ID selected in state, pick the first accessible one
         if (!activeWorkspaceId || !accessibleWorkspaces.find(w => w.id === activeWorkspaceId)) {
-            setActiveWorkspaceIdState(accessibleWorkspaces[0].id);
+            currentId = accessibleWorkspaces[0].id;
+            setActiveWorkspaceIdState(currentId);
+            localStorage.setItem('activeWorkspaceId', currentId);
+        }
+
+        // 6.2. URL Enforcement: If on dashboard and 'track' param is missing, add it.
+        // This ensures Server Components (like the Dashboard Page) see the client's resolved workspace.
+        if (pathname === '/admin' && currentId) {
+            const urlTrack = searchParams.get('track');
+            if (!urlTrack || urlTrack !== currentId) {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('track', currentId);
+                router.replace(`${pathname}?${params.toString()}`);
+            }
         }
     }
-  }, [isInitialized, accessibleWorkspaces, activeWorkspaceId]);
+  }, [isInitialized, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router]);
 
   // Handlers
   const setActiveOrganization = React.useCallback((orgId: string) => {

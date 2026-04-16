@@ -56,6 +56,7 @@ vi.mock('../contact-adapter', () => ({
           entityType: entity.entityType,
           entityId: entity.id,
           migrationStatus: 'migrated',
+          entityContacts: [],
           tags: workspaceEntity?.workspaceTags || [],
         };
       }
@@ -70,6 +71,7 @@ vi.mock('../contact-adapter', () => ({
           contacts: school.focalPersons || [],
           migrationStatus: 'legacy',
           schoolData: school,
+          entityContacts: [],
           tags: school.tags || [],
         };
       }

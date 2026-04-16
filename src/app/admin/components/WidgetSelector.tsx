@@ -59,6 +59,7 @@ interface WidgetSelectorProps {
   activeWidgetIds: string[];
   pipelines: Pipeline[];
   onToggleWidget: (widgetId: string, action: 'add' | 'remove') => void;
+  terminology?: { singular: string, plural: string };
 }
 
 /**
@@ -72,15 +73,23 @@ export default function WidgetSelector({
   activeWidgetIds,
   pipelines,
   onToggleWidget,
+  terminology,
 }: WidgetSelectorProps) {
   const { isFeatureEnabled } = useFeatures();
   const [searchTerm, setSearchTerm] = React.useState('');
 
-  // Get all available widgets (static + per-pipeline)
   const allWidgets = React.useMemo(() => {
     const pipelineData = pipelines.map(p => ({ id: p.id, name: p.name }));
-    return getAllWidgets(pipelineData);
-  }, [pipelines]);
+    const rawWidgets = getAllWidgets(pipelineData);
+    
+    if (!terminology) return rawWidgets;
+    
+    return rawWidgets.map(w => ({
+      ...w,
+      label: w.label.replace(/{Entity}/g, terminology.singular).replace(/{Entities}/g, terminology.plural),
+      description: w.description.replace(/{Entity}/g, terminology.singular).replace(/{Entities}/g, terminology.plural)
+    }));
+  }, [pipelines, terminology]);
 
   // Filter by enabled features
   const availableWidgets = React.useMemo(() => {

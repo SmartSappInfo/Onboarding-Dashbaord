@@ -1,0 +1,157 @@
+[96msrc/lib/__tests__/workspace-permissions.test.ts[0m:[93m71[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m71[0m   const mockWorkspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m705[0m:[93m3[0m
+    [7m705[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/contact-adapter.ts[0m:[93m285[0m:[93m57[0m - [91merror[0m[90m TS2304: [0mCannot find name 'focalPersonToEntityContact'.
+
+[7m285[0m     entityContacts: (schoolData.focalPersons || []).map(focalPersonToEntityContact),
+[7m   [0m [91m                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m52[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m52[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m52[0m:[93m9[0m
+    [7m52[0m         entityContacts: [],
+    [7m  [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"institution">; name: Arbitrary<string>; slug: Arbitrary<string | undefined>; ... 6 more ...; institutionData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m57[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m57[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m57[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m57[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m52[0m:[93m9[0m
+    [7m52[0m         entityContacts: [],
+    [7m  [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"institution">; name: Arbitrary<string>; slug: Arbitrary<string | undefined>; ... 6 more ...; institutionData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m92[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m92[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m92[0m:[93m9[0m
+    [7m92[0m         entityContacts: [],
+    [7m  [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"family">; name: Arbitrary<string>; contacts: Arbitrary<{ name: string; phone: string; email: string; type: "Principal" | ... 3 more ... | "School Owner"; isSignatory: boolean; }[]>; ... 5 more ...; familyData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m97[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m97[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m97[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m97[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m92[0m:[93m9[0m
+    [7m92[0m         entityContacts: [],
+    [7m  [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"family">; name: Arbitrary<string>; contacts: Arbitrary<{ name: string; phone: string; email: string; type: "Principal" | ... 3 more ... | "School Owner"; isSignatory: boolean; }[]>; ... 5 more ...; familyData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m111[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m111[0m         entityContacts: [],
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m111[0m:[93m9[0m
+    [7m111[0m         entityContacts: [],
+    [7m   [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"person">; name: Arbitrary<string>; contacts: Arbitrary<{ name: string; phone: string; email: string; type: "Principal" | ... 3 more ... | "School Owner"; isSignatory: boolean; }[]>; ... 5 more ...; personData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m116[0m:[93m9[0m - [91merror[0m[90m TS1117: [0mAn object literal cannot have multiple properties with the same name.
+
+[7m116[0m         entityContacts: [],
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m116[0m:[93m9[0m - [91merror[0m[90m TS2739: [0mType 'never[]' is missing the following properties from type 'Arbitrary<unknown>': generate, canShrinkWithoutContext, shrink, chain
+
+[7m116[0m         entityContacts: [],
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m111[0m:[93m9[0m
+    [7m111[0m         entityContacts: [],
+    [7m   [0m [96m        ~~~~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type '{ id: Arbitrary<string>; organizationId: Arbitrary<string>; entityType: Arbitrary<"person">; name: Arbitrary<string>; contacts: Arbitrary<{ name: string; phone: string; email: string; type: "Principal" | ... 3 more ... | "School Owner"; isSignatory: boolean; }[]>; ... 5 more ...; personData: Arbitrary<...>; }'
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m131[0m:[93m49[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; institutionData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    Type 'unknown' is not assignable to type 'EntityContact[]'.
+
+[7m131[0m       const csvRow = serializeInstitutionEntity(entity);
+[7m   [0m [91m                                                ~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m159[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; familyData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    Type 'unknown' is not assignable to type 'EntityContact[]'.
+
+[7m159[0m       const csvRow = serializeFamilyEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m199[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "Principal" | "Administrator" | "Champion" | "Accountant" | "School Owner"; isSignatory: boolean; }[]; ... 5 more ...; personData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Types of property 'entityContacts' are incompatible.
+    Type 'unknown' is not assignable to type 'EntityContact[]'.
+
+[7m199[0m       const csvRow = serializePersonEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+[96msrc/lib/import-export/export-service.ts[0m:[93m36[0m:[93m36[0m - [91merror[0m[90m TS2339: [0mProperty 'type' does not exist on type 'EntityContact'.
+
+[7m36[0m     focalPerson_type: focalPerson?.type,
+[7m  [0m [91m                                   ~~~~[0m
+
+[96msrc/lib/import-service.ts[0m:[93m264[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: EntityType; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m264[0m   const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m113[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m113[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m118[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m118[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/workspace-entity-actions.ts[0m:[93m174[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: EntityType; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | undefined; ... 7 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m174[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m705[0m:[93m3[0m
+    [7m705[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+
+Found 19 errors in 7 files.
+
+Errors  Files
+     1  src/lib/__tests__/workspace-permissions.test.ts[90m:71[0m
+     1  src/lib/contact-adapter.ts[90m:285[0m
+    12  src/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[90m:52[0m
+     1  src/lib/import-export/export-service.ts[90m:36[0m
+     1  src/lib/import-service.ts[90m:264[0m
+     2  src/lib/sequential-scheduler.ts[90m:113[0m
+     1  src/lib/workspace-entity-actions.ts[90m:174[0m

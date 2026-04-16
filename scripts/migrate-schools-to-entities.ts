@@ -138,7 +138,7 @@ async function migrateSchool(
         entityType: 'institution',
         name: school.name,
         slug,
-        contacts: school.focalPersons || [],
+        entityContacts: [], // FER-01: Contacts migrated separately via normalization pipeline
         globalTags: [], // Global tags will be empty initially
         status: school.status === 'Archived' ? 'archived' : 'active',
         createdAt: school.createdAt || timestamp,
@@ -173,8 +173,8 @@ async function migrateSchool(
         continue;
       }
 
-      // Extract primary contact for denormalization
-      const primaryContact = school.focalPersons?.[0];
+      // FER-01: Primary contact is resolved from entityContacts after normalization
+      const primaryContact = (school as any).focalPersons?.[0];
 
       const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
         organizationId,
@@ -185,15 +185,15 @@ async function migrateSchool(
         stageId: school.stage?.id || '',
         assignedTo: school.assignedTo,
         status: school.status === 'Archived' ? 'archived' : 'active',
-        workspaceTags: school.tags || [], // Copy tags to workspace tags
+        workspaceTags: school.tags || [],
         lastContactedAt: undefined,
         addedAt: school.createdAt || timestamp,
         updatedAt: timestamp,
-        // Denormalized fields
         displayName: school.name,
         primaryEmail: primaryContact?.email,
         primaryPhone: primaryContact?.phone,
         currentStageName: school.stage?.name,
+        entityContacts: [], // FER-01: Populated by normalization pipeline
       };
 
       if (!DRY_RUN) {

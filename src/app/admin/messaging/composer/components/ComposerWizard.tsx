@@ -315,14 +315,18 @@ export default function ComposerWizard() {
                 const firstId = watchedSelectedEntityIds[0];
                 const res = await fetchContextualData('Entity', firstId, undefined, activeWorkspace?.id);
                 if (res.success && res.data) {
-                    // Extract common fields for simulation
+                    // FER-02: Resolve contact name from entityContacts (primary contact)
+                    const contacts = res.data.entityContacts || [];
+                    const primaryContact = contacts.find((c: any) => c.isPrimary) || contacts[0];
+                    const contactName = primaryContact?.name || res.data.displayName || res.data.name || '';
+
                     const sample = {
                         name: res.data.displayName || res.data.name,
                         school_name: res.data.displayName || res.data.name,
-                        email: res.data.primaryEmail || res.data.email,
-                        phone: res.data.primaryPhone || res.data.phone,
-                        contact_name: res.data.focalPerson?.name || res.data.displayName || res.data.name,
-                        first_name: (res.data.focalPerson?.name || res.data.displayName || res.data.name || '').split(' ')[0],
+                        email: res.data.primaryEmail || primaryContact?.email || '',
+                        phone: res.data.primaryPhone || primaryContact?.phone || '',
+                        contact_name: contactName,
+                        first_name: (contactName || '').split(' ')[0],
                     };
                     setSampleVariables(sample);
                 }

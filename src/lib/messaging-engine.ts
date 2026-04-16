@@ -7,11 +7,10 @@ import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
-import { getEntityEmail, getEntityPhone, getSignatory } from './entity-helpers';
-import { getPrimaryWorkspaceId } from './workspace-helpers';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
-import { getContactEmail, getContactPhone, getContactSignatory, getRecipientContact } from './migration-status-utils';
+import { getRecipientContact } from './migration-status-utils';
+import { getContactVariables } from './entity-contact-helpers';
 
 interface SendMessageInput {
   templateId: string;
@@ -112,23 +111,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
             }
 
-            const contactVars: any = {
+            // FER-01: Dynamic contact variable generation from entityContacts
+            // All contact identity is resolved through getContactVariables —
+            // no direct schoolData field reads for contact/location/initials.
+            const contactVars: Record<string, any> = {
                 school_name: contact.name,
-                school_initials: contact.schoolData?.initials || '',
-                school_location: contact.schoolData?.location || '',
-                school_phone: getContactPhone(contact) || '',
-                school_email: getContactEmail(contact) || '',
-                contact_name: signatory?.name || '',
-                contact_email: signatory?.email || '',
-                contact_phone: signatory?.phone || '',
-                contact_position: signatory?.type || '',
-                // Standard Aliases (Task: Automatic Binding)
-                name: signatory?.name || contact.name || '',
-                email: signatory?.email || getContactEmail(contact) || '',
-                phone: signatory?.phone || getContactPhone(contact) || '',
-                first_name: (signatory?.name || contact.name || '').split(' ')[0],
                 id: resolvedEntityId || '',
             };
+
+            // FER-02: Generate all role/primary/signatory variables from entityContacts
+            const dynamicVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
+            Object.assign(contactVars, dynamicVars);
             
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {

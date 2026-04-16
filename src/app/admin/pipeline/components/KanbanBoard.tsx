@@ -117,7 +117,7 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
         const s = filters.searchTerm.toLowerCase();
         temp = temp.filter(e => {
             const nameMatch = e.displayName.toLowerCase().includes(s);
-            const signatoryMatch = e.focalPersons?.some(p => p.name?.toLowerCase().includes(s));
+            const signatoryMatch = e.entityContacts?.some((p: any) => p.name?.toLowerCase().includes(s));
             return nameMatch || signatoryMatch;
         });
     }

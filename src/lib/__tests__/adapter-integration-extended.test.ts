@@ -121,6 +121,7 @@ describe('Extended Adapter Integration Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity = {
@@ -135,6 +136,7 @@ describe('Extended Adapter Integration Tests', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockUser = {
@@ -249,6 +251,7 @@ describe('Extended Adapter Integration Tests', () => {
         fields: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {

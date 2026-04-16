@@ -72,8 +72,8 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       currency: 'USD',
       subscriptionPackageId: 'pkg_001',
       subscriptionRate: 100,
-      focalPersons: [],
     },
+    entityContacts: [],
   };
 
   const mockWorkspaceEntity: WorkspaceEntity = {
@@ -92,6 +92,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
     primaryPhone: '+1234567890',
     addedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    entityContacts: [],
   };
 
   const mockLegacySchool: Partial<School> = {
@@ -116,6 +117,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
     migrationStatus: 'legacy',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    entityContacts: [],
   };
 
   beforeEach(() => {
@@ -393,7 +395,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       const displayTask = {
         ...newTask,
         contactName: resolvedContact.name,
-        contactEmail: resolvedContact.contacts[0]?.email,
+        contactEmail: resolvedContact.contacts?.[0]?.email,
         contactTags: resolvedContact.tags,
         stageName: resolvedContact.stageName,
       };
@@ -637,7 +639,7 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       const displaySubmission = {
         ...submission,
         contactName: mockEntity.name,
-        contactEmail: mockEntity.contacts[0]?.email,
+        contactEmail: mockEntity.contacts?.[0]?.email,
         formTitle: newForm.name,
       };
 
@@ -733,8 +735,8 @@ describe('Migration E2E Workflows - Integration Tests', () => {
       const displayHistory = messageHistory.map((msg) => ({
         ...msg,
         contactName: mockEntity.name,
-        contactEmail: mockEntity.contacts[0]?.email,
-        contactPhone: mockEntity.contacts[0]?.phone,
+        contactEmail: mockEntity.contacts?.[0]?.email,
+        contactPhone: mockEntity.contacts?.[0]?.phone,
       }));
 
       expect(displayHistory[0].contactName).toBe('Test Institution');

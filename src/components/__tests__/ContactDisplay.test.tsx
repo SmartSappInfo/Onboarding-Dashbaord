@@ -26,6 +26,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -55,6 +56,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityType: 'institution',
         migrationStatus: 'legacy',
         tags: [],
+        entityContacts: [],
         schoolData: {
           id: 'school_789',
           name: 'Legacy School',
@@ -89,6 +91,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -121,6 +124,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -150,6 +154,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -181,6 +186,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -212,6 +218,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -242,6 +249,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityType: 'institution',
         migrationStatus: 'legacy',
         tags: [],
+        entityContacts: [],
         schoolData: {
           id: 'school_789',
           name: 'Legacy School',
@@ -275,6 +283,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -307,6 +316,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -339,6 +349,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityType: 'institution',
         migrationStatus: 'legacy',
         tags: [],
+        entityContacts: [],
         schoolData: {
           id: 'school_789',
           name: 'Legacy School',
@@ -433,6 +444,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -470,6 +482,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityId: 'entity_456',
         migrationStatus: 'migrated',
         tags: [],
+        entityContacts: [],
       };
 
       const { resolveContact } = await import('@/lib/contact-adapter');
@@ -501,6 +514,7 @@ describe('ContactDisplay Component (Task 35.3)', () => {
         entityType: 'institution',
         migrationStatus: 'legacy',
         tags: [],
+        entityContacts: [],
         schoolData: {
           id: 'school_789',
           name: 'Legacy Inline',

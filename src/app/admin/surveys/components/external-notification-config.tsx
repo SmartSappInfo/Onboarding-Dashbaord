@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 
-const FOCAL_PERSON_TYPES = [
+const CONTACT_ROLE_TYPES = [
     'Champion',
     'Accountant',
     'Administrator',
@@ -26,7 +26,7 @@ const FOCAL_PERSON_TYPES = [
 
 /**
  * Reusable configuration component for External Team Notifications.
- * targets Focal Persons (Contacts) at the associated Entity.
+ * targets Entity Contacts at the associated Entity.
  */
 export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: any }) {
     const { control, watch, setValue } = useFormContext();
@@ -48,7 +48,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
     const emailTemplates = templates?.filter(t => t.channel === 'email');
     const smsTemplates = templates?.filter(t => t.channel === 'sms');
 
-    const focalPersonTypeOptions = FOCAL_PERSON_TYPES.map(type => ({ label: type, value: type }));
+    const contactRoleOptions = CONTACT_ROLE_TYPES.map(type => ({ label: type, value: type }));
 
     return (
  <div className="space-y-4">
@@ -113,7 +113,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             control={control}
                                             render={({ field }) => (
                                                 <MultiSelect 
-                                                    options={focalPersonTypeOptions}
+                                                    options={contactRoleOptions}
                                                     value={field.value || []}
                                                     onChange={field.onChange}
                                                     placeholder="Select roles (e.g. Principal)..."

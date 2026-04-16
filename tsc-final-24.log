@@ -1,0 +1,122 @@
+[96msrc/lib/__tests__/workspace-permissions.test.ts[0m:[93m69[0m:[93m9[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'entityContacts' does not exist in type 'Workspace'.
+
+[7m69[0m         entityContacts: [],
+[7m  [0m [91m        ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/contact-adapter.ts[0m:[93m273[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: any[]; pipelineId: string; stageId: string | undefined; stageName: string | undefined; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; status: SchoolStatusState; tags: string[]; migrationStatus: MigrationStatus;...' but required in type 'ResolvedContact'.
+
+[7m273[0m   const resolved: ResolvedContact = {
+[7m   [0m [91m        ~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m735[0m:[93m3[0m
+    [7m735[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/entity-helpers.ts[0m:[93m53[0m:[93m23[0m - [91merror[0m[90m TS2532: [0mObject is possibly 'undefined'.
+
+[7m53[0m   return signatory || (entity as School).focalPersons[0];
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m125[0m:[93m49[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; institutionData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; institutionData: { ...; }; }' but required in type 'Entity'.
+
+[7m125[0m       const csvRow = serializeInstitutionEntity(entity);
+[7m   [0m [91m                                                ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m153[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; familyData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; familyData: { ...; }; }' but required in type 'Entity'.
+
+[7m153[0m       const csvRow = serializeFamilyEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m193[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; personData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "School Owner" | "Champion" | "Accountant" | "Administrator" | "Principal"; isSignatory: boolean; }[]; ... 4 more ...; personData: { ...; }; }' but required in type 'Entity'.
+
+[7m193[0m       const csvRow = serializePersonEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m216[0m:[93m7[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: false; }[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; institutionData: { ...; }; }' but required in type 'Entity'.
+
+[7m216[0m       {
+[7m   [0m [91m      ~[0m
+[7m217[0m         id: '1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m243[0m         },
+[7m   [0m [91m~~~~~~~~~~[0m
+[7m244[0m       },
+[7m   [0m [91m~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/export-service.ts[0m:[93m24[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'entity.contacts' is possibly 'undefined'.
+
+[7m24[0m   const focalPerson = entity.contacts[0];
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/export-service.ts[0m:[93m68[0m:[93m19[0m - [91merror[0m[90m TS18048: [0m'entity.contacts' is possibly 'undefined'.
+
+[7m68[0m   const contact = entity.contacts[0];
+[7m  [0m [91m                  ~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-service.ts[0m:[93m264[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: EntityType; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m264[0m   const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m659[0m:[93m3[0m
+    [7m659[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m113[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m113[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m118[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m118[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/workspace-entity-actions.ts[0m:[93m174[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: EntityType; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | undefined; ... 7 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m174[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m705[0m:[93m3[0m
+    [7m705[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+
+Found 13 errors in 8 files.
+
+Errors  Files
+     1  src/lib/__tests__/workspace-permissions.test.ts[90m:69[0m
+     1  src/lib/contact-adapter.ts[90m:273[0m
+     1  src/lib/entity-helpers.ts[90m:53[0m
+     4  src/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[90m:125[0m
+     2  src/lib/import-export/export-service.ts[90m:24[0m
+     1  src/lib/import-service.ts[90m:264[0m
+     2  src/lib/sequential-scheduler.ts[90m:113[0m
+     1  src/lib/workspace-entity-actions.ts[90m:174[0m

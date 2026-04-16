@@ -21,7 +21,8 @@ import * as React from 'react';
 import LogActivityModal from './LogActivityModal';
 import NotesSection from '../../components/NotesSection';
 import Link from 'next/link';
-import { getEntityEmail, getEntityPhone, getContactPerson, getPrimaryContact } from '@/lib/entity-helpers';
+import { getEntityEmail, getEntityPhone, getContactPerson } from '@/lib/entity-helpers';
+import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
 
 interface EntityDetailsModalProps {
@@ -40,6 +41,7 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
   const [isLogActivityModalOpen, setIsLogActivityModalOpen] = React.useState(false);
   
   if (!entity) return null;
+  const contacts = resolveEntityContacts(entity as any);
 
   const DetailItem = ({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value?: string | number | null, children?: React.ReactNode }) => {
     if (!value && !children) return null;

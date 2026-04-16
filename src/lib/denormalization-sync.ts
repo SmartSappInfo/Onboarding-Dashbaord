@@ -101,17 +101,18 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
 /**
  * Extracts denormalized fields from an entity document.
  * Used to compute what fields need to be synced to workspace_entities.
+ * 
+ * FER-01: Now resolves primary contact from entityContacts via helpers.
  */
 export async function extractDenormalizedFields(entity: Entity): Promise<DenormalizedFields> {
-  const fields: DenormalizedFields = {
+  const { extractPrimaryContactFields } = await import('./entity-contact-helpers');
+  
+  const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);
+  
+  return {
     displayName: entity.name,
+    primaryEmail: primaryEmail || undefined,
+    primaryPhone: primaryPhone || undefined,
   };
-
-  if (entity.contacts && entity.contacts.length > 0) {
-    const primaryContact = entity.contacts[0];
-    fields.primaryEmail = primaryContact.email;
-    fields.primaryPhone = primaryContact.phone;
-  }
-
-  return fields;
 }
+

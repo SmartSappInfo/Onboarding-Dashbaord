@@ -523,14 +523,18 @@ export async function resolveRecipientContacts(params: {
       const val = channel === 'email' ? email : phone;
       recipients = val ? [val] : [];
     } else if (contactScope === 'signatories') {
-      recipients = contact.contacts
+      // FER-01: Use canonical entityContacts
+      const sourceContacts = contact.entityContacts || contact.contacts || [];
+      recipients = sourceContacts
         .filter(c => c.isSignatory)
         .map(c => channel === 'email' ? c.email : (c.phone || ''))
-        .filter(v => !!v);
+        .filter(v => !!v) as string[];
     } else if (contactScope === 'all') {
-      recipients = contact.contacts
+      // FER-01: Use canonical entityContacts
+      const sourceContacts = contact.entityContacts || contact.contacts || [];
+      recipients = sourceContacts
         .map(c => channel === 'email' ? c.email : (c.phone || ''))
-        .filter(v => !!v);
+        .filter(v => !!v) as string[];
     }
 
     // Return recipients or empty array for sendMessage to handle auto-resolution

@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { ZoneSelect } from '../components/ZoneSelect';
-import { FocalPersonManager } from '../components/FocalPersonManager';
+import { EntityContactManager } from '../components/EntityContactManager';
 import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
 import { MediaSelect } from '../components/media-select';
@@ -53,14 +53,17 @@ const formSchema = z.object({
   }, { required_error: 'Please assign a geographic zone.' }),
   locationString: z.string().optional(),
   nominalRoll: z.coerce.number().optional(),
-  contacts: z.array(z.object({
+  entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.').optional().or(z.literal('')),
     phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
-    type: z.string().min(1, 'Role required.'),
+    typeKey: z.string().min(1, 'Role required.'),
+    typeLabel: z.string().min(1, 'Role label required.'),
     isSignatory: z.boolean().default(false),
-  })).min(1, 'At least one focal person is required.')
-    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one focal person must be selected.' }),
+    isPrimary: z.boolean().default(false),
+  })).min(1, 'At least one contact is required.')
+    .refine(people => people.filter(p => p.isSignatory).length === 1, { message: 'Exactly one signatory must be selected.' })
+    .refine(people => people.filter(p => p.isPrimary).length === 1, { message: 'Exactly one primary contact must be selected.' }),
   modules: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -121,7 +124,7 @@ export default function NewEntityPage() {
       lifecycleStatus: 'Onboarding',
       locationString: '',
       nominalRoll: 0,
-      contacts: [{ name: '', email: '', phone: '', type: 'Administrator', isSignatory: true }],
+      entityContacts: [{ name: '', email: '', phone: '', typeKey: 'administrator', typeLabel: 'Administrator', isSignatory: true, isPrimary: true }],
       modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS',
@@ -177,12 +180,12 @@ export default function NewEntityPage() {
     // Build Polymorphic Payload
     const entityPayload = {
         name: data.name,
-        contacts: data.contacts,
+        entityContacts: data.entityContacts,
         status: data.status,
         lifecycleStatus: data.lifecycleStatus,
         assignedTo,
-        primaryEmail: data.contacts.find(c => c.isSignatory)?.email || '',
-        primaryPhone: data.contacts.find(c => c.isSignatory)?.phone || '',
+        primaryEmail: data.entityContacts.find(c => c.isPrimary)?.email || data.entityContacts.find(c => c.isSignatory)?.email || '',
+        primaryPhone: data.entityContacts.find(c => c.isPrimary)?.phone || data.entityContacts.find(c => c.isSignatory)?.phone || '',
         institutionData: {
             initials: data.initials,
             slogan: data.slogan,
@@ -499,12 +502,12 @@ export default function NewEntityPage() {
  <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
  <div className="text-left">
  <CardTitle className="text-lg font-semibold tracking-tight text-left">Administrative Stakeholders</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Primary directory of focal persons.</CardDescription>
+ <CardDescription className="text-xs font-medium text-left">Primary directory of entity contacts.</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
  <CardContent className="p-6 text-left">
-                        <FocalPersonManager />
+                        <EntityContactManager />
                     </CardContent>
                 </Card>
 

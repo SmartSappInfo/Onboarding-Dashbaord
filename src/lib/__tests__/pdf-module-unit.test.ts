@@ -83,7 +83,9 @@ describe('PDF Module - EntityId Migration', () => {
         fields: [],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
+
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -144,7 +146,9 @@ describe('PDF Module - EntityId Migration', () => {
         ],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
+
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -169,6 +173,7 @@ describe('PDF Module - EntityId Migration', () => {
         workspaceIds: ['workspace_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockContact = {
@@ -179,6 +184,7 @@ describe('PDF Module - EntityId Migration', () => {
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
         tags: [],
+        entityContacts: [],
         contacts: [],
       };
 
@@ -235,7 +241,9 @@ describe('PDF Module - EntityId Migration', () => {
         ],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
+
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -260,6 +268,7 @@ describe('PDF Module - EntityId Migration', () => {
         workspaceIds: ['workspace_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockContact = {
@@ -270,6 +279,7 @@ describe('PDF Module - EntityId Migration', () => {
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
         tags: [],
+        entityContacts: [],
         contacts: [],
       };
 
@@ -284,8 +294,8 @@ describe('PDF Module - EntityId Migration', () => {
       // Verify Contact Adapter would resolve entity
       const contact = await resolveContact('entity_789', 'workspace_1');
       expect(contact?.schoolData?.name).toBe('Entity Institution');
-      expect(contact?.schoolData?.focalPersons[0].email).toBe('jane@entity.com');
-      expect(contact?.schoolData?.focalPersons[0].phone).toBe('+9876543210');
+      expect(contact?.schoolData?.focalPersons?.[0].email).toBe('jane@entity.com');
+      expect(contact?.schoolData?.focalPersons?.[0].phone).toBe('+9876543210');
     });
 
     it('should fallback to entityId when entityId is not available', async () => {
@@ -300,7 +310,9 @@ describe('PDF Module - EntityId Migration', () => {
         fields: [],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-01T00:00:00Z',
+
         updatedAt: '2024-01-01T00:00:00Z',
       };
 
@@ -317,6 +329,7 @@ describe('PDF Module - EntityId Migration', () => {
         workspaceIds: ['workspace_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockContact = {
@@ -325,6 +338,7 @@ describe('PDF Module - EntityId Migration', () => {
         schoolData: mockSchool,
         migrationStatus: 'legacy' as const,
         tags: [],
+        entityContacts: [],
         contacts: [],
       };
 
@@ -580,7 +594,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-01T00:00:00Z',
+
           updatedAt: '2024-01-01T00:00:00Z',
         },
         {
@@ -594,7 +610,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-02T00:00:00Z',
+
           updatedAt: '2024-01-02T00:00:00Z',
         },
       ];
@@ -640,7 +658,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-03T00:00:00Z',
+
           updatedAt: '2024-01-03T00:00:00Z',
         },
       ];
@@ -685,7 +705,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: 'entity_123',
+
           createdAt: '2024-01-04T00:00:00Z',
+
           updatedAt: '2024-01-04T00:00:00Z',
         },
       ];
@@ -872,7 +894,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-05T00:00:00Z',
+
           updatedAt: '2024-01-05T00:00:00Z',
         },
       ];
@@ -921,7 +945,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-06T00:00:00Z',
+
           updatedAt: '2024-01-06T00:00:00Z',
         },
       ];
@@ -970,7 +996,9 @@ describe('PDF Module - EntityId Migration', () => {
           fields: [],
           workspaceIds: ['workspace_1'],
           entityId: null,
+
           createdAt: '2024-01-07T00:00:00Z',
+
           updatedAt: '2024-01-07T00:00:00Z',
         },
       ];
@@ -1015,7 +1043,9 @@ describe('PDF Module - EntityId Migration', () => {
         fields: [],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-08T00:00:00Z',
+
         updatedAt: '2024-01-08T00:00:00Z',
       };
 
@@ -1130,7 +1160,9 @@ describe('PDF Module - EntityId Migration', () => {
         fields: [],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-10T00:00:00Z',
+
         updatedAt: '2024-01-10T00:00:00Z',
       };
 
@@ -1155,6 +1187,7 @@ describe('PDF Module - EntityId Migration', () => {
         workspaceIds: ['workspace_1'],
         createdAt: '2024-01-10T00:00:00Z',
         updatedAt: '2024-01-10T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockContact = {
@@ -1165,6 +1198,7 @@ describe('PDF Module - EntityId Migration', () => {
         schoolData: mockSchool,
         migrationStatus: 'migrated' as const,
         tags: [],
+        entityContacts: [],
         contacts: [],
       };
 
@@ -1189,7 +1223,9 @@ describe('PDF Module - EntityId Migration', () => {
         fields: [],
         workspaceIds: ['workspace_1'],
         entityId: null,
+
         createdAt: '2024-01-11T00:00:00Z',
+
         updatedAt: '2024-01-11T00:00:00Z',
       };
 

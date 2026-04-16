@@ -3,8 +3,15 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import type { School, OnboardingStage, EntityType } from './types';
+import type { School, OnboardingStage, EntityType, EntityContact } from './types';
 import crypto from 'crypto';
+import {
+  focalPersonToEntityContact,
+  enforceContactConstraints,
+  extractPrimaryContactFields,
+  entityContactToFocalPerson,
+  normalizeContactType,
+} from './entity-contact-helpers';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -182,6 +189,40 @@ export async function createEntityAction(
       }
     }
 
+    // FER-01: Convert incoming contacts to EntityContact format
+    const rawContacts: EntityContact[] = (data.contacts || data.entityContacts || []).map(
+      (c: any, i: number) => {
+        // If already EntityContact-shaped (has typeKey), use directly
+        if (c.typeKey) {
+          const contact: any = {
+            id: c.id || `ec_${crypto.randomUUID().substring(0, 8)}`,
+            name: c.name || '',
+            typeKey: c.typeKey,
+            typeLabel: c.typeLabel || c.typeKey,
+            isPrimary: c.isPrimary ?? (i === 0),
+            isSignatory: c.isSignatory ?? (i === 0),
+            order: c.order ?? i,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+          if (c.email) contact.email = c.email;
+          if (c.phone) contact.phone = c.phone;
+          if (c.notes !== undefined) contact.notes = c.notes;
+          if (c.attachments !== undefined) contact.attachments = c.attachments;
+          
+          return contact as EntityContact;
+        }
+        // Legacy FocalPerson shape — convert
+        return focalPersonToEntityContact(c, i);
+      }
+    );
+
+    // Enforce exactly one primary and one signatory
+    const entityContacts = enforceContactConstraints(rawContacts);
+
+    // Extract denormalized primary fields
+    const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts, contacts: [] });
+
     // Prepare Base Entity Document
     const entityData: any = {
       id: entityId,
@@ -189,7 +230,7 @@ export async function createEntityAction(
       entityType,
       name: displayName,
       slug: slug,
-      contacts: data.contacts || [],
+      entityContacts, // Canonical (FER-01)
       globalTags: data.globalTags || [],
       status: 'active',
       createdAt: timestamp,
@@ -225,17 +266,11 @@ export async function createEntityAction(
         addedAt: timestamp,
         updatedAt: timestamp,
         displayName: displayName,
-        // Denormalized Focal Persons (Requirement: Show all in table)
-        primaryContactName: data.contacts?.find((c: any) => c.isSignatory)?.name || '',
-        primaryEmail: data.contacts?.find((c: any) => c.isSignatory)?.email || '',
-        primaryPhone: data.contacts?.find((c: any) => c.isSignatory)?.phone || '',
-        focalPersons: data.contacts?.map((c: any) => ({
-            name: c.name,
-            email: c.email,
-            phone: c.phone,
-            type: c.type,
-            isSignatory: c.isSignatory
-        })) || [],
+        // Denormalized contact fields from entityContacts (FER-01)
+        primaryContactName,
+        primaryEmail,
+        primaryPhone,
+        entityContacts, // Denormalized for list performance
         interests: data.modules || [],
     };
 
@@ -295,13 +330,46 @@ export async function updateEntityAction(
         displayName = `${data.personData.firstName} ${data.personData.lastName}`.trim();
     }
 
-    // 2. Prepare Base Entity Update (Identity)
+    // 2. FER-01: Convert incoming contacts to EntityContact format if contacts are provided
+    let entityContacts: EntityContact[] | undefined;
+    let legacyContacts: any[] | undefined;
+
+    if (data.contacts || data.entityContacts) {
+      const rawContacts: EntityContact[] = (data.entityContacts || data.contacts || []).map(
+        (c: any, i: number) => {
+          if (c.typeKey) {
+            const contact: any = {
+              id: c.id || `ec_${crypto.randomUUID().substring(0, 8)}`,
+              name: c.name || '',
+              typeKey: c.typeKey,
+              typeLabel: c.typeLabel || c.typeKey,
+              isPrimary: c.isPrimary ?? (i === 0),
+              isSignatory: c.isSignatory ?? (i === 0),
+              order: c.order ?? i,
+              updatedAt: timestamp,
+            };
+            if (c.email) contact.email = c.email;
+            if (c.phone) contact.phone = c.phone;
+            if (c.notes !== undefined) contact.notes = c.notes;
+            if (c.attachments !== undefined) contact.attachments = c.attachments;
+            
+            return contact as EntityContact;
+          }
+          return focalPersonToEntityContact(c, i);
+        }
+      );
+      entityContacts = enforceContactConstraints(rawContacts);
+    }
+
+    // Prepare Base Entity Update (Identity)
     const entityUpdate: any = {
       name: displayName,
       updatedAt: timestamp,
     };
     
-    if (data.contacts) entityUpdate.contacts = data.contacts;
+    if (entityContacts) {
+      entityUpdate.entityContacts = entityContacts;
+    }
     if (data.globalTags) entityUpdate.globalTags = data.globalTags;
     if (data.status) entityUpdate.status = data.status.toLowerCase();
 
@@ -317,7 +385,6 @@ export async function updateEntityAction(
     if (entitySnap.exists) {
         await entityRef.update(entityUpdate);
     } else {
-        // Just in case it doesn't exist, though it should. We won't create it here.
         console.warn(`Entity ${entityId} not found in entities collection during update.`);
     }
 
@@ -336,19 +403,13 @@ export async function updateEntityAction(
         if (data.status) weUpdate.status = data.status.toLowerCase();
         if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
         
-        // Denormalized Focal Persons Sync
-        if (data.contacts) {
-            const signatory = data.contacts.find((c: any) => c.isSignatory);
-            weUpdate.primaryContactName = signatory?.name || '';
-            weUpdate.primaryEmail = signatory?.email || '';
-            weUpdate.primaryPhone = signatory?.phone || '';
-            weUpdate.focalPersons = data.contacts.map((c: any) => ({
-                name: c.name,
-                email: c.email,
-                phone: c.phone,
-                type: c.type,
-                isSignatory: c.isSignatory
-            }));
+        // FER-01: Sync entityContacts and denormalized fields
+        if (entityContacts) {
+            const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts, contacts: [] });
+            weUpdate.primaryContactName = primaryContactName;
+            weUpdate.primaryEmail = primaryEmail;
+            weUpdate.primaryPhone = primaryPhone;
+            weUpdate.entityContacts = entityContacts;
         } else {
             if (data.primaryEmail !== undefined) weUpdate.primaryEmail = data.primaryEmail;
             if (data.primaryPhone !== undefined) weUpdate.primaryPhone = data.primaryPhone;

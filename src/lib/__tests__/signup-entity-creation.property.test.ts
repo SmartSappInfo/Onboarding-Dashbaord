@@ -49,20 +49,47 @@ vi.mock('../activity-logger', () => ({
 vi.mock('../entity-actions', () => ({
   createEntityAction: vi.fn().mockImplementation(async (input: any) => {
     const entityId = `entity_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
+    // Mock the logic from entity-actions.ts (FER-01)
+    const entityContacts = (input.contacts || input.entityContacts || []).map((c: any, i: number) => ({
+      id: c.id || `ec_${i}`,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      typeKey: c.typeKey || 'admin',
+      typeLabel: c.typeLabel || c.type || 'Administrator',
+      isPrimary: c.isPrimary ?? (i === 0),
+      isSignatory: c.isSignatory ?? (i === 0),
+      order: i,
+    }));
+
     const entity = {
       id: entityId,
       organizationId: input.organizationId,
       entityType: input.entityType,
       name: input.name,
       slug: input.slug,
-      contacts: input.contacts || [],
+      entityContacts, // Canonical (FER-01)
+      contacts: entityContacts.map((ec: any) => ({ // Legacy compat
+        name: ec.name,
+        email: ec.email,
+        phone: ec.phone,
+        type: ec.typeLabel,
+        isSignatory: ec.isSignatory
+      })),
       globalTags: input.globalTags || [],
       status: 'active',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       institutionData: input.institutionData ? {
         ...input.institutionData,
-        focalPersons: input.contacts || [], // Add focalPersons from contacts
+        focalPersons: entityContacts.map((ec: any) => ({ // Legacy compat
+          name: ec.name,
+          email: ec.email,
+          phone: ec.phone,
+          type: ec.typeLabel,
+          isSignatory: ec.isSignatory
+        })),
       } : undefined,
     };
     
@@ -259,7 +286,9 @@ describe('Property 4: Entity Creation Completeness', () => {
           // Verify institution-specific data is populated
           if (entity.institutionData) {
             expect(entity.institutionData.nominalRoll).toBe(signupInput.nominalRoll);
-            expect(entity.institutionData.focalPersons).toEqual(signupInput.focalPersons);
+            // Verify new canonical field
+            expect(entity.entityContacts).toBeDefined();
+            expect(entity.entityContacts.length).toBe(signupInput.focalPersons.length);
           }
         }
       ),

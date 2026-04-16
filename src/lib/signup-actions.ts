@@ -4,11 +4,12 @@ import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
 import { linkEntityToWorkspaceAction } from './workspace-entity-actions';
-import type { FocalPerson, InstitutionData } from './types';
+import type { FocalPerson, InstitutionData, EntityContact } from './types';
 
 /**
  * @fileOverview Server actions for signup flow using unified entity architecture.
  * Implements Requirements 10.1, 10.2, 10.3, 10.4, 10.5 from the SchoolId to EntityId migration.
+ * FER-01: Exclusively uses `entityContacts`.
  */
 
 interface SignupInput {
@@ -18,8 +19,8 @@ interface SignupInput {
   name: string;
   location: string;
   
-  // Focal persons (at least one required)
-  focalPersons: FocalPerson[];
+  // Contacts — canonical format
+  entityContacts?: EntityContact[];
   
   // Institution-specific data
   nominalRoll: number;
@@ -83,10 +84,13 @@ export async function handleSignupAction(input: SignupInput) {
     };
     
     // Step 1: Create entity record (Requirement 10.1)
+    // FER-01: Pass canonical entityContacts
+    const contactData = { entityContacts: input.entityContacts || [] };
+
     const createResult = await createEntityAction(
       {
         name: input.name,
-        contacts: input.focalPersons,
+        ...contactData,
         institutionData,
       },
       input.userId || 'system',

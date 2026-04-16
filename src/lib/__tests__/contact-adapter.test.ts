@@ -86,7 +86,7 @@ describe('Contact Adapter Layer', () => {
       expect(result?.tags).toEqual(['tag_1', 'tag_2']);
       expect(result?.migrationStatus).toBe('legacy');
       expect(result?.contacts).toHaveLength(1);
-      expect(result?.contacts[0].name).toBe('John Doe');
+      expect(result?.contacts?.[0].name).toBe('John Doe');
     });
 
     it('should resolve contact from legacy schools collection when migrationStatus is "legacy"', async () => {
@@ -158,6 +158,7 @@ describe('Contact Adapter Layer', () => {
         globalTags: ['global_tag_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -181,6 +182,7 @@ describe('Contact Adapter Layer', () => {
         primaryPhone: '+9876543210',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       // Mock Firestore calls
@@ -260,7 +262,7 @@ describe('Contact Adapter Layer', () => {
       expect(result?.globalTags).toEqual(['global_tag_1']);
       expect(result?.migrationStatus).toBe('migrated');
       expect(result?.contacts).toHaveLength(1);
-      expect(result?.contacts[0].name).toBe('Alice Johnson');
+      expect(result?.contacts?.[0].name).toBe('Alice Johnson');
     });
 
     it('should fallback to legacy mode if entity not found for migrated school', async () => {
@@ -397,6 +399,7 @@ describe('Contact Adapter Layer', () => {
         globalTags: ['global_tag_2'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;
@@ -533,6 +536,7 @@ describe('Contact Adapter Layer', () => {
           { name: 'Jane', email: 'jane@test.com', phone: '456', type: 'Admin', isSignatory: false },
         ],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
       };
 
@@ -547,6 +551,7 @@ describe('Contact Adapter Layer', () => {
           { name: 'John', email: 'john@test.com', phone: '+1234567890', type: 'Principal', isSignatory: true },
         ],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
       };
 
@@ -562,6 +567,7 @@ describe('Contact Adapter Layer', () => {
           { name: 'Jane', email: 'jane@test.com', phone: '456', type: 'Admin', isSignatory: true },
         ],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
       };
 
@@ -579,6 +585,7 @@ describe('Contact Adapter Layer', () => {
           { name: 'Jane', email: 'jane@test.com', phone: '456', type: 'Admin', isSignatory: false },
         ],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
       };
 
@@ -592,6 +599,7 @@ describe('Contact Adapter Layer', () => {
         name: 'Test',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
       };
 

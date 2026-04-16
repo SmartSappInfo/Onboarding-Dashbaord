@@ -236,6 +236,7 @@ export default function DashboardGrid({
                 activeWidgetIds={orderedComponents}
                 pipelines={pipelines}
                 onToggleWidget={handleToggleWidget}
+                terminology={activeWorkspace?.terminology}
             />
         </div>
     );

@@ -1,0 +1,2691 @@
+[96msrc/app/admin/messaging/composer/components/__tests__/EntitySelector.test.tsx[0m:[93m35[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'entityContacts' does not exist in type 'School'.
+
+[7m35[0m       entityContacts: [],
+[7m  [0m [91m      ~~~~~~~~~~~~~~[0m
+
+[96msrc/app/admin/messaging/composer/components/__tests__/EntitySelector.test.tsx[0m:[93m48[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'entityContacts' does not exist in type 'School'.
+
+[7m48[0m       entityContacts: [],
+[7m  [0m [91m      ~~~~~~~~~~~~~~[0m
+
+[96msrc/app/admin/messaging/composer/components/__tests__/EntitySelector.test.tsx[0m:[93m61[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'entityContacts' does not exist in type 'School'.
+
+[7m61[0m       entityContacts: [],
+[7m  [0m [91m      ~~~~~~~~~~~~~~[0m
+
+[96msrc/app/admin/seeds/SeedsClient.tsx[0m:[93m386[0m:[93m41[0m - [91merror[0m[90m TS2304: [0mCannot find name 'setIsUnlocked'.
+
+[7m386[0m  <Button variant="ghost" onClick={() => setIsUnlocked(false)} className="rounded-xl font-bold gap-2"><Lock size={16} /> Lock</Button>
+[7m   [0m [91m                                        ~~~~~~~~~~~~~[0m
+
+[96msrc/app/register-new-signup-form.tsx[0m:[93m225[0m:[93m9[0m - [91merror[0m[90m TS2322: [0mType '{ name: string; typeKey: string; typeLabel: string; isSignatory: boolean; isPrimary: boolean; email?: string | undefined; phone?: string | undefined; }[]' is not assignable to type 'EntityContact[]'.
+  Type '{ name: string; typeKey: string; typeLabel: string; isSignatory: boolean; isPrimary: boolean; email?: string | undefined; phone?: string | undefined; }' is missing the following properties from type 'EntityContact': id, order
+
+[7m225[0m         entityContacts: data.entityContacts,
+[7m   [0m [91m        ~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/signup-actions.ts[0m:[93m23[0m:[93m3[0m
+    [7m23[0m   entityContacts?: EntityContact[];
+    [7m  [0m [96m  ~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'entityContacts' which is declared here on type 'SignupInput'
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m20[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m20[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m50[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m50[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m83[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m83[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m115[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "family"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m115[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m144[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m144[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m175[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "family"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m175[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m206[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "person"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m206[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m237[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m237[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m269[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m269[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m301[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m301[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m334[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m334[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m427[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m427[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m464[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "person"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m464[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/__tests__/ContactDisplay.test.tsx[0m:[93m496[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m496[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m43[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m43[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m95[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m95[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m150[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m150[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m202[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "family"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m202[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m252[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "person"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m252[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m302[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m302[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m357[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m357[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m409[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m409[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m612[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m612[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m670[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m670[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m718[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; migrationStatus: "legacy"; tags: never[]; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m718[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/components/messaging/__tests__/MessageContactDisplay.test.tsx[0m:[93m806[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m806[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m47[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; schoolData: any; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m47[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m98[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; schoolData: any; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m98[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m149[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: any; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m149[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m191[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m191[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m401[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution" | "family" | "person"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m401[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m438[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; schoolData: any; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m438[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m556[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m556[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-dual-write.test.ts[0m:[93m593[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m593[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-workspace-awareness.test.ts[0m:[93m100[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; }' but required in type 'ResolvedContact'.
+
+[7m100[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-workspace-awareness.test.ts[0m:[93m140[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "family"; }' but required in type 'ResolvedContact'.
+
+[7m140[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-workspace-awareness.test.ts[0m:[93m182[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; }' but required in type 'ResolvedContact'.
+
+[7m182[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/activity-workspace-awareness.test.ts[0m:[93m225[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; }' but required in type 'ResolvedContact'.
+
+[7m225[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m134[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'focalPersons' does not exist in type 'InstitutionData'.
+
+[7m134[0m           focalPersons: [],
+[7m   [0m [91m          ~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m665[0m:[93m3[0m
+    [7m665[0m   institutionData?: InstitutionData;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'institutionData' which is declared here on type 'Entity'
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m138[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m138[0m       const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m204[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: any[] | undefined; globalTags: string[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m204[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m217[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m217[0m       const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m362[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m362[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m466[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m466[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m500[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m500[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m513[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m513[0m       const we1: WorkspaceEntity = {
+[7m   [0m [91m            ~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m528[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m528[0m       const we2: WorkspaceEntity = {
+[7m   [0m [91m            ~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m627[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m627[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-edge-cases.test.ts[0m:[93m678[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m678[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-new-methods.test.ts[0m:[93m36[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m36[0m       const mockEntity: Entity = {
+[7m  [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-new-methods.test.ts[0m:[93m56[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m56[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-new-methods.test.ts[0m:[93m113[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m113[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-new-methods.test.ts[0m:[93m233[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m233[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-new-methods.test.ts[0m:[93m289[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m289[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m44[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m44[0m       const mockEntity: Entity = {
+[7m  [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m64[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m64[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m142[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m142[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m162[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m162[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m254[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m254[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m266[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m266[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m332[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m332[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m344[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m344[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m551[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'result.contacts' is possibly 'undefined'.
+
+[7m551[0m       expect(result?.contacts[0].name).toBe('Eve Principal');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m552[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'result.contacts' is possibly 'undefined'.
+
+[7m552[0m       expect(result?.contacts[1].name).toBe('Frank Admin');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m692[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m692[0m       const mockEntity1: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m704[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: never[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m704[0m       const mockWorkspaceEntity1: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m813[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m813[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m825[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m825[0m       const mockWorkspaceEntity1: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m841[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m841[0m       const mockWorkspaceEntity2: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m921[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m921[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m933[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m933[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1085[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m1085[0m       const mockEntity: Entity = {
+[7m    [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1097[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: never[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m1097[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m    [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1165[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m1165[0m       const mockEntity: Entity = {
+[7m    [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1177[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: never[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m1177[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m    [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1245[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m1245[0m       const mockEntity: Entity = {
+[7m    [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1257[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m1257[0m       const mockWorkspaceEntity1: WorkspaceEntity = {
+[7m    [0m [91m            ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1273[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m1273[0m       const mockWorkspaceEntity2: WorkspaceEntity = {
+[7m    [0m [91m            ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1432[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m1432[0m         const mockEntity: Entity = {
+[7m    [0m [91m              ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter-unit.test.ts[0m:[93m1444[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: never[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m1444[0m         const mockWorkspaceEntity: WorkspaceEntity = {
+[7m    [0m [91m              ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter.test.ts[0m:[93m89[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'result.contacts' is possibly 'undefined'.
+
+[7m89[0m       expect(result?.contacts[0].name).toBe('John Doe');
+[7m  [0m [91m             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/contact-adapter.test.ts[0m:[93m143[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m143[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter.test.ts[0m:[93m163[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m163[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/contact-adapter.test.ts[0m:[93m263[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'result.contacts' is possibly 'undefined'.
+
+[7m263[0m       expect(result?.contacts[0].name).toBe('Alice Johnson');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/contact-adapter.test.ts[0m:[93m382[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m382[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m196[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "institution"; name: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: never[]; createdAt: string; updatedAt: string; institutionData: { ...; }; }' but required in type 'Omit<Entity, "id">'.
+
+[7m196[0m     const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m220[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; primaryEmail: any; primaryPhone: any; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m220[0m     const workspaceEntity1Data: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m232[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m232[0m       primaryEmail: entityData.contacts[0].email,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m233[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m233[0m       primaryPhone: entityData.contacts[0].phone,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m238[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; primaryEmail: any; primaryPhone: any; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m238[0m     const workspaceEntity2Data: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m250[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m250[0m       primaryEmail: entityData.contacts[0].email,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m251[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m251[0m       primaryPhone: entityData.contacts[0].phone,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m299[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: never[]; createdAt: string; updatedAt: string; personData: { ...; }; }' but required in type 'Omit<Entity, "id">'.
+
+[7m299[0m     const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m325[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "person"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; primaryEmail: any; primaryPhone: any; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m325[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m337[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m337[0m       primaryEmail: entityData.contacts[0].email,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m338[0m:[93m21[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m338[0m       primaryPhone: entityData.contacts[0].phone,
+[7m   [0m [91m                    ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m373[0m:[93m38[0m - [91merror[0m[90m TS18048: [0m'updatedEntity.contacts' is possibly 'undefined'.
+
+[7m373[0m     expect(weData.primaryEmail).toBe(updatedEntity.contacts[0].email);
+[7m   [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m374[0m:[93m38[0m - [91merror[0m[90m TS18048: [0m'updatedEntity.contacts' is possibly 'undefined'.
+
+[7m374[0m     expect(weData.primaryPhone).toBe(updatedEntity.contacts[0].phone);
+[7m   [0m [91m                                     ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m412[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: boolean; }[]; globalTags: never[]; createdAt: string; updatedAt: string; familyData: { ...; }; }' but required in type 'Omit<Entity, "id">'.
+
+[7m412[0m     const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m447[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "family"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; primaryEmail: any; primaryPhone: any; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m447[0m         const weData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m              ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m459[0m:[93m25[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m459[0m           primaryEmail: entityData.contacts[0].email,
+[7m   [0m [91m                        ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m460[0m:[93m25[0m - [91merror[0m[90m TS18048: [0m'entityData.contacts' is possibly 'undefined'.
+
+[7m460[0m           primaryPhone: entityData.contacts[0].phone,
+[7m   [0m [91m                        ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m504[0m:[93m40[0m - [91merror[0m[90m TS18048: [0m'updatedEntity.contacts' is possibly 'undefined'.
+
+[7m504[0m       expect(weData.primaryEmail).toBe(updatedEntity.contacts[0].email);
+[7m   [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m508[0m:[93m40[0m - [91merror[0m[90m TS18048: [0m'updatedEntity.contacts' is possibly 'undefined'.
+
+[7m508[0m       expect(weData.primaryPhone).toBe(updatedEntity.contacts[0].phone);
+[7m   [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m528[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "institution"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; institutionData: { nominalRoll: number; }; }' but required in type 'Omit<Entity, "id">'.
+
+[7m528[0m     const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/denormalization-consistency.property.test.ts[0m:[93m544[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m544[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m124[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m124[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m218[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: null; entityType: null; schoolData: School; migrationStatus: "legacy"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: null; entityType: null; schoolData: School; migrationStatus: "legacy"; }' but required in type 'ResolvedContact'.
+
+[7m218[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m549[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m549[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m634[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m634[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m729[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m729[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m835[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: null; entityType: null; schoolData: School; migrationStatus: "legacy"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: null; entityType: null; schoolData: School; migrationStatus: "legacy"; }' but required in type 'ResolvedContact'.
+
+[7m835[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/invoice-module.test.ts[0m:[93m933[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m933[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m75[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m75[0m     const entity: Entity = {
+[7m  [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m89[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: string[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m89[0m     const workspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m118[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: string[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m118[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m131[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: string[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m131[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m160[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; globalTags: never[]; createdAt: string; updatedAt: string; institutionData: { ...; }; }' but required in type 'Entity'.
+
+[7m160[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m187[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m187[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m211[0m:[93m12[0m - [91merror[0m[90m TS2532: [0mObject is possibly 'undefined'.
+
+[7m211[0m     expect(result[0].focalPersons[0].name).toBe('John Doe');
+[7m   [0m [91m           ~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m218[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m218[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m231[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m231[0m     const workspaceEntity1: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m248[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m248[0m     const workspaceEntity2: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m293[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m293[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m320[0m:[93m7[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m320[0m       {
+[7m   [0m [91m      ~[0m
+[7m321[0m         id: 'entity-1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m329[0m         updatedAt: '2024-01-01T00:00:00Z',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m330[0m       },
+[7m   [0m [91m~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m331[0m:[93m7[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m331[0m       {
+[7m   [0m [91m      ~[0m
+[7m332[0m         id: 'entity-2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m340[0m         updatedAt: '2024-01-01T00:00:00Z',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m341[0m       },
+[7m   [0m [91m~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m342[0m:[93m7[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m342[0m       {
+[7m   [0m [91m      ~[0m
+[7m343[0m         id: 'entity-3',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m351[0m         updatedAt: '2024-01-01T00:00:00Z',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m352[0m       },
+[7m   [0m [91m~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/kanban-workspace-query.test.ts[0m:[93m356[0m:[93m11[0m - [91merror[0m[90m TS2322: [0mType '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }[]' is not assignable to type 'WorkspaceEntity[]'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m356[0m     const workspaceEntities: WorkspaceEntity[] = entities.map((entity, i) => ({
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/meeting-module.test.ts[0m:[93m191[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m191[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/meeting-module.test.ts[0m:[93m237[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; slug: string; entityId: undefined; entityType: undefined; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: any; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; slug: string; entityId: undefined; entityType: undefined; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m237[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/meeting-module.test.ts[0m:[93m473[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m473[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/meeting-module.test.ts[0m:[93m517[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; slug: string; entityId: string; entityType: "institution"; contacts: never[]; tags: never[]; migrationStatus: "migrated"; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m517[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-engine-workspace-tags.test.ts[0m:[93m191[0m:[93m49[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; initials: string; location: string; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; initials: string; location: string; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m191[0m     vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m176[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; migrationStatus: "migrated"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m176[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m292[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m292[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m416[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "migrated"; tags: never[]...' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "migrated"; tags: never[]...' but required in type 'ResolvedContact'.
+
+[7m416[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m541[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; pipelineId: string; focalPersons: never[]; createdAt: string; }; migrationStatus: "legacy"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m541[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m653[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "family"; migrationStatus: "migrated"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "family"; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m653[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m1099[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; ... 4 more ...; createdAt: string; }; migrationStatus: "migrated"; tags: string[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; ... 4 more ...; createdAt: string; }; migrationStatus: "migrated"; tags: string[]; }' but required in type 'ResolvedContact'.
+
+[7m1099[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/messaging-module-unit.test.ts[0m:[93m1318[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; ... 4 more ...; createdAt: string; }; migrationStatus: "migrated"; tags: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; contacts: never[]; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; workspaceIds: string[]; status: "Active"; schoolStatus: string; ... 4 more ...; createdAt: string; }; migrationStatus: "migrated"; tags: never[]; }' but required in type 'ResolvedContact'.
+
+[7m1318[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/metrics-actions.test.ts[0m:[93m398[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution" | "family" | "person"; name: string; contacts: never[]; globalTags: never[]; status: "archived" | "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m398[0m   const entity: Entity = {
+[7m   [0m [91m        ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/metrics-actions.test.ts[0m:[93m424[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: EntityType; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; ... 4 more ...; assignedTo: { ...; } | undefined; }' but required in type 'WorkspaceEntity'.
+
+[7m424[0m   const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m        ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m75[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'focalPersons' does not exist in type 'InstitutionData'.
+
+[7m75[0m       focalPersons: [],
+[7m  [0m [91m      ~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m665[0m:[93m3[0m
+    [7m665[0m   institutionData?: InstitutionData;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'institutionData' which is declared here on type 'Entity'
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m79[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; status: "active"; workspaceTags: string[]; ... 4 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m79[0m   const mockWorkspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m396[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'resolvedContact.contacts' is possibly 'undefined'.
+
+[7m396[0m         contactEmail: resolvedContact.contacts[0]?.email,
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m640[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'mockEntity.contacts' is possibly 'undefined'.
+
+[7m640[0m         contactEmail: mockEntity.contacts[0]?.email,
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m736[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'mockEntity.contacts' is possibly 'undefined'.
+
+[7m736[0m         contactEmail: mockEntity.contacts[0]?.email,
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/migration-e2e-workflows.integration.test.ts[0m:[93m737[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'mockEntity.contacts' is possibly 'undefined'.
+
+[7m737[0m         contactPhone: mockEntity.contacts[0]?.phone,
+[7m   [0m [91m                      ~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/migration-idempotency.property.test.ts[0m:[93m198[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "institution"; name: string; slug: string; contacts: any[]; globalTags: never[]; status: "archived" | "active"; createdAt: string; updatedAt: string; institutionData: InstitutionData; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m198[0m     const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/migration-idempotency.property.test.ts[0m:[93m238[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; ... 7 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m238[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m185[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' but required in type 'ResolvedContact'.
+
+[7m185[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m276[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' but required in type 'ResolvedContact'.
+
+[7m276[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m287[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'contact.schoolData.focalPersons' is possibly 'undefined'.
+
+[7m287[0m       expect(contact?.schoolData?.focalPersons[0].email).toBe('jane@entity.com');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m288[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'contact.schoolData.focalPersons' is possibly 'undefined'.
+
+[7m288[0m       expect(contact?.schoolData?.focalPersons[0].phone).toBe('+9876543210');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m331[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; schoolData: School; migrationStatus: "legacy"; tags: never[]; contacts: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; schoolData: School; migrationStatus: "legacy"; tags: never[]; contacts: never[]; }' but required in type 'ResolvedContact'.
+
+[7m331[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m   [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pdf-module-unit.test.ts[0m:[93m1171[0m:[93m51[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' is not assignable to parameter of type 'ResolvedContact'.
+  Property 'entityContacts' is missing in type '{ id: string; name: string; entityId: string; entityType: "institution"; schoolData: School; migrationStatus: "migrated"; tags: never[]; contacts: never[]; }' but required in type 'ResolvedContact'.
+
+[7m1171[0m       vi.mocked(resolveContact).mockResolvedValue(mockContact);
+[7m    [0m [91m                                                  ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m142[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; globalTags: string[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m142[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m157[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: string[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m157[0m       const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m239[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m239[0m         const entity: Entity = {
+[7m   [0m [91m              ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m252[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; displayName: string; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m252[0m         const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m              ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m296[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m296[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m332[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m332[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m393[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m393[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m439[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m439[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m633[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m633[0m         const entity: Entity = {
+[7m   [0m [91m              ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m679[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m679[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/performance.test.ts[0m:[93m734[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m734[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m68[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m68[0m       const workspaceEntityBefore: WorkspaceEntity = {
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m100[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; primaryPhone: string; }' but required in type 'WorkspaceEntity'.
+
+[7m100[0m       const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m144[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m144[0m         {
+[7m   [0m [91m        ~[0m
+[7m145[0m           id: 'we_1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m158[0m           displayName: 'School 1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m159[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m160[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m160[0m         {
+[7m   [0m [91m        ~[0m
+[7m161[0m           id: 'we_2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m174[0m           displayName: 'School 2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m175[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m201[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m201[0m         {
+[7m   [0m [91m        ~[0m
+[7m202[0m           id: 'we_1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m215[0m           displayName: 'School 1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m216[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m232[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m232[0m         {
+[7m   [0m [91m        ~[0m
+[7m233[0m           id: 'we_1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m246[0m           displayName: 'School 1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m247[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m248[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m248[0m         {
+[7m   [0m [91m        ~[0m
+[7m249[0m           id: 'we_2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m262[0m           displayName: 'School 2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m263[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m281[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m281[0m         {
+[7m   [0m [91m        ~[0m
+[7m282[0m           id: 'we_1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m295[0m           displayName: 'School 1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m296[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m297[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: undefined; ... 4 more ...; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m297[0m         {
+[7m   [0m [91m        ~[0m
+[7m298[0m           id: 'we_2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m311[0m           displayName: 'School 2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m312[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m334[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: true; }[]; entityType: "institution"; entityId: string; pipelineId: string; stageId: string; ... 5 more ...; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m334[0m         {
+[7m   [0m [91m        ~[0m
+[7m335[0m           id: 'entity_1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m356[0m           migrationStatus: 'migrated',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m357[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m358[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; pipelineId: string; stageId: string; stageName: string; assignedTo: { userId: string; name: string; email: string; }; status: string; tags: never[]; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m358[0m         {
+[7m   [0m [91m        ~[0m
+[7m359[0m           id: 'entity_2',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m371[0m           migrationStatus: 'migrated',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m372[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m399[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; entityType: "institution"; entityId: string; pipelineId: string; ... 6 more ...; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m399[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m453[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'schoolForDisplay.focalPersons' is possibly 'undefined'.
+
+[7m453[0m       expect(schoolForDisplay.focalPersons[0].name).toBe('Principal Name');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m485[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: string[]; globalTags: string[]; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m485[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m604[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: never[]; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m604[0m         {
+[7m   [0m [91m        ~[0m
+[7m605[0m           id: 'entity_migrated',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m617[0m           migrationStatus: 'migrated',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m618[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/pipeline-module.test.ts[0m:[93m619[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: never[]; migrationStatus: "legacy"; schoolData: any; }' but required in type 'ResolvedContact'.
+
+[7m619[0m         {
+[7m   [0m [91m        ~[0m
+[7m620[0m           id: 'school_legacy',
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m635[0m           } as any,
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~[0m
+[7m636[0m         },
+[7m   [0m [91m~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module-unit.test.ts[0m:[93m67[0m:[93m9[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'focalPersons' does not exist in type 'InstitutionData'.
+
+[7m67[0m         focalPersons: [],
+[7m  [0m [91m        ~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m665[0m:[93m3[0m
+    [7m665[0m   institutionData?: InstitutionData;
+    [7m   [0m [96m  ~~~~~~~~~~~~~~~[0m
+    The expected type comes from property 'institutionData' which is declared here on type 'Entity'
+
+[96msrc/lib/__tests__/profile-module-unit.test.ts[0m:[93m72[0m:[93m5[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: { userId: string; name: string; email: string; }; ... 6 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m72[0m     mockWorkspaceEntityData = {
+[7m  [0m [91m    ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m38[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; pipelineId: string; stageId: string; stageName: string; assignedTo: { ...; }; ... 6 more ...; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m38[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m81[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; ... 5 more ...; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m81[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m115[0m:[93m14[0m - [91merror[0m[90m TS18048: [0m'result.contacts' is possibly 'undefined'.
+
+[7m115[0m       expect(result?.contacts[0].name).toBe('Jane Smith');
+[7m   [0m [91m             ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m120[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; pipelineId: string; stageId: string; stageName: string; assignedTo: { userId: string; name: string; email: string; }; status: string; tags: string[]; ... 4 more ...; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m120[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m158[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: string[]; migrationStatus: "legacy"; schoolData: { ...; }; }' but required in type 'ResolvedContact'.
+
+[7m158[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m359[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: never[]; migrationStatus: "legacy"; schoolData: { ...; }; }' but required in type 'ResolvedContact'.
+
+[7m359[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/profile-module.test.ts[0m:[93m397[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; pipelineId: string; stageId: string; stageName: string; assignedTo: undefined; status: string; tags: never[]; globalTags: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m397[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m107[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; }' but required in type 'ResolvedContact'.
+
+[7m107[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m144[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: { id: string; name: string; slug: string; organizationId: string; workspaceId: string; workspaceIds: string[]; ... 6 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m144[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m194[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m194[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m284[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m284[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m357[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "family"; }' but required in type 'ResolvedContact'.
+
+[7m357[0m         const mockContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m425[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: { id: string; name: string; slug: string; organizationId: string; workspaceId: string; workspaceIds: string[]; ... 6 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m425[0m         const legacyContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m483[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: { id: string; name: string; slug: string; organizationId: string; workspaceId: string; workspaceIds: string[]; ... 6 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m483[0m         const legacyContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m560[0m:[93m15[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m560[0m         const migratedContact: ResolvedContact = {
+[7m   [0m [91m              ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/server-actions-comprehensive.test.ts[0m:[93m983[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m983[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m73[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; ... 5 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m73[0m     const workspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m92[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; institutionData: { nominalRoll: number; }; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m92[0m     const entity: Entity = {
+[7m  [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m155[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; ... 5 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m155[0m     const workspaceEntity1: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m174[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; institutionData: { nominalRoll: number; }; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m174[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m232[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; ... 5 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m232[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m251[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; institutionData: {}; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m251[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m302[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; ... 5 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m302[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m321[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; institutionData: {}; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m321[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m376[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; currentStageName: string; assignedTo: null; status: "active"; ... 5 more ...; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m376[0m     const workspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/stage-change-isolation.test.ts[0m:[93m395[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; institutionData: {}; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m395[0m     const entity: Entity = {
+[7m   [0m [91m          ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-36-integration.test.ts[0m:[93m124[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m124[0m       const entity: Entity = {
+[7m   [0m [91m            ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-36-integration.test.ts[0m:[93m180[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m180[0m       const institutionEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-36-integration.test.ts[0m:[93m192[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m192[0m       const familyEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-36-integration.test.ts[0m:[93m204[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m204[0m       const personEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m71[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m71[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m109[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; }' but required in type 'Entity'.
+
+[7m109[0m       const mockEntity: Entity = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m121[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; displayName: string; workspaceTags: never[]; pipelineId: string; stageId: string; status: "active"; addedAt: string; updatedAt: string; }' but required in type 'WorkspaceEntity'.
+
+[7m121[0m       const mockWorkspaceEntity: WorkspaceEntity = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m136[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m136[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m187[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m187[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m235[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m235[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m304[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: any[] | undefined; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m304[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m442[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m442[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m601[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m601[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m714[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m714[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m850[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: any[] | undefined; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m850[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m886[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m886[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m956[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m956[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m994[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m994[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1046[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m1046[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1066[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m1066[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1108[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: any[] | undefined; migrationStatus: "legacy"; schoolData: School; }' but required in type 'ResolvedContact'.
+
+[7m1108[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-2-adapter-integration.test.ts[0m:[93m1156[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; entityType: "institution"; entityId: string; migrationStatus: "migrated"; }' but required in type 'ResolvedContact'.
+
+[7m1156[0m       const mockContact: ResolvedContact = {
+[7m    [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-5-migration-logic.test.ts[0m:[93m22[0m:[93m5[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "institution"; name: string; slug: string; contacts: any[]; globalTags: never[]; status: "archived" | "active"; createdAt: string; updatedAt: string; institutionData: { ...; }; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m22[0m     return {
+[7m  [0m [91m    ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-5-migration-logic.test.ts[0m:[93m58[0m:[93m5[0m - [91merror[0m[90m TS2322: [0mType '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; ... 8 more ...; currentStageName: string | undefined; }[]' is not assignable to type 'Omit<WorkspaceEntity, "id">[]'.
+  Property 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; ... 8 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m58[0m     return workspaceIds.map(workspaceId => ({
+[7m  [0m [91m    ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-5-migration-production.test.ts[0m:[93m310[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: "institution"; name: string; slug: string; contacts: any[]; globalTags: never[]; status: "archived" | "active"; createdAt: string; updatedAt: string; institutionData: { ...; }; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m310[0m       const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-41-5-migration-production.test.ts[0m:[93m358[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; ... 8 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m358[0m       const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m            ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-dual-write-queries.property.test.ts[0m:[93m51[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: any; name: any; slug: any; contacts: any; entityType: any; entityId: any; migrationStatus: "migrated"; tags: any; }' but required in type 'ResolvedContact'.
+
+[7m51[0m         return {
+[7m  [0m [91m        ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-dual-write-queries.property.test.ts[0m:[93m66[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: any; name: any; slug: any; contacts: any; migrationStatus: "legacy"; schoolData: any; tags: any; }' but required in type 'ResolvedContact'.
+
+[7m66[0m         return {
+[7m  [0m [91m        ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m79[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m79[0m       const mockContact: ResolvedContact = {
+[7m  [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m147[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: undefined; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "family"; }' but required in type 'ResolvedContact'.
+
+[7m147[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m195[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m195[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m261[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: { id: string; name: string; slug: string; organizationId: string; workspaceId: string; workspaceIds: string[]; ... 6 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m261[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m321[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; schoolData: { id: string; name: string; slug: string; ... 9 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m321[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m387[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: undefined; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "person"; }' but required in type 'ResolvedContact'.
+
+[7m387[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m591[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: { name: string; email: string; phone: string; type: string; isSignatory: boolean; }[]; tags: string[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; }' but required in type 'ResolvedContact'.
+
+[7m591[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-module-unit.test.ts[0m:[93m685[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; schoolData: { id: string; name: string; slug: string; organizationId: string; workspaceId: string; workspaceIds: string[]; ... 6 more ...; updatedAt: string; }; }' but required in type 'ResolvedContact'.
+
+[7m685[0m       const legacyContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-workspace-awareness.test.ts[0m:[93m117[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "migrated"; entityId: string; entityType: "institution"; }' but required in type 'ResolvedContact'.
+
+[7m117[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/task-workspace-awareness.test.ts[0m:[93m165[0m:[93m13[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: never[]; tags: never[]; migrationStatus: "legacy"; }' but required in type 'ResolvedContact'.
+
+[7m165[0m       const mockContact: ResolvedContact = {
+[7m   [0m [91m            ~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/__tests__/workspace-permissions.test.ts[0m:[93m71[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; workspaceId: string; entityId: string; entityType: "institution"; pipelineId: string; stageId: string; status: "active"; workspaceTags: never[]; addedAt: string; updatedAt: string; displayName: string; }' but required in type 'WorkspaceEntity'.
+
+[7m71[0m   const mockWorkspaceEntity: WorkspaceEntity = {
+[7m  [0m [91m        ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/bulk-upload-actions.ts[0m:[93m149[0m:[93m13[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'entityContacts' does not exist in type 'Omit<School, "id">'.
+
+[7m149[0m             entityContacts, // Canonical (FER-01)
+[7m   [0m [91m            ~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/contact-adapter.ts[0m:[93m273[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; name: string; slug: string; contacts: any[]; pipelineId: string; stageId: string | undefined; stageName: string | undefined; assignedTo: { userId: string | null; name: string | null; email: string | null; } | null | undefined; status: SchoolStatusState; tags: string[]; migrationStatus: MigrationStatus;...' but required in type 'ResolvedContact'.
+
+[7m273[0m   const resolved: ResolvedContact = {
+[7m   [0m [91m        ~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m734[0m:[93m3[0m
+    [7m734[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/entity-helpers.ts[0m:[93m53[0m:[93m23[0m - [91merror[0m[90m TS2532: [0mObject is possibly 'undefined'.
+
+[7m53[0m   return signatory || (entity as School).focalPersons[0];
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m125[0m:[93m49[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; institutionData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; slug: string | undefined; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; institutionData: { ...; }; }' but required in type 'Entity'.
+
+[7m125[0m       const csvRow = serializeInstitutionEntity(entity);
+[7m   [0m [91m                                                ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m153[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; familyData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "family"; name: string; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; familyData: { ...; }; }' but required in type 'Entity'.
+
+[7m153[0m       const csvRow = serializeFamilyEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m193[0m:[93m44[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; personData: { ...; }; }' is not assignable to parameter of type 'Entity'.
+  Property 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "person"; name: string; contacts: { name: string; phone: string; email: string; type: "Champion" | "Accountant" | "Administrator" | "Principal" | "School Owner"; isSignatory: boolean; }[]; ... 4 more ...; personData: { ...; }; }' but required in type 'Entity'.
+
+[7m193[0m       const csvRow = serializePersonEntity(entity);
+[7m   [0m [91m                                           ~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[0m:[93m216[0m:[93m7[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ id: string; organizationId: string; entityType: "institution"; name: string; contacts: { name: string; phone: string; email: string; type: string; isSignatory: false; }[]; globalTags: never[]; status: "active"; createdAt: string; updatedAt: string; institutionData: { ...; }; }' but required in type 'Entity'.
+
+[7m216[0m       {
+[7m   [0m [91m      ~[0m
+[7m217[0m         id: '1',
+[7m   [0m [91m~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m243[0m         },
+[7m   [0m [91m~~~~~~~~~~[0m
+[7m244[0m       },
+[7m   [0m [91m~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/import-export/export-service.ts[0m:[93m24[0m:[93m23[0m - [91merror[0m[90m TS18048: [0m'entity.contacts' is possibly 'undefined'.
+
+[7m24[0m   const focalPerson = entity.contacts[0];
+[7m  [0m [91m                      ~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-export/export-service.ts[0m:[93m68[0m:[93m19[0m - [91merror[0m[90m TS18048: [0m'entity.contacts' is possibly 'undefined'.
+
+[7m68[0m   const contact = entity.contacts[0];
+[7m  [0m [91m                  ~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/import-service.ts[0m:[93m264[0m:[93m9[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; entityType: EntityType; name: string; contacts: never[]; globalTags: never[]; createdAt: string; updatedAt: string; relatedEntityIds: never[]; }' but required in type 'Omit<Entity, "id">'.
+
+[7m264[0m   const entityData: Omit<Entity, 'id'> = {
+[7m   [0m [91m        ~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m658[0m:[93m3[0m
+    [7m658[0m   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m113[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m113[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/sequential-scheduler.ts[0m:[93m118[0m:[93m31[0m - [91merror[0m[90m TS18048: [0m'contact.contacts' is possibly 'undefined'.
+
+[7m118[0m              entityContacts = contact.contacts
+[7m   [0m [91m                              ~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/workspace-entity-actions.ts[0m:[93m174[0m:[93m11[0m - [91merror[0m[90m TS2741: [0mProperty 'entityContacts' is missing in type '{ organizationId: string; workspaceId: string; entityId: string; entityType: EntityType; pipelineId: string; stageId: string; assignedTo: { userId: string | null; name: string | null; email: string | null; } | undefined; ... 7 more ...; currentStageName: string | undefined; }' but required in type 'Omit<WorkspaceEntity, "id">'.
+
+[7m174[0m     const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = {
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/lib/types.ts[0m:[93m704[0m:[93m3[0m
+    [7m704[0m   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
+    [7m   [0m [96m  ~~~~~~~~~~~~~~[0m
+    'entityContacts' is declared here.
+
+
+Found 268 errors in 43 files.
+
+Errors  Files
+     3  src/app/admin/messaging/composer/components/__tests__/EntitySelector.test.tsx[90m:35[0m
+     1  src/app/admin/seeds/SeedsClient.tsx[90m:386[0m
+     1  src/app/register-new-signup-form.tsx[90m:225[0m
+    14  src/components/__tests__/ContactDisplay.test.tsx[90m:20[0m
+    12  src/components/messaging/__tests__/MessageContactDisplay.test.tsx[90m:43[0m
+     8  src/lib/__tests__/activity-dual-write.test.ts[90m:47[0m
+     4  src/lib/__tests__/activity-workspace-awareness.test.ts[90m:100[0m
+    11  src/lib/__tests__/contact-adapter-edge-cases.test.ts[90m:134[0m
+     5  src/lib/__tests__/contact-adapter-new-methods.test.ts[90m:36[0m
+    26  src/lib/__tests__/contact-adapter-unit.test.ts[90m:44[0m
+     5  src/lib/__tests__/contact-adapter.test.ts[90m:89[0m
+    21  src/lib/__tests__/denormalization-consistency.property.test.ts[90m:196[0m
+     7  src/lib/__tests__/invoice-module.test.ts[90m:124[0m
+    15  src/lib/__tests__/kanban-workspace-query.test.ts[90m:75[0m
+     4  src/lib/__tests__/meeting-module.test.ts[90m:191[0m
+     1  src/lib/__tests__/messaging-engine-workspace-tags.test.ts[90m:191[0m
+     7  src/lib/__tests__/messaging-module-unit.test.ts[90m:176[0m
+     2  src/lib/__tests__/metrics-actions.test.ts[90m:398[0m
+     6  src/lib/__tests__/migration-e2e-workflows.integration.test.ts[90m:75[0m
+     2  src/lib/__tests__/migration-idempotency.property.test.ts[90m:198[0m
+     6  src/lib/__tests__/pdf-module-unit.test.ts[90m:185[0m
+    11  src/lib/__tests__/performance.test.ts[90m:142[0m
+    16  src/lib/__tests__/pipeline-module.test.ts[90m:68[0m
+     2  src/lib/__tests__/profile-module-unit.test.ts[90m:67[0m
+     7  src/lib/__tests__/profile-module.test.ts[90m:38[0m
+     9  src/lib/__tests__/server-actions-comprehensive.test.ts[90m:107[0m
+    10  src/lib/__tests__/stage-change-isolation.test.ts[90m:73[0m
+     4  src/lib/__tests__/task-36-integration.test.ts[90m:124[0m
+    18  src/lib/__tests__/task-41-2-adapter-integration.test.ts[90m:71[0m
+     2  src/lib/__tests__/task-41-5-migration-logic.test.ts[90m:22[0m
+     2  src/lib/__tests__/task-41-5-migration-production.test.ts[90m:310[0m
+     2  src/lib/__tests__/task-dual-write-queries.property.test.ts[90m:51[0m
+     8  src/lib/__tests__/task-module-unit.test.ts[90m:79[0m
+     2  src/lib/__tests__/task-workspace-awareness.test.ts[90m:117[0m
+     1  src/lib/__tests__/workspace-permissions.test.ts[90m:71[0m
+     1  src/lib/bulk-upload-actions.ts[90m:149[0m
+     1  src/lib/contact-adapter.ts[90m:273[0m
+     1  src/lib/entity-helpers.ts[90m:53[0m
+     4  src/lib/import-export/__tests__/import-export-roundtrip.property.test.ts[90m:125[0m
+     2  src/lib/import-export/export-service.ts[90m:24[0m
+     1  src/lib/import-service.ts[90m:264[0m
+     2  src/lib/sequential-scheduler.ts[90m:113[0m
+     1  src/lib/workspace-entity-actions.ts[90m:174[0m
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 11.12.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice

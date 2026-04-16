@@ -2,9 +2,10 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
-import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, SurveyResponse } from './types';
+import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, SurveyResponse, EntityContact } from './types';
 import crypto from 'crypto';
 import { applyTagAction } from './scoped-tag-actions';
+import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
 
 /**
  * Lead Actions for Phase 5: CRM Integration
@@ -175,12 +176,34 @@ export async function processLeadCaptureAction(params: {
             entityId = `entity_${crypto.randomUUID()}`;
             const timestamp = new Date().toISOString();
 
+            // FER-01: Create EntityContact from captured data
+            const entityContact: EntityContact = {
+                id: `ec_lead_${crypto.randomUUID().substring(0, 8)}`,
+                name,
+                email: email || undefined,
+                phone: phone || undefined,
+                typeKey: 'personal',
+                typeLabel: 'Personal',
+                isPrimary: true,
+                isSignatory: true,
+                order: 0,
+                createdAt: timestamp,
+            };
+            const entityContacts = enforceContactConstraints([entityContact]);
+
             const entity: Entity = {
                 id: entityId,
                 organizationId,
                 entityType: 'person',
                 name,
-                contacts: [],
+                contacts: entityContacts.map(ec => ({
+                    name: ec.name,
+                    phone: ec.phone || '',
+                    email: ec.email || '',
+                    type: ec.typeLabel || ec.typeKey || 'Other',
+                    isSignatory: ec.isSignatory,
+                })),
+                entityContacts, // Canonical (FER-01)
                 globalTags: [],
                 status: 'active',
                 createdAt: timestamp,
@@ -209,6 +232,8 @@ export async function processLeadCaptureAction(params: {
                 displayName: name,
                 primaryEmail: email,
                 primaryPhone: phone,
+                primaryContactName: name,
+                entityContacts, // Denormalized (FER-01)
                 addedAt: timestamp,
                 updatedAt: timestamp
             };

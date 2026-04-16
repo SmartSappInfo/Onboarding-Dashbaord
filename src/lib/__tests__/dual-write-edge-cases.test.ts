@@ -329,6 +329,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           { name: 'Principal Smith', email: 'principal@legacy.com', phone: '1112223333' }
         ],
         tags: [],
+        entityContacts: [],
       };
       
       const workspaceId = 'workspace_legacy_123';
@@ -383,6 +384,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         focalPersons: [],
         tags: [],
+        entityContacts: [],
       };
       
       const workspaceId = 'workspace_migrated_456';
@@ -447,6 +449,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         focalPersons: [],
         tags: [],
+        entityContacts: [],
       };
       
       const workspaceId = 'workspace_both_789';
@@ -509,6 +512,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         migrationStatus: 'not_started',
         focalPersons: [],
         tags: [],
+        entityContacts: [],
       };
       
       const workspaceId = 'workspace_mismatch_111';

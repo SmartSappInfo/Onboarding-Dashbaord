@@ -128,6 +128,7 @@ describe('Task Integration with Adapter Layer', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity = {
@@ -143,6 +144,7 @@ describe('Task Integration with Adapter Layer', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;

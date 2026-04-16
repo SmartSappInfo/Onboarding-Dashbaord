@@ -29,6 +29,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
       status: school.status === 'Archived' ? 'archived' : 'active',
       createdAt: school.createdAt || timestamp,
       updatedAt: timestamp,
+        entityContacts: [],
       institutionData: {
         nominalRoll: school.nominalRoll,
         subscriptionPackageId: school.subscriptionPackageId,
@@ -68,6 +69,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
       lastContactedAt: undefined,
       addedAt: school.createdAt || timestamp,
       updatedAt: timestamp,
+        entityContacts: [],
       displayName: school.name,
       primaryEmail: primaryContact?.email,
       primaryPhone: primaryContact?.phone,
@@ -112,6 +114,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         referee: 'John Smith',
         createdAt: '2023-11-01T10:30:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       };
 
@@ -150,6 +153,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         ],
         createdAt: '2024-02-10T14:20:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -174,6 +178,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         focalPersons: [],
         createdAt: '2022-05-15T09:00:00Z',
         updatedAt: '2023-12-31T23:59:59Z',
+        entityContacts: [],
         schoolStatus: 'Archived',
       pipelineId: 'pipeline-1',
       };
@@ -194,6 +199,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         focalPersons: [],
         createdAt: '2023-08-20T11:45:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -215,6 +221,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         focalPersons: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -237,6 +244,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         subscriptionRate: 25000,
         createdAt: '2024-01-05T08:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -280,6 +288,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         },
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       };
 
@@ -327,6 +336,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         tags: ['tag1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       };
 
@@ -354,6 +364,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         focalPersons: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -379,6 +390,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         focalPersons: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -415,6 +427,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         ],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -443,6 +456,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         nominalRoll: 500,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
       };
@@ -501,6 +515,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
         },
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
         schoolStatus: 'Active',
       };
 
@@ -542,6 +557,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           focalPersons: [],
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
           schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         },
@@ -555,6 +571,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           focalPersons: [],
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
           schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         },
@@ -568,6 +585,7 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
           focalPersons: [],
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-03-26T10:00:00Z',
+        entityContacts: [],
           schoolStatus: 'Archived',
         pipelineId: 'pipeline-1',
         },

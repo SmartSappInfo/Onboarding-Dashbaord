@@ -59,6 +59,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: ['global_tag_1', 'global_tag_2'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -82,6 +83,7 @@ describe('Contact Adapter - Unit Tests', () => {
         primaryPhone: '+1234567890',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -157,6 +159,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: ['global_tag_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -180,6 +183,7 @@ describe('Contact Adapter - Unit Tests', () => {
         primaryPhone: '+9876543210',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let callCount = 0;
@@ -261,6 +265,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: ['global_1'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -284,6 +289,7 @@ describe('Contact Adapter - Unit Tests', () => {
         primaryPhone: '+1111111111',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -339,6 +345,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: ['global_a', 'global_b', 'global_c'],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -355,6 +362,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Tagged Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -548,8 +556,8 @@ describe('Contact Adapter - Unit Tests', () => {
       expect(result?.status).toBe('Active');
       expect(result?.tags).toEqual(['tag_a', 'tag_b', 'tag_c']);
       expect(result?.contacts).toHaveLength(2);
-      expect(result?.contacts[0].name).toBe('Eve Principal');
-      expect(result?.contacts[1].name).toBe('Frank Admin');
+      expect(result?.contacts?.[0].name).toBe('Eve Principal');
+      expect(result?.contacts?.[1].name).toBe('Frank Admin');
     });
 
     it('should not have entityId or globalTags for legacy schools', async () => {
@@ -699,6 +707,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity1: WorkspaceEntity = {
@@ -715,6 +724,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Workspace 1 Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockSchool1: School = {
@@ -820,6 +830,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity1: WorkspaceEntity = {
@@ -836,6 +847,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Multi Workspace Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity2: WorkspaceEntity = {
@@ -852,6 +864,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Multi Workspace Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -928,6 +941,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -944,6 +958,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Filtered Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockCollection = vi.fn((collectionName: string) => {
@@ -1092,6 +1107,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -1108,6 +1124,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Cached Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let firestoreCallCount = 0;
@@ -1172,6 +1189,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {
@@ -1188,6 +1206,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Clear Cache Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let firestoreCallCount = 0;
@@ -1252,6 +1271,7 @@ describe('Contact Adapter - Unit Tests', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity1: WorkspaceEntity = {
@@ -1268,6 +1288,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Multi Cache Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       const mockWorkspaceEntity2: WorkspaceEntity = {
@@ -1284,6 +1305,7 @@ describe('Contact Adapter - Unit Tests', () => {
         displayName: 'Multi Cache Entity',
         addedAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       let firestoreCallCount = 0;
@@ -1439,6 +1461,7 @@ describe('Contact Adapter - Unit Tests', () => {
           globalTags: [],
           createdAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
         };
 
         const mockWorkspaceEntity: WorkspaceEntity = {
@@ -1455,6 +1478,7 @@ describe('Contact Adapter - Unit Tests', () => {
           displayName: 'Searchable Entity',
           addedAt: '2024-01-01T00:00:00Z',
           updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
         };
 
         const mockCollection = vi.fn((collectionName: string) => {

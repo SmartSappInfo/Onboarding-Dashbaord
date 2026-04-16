@@ -58,13 +58,13 @@ describe('Profile Module Unit Tests - Task 19.4', () => {
       status: 'active',
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       institutionData: {
         nominalRoll: 500,
         billingAddress: '123 Test St',
         currency: 'USD',
         subscriptionPackageId: 'pkg_1',
         subscriptionRate: 100,
-        focalPersons: [],
       },
     };
     
@@ -90,6 +90,7 @@ describe('Profile Module Unit Tests - Task 19.4', () => {
       primaryPhone: '+1234567890',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
     
     // Setup mock school data (legacy)
@@ -106,6 +107,7 @@ describe('Profile Module Unit Tests - Task 19.4', () => {
       nominalRoll: 500,
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
   });
   

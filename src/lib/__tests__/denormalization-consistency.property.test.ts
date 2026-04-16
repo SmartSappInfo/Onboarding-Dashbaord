@@ -212,6 +212,7 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       institutionData: {
         nominalRoll: 500,
       },
+      entityContacts: [],
     };
 
     const entityRef = await adminDb.collection('entities').add(entityData);
@@ -229,8 +230,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       addedAt: timestamp,
       updatedAt: timestamp,
       displayName: entityData.name,
-      primaryEmail: entityData.contacts[0].email,
-      primaryPhone: entityData.contacts[0].phone,
+      primaryEmail: entityData.contacts?.[0]?.email,
+      primaryPhone: entityData.contacts?.[0]?.phone,
+      entityContacts: [],
     };
 
     const we1Ref = await adminDb.collection('workspace_entities').add(workspaceEntity1Data);
@@ -247,8 +249,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       addedAt: timestamp,
       updatedAt: timestamp,
       displayName: entityData.name,
-      primaryEmail: entityData.contacts[0].email,
-      primaryPhone: entityData.contacts[0].phone,
+      primaryEmail: entityData.contacts?.[0]?.email,
+      primaryPhone: entityData.contacts?.[0]?.phone,
+      entityContacts: [],
     };
 
     const we2Ref = await adminDb.collection('workspace_entities').add(workspaceEntity2Data);
@@ -317,6 +320,7 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
         lastName: 'Smith',
         company: 'Acme Corp',
       },
+      entityContacts: [],
     };
 
     const entityRef = await adminDb.collection('entities').add(entityData);
@@ -334,8 +338,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       addedAt: timestamp,
       updatedAt: timestamp,
       displayName: entityData.name,
-      primaryEmail: entityData.contacts[0].email,
-      primaryPhone: entityData.contacts[0].phone,
+      primaryEmail: entityData.contacts?.[0]?.email,
+      primaryPhone: entityData.contacts?.[0]?.phone,
+      entityContacts: [],
     };
 
     const weRef = await adminDb.collection('workspace_entities').add(workspaceEntityData);
@@ -370,8 +375,8 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
     // Property invariant: WEi.primaryEmail === E.contacts[0].email
     const updatedEntitySnap = await adminDb.collection('entities').doc(entityRef.id).get();
     const updatedEntity = updatedEntitySnap.data() as Entity;
-    expect(weData.primaryEmail).toBe(updatedEntity.contacts[0].email);
-    expect(weData.primaryPhone).toBe(updatedEntity.contacts[0].phone);
+    expect(weData.primaryEmail).toBe(updatedEntity.contacts![0].email);
+    expect(weData.primaryPhone).toBe(updatedEntity.contacts![0].phone);
   });
 
   it('should handle entity with multiple workspace_entities across different workspaces', async () => {
@@ -425,6 +430,7 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       globalTags: [],
       createdAt: timestamp,
       updatedAt: timestamp,
+      entityContacts: [],
       familyData: {
         guardians: [
           {
@@ -456,8 +462,9 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
           addedAt: timestamp,
           updatedAt: timestamp,
           displayName: entityData.name,
-          primaryEmail: entityData.contacts[0].email,
-          primaryPhone: entityData.contacts[0].phone,
+          primaryEmail: entityData.contacts?.[0]?.email,
+          primaryPhone: entityData.contacts?.[0]?.phone,
+          entityContacts: [],
         };
 
         const ref = await adminDb.collection('workspace_entities').add(weData);
@@ -501,11 +508,11 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       expect(weData.displayName).toBe(newName);
 
       // Property invariant: ∀ WEi: WEi.primaryEmail === E.contacts[0].email
-      expect(weData.primaryEmail).toBe(updatedEntity.contacts[0].email);
+      expect(weData.primaryEmail).toBe(updatedEntity.contacts![0].email);
       expect(weData.primaryEmail).toBe(newContacts[0].email);
 
       // Property invariant: ∀ WEi: WEi.primaryPhone === E.contacts[0].phone
-      expect(weData.primaryPhone).toBe(updatedEntity.contacts[0].phone);
+      expect(weData.primaryPhone).toBe(updatedEntity.contacts![0].phone);
       expect(weData.primaryPhone).toBe(newContacts[0].phone);
     }
   });
@@ -536,6 +543,7 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       institutionData: {
         nominalRoll: 300,
       },
+      entityContacts: [],
     };
 
     const entityRef = await adminDb.collection('entities').add(entityData);
@@ -553,6 +561,7 @@ describe('Property 5: Denormalization Consistency Invariant', () => {
       addedAt: timestamp,
       updatedAt: timestamp,
       displayName: entityData.name,
+      entityContacts: [],
       // No primaryEmail or primaryPhone since contacts is empty
     };
 

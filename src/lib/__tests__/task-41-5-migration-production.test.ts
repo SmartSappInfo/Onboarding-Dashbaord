@@ -130,6 +130,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       referee: 'John Smith - Regional Director',
       createdAt: '2023-11-01T10:30:00Z',
       updatedAt: timestamp,
+        entityContacts: [],
       schoolStatus: 'Active',
       assignedTo: {
         userId: 'user-sales-rep-1',
@@ -156,6 +157,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       ],
       createdAt: '2024-02-10T14:20:00Z',
       updatedAt: timestamp,
+        entityContacts: [],
       schoolStatus: 'Active',
       pipelineId: 'pipeline-1',
     };
@@ -186,6 +188,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       nominalRoll: 200,
       createdAt: '2022-05-15T09:00:00Z',
       updatedAt: '2023-12-31T23:59:59Z',
+        entityContacts: [],
       schoolStatus: 'Archived',
     };
 
@@ -218,6 +221,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       currency: 'USD',
       createdAt: '2023-08-20T11:45:00Z',
       updatedAt: timestamp,
+        entityContacts: [],
       schoolStatus: 'Active',
     };
 
@@ -254,6 +258,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
       ],
       createdAt: '2024-01-05T08:00:00Z',
       updatedAt: timestamp,
+        entityContacts: [],
       schoolStatus: 'Active',
       assignedTo: {
         userId: 'user-sales-rep-2',
@@ -317,6 +322,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
         status: school.status === 'Archived' ? 'archived' : 'active',
         createdAt: school.createdAt || timestamp,
         updatedAt: timestamp,
+        entityContacts: [],
         institutionData: {
           nominalRoll: school.nominalRoll,
           subscriptionPackageId: school.subscriptionPackageId,
@@ -368,6 +374,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
         lastContactedAt: undefined,
         addedAt: school.createdAt || timestamp,
         updatedAt: timestamp,
+        entityContacts: [],
         displayName: school.name,
         primaryEmail: primaryContact?.email,
         primaryPhone: primaryContact?.phone,
@@ -384,6 +391,7 @@ describe('Task 41.5: Migration Script on Production-Like Data', () => {
     batch.update(adminDb.collection('schools').doc(entityId), {
       migrationStatus: 'migrated',
       updatedAt: timestamp,
+        entityContacts: [],
     });
     
     // Commit batch if there are operations

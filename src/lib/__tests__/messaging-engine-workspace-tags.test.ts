@@ -131,6 +131,7 @@ describe('sendMessage - Workspace Tag Resolution', () => {
       },
       migrationStatus: 'legacy' as const,
       tags: [],
+        entityContacts: [],
     };
 
     // Mock message log
@@ -267,6 +268,7 @@ describe('sendMessage - Workspace Tag Resolution', () => {
       },
       migrationStatus: 'legacy' as const,
       tags: [],
+        entityContacts: [],
     } as any; // Type assertion to bypass strict type checking in test
 
     // Mock message log

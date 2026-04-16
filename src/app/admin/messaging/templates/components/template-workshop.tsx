@@ -45,6 +45,8 @@ import { useToast } from '@/hooks/use-toast';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { Users, UserCheck, ShieldCheck as ShieldCheckIcon } from 'lucide-react';
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -162,6 +164,16 @@ export function TemplateWorkshop({
             (category === 'contracts' && v.category === 'finance')
         ) && !v.hidden);
     }, [variables, category]);
+
+    // FER-02: Group contact variables for dedicated sidebar sections
+    const contactVarGroups = React.useMemo(() => {
+        const contactVars = filteredVars.filter(v => v.source === 'entity_contacts');
+        const nonContactVars = filteredVars.filter(v => v.source !== 'entity_contacts');
+        return {
+            ...groupContactVariableDefinitions(contactVars),
+            other: nonContactVars,
+        };
+    }, [filteredVars]);
 
     const stepTransition = {
         initial: { opacity: 0, x: 20 },
@@ -324,14 +336,67 @@ export function TemplateWorkshop({
                                     
  <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-background border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
  <ScrollArea className="flex-1">
- <div className="p-4 space-y-2">
-                                                {filteredVars.map(v => (
+ <div className="p-4 space-y-6">
+                                                {/* FER-02: Contact Variable Groups */}
+                                                {contactVarGroups.primary.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <UserCheck className="h-3 w-3 text-emerald-500" />
+                                                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Primary Contact</span>
+                                                        </div>
+                                                        {contactVarGroups.primary.map(v => (
+ <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group bg-card shadow-sm">
+ <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+ <code className="text-[9px] font-mono text-emerald-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {contactVarGroups.signatory.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <ShieldCheckIcon className="h-3 w-3 text-blue-500" />
+                                                            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Signatory Contact</span>
+                                                        </div>
+                                                        {contactVarGroups.signatory.map(v => (
+ <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50 transition-all group bg-card shadow-sm">
+ <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+ <code className="text-[9px] font-mono text-blue-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {contactVarGroups.roles.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <Users className="h-3 w-3 text-violet-500" />
+                                                            <span className="text-[9px] font-bold text-violet-600 uppercase tracking-wider">Role-Based Contacts</span>
+                                                        </div>
+                                                        {contactVarGroups.roles.map(v => (
+ <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-violet-100 hover:border-violet-300 hover:bg-violet-50 transition-all group bg-card shadow-sm">
+ <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+ <code className="text-[9px] font-mono text-violet-600/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* Existing Firestore Variables */}
+                                                {contactVarGroups.other.length > 0 && (
+                                                    <div className="space-y-2 pt-2 border-t border-border/30">
+                                                        <div className="flex items-center gap-2 px-1">
+                                                            <Database className="h-3 w-3 text-primary opacity-60" />
+                                                            <span className="text-[9px] font-bold text-primary/60 uppercase tracking-wider">System Variables</span>
+                                                        </div>
+                                                        {contactVarGroups.other.map(v => (
  <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-card shadow-sm">
  <span className="text-[8px] font-semibold text-primary opacity-60">{v.sourceName || 'Core'}</span>
  <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
  <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
-                                                    </button>
-                                                ))}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>

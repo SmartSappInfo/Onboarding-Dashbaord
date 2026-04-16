@@ -120,6 +120,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         slug: 'test-institution',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated',
         entityId: 'entity_456',
         entityType: 'institution',
@@ -168,6 +169,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         slug: 'legacy-school',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
         // No entityId or entityType for legacy records
       };

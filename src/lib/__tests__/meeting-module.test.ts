@@ -180,6 +180,7 @@ describe('Meeting Module Migration', () => {
         entityType: 'institution' as const,
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated' as const,
         schoolData: {
           id: 'school_123',
@@ -226,6 +227,7 @@ describe('Meeting Module Migration', () => {
         entityType: undefined,
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy' as const,
         schoolData: {
           id: 'school_456',
@@ -462,6 +464,7 @@ describe('Meeting Module Migration', () => {
         entityType: 'institution' as const,
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated' as const,
         schoolData: {
           id: 'school_123',
@@ -506,6 +509,7 @@ describe('Meeting Module Migration', () => {
         entityType: 'institution' as const,
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated' as const,
         schoolData: {
           id: 'school_123',

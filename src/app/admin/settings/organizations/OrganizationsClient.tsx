@@ -16,7 +16,8 @@ import {
     Mail,
     Phone,
     MapPin,
-    ArrowRight
+    ArrowRight,
+    Database
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,9 +100,14 @@ export default function OrganizationsClient() {
                             Manage tenant organizations and their global settings
                         </p>
                     </div>
- <Button onClick={() => handleOpenEdit()} className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2">
- <Plus className="h-4 w-4" /> New Organization
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" onClick={() => router.push('/admin/seeds')} className="rounded-xl font-semibold h-11 px-6 gap-2 border-primary/20 text-primary hover:bg-primary/5">
+                            <Database className="h-4 w-4" /> System Seeding Hub
+                        </Button>
+                        <Button onClick={() => handleOpenEdit()} className="rounded-xl font-semibold h-11 px-6 shadow-lg gap-2">
+                            <Plus className="h-4 w-4" /> New Organization
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Organizations Grid */}

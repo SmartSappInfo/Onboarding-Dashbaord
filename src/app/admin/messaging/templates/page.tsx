@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { cloneTemplate } from '@/lib/template-actions';
+import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,12 +105,22 @@ export default function MessageTemplatesPage() {
     }, [firestore]);
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
-    const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
+
+    // FER-02: Merge Firestore variables with dynamically generated contact variables
+    const variables = React.useMemo(() => {
+        const contactVarDefs = generateContactVariableDefinitions('institution');
+        const firestoreVars = firestoreVariables || [];
+        // Deduplicate by key — dynamic defs take precedence for contact_* keys
+        const existingKeys = new Set(contactVarDefs.map(v => v.key));
+        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key));
+        return [...contactVarDefs, ...deduped];
+    }, [firestoreVariables]);
 
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);

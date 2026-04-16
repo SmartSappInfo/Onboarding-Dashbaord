@@ -52,13 +52,13 @@ export function TaskWidget({
 
     return (
         <DashboardCard 
-            title="Critical Focus" 
-            description="Active protocols requiring immediate intervention in this hub."
+            title="Urgent Tasks" 
+            terminology={terminology}
         >
             <div className="space-y-4">
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="h-16 w-full bg-muted animate-pulse rounded-[1.25rem]" />
+                        <div key={i} className="h-16 w-full bg-muted/20 animate-pulse rounded-2xl" />
                     ))
                 ) : tasks && tasks.length > 0 ? (
                     <div className="space-y-3">

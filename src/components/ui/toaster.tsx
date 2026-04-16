@@ -58,23 +58,28 @@ export function Toaster() {
           .join(": ")
 
         return (
-          <Toast key={id} variant={variant} {...props}>
-            {/* Text content — padded away from the top-right buttons */}
-            <div className="flex-1 min-w-0 pr-14">
-              {title && <ToastTitle>{title}</ToastTitle>}
+          <Toast key={id} variant={variant} {...props} className="flex-col items-stretch gap-3">
+            <div className="flex-1 min-w-0 pr-8">
+              {title && <ToastTitle className="text-base font-bold tracking-tight">{title}</ToastTitle>}
               {description && (
-                <ToastDescription className="mt-1">{description}</ToastDescription>
+                <ToastDescription className="mt-1.5 text-sm leading-relaxed opacity-90 text-foreground/80">
+                  {description}
+                </ToastDescription>
               )}
             </div>
 
-            {action}
+            {action && (
+              <div className="flex justify-start mt-1">
+                {action}
+              </div>
+            )}
 
             {/* Copy + Close pinned to top-right */}
-            <div className="absolute top-2 right-2 flex items-center gap-0.5">
-              {copyText && (
+            <div className="absolute top-3 right-3 flex items-center gap-1">
+              {isDestructive && copyText && (
                 <CopyButton text={copyText} isDestructive={isDestructive} />
               )}
-              <ToastClose />
+              <ToastClose className="rounded-full hover:bg-background/20 transition-colors" />
             </div>
           </Toast>
         )

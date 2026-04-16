@@ -125,13 +125,13 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
         institutionData: {
           nominalRoll: 500,
           billingAddress: '123 Main St',
           currency: 'USD',
           subscriptionPackageId: 'pkg_123',
           subscriptionRate: 100,
-          focalPersons: [],
         },
       };
 
@@ -156,6 +156,7 @@ describe('Contact Adapter Edge Cases', () => {
         primaryPhone: '1234567890',
         addedAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -199,6 +200,7 @@ describe('Contact Adapter Edge Cases', () => {
         pipelineId: 'pipeline_1',
         createdAt: '2023-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       const entity: Entity = {
@@ -212,6 +214,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       const workspaceEntity: WorkspaceEntity = {
@@ -227,6 +230,7 @@ describe('Contact Adapter Edge Cases', () => {
         displayName: 'Migrated School',
         addedAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockSchools.set(legacySchoolId, school);
@@ -274,7 +278,8 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'Active',
         schoolStatus: 'Active',
         createdAt: '2022-01-01T00:00:00.000Z',
-        updatedAt: '2022-06-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockSchools.set(entityId, school);
@@ -308,11 +313,12 @@ describe('Contact Adapter Edge Cases', () => {
         // migrationStatus is undefined/null
         focalPersons: [],
         tags: [],
+        entityContacts: [],
         status: 'Active',
         schoolStatus: 'Active',
         pipelineId: 'pipeline_1',
         createdAt: '2021-01-01T00:00:00.000Z',
-        updatedAt: '2021-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
       mockSchools.set(entityId, school);
@@ -370,6 +376,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -439,11 +446,12 @@ describe('Contact Adapter Edge Cases', () => {
         migrationStatus: 'legacy',
         focalPersons: [],
         tags: [],
+        entityContacts: [],
         status: 'Active',
         schoolStatus: 'Active',
         pipelineId: 'pipeline_1',
         createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
       mockSchools.set(entityId, school);
@@ -474,6 +482,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -508,6 +517,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       const we1: WorkspaceEntity = {
@@ -523,6 +533,7 @@ describe('Contact Adapter Edge Cases', () => {
         displayName: 'Multi-Workspace Entity',
         addedAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       const we2: WorkspaceEntity = {
@@ -538,6 +549,7 @@ describe('Contact Adapter Edge Cases', () => {
         displayName: 'Multi-Workspace Entity',
         addedAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -578,6 +590,7 @@ describe('Contact Adapter Edge Cases', () => {
         migrationStatus: 'legacy',
         focalPersons: [],
         tags: [],
+        entityContacts: [],
         status: 'Active',
         schoolStatus: 'Active',
         pipelineId: 'pipeline_1',
@@ -635,6 +648,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -654,11 +668,12 @@ describe('Contact Adapter Edge Cases', () => {
         migrationStatus: 'legacy',
         focalPersons: [],
         tags: [],
+        entityContacts: [],
         status: 'Active',
         schoolStatus: 'Active',
         pipelineId: 'pipeline_1',
         createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
       mockSchools.set(entityId, school);
@@ -686,6 +701,7 @@ describe('Contact Adapter Edge Cases', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);

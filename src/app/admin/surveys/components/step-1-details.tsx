@@ -290,76 +290,84 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                     </div>
                 </CardHeader>
  <CardContent className="p-6 space-y-8">
- <div className="space-y-6">
-                        <Controller
-                            name="videoUrl"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Feature Video URL</Label>
- <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="videoCaption"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
- <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
-                                    </Label>
- <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
- <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
-                                </div>
-                            )}
-                        />
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Controller
-                                name="logoUrl"
+                                name="videoUrl"
                                 control={control}
                                 render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
- <ImageIcon className="h-3 w-3" /> Survey Brand Logo
-                                        </Label>
-                                        <MediaSelect 
-                                            {...field} 
-                                            filterType="image" 
- className="rounded-xl" 
-                                            disabled={watch('useEntityLogo')}
-                                        />
-                                        {watch('useEntityLogo') && (
- <p className="text-[9px] font-bold text-primary tracking-tighter ml-1 italic">
-                                                Branding is being managed by the associated entity.
-                                            </p>
-                                        )}
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Feature Video URL</Label>
+                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
                                     </div>
                                 )}
                             />
- <div className="grid grid-cols-1 gap-6">
+                            <Controller
+                                name="videoCaption"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
+                                            <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
+                                        </Label>
+                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
+                                    </div>
+                                )}
+                            />
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3">
+                                <ImageIcon className="h-4 w-4 text-primary" />
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Media Assets</h4>
+                                <Separator className="flex-1 border-dashed" />
+                            </div>
+                            <div className="grid grid-cols-1 gap-8">
+                                <Controller
+                                    name="logoUrl"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
+                                                Survey Brand Logo
+                                            </Label>
+                                            <MediaSelect 
+                                                {...field} 
+                                                filterType="image" 
+                                                className="rounded-xl" 
+                                                disabled={watch('useEntityLogo')}
+                                            />
+                                            {watch('useEntityLogo') && (
+                                                <p className="text-[9px] font-bold text-primary tracking-tighter ml-1 italic">
+                                                    Branding is being managed by the associated entity.
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                />
                                 <Controller
                                     name="videoThumbnailUrl"
                                     control={control}
                                     render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Video Poster (Frame)</Label>
- <MediaSelect {...field} filterType="image" className="rounded-xl" />
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Video Poster (Frame)</Label>
+                                            <MediaSelect {...field} filterType="image" className="rounded-xl" />
+                                        </div>
+                                    )}
+                                />
+                                <Controller
+                                    name="bannerImageUrl"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Cover Image (Fallback)</Label>
+                                            <MediaSelect {...field} filterType="image" className="rounded-xl" />
                                         </div>
                                     )}
                                 />
                             </div>
                         </div>
-                        <Controller
-                            name="bannerImageUrl"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Cover Image (Fallback)</Label>
- <MediaSelect {...field} filterType="image" className="rounded-xl" />
-                                </div>
-                            )}
-                        />
                     </div>
                 </CardContent>
             </Card>

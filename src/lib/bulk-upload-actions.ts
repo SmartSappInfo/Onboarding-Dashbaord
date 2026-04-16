@@ -2,8 +2,9 @@
 
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
-import type { School, UserProfile, SubscriptionPackage, Zone, Module, OnboardingStage } from './types';
+import type { School, UserProfile, SubscriptionPackage, Zone, Module, OnboardingStage, EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
+import { normalizeContactType, entityContactToFocalPerson } from './entity-contact-helpers';
 
 /**
  * @fileOverview Logic-based Institutional Ingestion Engine.
@@ -83,7 +84,7 @@ export async function ingestSchoolRowAction(
             return match;
         }).filter(Boolean) as any[] : [];
 
-        // 6. Resolve Focal Person
+        // 6. Resolve Focal Person → EntityContact (FER-01)
         const contactName = getValue('contactName');
         const contactEmail = getValue('contactEmail');
         const contactPhone = getValue('contactPhone');
@@ -91,15 +92,26 @@ export async function ingestSchoolRowAction(
         const isSignatoryRaw = getValue('isSignatory');
         const isSignatory = String(isSignatoryRaw).toLowerCase() === 'yes' || isSignatoryRaw === 'true' || isSignatoryRaw === true;
 
-        const focalPersons = [];
+        const entityContacts: EntityContact[] = [];
         if (contactName) {
-            focalPersons.push({
+            const typeLabel = String(contactRole || 'Administrator');
+            const contactEmail = String(getValue('contactEmail') || '');
+            const contactPhoneVal = String(getValue('contactPhone') || '');
+            
+            const ec: any = {
+                id: `ec_bulk_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
                 name: String(contactName),
-                email: String(contactEmail || ''),
-                phone: String(contactPhone || ''),
-                type: String(contactRole || 'Administrator'),
-                isSignatory: isSignatory
-            });
+                typeKey: normalizeContactType(typeLabel),
+                typeLabel,
+                isPrimary: true,
+                isSignatory: isSignatory,
+                order: 0,
+                createdAt: new Date().toISOString(),
+            };
+            if (contactEmail) ec.email = contactEmail;
+            if (contactPhoneVal) ec.phone = contactPhoneVal;
+            
+            entityContacts.push(ec as EntityContact);
         }
 
         // 7. Pipeline Initialization
@@ -134,7 +146,7 @@ export async function ingestSchoolRowAction(
             creditBalance: Number(getValue('creditBalance')) || 0,
             billingAddress,
             currency,
-            focalPersons: focalPersons as any,
+            entityContacts, // Canonical (FER-01)
             modules: selectedModules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
             stage: { id: defaultStage.id, name: defaultStage.name, order: defaultStage.order, color: defaultStage.color },
             createdAt: new Date().toISOString(),

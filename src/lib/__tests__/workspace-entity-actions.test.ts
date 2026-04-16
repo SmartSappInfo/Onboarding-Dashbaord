@@ -56,6 +56,7 @@ describe('linkEntityToWorkspaceAction', () => {
       globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockWorkspace = {
@@ -66,6 +67,7 @@ describe('linkEntityToWorkspaceAction', () => {
       status: 'active',
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockStage = {
@@ -180,6 +182,7 @@ describe('linkEntityToWorkspaceAction', () => {
       globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockWorkspace = {
@@ -190,6 +193,7 @@ describe('linkEntityToWorkspaceAction', () => {
       status: 'active',
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockEntityGet = vi.fn().mockResolvedValue({
@@ -281,6 +285,7 @@ describe('linkEntityToWorkspaceAction', () => {
       globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockEntityGet = vi.fn().mockResolvedValue({
@@ -343,6 +348,7 @@ describe('unlinkEntityFromWorkspaceAction', () => {
       stageId: 'stage_1',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockEntity = {
@@ -448,6 +454,7 @@ describe('updateWorkspaceEntityAction', () => {
       stageId: 'stage_1',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockEntity = {
@@ -573,6 +580,7 @@ describe('updateWorkspaceEntityAction', () => {
       stageId: 'stage_1',
       addedAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
     };
 
     const mockEntity = {

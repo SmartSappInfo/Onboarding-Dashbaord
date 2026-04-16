@@ -211,7 +211,7 @@ async function migrateSchool(schoolId: string): Promise<{ success: boolean; erro
         entityType: 'institution',
         name: school.name,
         slug: school.slug || school.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        contacts: school.focalPersons || [],
+        entityContacts: [], // FER-01: Contacts populated via normalization pipeline
         globalTags: [],
         status: school.status === 'Archived' ? 'archived' : 'active',
         createdAt: school.createdAt || timestamp,
@@ -249,7 +249,7 @@ async function migrateSchool(schoolId: string): Promise<{ success: boolean; erro
         continue;
       }
       
-      const primaryContact = school.focalPersons?.[0];
+      const primaryContact = (school as any).focalPersons?.[0];
       
       const workspaceEntityData = {
         organizationId,

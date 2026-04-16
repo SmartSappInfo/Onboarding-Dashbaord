@@ -21,7 +21,7 @@ export async function MetricsWidgetServer({ workspaceId }: { workspaceId: string
     return (
         <div className="lg:col-span-4">
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricsRow data={data} />
+                <MetricsRow data={data} terminology={terminology} />
             </div>
         </div>
     );

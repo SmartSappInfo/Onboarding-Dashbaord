@@ -285,18 +285,30 @@ export async function verifyEntitiesMigration(firestore: Firestore): Promise<{
 }
 
 /**
- * PHASE 4: Agreements (Contracts) → Unified Entity ID
- * Aligns legal document headers with the new entity architecture.
+ * Phase 4 FER: Agreements (Contracts) → Unified Entity ID By Name Matching
+ * Maps legacy contract records from schoolData to the new entities architecture.
  */
 export async function migrateContractsToEntities(firestore: Firestore): Promise<MigrationResult> {
-    console.log('🚀 Starting agreements → entities migration...');
+    console.log('🚀 Starting agreements → entities name-mapping migration...');
     const timestamp = new Date().toISOString();
     const result: MigrationResult = { total: 0, succeeded: 0, failed: 0, skipped: 0, errors: [] };
     
     try {
+        // FETCH
         const contractsSnap = await getDocs(collection(firestore, 'contracts'));
+        const entitiesSnap = await getDocs(collection(firestore, 'entities'));
+        
         result.total = contractsSnap.size;
         
+        // Map entities by name for efficient lookup
+        const entityMapByName = new Map<string, any>();
+        entitiesSnap.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.name) {
+                entityMapByName.set(data.name.trim().toLowerCase(), data);
+            }
+        });
+
         let batch = writeBatch(firestore);
         let operationCount = 0;
         
@@ -304,35 +316,44 @@ export async function migrateContractsToEntities(firestore: Firestore): Promise<
             try {
                 const contract = contractDoc.data();
                 
-                // Skip if already migrated or already starts with entity_
-                if (contract.migrationStatus === 'migrated' || contract.entityId.startsWith('entity_')) {
+                // If it's already migrated and holds a valid entity identifier, skip
+                if (contract.migrationStatus === 'name_mapped_v1') {
                     result.skipped++;
                     continue;
                 }
                 
-                // Backup
+                // BACKUP: Create safety snapshot
                 const backupRef = doc(firestore, 'backup_contracts_migration', contractDoc.id);
                 batch.set(backupRef, { ...contract, backedUpAt: timestamp });
                 operationCount++;
                 
-                // Update Entity Reference
-                const legacyId = contract.entityId;
-                const unifiedEntityId = `entity_${legacyId}`;
+                // ENRICH: Attempt to find corresponding entity by normalized name
+                const searchName = contract.schoolName || contract.entityName || '';
+                const targetEntity = entityMapByName.get(searchName.trim().toLowerCase());
                 
-                batch.update(contractDoc.ref, {
-                    entityId: unifiedEntityId,
-                    migrationStatus: 'migrated',
-                    migratedAt: timestamp
-                });
-                operationCount++;
+                if (targetEntity) {
+                    batch.update(contractDoc.ref, {
+                        entityId: targetEntity.id,
+                        entityName: targetEntity.name,
+                        migrationStatus: 'name_mapped_v1',
+                        migratedAt: timestamp
+                    });
+                    
+                    operationCount++;
+                    result.succeeded++;
+                } else {
+                    console.log(`⚠️ Unmapped contract ${contractDoc.id}: Could not find entity matching "${searchName}"`);
+                    result.failed++;
+                    result.errors.push({ id: contractDoc.id, error: `Entity match not found for name: ${searchName}` });
+                }
                 
+                // RESTORE
                 if (operationCount >= BATCH_SIZE) {
                     await batch.commit();
                     batch = writeBatch(firestore);
                     operationCount = 0;
                 }
                 
-                result.succeeded++;
             } catch (error: any) {
                 result.failed++;
                 result.errors.push({ id: contractDoc.id, error: error.message });
@@ -340,6 +361,13 @@ export async function migrateContractsToEntities(firestore: Firestore): Promise<
         }
         
         if (operationCount > 0) await batch.commit();
+        
+        console.log(`\n📈 Contracts Migration Summary:`);
+        console.log(`   Total: ${result.total}`);
+        console.log(`   ✅ Restored/Matched: ${result.succeeded}`);
+        console.log(`   ⏭️  Skipped: ${result.skipped}`);
+        console.log(`   ❌ Failed/Unmatched: ${result.failed}`);
+        
         return result;
     } catch (error: any) {
         throw error;

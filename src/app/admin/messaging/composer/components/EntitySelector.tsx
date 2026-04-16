@@ -93,7 +93,8 @@ export function EntitySelector({
                 status: we.status,
                 tags: we.workspaceTags || [],
                 migrationStatus: 'migrated',
-                entityType: we.entityType || 'institution'
+                entityType: we.entityType || 'institution',
+                entityContacts: [], // Will be resolved during dispatch
             });
         });
     }

@@ -121,6 +121,7 @@ describe('Messaging Module - EntityId Migration', () => {
         entityId: 'entity_123',
         entityType: 'institution' as const,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
         tags: [],
       };
 
@@ -238,6 +239,7 @@ describe('Messaging Module - EntityId Migration', () => {
         },
         migrationStatus: 'legacy' as const,
         tags: [],
+        entityContacts: [],
       };
 
       const mockLogRef = { id: 'log_2' };
@@ -357,6 +359,7 @@ describe('Messaging Module - EntityId Migration', () => {
           createdAt: '2024-01-01T00:00:00.000Z',
         },
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
         tags: [],
       };
 
@@ -483,6 +486,7 @@ describe('Messaging Module - EntityId Migration', () => {
         },
         migrationStatus: 'legacy' as const,
         tags: [],
+        entityContacts: [],
       };
 
       let capturedLogData: any = null;
@@ -594,6 +598,7 @@ describe('Messaging Module - EntityId Migration', () => {
         entityId: 'entity_456',
         entityType: 'family' as const,
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
         tags: [],
       };
 
@@ -1044,6 +1049,7 @@ describe('Messaging Module - EntityId Migration', () => {
           createdAt: '2024-01-01T00:00:00.000Z',
         },
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
         tags: ['VIP', 'Hot Lead'],
       };
 
@@ -1263,6 +1269,7 @@ describe('Messaging Module - EntityId Migration', () => {
           createdAt: '2024-01-01T00:00:00.000Z',
         },
         migrationStatus: 'migrated' as const,
+        entityContacts: [],
         tags: [],
       };
 

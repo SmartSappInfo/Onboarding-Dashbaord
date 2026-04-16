@@ -79,6 +79,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         },
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -132,6 +133,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         notificationsEnabled: false,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -161,6 +163,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         workspaceId: 'workspace_1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -197,6 +200,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         },
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -247,6 +251,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         workspaceId: 'workspace_1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -297,6 +302,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         notificationsEnabled: true,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -346,6 +352,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         },
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -401,6 +408,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         workspaceId: 'workspace_1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -430,6 +438,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         notificationsEnabled: true,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({
@@ -465,6 +474,7 @@ describe('Settings Module Unit Tests (Task 20.3)', () => {
         notificationsEnabled: true,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
+        entityContacts: [],
       };
 
       mockGet.mockResolvedValue({

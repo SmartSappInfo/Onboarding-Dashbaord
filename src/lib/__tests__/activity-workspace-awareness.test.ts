@@ -103,6 +103,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
         slug: 'test-institution',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated',
         entityId: 'entity_123',
         entityType: 'institution',
@@ -143,6 +144,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
         slug: 'original-name',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated',
         entityId: 'entity_123',
         entityType: 'family',
@@ -185,6 +187,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
         slug: 'migrated-school',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'migrated',
         entityId: 'entity_456',
         entityType: 'institution',
@@ -228,6 +231,7 @@ describe('Activity Logging Workspace Awareness (Requirement 12)', () => {
         slug: 'legacy-school',
         contacts: [],
         tags: [],
+        entityContacts: [],
         migrationStatus: 'legacy',
         // No entityId or entityType for legacy records
       };

@@ -1,4 +1,9 @@
-import type { MigrationStatus, ResolvedContact } from './types';
+import type { MigrationStatus, ResolvedContact, EntityContact } from './types';
+import {
+  getPrimaryContact,
+  getSignatoryContact,
+  resolveEntityContacts,
+} from './entity-contact-helpers';
 
 /**
  * @fileOverview Migration Status Utility Functions
@@ -6,6 +11,8 @@ import type { MigrationStatus, ResolvedContact } from './types';
  * Helper functions for checking and describing migration status of school records.
  * These functions help determine whether to read from the legacy schools collection
  * or the new entities + workspace_entities model.
+ * 
+ * FER-01: Contact resolution now uses entityContacts first, falling back to legacy contacts.
  * 
  * Requirements: 18 (Backward Compatibility)
  */
@@ -59,9 +66,16 @@ export function getMigrationStatusDescription(migrationStatus?: MigrationStatus)
 }
 
 /**
- * Helper function to get primary contact email from resolved contact
+ * Helper function to get primary contact email from resolved contact.
+ * FER-01: Resolves from entityContacts first via isPrimary flag.
  */
 export function getContactEmail(contact: ResolvedContact): string | undefined {
+  // Try entityContacts first (new model)
+  if (contact.entityContacts && contact.entityContacts.length > 0) {
+    const primary = contact.entityContacts.find(c => c.isPrimary) || contact.entityContacts[0];
+    return primary.email;
+  }
+  // Fallback to legacy contacts
   if (contact.contacts && contact.contacts.length > 0) {
     return contact.contacts[0].email;
   }
@@ -69,9 +83,14 @@ export function getContactEmail(contact: ResolvedContact): string | undefined {
 }
 
 /**
- * Helper function to get primary contact phone from resolved contact
+ * Helper function to get primary contact phone from resolved contact.
+ * FER-01: Resolves from entityContacts first via isPrimary flag.
  */
 export function getContactPhone(contact: ResolvedContact): string | undefined {
+  if (contact.entityContacts && contact.entityContacts.length > 0) {
+    const primary = contact.entityContacts.find(c => c.isPrimary) || contact.entityContacts[0];
+    return primary.phone;
+  }
   if (contact.contacts && contact.contacts.length > 0) {
     return contact.contacts[0].phone;
   }
@@ -79,9 +98,13 @@ export function getContactPhone(contact: ResolvedContact): string | undefined {
 }
 
 /**
- * Helper function to get signatory from resolved contact
+ * Helper function to get signatory from resolved contact.
+ * FER-01: Resolves from entityContacts first via isSignatory flag.
  */
-export function getContactSignatory(contact: ResolvedContact) {
+export function getContactSignatory(contact: ResolvedContact): EntityContact | { name: string; email: string; phone: string; type: string; isSignatory: boolean } | null {
+  if (contact.entityContacts && contact.entityContacts.length > 0) {
+    return contact.entityContacts.find(c => c.isSignatory) || contact.entityContacts[0];
+  }
   if (contact.contacts && contact.contacts.length > 0) {
     return contact.contacts.find(c => c.isSignatory) || contact.contacts[0];
   }
@@ -91,8 +114,21 @@ export function getContactSignatory(contact: ResolvedContact) {
 /**
  * Helper function to get the specific contact person matching a recipient string.
  * Used for independent variable resolution (Requirement 35.3).
+ * FER-01: Checks entityContacts first.
  */
 export function getRecipientContact(contact: ResolvedContact, recipient?: string) {
+  // Try entityContacts first
+  if (contact.entityContacts && contact.entityContacts.length > 0) {
+    if (!recipient) return getContactSignatory(contact);
+    const target = recipient.toLowerCase().trim();
+    const match = contact.entityContacts.find(c =>
+      (c.email && c.email.toLowerCase().trim() === target) ||
+      (c.phone && c.phone.trim() === target)
+    );
+    return match || getContactSignatory(contact);
+  }
+
+  // Fallback to legacy contacts
   if (!contact.contacts || contact.contacts.length === 0) return null;
   if (!recipient) return getContactSignatory(contact);
 
@@ -104,3 +140,4 @@ export function getRecipientContact(contact: ResolvedContact, recipient?: string
 
   return match || getContactSignatory(contact);
 }
+

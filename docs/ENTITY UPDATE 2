@@ -1,0 +1,4 @@
+Migrate: logoUrl, location, implementation date rename to startDate, zone
+from backup_entities_migration collection to their respective entries in the entities collection.
+
+such that, the logoUrl, location, implementation DATE, ZONE of a backup_entities_migration entry with 

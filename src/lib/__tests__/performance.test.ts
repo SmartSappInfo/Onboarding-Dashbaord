@@ -152,6 +152,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       const workspaceEntity: WorkspaceEntity = {
@@ -167,6 +168,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         displayName: 'Performance Test Entity',
         addedAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -207,7 +209,8 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         schoolStatus: 'Active',
         pipelineId: 'pipeline-1',
         createdAt: '2023-01-01T00:00:00.000Z',
-        updatedAt: '2023-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockSchools.set(entityId, school);
@@ -247,6 +250,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
           status: 'active',
           createdAt: '2024-01-01T00:00:00.000Z',
           updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
         };
 
         const workspaceEntity: WorkspaceEntity = {
@@ -262,6 +266,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
           displayName: `Entity ${i}`,
           addedAt: '2024-01-01T00:00:00.000Z',
           updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
         };
 
         mockEntities.set(entityId, entity);
@@ -304,6 +309,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -340,6 +346,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -401,6 +408,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -447,6 +455,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -641,6 +650,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
           status: 'active',
           createdAt: '2024-01-01T00:00:00.000Z',
           updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
         };
 
         mockEntities.set(entityId, entity);
@@ -687,6 +697,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);
@@ -742,6 +753,7 @@ describe('Performance Tests: SchoolId to EntityId Migration', () => {
         status: 'active',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
+        entityContacts: [],
       };
 
       mockEntities.set(entityId, entity);

@@ -338,7 +338,12 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
     
     if (contactId && !resolvedRecipient) {
         const contact = await resolveContact(contactId, context.workspaceId);
-        if (contact?.contacts?.[0]?.email) {
+        // FER-01: Correctly resolve primary email from entityContacts
+        const primaryEmail = contact?.entityContacts?.find(ec => ec.isPrimary)?.email;
+        if (primaryEmail) {
+            resolvedRecipient = primaryEmail;
+        } else if (contact?.contacts?.[0]?.email) {
+            // Fallback for extreme cases during migration
             resolvedRecipient = contact.contacts[0].email;
         }
     }
