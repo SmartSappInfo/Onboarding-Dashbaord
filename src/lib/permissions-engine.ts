@@ -118,6 +118,64 @@ export function getFullAdminPermissions(): PermissionsSchema {
 }
 
 /**
+ * Returns a template schema for Finance Administrators.
+ */
+export function getFinancePermissions(): PermissionsSchema {
+  const blank = getBlankPermissions();
+  blank.finance = {
+    enabled: true,
+    features: {
+      agreements: { view: true, create: true, edit: true, delete: false },
+      invoices: { view: true, create: true, edit: true, delete: false },
+      packages: { view: true, create: true, edit: true, delete: false },
+      cycles: { view: true, create: true, edit: true, delete: false },
+      billingSetup: { view: true, edit: true },
+    },
+  };
+  return blank;
+}
+
+/**
+ * Returns a template schema for Marketing / Studio Managers.
+ */
+export function getMarketingPermissions(): PermissionsSchema {
+  const blank = getBlankPermissions();
+  blank.studios = {
+    enabled: true,
+    features: {
+      publicPortals: { view: true, create: true, edit: true, delete: false },
+      landingPages: { view: true, create: true, edit: true, delete: true },
+      media: { view: true, create: true, edit: true, delete: true },
+      surveys: { view: true, create: true, edit: true, delete: false },
+      messaging: { view: true, create: true, edit: true, delete: false },
+      forms: { view: true, create: true, edit: true, delete: false },
+      tags: { view: true, create: true, edit: true, delete: false },
+      docSigning: { view: false },
+    },
+  };
+  return blank;
+}
+
+/**
+ * Returns a template schema for Operations Managers.
+ */
+export function getOperationsPermissions(): PermissionsSchema {
+  const blank = getBlankPermissions();
+  blank.operations = {
+    enabled: true,
+    features: {
+      dashboard: { view: true },
+      campuses: { view: true, create: true, edit: true, delete: false },
+      pipeline: { view: true, create: true, edit: true, delete: false },
+      tasks: { view: true, create: true, edit: true, delete: false },
+      meetings: { view: true, create: true, edit: true, delete: false },
+      automations: { view: false },
+      intelligence: { view: true },
+    },
+  };
+  return blank;
+}
+/**
  * Maps a legacy AppFeatureId to its hierarchical coordinates.
  */
 export const featureToCoordinates: Record<AppFeatureId, { section: keyof PermissionsSchema; feature: string }> = {

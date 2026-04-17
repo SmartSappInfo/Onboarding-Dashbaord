@@ -22,8 +22,13 @@ import type { Role, PermissionsSchema } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { PermissionEditor } from './PermissionEditor';
-import { getBlankPermissions, getFullAdminPermissions } from '@/lib/permissions-engine';
-import { migrateToPermissionsSchema } from '@/lib/permissions-migration';
+import { 
+  getBlankPermissions, 
+  getFullAdminPermissions,
+  getFinancePermissions,
+  getMarketingPermissions,
+  getOperationsPermissions
+} from '@/lib/permissions-engine';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,7 +46,8 @@ import {
   History, 
   ChevronRight,
   ShieldEllipsis,
-  Loader2
+  Loader2,
+  Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -64,7 +70,8 @@ export default function RolesClient() {
 
   // New Role State
   const [newRoleDialogOpen, setNewRoleDialogOpen] = React.useState(false);
-  const [newRoleData, setNewRoleData] = React.useState({ name: '', description: '', color: '#3B82F6' });
+  const [newRoleData, setNewRoleData] = React.useState({ name: '', description: '', color: '#3B82F6', clonedSchema: null as PermissionsSchema | null });
+  const [selectedTemplate, setSelectedTemplate] = React.useState<'blank'|'admin'|'finance'|'marketing'|'operations'>('blank');
 
   // 1. DATA SUBSCRIPTION
   const rolesQuery = useMemoFirebase(() => {
@@ -104,12 +111,23 @@ export default function RolesClient() {
   const handleCreateRole = async () => {
     if (!firestore || !activeOrganizationId) return;
     
+    let finalSchema = newRoleData.clonedSchema;
+    if (!finalSchema) {
+      if (selectedTemplate === 'admin') finalSchema = getFullAdminPermissions();
+      else if (selectedTemplate === 'finance') finalSchema = getFinancePermissions();
+      else if (selectedTemplate === 'marketing') finalSchema = getMarketingPermissions();
+      else if (selectedTemplate === 'operations') finalSchema = getOperationsPermissions();
+      else finalSchema = getBlankPermissions();
+    }
+
     try {
       const docRef = await addDoc(collection(firestore, 'roles'), {
-        ...newRoleData,
+        name: newRoleData.name,
+        description: newRoleData.description,
+        color: newRoleData.color,
         organizationId: activeOrganizationId,
         permissions: [],
-        permissionsSchema: getBlankPermissions(),
+        permissionsSchema: finalSchema,
         workspaceIds: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -138,12 +156,6 @@ export default function RolesClient() {
     }
   };
 
-  const handleSeedSchema = async (role: Role) => {
-    if (!firestore) return;
-    const schema = migrateToPermissionsSchema(role.permissions || []);
-    await handleSavePermissions(schema);
-  };
-
   return (
     <div className="h-full bg-background relative overflow-y-auto">
       <div className="space-y-10 pb-32">
@@ -158,7 +170,14 @@ export default function RolesClient() {
             <p className="text-muted-foreground font-medium text-lg mt-1">Define structural authorization silos across the organization.</p>
           </div>
           
-          <Dialog open={newRoleDialogOpen} onOpenChange={setNewRoleDialogOpen}>
+          <Dialog open={newRoleDialogOpen} onOpenChange={(open) => {
+             setNewRoleDialogOpen(open);
+             if (!open) {
+                // Reset on close
+                setNewRoleData({ name: '', description: '', color: '#3B82F6', clonedSchema: null });
+                setSelectedTemplate('blank');
+             }
+          }}>
             <DialogTrigger asChild>
               <Button className="rounded-2xl font-black h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl transition-all active:scale-95">
                 <Plus className="mr-2 h-5 w-5" /> New Role Blueprint
@@ -188,6 +207,22 @@ export default function RolesClient() {
                     className="min-h-[100px] rounded-xl"
                   />
                 </div>
+                {!newRoleData.clonedSchema && (
+                   <div className="space-y-2 pb-2">
+                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Base Template</Label>
+                     <select 
+                        value={selectedTemplate}
+                        onChange={(e) => setSelectedTemplate(e.target.value as any)}
+                        className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                     >
+                        <option value="blank">Blank Slate</option>
+                        <option value="finance">Finance Administrator</option>
+                        <option value="marketing">Marketing & Studios</option>
+                        <option value="operations">Operations Manager</option>
+                        <option value="admin">Super Admin (All Access)</option>
+                     </select>
+                   </div>
+                )}
               </div>
               <DialogFooter>
                 <Button onClick={handleCreateRole} disabled={!newRoleData.name} className="w-full h-12 rounded-xl font-bold">
@@ -285,16 +320,22 @@ export default function RolesClient() {
                       <CardDescription className="text-sm font-medium">{selectedRole.description}</CardDescription>
                     </div>
                     <div className="flex items-center gap-3">
-                      {!selectedRole.permissionsSchema && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="rounded-xl font-bold border-amber-200 bg-amber-50 text-amber-700"
-                          onClick={() => handleSeedSchema(selectedRole)}
-                        >
-                          <History className="mr-2 h-4 w-4" /> Seed from Legacy
-                        </Button>
-                      )}
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setNewRoleData({ 
+                            name: `${selectedRole.name} (Copy)`, 
+                            description: selectedRole.description || '', 
+                            color: selectedRole.color || '#3B82F6', 
+                            clonedSchema: selectedRole.permissionsSchema || getBlankPermissions() 
+                          });
+                          setSelectedTemplate('blank');
+                          setNewRoleDialogOpen(true);
+                        }}
+                        className="rounded-xl px-4"
+                      >
+                        <Copy className="mr-2 h-4 w-4" /> Clone
+                      </Button>
                       <Button 
                         onClick={() => handleSavePermissions(selectedRole.permissionsSchema || getBlankPermissions())}
                         disabled={isSaving}

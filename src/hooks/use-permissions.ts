@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useTenant } from '@/context/TenantContext';
 import { PermissionsSchema, AppPermissionAction, AppPermissionId } from '@/lib/types';
+import { evaluatePermission } from '@/lib/permissions-engine';
 
 /**
  * @fileOverview Hierarchical Permissions Hook.
@@ -23,18 +24,23 @@ interface UsePermissionsReturn {
 }
 
 export function usePermissions(): UsePermissionsReturn {
-  const { isSuperAdmin, hasPermission, isLoading } = useTenant();
+  const { isSuperAdmin, hasPermission, permissionsSchema, isLoading } = useTenant();
 
   const can = React.useCallback((
-    _section: keyof PermissionsSchema,
-    _feature: string,
-    _action: AppPermissionAction = 'view'
+    section: keyof PermissionsSchema,
+    feature: string,
+    action: AppPermissionAction = 'view'
   ): boolean => {
     if (isLoading) return false;
     if (isSuperAdmin) return true;
-    // Fallback: deny until full schema evaluation is wired
+    
+    // Evaluate the hierarchical schema if available
+    if (permissionsSchema) {
+      return evaluatePermission(permissionsSchema, section, feature, action);
+    }
+    
     return false;
-  }, [isSuperAdmin, isLoading]);
+  }, [isSuperAdmin, isLoading, permissionsSchema]);
 
   return React.useMemo(() => ({
     can,

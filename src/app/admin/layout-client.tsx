@@ -74,7 +74,8 @@ import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useFeatures } from '@/hooks/use-features';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
-import type { AppPermissionId, AppFeatureId, Role } from '@/lib/types';
+import type { AppFeatureId, Role } from '@/lib/types';
+import { usePermissions } from '@/hooks/use-permissions';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -92,8 +93,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
-  const [userPermissions, setUserPermissions] = React.useState<AppPermissionId[]>([]);
   const [userRolesData, setUserRolesData] = React.useState<{ id: string, name: string }[]>([]);
+  const { can, isSystemAdmin } = usePermissions();
 
   // 1. Hydration Guard
   React.useEffect(() => {
@@ -139,9 +140,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                     return snap.exists() ? { id: snap.id, name: (snap.data() as Role).name } : null;
                 })
             ).then(results => results.filter((r): r is { id: string, name: string } => r !== null));
-            
             setUserRolesData(resolvedRoles);
-            setUserPermissions(perms);
             setLoaderStatus('success');
             
             // Allow success animation to complete before revealing the dashboard
@@ -174,11 +173,9 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     return <AuthorizationLoader status={loaderStatus} />;
   }
 
-  const hasPerm = (perm: AppPermissionId) => userPermissions.includes(perm) || userPermissions.includes('system_admin' as any);
-
   // Feature-aware visibility: visible = permission check AND feature toggle
-  const isVisible = (hasPerm: boolean, featureId?: AppFeatureId) => {
-    if (!hasPerm) return false;
+  const isVisible = (hasPermission: boolean, featureId?: AppFeatureId) => {
+    if (!hasPermission) return false;
     if (!featureId) return true;
     return isFeatureEnabled(featureId);
   };
@@ -190,40 +187,40 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   };
 
   const coreNavItems = [
-    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: true },
-    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(hasPerm('schools_view'), 'entities') },
-    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: 'Pipeline', visible: isVisible(hasPerm('schools_view') || hasPerm('prospects_view'), 'pipeline') },
-    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(hasPerm('tasks_manage'), 'tasks') },
-    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(hasPerm('meetings_manage'), 'meetings') },
-    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(hasPerm('system_admin'), 'automations') },
-    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isVisible(hasPerm('activities_view'), 'reports') },
+    { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: isVisible(can('operations', 'dashboard', 'view')) },
+    { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(can('operations', 'campuses', 'view'), 'entities') },
+    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: 'Pipeline', visible: isVisible(can('operations', 'pipeline', 'view'), 'pipeline') },
+    { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(can('operations', 'tasks', 'view'), 'tasks') },
+    { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(can('operations', 'meetings', 'view'), 'meetings') },
+    { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(can('operations', 'automations', 'view'), 'automations') },
+    { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isVisible(can('operations', 'intelligence', 'view'), 'reports') },
   ];
 
   const studioNavItems = [
-    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isVisible(hasPerm('studios_view'), 'portals') },
-    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isVisible(hasPerm('studios_view'), 'portals') },
-    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isVisible(true, 'media') },
-    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isVisible(hasPerm('studios_view'), 'surveys') },
-    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isVisible(hasPerm('studios_view'), 'pdfs') },
-    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(hasPerm('studios_view'), 'messaging') },
-    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(hasPerm('forms_manage'), 'forms') },
-    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(hasPerm('tags_view'), 'tags') },
+    { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isVisible(can('studios', 'publicPortals', 'view'), 'portals') },
+    { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isVisible(can('studios', 'landingPages', 'view'), 'portals') },
+    { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isVisible(can('studios', 'media', 'view'), 'media') },
+    { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isVisible(can('studios', 'surveys', 'view'), 'surveys') },
+    { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isVisible(can('studios', 'docSigning', 'view'), 'pdfs') },
+    { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(can('studios', 'messaging', 'view'), 'messaging') },
+    { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(can('studios', 'forms', 'view'), 'forms') },
+    { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(can('studios', 'tags', 'view'), 'tags') },
   ];
 
   const financeNavItems = [
-    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isVisible(hasPerm('finance_view'), 'agreements') },
-    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isVisible(hasPerm('finance_view'), 'invoices') },
-    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isVisible(hasPerm('finance_view'), 'packages') },
-    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isVisible(hasPerm('finance_view'), 'billing_periods') },
-    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(hasPerm('finance_manage'), 'billing_setup') },
+    { href: wrapHref('/admin/finance/contracts'), icon: FileCheck, label: 'Agreements', visible: isVisible(can('finance', 'agreements', 'view'), 'agreements') },
+    { href: wrapHref('/admin/finance/invoices'), icon: Receipt, label: 'Invoices', visible: isVisible(can('finance', 'invoices', 'view'), 'invoices') },
+    { href: wrapHref('/admin/finance/packages'), icon: Package, label: 'Packages', visible: isVisible(can('finance', 'packages', 'view'), 'packages') },
+    { href: wrapHref('/admin/finance/periods'), icon: Timer, label: 'Cycles', visible: isVisible(can('finance', 'cycles', 'view'), 'billing_periods') },
+    { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(can('finance', 'billingSetup', 'view'), 'billing_setup') },
   ];
 
   const systemNavItems = [
-    { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: hasPerm('activities_view') },
-    { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: hasPerm('system_admin') },
-    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: hasPerm('system_admin') },
-    { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: hasPerm('fields_manage') },
-    { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: hasPerm('system_admin') },
+    { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
+    { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
+    { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
+    { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: can('management', 'systemSettings', 'view') },
   ];
 
   return (
@@ -342,7 +339,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                   </div>
                   </DropdownMenuLabel>
  <DropdownMenuSeparator className="my-1" />
-                  {hasPerm('system_user_switch') && (
+                  {isSystemAdmin && (
                     <>
                       <AssignedUserGlobalFilter />
  <DropdownMenuSeparator className="my-1" />

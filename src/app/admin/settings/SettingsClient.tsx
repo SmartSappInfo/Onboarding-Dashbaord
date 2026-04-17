@@ -3,7 +3,7 @@
 
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
-import RoleEditor from './components/RoleEditor';
+// RoleEditor has been moved to /admin/users/roles/RolesClient.tsx
 import WorkspaceEditor from './components/WorkspaceEditor';
 import FeatureManager from './components/FeatureManager';
 import { useTenant } from '@/context/TenantContext';
@@ -12,6 +12,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import * as React from 'react';
 import OrganizationManagementDialog from '../components/OrganizationManagementDialog';
+import { ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SettingsClient() {
   const { activeOrganization } = useTenant();
@@ -100,7 +102,25 @@ export default function SettingsClient() {
         <FeatureManager />
 
  <div className="space-y-8">
-          <RoleEditor />
+          <Card className="rounded-[2.5rem] glass-card overflow-hidden bg-primary/5 border-primary/20">
+            <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-primary text-white rounded-2xl shadow-lg">
+                  <ShieldCheck className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-foreground">Role Architecture</h3>
+                  <p className="text-sm font-medium text-muted-foreground mt-1">
+                    Role definition and permission management has been unified into a dedicated security center.
+                  </p>
+                </div>
+              </div>
+              <Button asChild className="rounded-xl font-bold h-12 px-8 whitespace-nowrap">
+                <Link href="/admin/users/roles">Manage Roles</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <ModuleEditor />
             <ZoneEditor />
