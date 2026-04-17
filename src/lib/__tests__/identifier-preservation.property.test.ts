@@ -128,7 +128,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalEntityType = task.entityType;
 
           // Execute: Update task with non-identifier fields
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -175,7 +175,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
 
           // Execute: Apply multiple updates sequentially
           for (const updates of updateSequence) {
-            const result = await updateTaskAction(task.id, updates);
+            const result = await updateTaskAction(task.id, updates, 'test_user');
             expect(result.success).toBe(true);
           }
 
@@ -201,7 +201,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           __testStorage.tasks.set(task.id, task);
 
           // Execute: Update task
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -236,7 +236,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
             status: 'done',
             workspaceId: task.workspaceId,
             title: task.title,
-          });
+          }, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -274,7 +274,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalSchoolId = task.entityId;
 
           // Execute: Update task
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -309,7 +309,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalEntityType = task.entityType;
 
           // Execute: Update task
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -341,7 +341,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
           const originalEntityType = task.entityType;
 
           // Execute: Update task
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);
@@ -382,7 +382,7 @@ describe('Property 3: Identifier Preservation Invariant', () => {
             dueDate: new Date('2025-12-31').toISOString(),
           };
 
-          const result = await updateTaskAction(task.id, updates);
+          const result = await updateTaskAction(task.id, updates, 'test_user');
 
           // Verify: Update succeeded
           expect(result.success).toBe(true);

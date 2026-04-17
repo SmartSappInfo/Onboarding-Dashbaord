@@ -238,7 +238,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         status: 'todo',
         reminderSent: false,
         reminders: [],
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
       expect(resolveContact).toHaveBeenCalledWith('school_1', 'workspace_1');
@@ -287,7 +287,7 @@ describe('Task 41.2 - Adapter Layer Integration Tests', () => {
         status: 'todo',
         reminderSent: false,
         reminders: [],
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
       expect(resolveContact).toHaveBeenCalledWith('entity_1', 'workspace_1');

@@ -12,6 +12,7 @@ import {
   entityContactToFocalPerson,
   normalizeContactType,
 } from './entity-contact-helpers';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -139,13 +140,19 @@ export async function convertToOnboardingAction(
  * Uses server-side Firebase Admin SDK to bypass client-side security rules.
  */
 export async function createEntityAction(
-    data: any, 
-    userId: string, 
+    data: any,
+    userId: string,
     workspaceId: string, 
     entityType: EntityType,
     organizationId: string = 'smartsapp-hq'
 ) {
   try {
+    // 0. Permission Check (Requirement: Permissions Expansion Layer 2)
+    const permission = await canUser(userId, 'operations', 'campuses', 'create', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
     const timestamp = new Date().toISOString();
     const entityId = `entity_${crypto.randomUUID()}`;
     
@@ -313,6 +320,12 @@ export async function updateEntityAction(
     organizationId: string
 ) {
   try {
+    // 0. Permission Check (Requirement: Permissions Expansion Layer 2)
+    const permission = await canUser(userId, 'operations', 'campuses', 'edit', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
     const timestamp = new Date().toISOString();
     
     // 1. Resolve Entity reference

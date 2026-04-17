@@ -907,6 +907,22 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
   };
 
+  // Hooks must be called before any early returns
+  const _isElementQuestion = element ? isQuestion(element) : false;
+  const sectionNumber = React.useMemo(() => {
+    if (!element) return 0;
+    const all = watch('elements') || [];
+    const sections = all.filter((el: any) => el.type === 'section');
+    return sections.findIndex((el: any) => el.id === id) + 1;
+  }, [element, watch('elements'), id]);
+
+  const questionNumber = React.useMemo(() => {
+    if (!element || !_isElementQuestion) return null;
+    const all = watch('elements') || [];
+    const questions = all.filter(isQuestion);
+    return questions.findIndex((el: any) => el.id === id) + 1;
+  }, [element, watch('elements'), id, _isElementQuestion]);
+
   if (!element) return null;
 
   const isElementQuestion = isQuestion(element);
@@ -917,19 +933,6 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
   const isScoreable = isElementQuestion && SCOREABLE_TYPES.includes(element.type);
   const isAutoAdvanceable = isElementQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
-
-  const sectionNumber = React.useMemo(() => {
-    const all = watch('elements') || [];
-    const sections = all.filter((el: any) => el.type === 'section');
-    return sections.findIndex((el: any) => el.id === id) + 1;
-  }, [watch('elements'), id]);
-
-  const questionNumber = React.useMemo(() => {
-    if (!isElementQuestion) return null;
-    const all = watch('elements') || [];
-    const questions = all.filter(isQuestion);
-    return questions.findIndex((el: any) => el.id === id) + 1;
-  }, [watch('elements'), id, isElementQuestion]);
   
   return (
  <div className="relative group" ref={setNodeRef} style={style}>

@@ -24,7 +24,7 @@ export async function PATCH(
     const { entityId, entityType, id, createdAt, ...allowedUpdates } = updates;
 
     // Update task using server action
-    const result = await updateTaskAction(taskId, allowedUpdates);
+    const result = await updateTaskAction(taskId, allowedUpdates, 'system_api');
 
     if (!result.success) {
       return NextResponse.json(
@@ -68,7 +68,7 @@ export async function DELETE(
     const { taskId } = await params;
 
     // Delete task using server action
-    const result = await deleteTaskAction(taskId);
+    const result = await deleteTaskAction(taskId, 'system_api');
 
     if (!result.success) {
       return NextResponse.json(

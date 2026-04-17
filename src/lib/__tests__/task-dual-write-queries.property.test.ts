@@ -230,7 +230,7 @@ describe('Property 1: Unified Entity Consistency', () => {
             entityId: entity.id,
             reminders: [],
             reminderSent: false,
-          });
+          }, 'test_user');
 
           expect(result.success).toBe(true);
 
@@ -281,7 +281,7 @@ describe('Property 1: Unified Entity Consistency', () => {
             entityId: school.id,
             reminders: [],
             reminderSent: false,
-          });
+          }, 'test_user');
 
           expect(result.success).toBe(true);
 
@@ -314,7 +314,7 @@ describe('Property 1: Unified Entity Consistency', () => {
             entityId: school.id,
             reminders: [],
             reminderSent: false,
-          });
+          }, 'test_user');
 
           expect(result.success).toBe(true);
 

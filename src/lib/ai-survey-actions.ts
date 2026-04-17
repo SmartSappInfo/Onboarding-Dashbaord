@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { Survey, SurveyResultPage } from './types';
+import { canUser } from './workspace-permissions';
 
 interface CreateSurveyFromAiInput {
     surveyData: Partial<Survey>;
@@ -16,12 +17,15 @@ interface CreateSurveyFromAiInput {
  * Persists an AI-generated survey blueprint to Firestore.
  * This is triggered automatically when the AI Partner composes a NEW survey.
  */
-export async function createSurveyFromAiAction(input: CreateSurveyFromAiInput) {
-    const { surveyData, resultPages, workspaceId, userId } = input;
-
+export async function createSurveyFromAiAction({ surveyData, resultPages, workspaceId, userId }: CreateSurveyFromAiInput) {
     console.log(`>>> [AI-SAVE] Persisting AI-generated blueprint for workspace: ${workspaceId}`);
-
     try {
+        // 0. Permission Check
+        const permission = await canUser(userId, 'studios', 'surveys', 'create', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         const surveysCollection = adminDb.collection('surveys');
         
         // 1. Generate a clean slug

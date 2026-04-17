@@ -195,7 +195,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -250,7 +250,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -302,7 +302,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -349,7 +349,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: school.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -414,7 +414,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: school.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -479,7 +479,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -542,7 +542,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: entity.id,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -573,7 +573,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         dueDate: '2025-01-01T00:00:00.000Z',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       // Task creation should succeed but with null identifiers
       expect(result.success).toBe(true);
@@ -603,7 +603,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: 'entity_nonexistent_999',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       // Task creation should still succeed (graceful degradation)
       expect(result.success).toBe(true);
@@ -631,7 +631,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: 'school_nonexistent_888',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       // Task creation should still succeed (graceful degradation)
       expect(result.success).toBe(true);
@@ -660,7 +660,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: null,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -686,7 +686,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: undefined,
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 
@@ -715,7 +715,7 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
         entityId: '',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(true);
 

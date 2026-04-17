@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
-import { cloneSurvey } from '@/lib/survey-actions';
+import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib/survey-actions';
+import { usePermissions } from '@/hooks/use-permissions';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -70,6 +71,11 @@ export default function SurveysClient() {
   const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
   
+  const { can } = usePermissions();
+  const canCreate = can('studios', 'surveys', 'create');
+  const canDelete = can('studios', 'surveys', 'delete');
+  const canEdit = can('studios', 'surveys', 'edit');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -90,31 +96,20 @@ export default function SurveysClient() {
 
   const { data: surveys, isLoading, error } = useCollection<Survey>(surveysQuery);
 
-  const handleDeleteSurvey = () => {
-    if (!firestore || !surveyToDelete) return;
+  const handleDeleteSurvey = async () => {
+    if (!user || !surveyToDelete) return;
 
-    const docRef = doc(firestore, 'surveys', surveyToDelete.id);
-    deleteDoc(docRef)
-      .then(() => {
-        toast({
-          title: 'Survey Deleted',
-          description: `The survey "${surveyToDelete.internalName || surveyToDelete.title}" has been deleted.`,
-        });
-        setSurveyToDelete(null);
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-          });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Error deleting survey',
-          description: 'You may not have the required permissions.',
-        });
-        setSurveyToDelete(null);
-      });
+    try {
+        const result = await deleteSurveyAction(surveyToDelete.id, user.uid);
+        if (result.success) {
+            toast({ title: 'Survey Deleted', description: `"${surveyToDelete.internalName || surveyToDelete.title}" removed.` });
+            setSurveyToDelete(null);
+        } else {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to delete survey." });
+    }
   };
 
   const handleClone = async (survey: Survey) => {
@@ -142,37 +137,19 @@ export default function SurveysClient() {
     }
   };
 
-  const handleStatusChange = (survey: Survey, newStatus: 'published' | 'draft' | 'archived') => {
-    if (!firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Firestore not available.',
-      });
-      return;
-    }
+  const handleStatusChange = async (survey: Survey, newStatus: 'published' | 'draft' | 'archived') => {
+    if (!user) return;
 
-    const docRef = doc(firestore, 'surveys', survey.id);
-    updateDoc(docRef, { status: newStatus })
-      .then(() => {
-        toast({
-          title: 'Survey Updated',
-          description: `"${survey.internalName || survey.title}" has been set to ${newStatus}.`,
-        });
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: { status: newStatus },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Update failed',
-          description: 'You may not have the required permissions to change the survey status.',
-        });
-      });
+    try {
+        const result = await updateSurveyStatusAction(survey.id, newStatus, user.uid);
+        if (result.success) {
+            toast({ title: 'Survey Updated', description: `"${survey.internalName || survey.title}" set to ${newStatus}.` });
+        } else {
+            toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to update status." });
+    }
   };
 
   const getStatusVariant = (status: Survey['status']) => {
@@ -225,22 +202,24 @@ export default function SurveysClient() {
           <p>View Public Page</p>
         </TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
- className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-            onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}
-          >
- <Edit className="h-4 w-4" />
- <span className="sr-only">Edit survey</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Edit Survey</p>
-        </TooltipContent>
-      </Tooltip>
+        {canEdit && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}
+              >
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Edit survey</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Edit Survey</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </TooltipProvider>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -251,41 +230,49 @@ export default function SurveysClient() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
- <Edit className="mr-2 h-4 w-4" />
-            <span>Edit Content</span>
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>Edit Content</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
- <BarChart2 className="mr-2 h-4 w-4" />
+            <BarChart2 className="mr-2 h-4 w-4" />
             <span>View Results</span>
           </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={() => handleClone(survey)}
-            disabled={cloningId !== null}
-          >
-            {cloningId === survey.id ? (
- <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
- <CopyPlus className="mr-2 h-4 w-4" />
-            )}
-            <span>Clone Survey</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleStatusChange(survey, survey.status === 'published' ? 'draft' : 'published')}>
-              {survey.status === 'published' ? (
- <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
+          {canCreate && (
+            <DropdownMenuItem 
+              onClick={() => handleClone(survey)}
+              disabled={cloningId !== null}
+            >
+              {cloningId === survey.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
- <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
+                <CopyPlus className="mr-2 h-4 w-4" />
               )}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
- className="text-destructive focus:bg-destructive/10"
-            onClick={() => setSurveyToDelete(survey)}
-          >
- <Trash2 className="mr-2 h-4 w-4" />
-            <span>Delete</span>
-          </DropdownMenuItem>
+              <span>Clone Survey</span>
+            </DropdownMenuItem>
+          )}
+          {canEdit && <DropdownMenuSeparator />}
+          {canEdit && (
+            <DropdownMenuItem onClick={() => handleStatusChange(survey, survey.status === 'published' ? 'draft' : 'published')}>
+                {survey.status === 'published' ? (
+                  <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
+                ) : (
+                  <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
+                )}
+            </DropdownMenuItem>
+          )}
+          {canDelete && <DropdownMenuSeparator />}
+          {canDelete && (
+            <DropdownMenuItem
+              className="text-destructive focus:bg-destructive/10"
+              onClick={() => setSurveyToDelete(survey)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -309,19 +296,23 @@ export default function SurveysClient() {
  <h1 className="text-3xl font-semibold tracking-tight">Survey Intelligence</h1>
  <p className="text-xs font-bold text-muted-foreground mt-1">Authorized Protocol Blueprints</p>
                 </div>
- <div className="flex justify-end items-center gap-3 shrink-0">
- <RainbowButton asChild className="h-11 rounded-xl font-semibold">
-                        <Link href="/admin/surveys/new/ai">
- <Sparkles className="mr-2 h-4 w-4" />
-                        AI Architect
-                        </Link>
-                    </RainbowButton>
- <Button asChild className="h-11 rounded-xl font-bold shadow-lg">
-                        <Link href="/admin/surveys/new">
- <PlusCircle className="mr-2 h-4 w-4" />
-                        New Survey
-                        </Link>
-                    </Button>
+                <div className="flex justify-end items-center gap-3 shrink-0">
+                    {canCreate && (
+                        <RainbowButton asChild className="h-11 rounded-xl font-semibold">
+                            <Link href="/admin/surveys/new/ai">
+                                <Sparkles className="mr-2 h-4 w-4" />
+                                AI Architect
+                            </Link>
+                        </RainbowButton>
+                    )}
+                    {canCreate && (
+                        <Button asChild className="h-11 rounded-xl font-bold shadow-lg">
+                            <Link href="/admin/surveys/new">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New Survey
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </div>
 

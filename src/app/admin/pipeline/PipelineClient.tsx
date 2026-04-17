@@ -123,7 +123,7 @@ export default function PipelineClient() {
             stageIds: [],
             accessRoles: [],
             columnWidth: 320,
-        });
+        }, user.uid);
         
         if (res.success && res.id) {
             justCreatedIdRef.current = res.id;

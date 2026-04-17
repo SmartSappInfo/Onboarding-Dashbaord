@@ -6,6 +6,7 @@ import { resolveContact } from './contact-adapter';
 import type { Invoice, InvoiceItem, BillingProfile, BillingPeriod, School } from './types';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server-side actions for the SmartSapp Invoicing Engine.
@@ -91,6 +92,12 @@ export async function generateInvoiceAction(
     activeWorkspaceId: string
 ) {
     try {
+        // 0. Permission Check
+        const permission = await canUser(userId, 'finance', 'invoices', 'create', activeWorkspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         const db = adminDb;
         
         // 1. Fetch Contextual Data (Updated to use adapter layer - Requirement 18)
@@ -201,13 +208,20 @@ export async function generateInvoiceAction(
  */
 export async function updateInvoiceAction(id: string, updates: Partial<Invoice>, userId: string) {
     try {
-        // Fetch existing invoice to preserve identifier fields
+        // 0. Permission Check (Assume workspace context from existing invoice if possible, or pass it)
+        // For simplicity in this action, we'll try to find the workspaceId from the invoice
         const existingDoc = await adminDb.collection('invoices').doc(id).get();
         if (!existingDoc.exists) {
             throw new Error("Invoice not found");
         }
         
         const existingInvoice = existingDoc.data() as Invoice;
+        const workspaceId = existingInvoice.workspaceIds?.[0]; // Invoices are multi-workspace but usually have a primary one
+
+        const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
         
         const safeUpdates = {
             ...updates,
@@ -229,6 +243,15 @@ export async function updateInvoiceAction(id: string, updates: Partial<Invoice>,
  */
 export async function deleteInvoiceAction(id: string, invoiceNumber: string, userId: string) {
     try {
+        const docSnap = await adminDb.collection('invoices').doc(id).get();
+        if (!docSnap.exists) throw new Error("Invoice not found");
+        const workspaceId = docSnap.data()?.workspaceIds?.[0];
+
+        const permission = await canUser(userId, 'finance', 'invoices', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         await adminDb.collection('invoices').doc(id).delete();
         revalidatePath('/admin/finance/invoices');
         return { success: true };

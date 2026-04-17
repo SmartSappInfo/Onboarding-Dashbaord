@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
     LayoutDashboard, 
+    Layout,
     School, 
     Settings, 
     Calendar, 
@@ -43,9 +44,9 @@ import {
     FileCheck,
     Target,
     Tags,
-    Layout,
     ClipboardSignature,
-    Database
+    Database,
+    ShieldEllipsis
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -220,6 +221,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const systemNavItems = [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: hasPerm('activities_view') },
     { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: hasPerm('system_admin') },
+    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: hasPerm('system_admin') },
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: hasPerm('fields_manage') },
     { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: hasPerm('system_admin') },
   ];

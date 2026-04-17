@@ -7,8 +7,9 @@ import { collection, query, where, orderBy, doc, addDoc } from 'firebase/firesto
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Form } from '@/lib/types';
-import { deleteFormAction, cloneFormAction, toggleFormStatusAction } from '@/lib/forms-actions';
+import { createFormAction, deleteFormAction, cloneFormAction, toggleFormStatusAction } from '@/lib/forms-actions';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -79,6 +80,12 @@ export default function FormsClient() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [formToDelete, setFormToDelete] = useState<Form | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const { can } = usePermissions();
+  const canCreate = can('studios', 'forms', 'create');
+  const canEdit = can('studios', 'forms', 'edit');
+  const canDelete = can('studios', 'forms', 'delete');
 
   // Live Firestore subscription
   const formsQuery = useMemoFirebase(() => {
@@ -94,8 +101,8 @@ export default function FormsClient() {
 
   // Actions
   const handleDelete = async () => {
-    if (!formToDelete) return;
-    const result = await deleteFormAction(formToDelete.id);
+    if (!formToDelete || !user) return;
+    const result = await deleteFormAction(formToDelete.id, user.uid);
     if (result.success) {
       toast({ title: 'Form Deleted', description: `"${formToDelete.internalName}" and ${result.deletedSubmissions} submissions removed.` });
       setFormToDelete(null);
@@ -105,8 +112,9 @@ export default function FormsClient() {
   };
 
   const handleClone = async (form: Form) => {
+    if (!user) return;
     setCloningId(form.id);
-    const result = await cloneFormAction(form.id);
+    const result = await cloneFormAction(form.id, user.uid);
     if (result.success) {
       toast({ title: 'Form Cloned', description: `"${form.internalName}" duplicated as a draft.` });
     } else {
@@ -116,7 +124,8 @@ export default function FormsClient() {
   };
 
   const handleStatusToggle = async (form: Form, status: 'published' | 'draft' | 'archived') => {
-    const result = await toggleFormStatusAction(form.id, status);
+    if (!user) return;
+    const result = await toggleFormStatusAction(form.id, status, user.uid);
     if (result.success) {
       toast({ title: 'Status Updated', description: `"${form.internalName}" is now ${status}.` });
     } else {
@@ -125,10 +134,11 @@ export default function FormsClient() {
   };
 
   const handleCreateNew = async () => {
-    if (!firestore || !activeWorkspaceId || !activeOrganizationId) return;
-    const now = new Date().toISOString();
+    if (!user || !activeWorkspaceId || !activeOrganizationId) return;
+    setIsCreating(true);
+
     const slug = `form-${Date.now().toString(36)}`;
-    const newForm: Omit<Form, 'id'> = {
+    const newForm: Omit<Form, 'id' | 'createdAt' | 'updatedAt' | 'submissionCount'> = {
       workspaceId: activeWorkspaceId,
       organizationId: activeOrganizationId,
       internalName: 'Untitled Form',
@@ -150,16 +160,19 @@ export default function FormsClient() {
       successBehavior: { type: 'message', value: 'Thank you for your submission!' },
       actions: { tags: [], automations: [], notifications: { internalUserIds: [] }, webhooks: [] },
       status: 'draft',
-      submissionCount: 0,
-      createdAt: now,
-      updatedAt: now,
     };
 
     try {
-      const ref = await addDoc(collection(firestore, 'forms'), newForm);
-      router.push(`/admin/forms/${ref.id}/edit`);
+      const result = await createFormAction(newForm, user.uid);
+      if (result.success) {
+        router.push(`/admin/forms/${result.id}/edit`);
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -219,15 +232,17 @@ export default function FormsClient() {
           </TooltipTrigger>
           <TooltipContent><p>Preview Public Form</p></TooltipContent>
         </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent><p>Edit Form</p></TooltipContent>
-        </Tooltip>
+        {canEdit && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
+                <Edit className="h-4 w-4" />
+                <span className="sr-only">Edit</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent><p>Edit Form</p></TooltipContent>
+          </Tooltip>
+        )}
       </TooltipProvider>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -238,30 +253,38 @@ export default function FormsClient() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
-            <Edit className="mr-2 h-4 w-4" /> Edit Builder
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleClone(form)} disabled={cloningId !== null}>
-            {cloningId === form.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />}
-            Clone Form
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleStatusToggle(form, form.status === 'published' ? 'draft' : 'published')}>
-            {form.status === 'published' ? (
-              <><EyeOff className="mr-2 h-4 w-4" /> Unpublish</>
-            ) : (
-              <><Eye className="mr-2 h-4 w-4" /> Publish</>
-            )}
-          </DropdownMenuItem>
-          {form.status !== 'archived' && (
+          {canEdit && (
+            <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit Builder
+            </DropdownMenuItem>
+          )}
+          {canCreate && (
+            <DropdownMenuItem onClick={() => handleClone(form)} disabled={cloningId !== null}>
+              {cloningId === form.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />}
+              Clone Form
+            </DropdownMenuItem>
+          )}
+          {canEdit && <DropdownMenuSeparator />}
+          {canEdit && (
+            <DropdownMenuItem onClick={() => handleStatusToggle(form, form.status === 'published' ? 'draft' : 'published')}>
+              {form.status === 'published' ? (
+                <><EyeOff className="mr-2 h-4 w-4" /> Unpublish</>
+              ) : (
+                <><Eye className="mr-2 h-4 w-4" /> Publish</>
+              )}
+            </DropdownMenuItem>
+          )}
+          {canEdit && form.status !== 'archived' && (
             <DropdownMenuItem onClick={() => handleStatusToggle(form, 'archived')}>
               <Archive className="mr-2 h-4 w-4" /> Archive
             </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setFormToDelete(form)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </DropdownMenuItem>
+          {canDelete && <DropdownMenuSeparator />}
+          {canDelete && (
+            <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setFormToDelete(form)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -278,9 +301,12 @@ export default function FormsClient() {
               <p className="text-xs font-bold text-muted-foreground mt-1">Design and deploy data capture forms</p>
             </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
-              <Button onClick={handleCreateNew} className="h-11 rounded-xl font-bold shadow-lg">
-                <PlusCircle className="mr-2 h-4 w-4" /> New Form
-              </Button>
+              {canCreate && (
+                <Button onClick={handleCreateNew} disabled={isCreating} className="h-11 rounded-xl font-bold shadow-lg">
+                  {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                  New Form
+                </Button>
+              )}
             </div>
           </div>
 

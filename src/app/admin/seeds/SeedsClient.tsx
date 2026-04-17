@@ -11,6 +11,8 @@ import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
+import { migrateAllPermissions } from '@/lib/permissions-migration';
+import { ShieldAlert } from 'lucide-react';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -21,6 +23,7 @@ export default function SeedsClient() {
   
   const [migrationStatus, setMigrationStatus] = useState<SeedingState>('idle');
   const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
+  const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
 
   const handleMigration = async () => {
     if (!firestore) return;
@@ -49,6 +52,26 @@ export default function SeedsClient() {
       toast({ variant: 'destructive', title: 'Rollback Failed', description: error.message });
     } finally {
       setTimeout(() => setRollbackStatus('idle'), 2500);
+    }
+  };
+
+  const handlePermissionsMigration = async () => {
+    if (!firestore || !activeWorkspaceId) return;
+    setPermissionsStatus('seeding');
+    try {
+      // For seeding purposes, we use smarsapp-hq as default if active org is not available
+      const orgId = 'smartsapp-hq'; 
+      const result = await migrateAllPermissions(firestore, orgId);
+      toast({ 
+        title: 'Permissions Migrated!', 
+        description: `Updated ${result.rolesUpdated} roles and ${result.usersUpdated} users.` 
+      });
+      setPermissionsStatus('success');
+    } catch (error: any) {
+      setPermissionsStatus('error');
+      toast({ variant: 'destructive', title: 'Migration Failed', description: error.message });
+    } finally {
+      setTimeout(() => setPermissionsStatus('idle'), 2500);
     }
   };
 
@@ -81,6 +104,14 @@ export default function SeedsClient() {
                         onSync={handleMigration}
                         onRollback={handleRollback}
                     />
+                    <SimpleMigrationCard 
+                        title="Hierarchical RBAC Migration (Permissions Expansion)"
+                        description="Core Protocol: Converts legacy flat permission arrays into the new nested PermissionsSchema (Section -> Feature -> Action). Updates both Roles and User profiles to ensure enterprise-grade authorization."
+                        icon={ShieldAlert}
+                        status={permissionsStatus}
+                        onSync={handlePermissionsMigration}
+                        syncLabel="Migrate Permissions"
+                    />
                 </div>
             </section>
         </main>
@@ -89,13 +120,14 @@ export default function SeedsClient() {
 }
 
 // Simple migration card for basic seed operations
-function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon }: {
+function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon, syncLabel = "Map Agreements" }: {
   title: string;
   description: string;
   onSync: () => void;
   onRollback?: () => void;
   status: SeedingState;
   icon: any;
+  syncLabel?: string;
 }) {
     return (
         <div className="p-8 rounded-[2.5rem] bg-card border shadow-sm flex flex-col justify-between gap-6 group hover:border-primary/40 transition-all ring-1 ring-border shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)]">
@@ -106,7 +138,7 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
             </div>
             <div className="flex gap-4 pt-4 border-t">
                 <Button onClick={onSync} disabled={status === 'seeding'} className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-95">
-                    {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} Map Agreements
+                    {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} {syncLabel}
                 </Button>
                 {onRollback && (
                     <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 hover:bg-rose-50 h-12 px-6 shadow-sm active:scale-95 transition-all">

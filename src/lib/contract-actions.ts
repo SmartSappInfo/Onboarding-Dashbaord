@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { sendMessage } from './messaging-engine';
 import type { Contract, ContractStatus } from './types';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -24,6 +25,12 @@ export async function upsertContractAction(data: {
     workspaceId: string;
 }) {
     try {
+        // 0. Permission Check
+        const permission = await canUser(data.userId, 'finance', 'agreements', 'create', data.workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         const contractsCol = adminDb.collection('contracts');
         // Check for existing contract for this school
         const querySnap = await contractsCol.where('entityId', '==', data.entityId).limit(1).get();
@@ -74,6 +81,12 @@ export async function sendContractAction(input: {
 }) {
     try {
         const { contractId, emailTemplateId, smsTemplateId, recipients, entityId, entityName, userId, publicUrl, workspaceId } = input;
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'finance', 'agreements', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
 
         // 1. Prepare Dispatches
         const dispatchPromises: Promise<any>[] = [];
@@ -158,6 +171,17 @@ export async function deleteContractAction(
     userId: string
 ) {
     try {
+        // 0. Permission Check (Try to resolve workspace from contract if not provided? 
+        // For contracts, they are workspace-linked. Let's fetch the doc first.)
+        const contractSnap = await adminDb.collection('contracts').doc(contractId).get();
+        if (!contractSnap.exists) throw new Error("Contract not found.");
+        const workspaceId = contractSnap.data()?.workspaceId;
+
+        const permission = await canUser(userId, 'finance', 'agreements', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         const batch = adminDb.batch();
         
         // Use unified identifier strictly

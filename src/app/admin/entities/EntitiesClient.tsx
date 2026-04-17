@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -101,6 +102,11 @@ export default function EntitiesClient() {
   const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
   const [transferringEntity, setTransferringEntity] = useState<WorkspaceEntity | null>(null);
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
+
+  const { can } = usePermissions();
+  const canCreate = can('operations', 'campuses', 'create');
+  const canDelete = can('operations', 'campuses', 'delete');
+  const canEdit = can('operations', 'campuses', 'edit');
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -257,34 +263,38 @@ export default function EntitiesClient() {
  <div className="h-full overflow-y-auto  bg-background text-left">
  <div className=" space-y-8">
  <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
- <div className="flex justify-end items-center gap-3 shrink-0">
+                    <div className="flex justify-end items-center gap-3 shrink-0">
                     {selectedEntityIds.length > 0 && (
                         <Button
                             variant="outline"
- className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
                             onClick={() => setIsBulkTagOpen(true)}
                         >
- <TagIcon className="h-4 w-4" />
+                            <TagIcon className="h-4 w-4" />
                             Tag {selectedEntityIds.length} Selected
                         </Button>
                     )}
- <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
+                    <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
                         <Link href="/admin/entities/upload">
- <FileUp className="mr-2 h-4 w-4" />
+                            <FileUp className="mr-2 h-4 w-4" />
                             {importBulk}
                         </Link>
                     </Button>
- <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
-                        <Link href="/admin/entities/new/ai">
- <Sparkles className="h-4 w-4" /> AI Architect
-                        </Link>
-                    </RainbowButton>
- <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
-                        <Link href="/admin/entities/new">
- <PlusCircle className="mr-2 h-5 w-5" />
-                            {addNew}
-                        </Link>
-                    </Button>
+                    {canCreate && (
+                        <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
+                            <Link href="/admin/entities/new/ai">
+                                <Sparkles className="h-4 w-4" /> AI Architect
+                            </Link>
+                        </RainbowButton>
+                    )}
+                    {canCreate && (
+                        <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+                            <Link href="/admin/entities/new">
+                                <PlusCircle className="mr-2 h-5 w-5" />
+                                {addNew}
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </div>
             
@@ -434,8 +444,13 @@ export default function EntitiesClient() {
                                         </Link>
                                     </DropdownMenuItem>
                                     
- <DropdownMenuSeparator className="my-2" />
- <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">{deleteLabel}</span></DropdownMenuItem>
+                                    <DropdownMenuSeparator className="my-2" />
+                                    {canDelete && (
+                                        <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span className="font-bold text-sm">{deleteLabel}</span>
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>

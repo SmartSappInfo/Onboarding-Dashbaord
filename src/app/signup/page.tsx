@@ -45,6 +45,7 @@ export default function SignupPage() {
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -61,7 +62,6 @@ export default function SignupPage() {
   }, []);
 
   const onSubmit = (data: FormData) => {
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
     setIsSubmitting(true);
     createUserWithEmailAndPassword(auth, data.email, data.password)
       .then(async (userCredential) => {

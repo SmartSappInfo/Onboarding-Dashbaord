@@ -8,6 +8,8 @@ import { recordConversion } from './analytics-actions';
 
 import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType } from './types';
 import { createEntityAction, updateEntityAction } from './entity-actions';
+import { canUser } from './workspace-permissions';
+import { processLeadCaptureAction } from './lead-actions';
 
 /**
  * Get surveys for a specific contact (by entityId or entityId)
@@ -80,7 +82,15 @@ export async function cloneSurvey(surveyId: string, userId: string) {
       return { success: false, error: 'Survey not found.' };
     }
 
-    const originalData = surveySnap.data();
+    const originalData = surveySnap.data() as Survey;
+    const workspaceId = originalData.workspaceIds?.[0];
+
+    // 0. Permission Check
+    const permission = await canUser(userId, 'studios', 'surveys', 'create', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
     if (!originalData) return { success: false, error: 'Survey data is empty.' };
 
     const newTitle = `${originalData.title} (Copy)`;
@@ -134,19 +144,101 @@ export async function cloneSurvey(surveyId: string, userId: string) {
 }
 
 /**
+ * Deletes a survey and its subcollections.
+ */
+export async function deleteSurveyAction(surveyId: string, userId: string) {
+    try {
+        const surveyRef = adminDb.collection('surveys').doc(surveyId);
+        const surveySnap = await surveyRef.get();
+        if (!surveySnap.exists) throw new Error("Survey not found.");
+        const workspaceId = (surveySnap.data() as Survey).workspaceIds?.[0];
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'studios', 'surveys', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        // Delete subcollections (responses, resultPages)
+        const responses = await surveyRef.collection('responses').get();
+        const resultPages = await surveyRef.collection('resultPages').get();
+        
+        const batch = adminDb.batch();
+        responses.forEach(doc => batch.delete(doc.ref));
+        resultPages.forEach(doc => batch.delete(doc.ref));
+        batch.delete(surveyRef);
+        
+        await batch.commit();
+
+        await logActivity({
+            organizationId: 'default',
+            workspaceId: workspaceId || '',
+            userId,
+            type: 'school_updated',
+            source: 'user_action',
+            description: `deleted survey protocol: "${surveySnap.data()?.internalName || surveySnap.data()?.title}"`,
+            metadata: { surveyId }
+        });
+
+        revalidatePath('/admin/surveys');
+        return { success: true };
+    } catch (error: any) {
+        console.error("Delete Survey Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Updates a survey's status with permission validation.
+ */
+export async function updateSurveyStatusAction(surveyId: string, status: 'published' | 'draft' | 'archived', userId: string) {
+    try {
+        const surveyRef = adminDb.collection('surveys').doc(surveyId);
+        const surveySnap = await surveyRef.get();
+        if (!surveySnap.exists) throw new Error("Survey not found.");
+        const workspaceId = (surveySnap.data() as Survey).workspaceIds?.[0];
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'studios', 'surveys', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        await surveyRef.update({ status, updatedAt: new Date().toISOString() });
+
+        revalidatePath('/admin/surveys');
+        return { success: true };
+    } catch (error: any) {
+        console.error("Update Survey Status Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Bulk deletes survey responses.
  */
 export async function deleteSurveyResponses(surveyId: string, responseIds: string[], userId: string) {
-    const batch = adminDb.batch();
-    const surveyRef = adminDb.collection('surveys').doc(surveyId);
-    
-    for (const id of responseIds) {
-        const docRef = surveyRef.collection('responses').doc(id);
-        batch.delete(docRef);
-    }
-
     try {
+        const surveyRef = adminDb.collection('surveys').doc(surveyId);
+        const surveySnap = await surveyRef.get();
+        if (!surveySnap.exists) throw new Error("Survey not found.");
+        const workspaceId = (surveySnap.data() as Survey).workspaceIds?.[0];
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'studios', 'surveys', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        const batch = adminDb.batch();
+    
+        for (const id of responseIds) {
+            const docRef = surveyRef.collection('responses').doc(id);
+            batch.delete(docRef);
+        }
+
         await batch.commit();
+
         await logActivity({
             entityId: '',
             organizationId: 'default',
@@ -157,6 +249,7 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
             description: `deleted ${responseIds.length} survey responses`,
             metadata: { surveyId, count: responseIds.length }
         });
+
         revalidatePath(`/admin/surveys/${surveyId}/results`);
         return { success: true };
     } catch (error: any) {
@@ -165,7 +258,6 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
     }
 }
 
-import { processLeadCaptureAction } from './lead-actions';
 
 
 /**

@@ -155,7 +155,7 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
     };
 
     estimate();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [debouncedCrop, debouncedWidth, debouncedQuality, file?.originalDataUrl, open]);
 
   const onCropComplete = React.useCallback((croppedArea: Area, croppedAreaPixels: Area) => {

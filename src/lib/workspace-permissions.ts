@@ -1,7 +1,8 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { AppPermissionId, UserProfile, Role, Workspace, WorkspaceEntity } from './types';
+import type { AppPermissionId, UserProfile, Role, Workspace, WorkspaceEntity, PermissionsSchema, AppPermissionAction } from './types';
+import { evaluatePermission } from './permissions-engine';
 
 /**
  * @fileOverview Workspace-scoped permission checking utilities.
@@ -217,6 +218,7 @@ export async function checkWorkspacePermission(
 
     const user = userSnap.data() as UserProfile;
     const permissions: AppPermissionId[] = user.permissions || [];
+    const schema = user.permissionsSchema;
 
     // System admins bypass all permission checks
     if (permissions.includes('system_admin')) {
@@ -226,8 +228,24 @@ export async function checkWorkspacePermission(
       };
     }
 
-    // 3. Check if user has the required permission
-    if (!permissions.includes(permission)) {
+    // 3. Evaluate permission
+    let isGranted = false;
+
+    if (schema) {
+      // Use the new hierarchical schema if available
+      const coords = mapLegacyPermissionToCoordinates(permission);
+      if (coords) {
+        isGranted = evaluatePermission(schema, coords.section, coords.feature, coords.action);
+      } else {
+        // Fallback to flat array if no mapping exists yet
+        isGranted = permissions.includes(permission);
+      }
+    } else {
+      // Legacy flat array check
+      isGranted = permissions.includes(permission);
+    }
+
+    if (!isGranted) {
       return {
         granted: false,
         reason: `User does not have required permission: ${permission}`,
@@ -401,4 +419,82 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
     console.error('>>> [WORKSPACE_PERMISSIONS] getUserWorkspaceIds failed:', error.message);
     return [];
   }
+}
+
+/**
+ * Checks if a user has a specific permission using the new hierarchical coordinates.
+ * This is the recommended way to check permissions for new features.
+ */
+export async function canUser(
+  userId: string,
+  section: keyof PermissionsSchema,
+  feature: string,
+  action: AppPermissionAction = 'view',
+  workspaceId?: string // Optional workspace context
+): Promise<PermissionCheckResult> {
+  try {
+    // 1. If workspaceId is provided, check access first
+    if (workspaceId) {
+      const workspaceAccess = await checkWorkspaceAccess(userId, workspaceId);
+      if (!workspaceAccess.granted) return workspaceAccess;
+    }
+
+    // 2. Fetch user profile
+    const userSnap = await adminDb.collection('users').doc(userId).get();
+    if (!userSnap.exists) {
+      return { granted: false, reason: 'User not found', level: 'organization' };
+    }
+
+    const user = userSnap.data() as UserProfile;
+    
+    // System Admin Bypass
+    if (user.permissions?.includes('system_admin')) {
+      return { granted: true, reason: 'System admin bypass' };
+    }
+
+    // 3. Evaluate Hierarchical Permission
+    if (!user.permissionsSchema) {
+      return { granted: false, reason: 'Hierarchical permissions not initialized for user', level: 'feature' };
+    }
+
+    const granted = evaluatePermission(user.permissionsSchema, section, feature, action);
+
+    return {
+      granted,
+      reason: granted ? undefined : `Access denied for ${section}/${feature}:${action}`,
+      level: 'feature'
+    };
+  } catch (error: any) {
+    console.error(`>>> [WORKSPACE_PERMISSIONS] canUser failed:`, error.message);
+    return { granted: false, reason: `Permission check error: ${error.message}` };
+  }
+}
+
+/**
+ * Bridge function to map legacy string permissions to new hierarchical coordinates.
+ */
+function mapLegacyPermissionToCoordinates(permission: AppPermissionId): { section: keyof PermissionsSchema, feature: string, action: AppPermissionAction } | null {
+  const mapping: Record<AppPermissionId, { section: keyof PermissionsSchema, feature: string, action: AppPermissionAction }> = {
+    schools_view: { section: 'operations', feature: 'campuses', action: 'view' },
+    schools_edit: { section: 'operations', feature: 'campuses', action: 'edit' },
+    prospects_view: { section: 'operations', feature: 'pipeline', action: 'view' },
+    meetings_manage: { section: 'operations', feature: 'meetings', action: 'edit' },
+    tasks_manage: { section: 'operations', feature: 'tasks', action: 'edit' },
+    finance_view: { section: 'finance', feature: 'agreements', action: 'view' }, // Approximation
+    finance_manage: { section: 'finance', feature: 'agreements', action: 'edit' }, // Approximation
+    contracts_delete: { section: 'finance', feature: 'agreements', action: 'delete' },
+    studios_view: { section: 'studios', feature: 'landingPages', action: 'view' }, // Approximation
+    studios_edit: { section: 'studios', feature: 'landingPages', action: 'edit' }, // Approximation
+    dashboard_manage: { section: 'operations', feature: 'dashboard', action: 'edit' },
+    activities_view: { section: 'management', feature: 'activities', action: 'view' },
+    tags_view: { section: 'studios', feature: 'tags', action: 'view' },
+    tags_manage: { section: 'studios', feature: 'tags', action: 'edit' },
+    tags_apply: { section: 'studios', feature: 'tags', action: 'view' }, // Using view as proxy
+    forms_manage: { section: 'studios', feature: 'forms', action: 'edit' },
+    fields_manage: { section: 'management', feature: 'fields', action: 'edit' },
+    system_admin: { section: 'management', feature: 'users', action: 'view' }, // Dummy mapping, usually bypassed
+    system_user_switch: { section: 'management', feature: 'users', action: 'edit' },
+  };
+
+  return mapping[permission] || null;
 }

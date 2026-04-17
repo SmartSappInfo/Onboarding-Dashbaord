@@ -479,6 +479,8 @@ export interface Role {
   name: string;
   description: string;
   permissions: AppPermissionId[];
+  /** Hierarchical permission structure (Permissions Expansion) */
+  permissionsSchema?: PermissionsSchema;
   workspaceIds: string[];
   color: string;
   createdAt: string;
@@ -496,6 +498,8 @@ export interface UserProfile {
   isAuthorized: boolean;
   roles: string[];
   permissions?: AppPermissionId[];
+  /** Hierarchical permission structure (Permissions Expansion) */
+  permissionsSchema?: PermissionsSchema;
   // AI User Preferences
   preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
   preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
@@ -1574,6 +1578,45 @@ export interface BillingSettings {
   signatureName: string;
   signatureDesignation: string;
   signatureUrl?: string;
+}
+
+// ─────────────────────────────────────────────────
+// Hierarchical RBAC System (Requirement: Permissions Expansion)
+// ─────────────────────────────────────────────────
+
+/**
+ * Standard CRUD actions for permissions.
+ */
+export type AppPermissionAction = 'view' | 'create' | 'edit' | 'delete';
+
+/**
+ * Action-level permissions for a specific feature.
+ * Missing keys default to 'false'.
+ */
+export interface FeaturePermissionSet {
+  view: boolean;
+  create?: boolean;
+  edit?: boolean;
+  delete?: boolean;
+}
+
+/**
+ * Section-level container for features.
+ * inheritance: Section.enabled = false overrides all sub-features.
+ */
+export interface SectionPermissions {
+  enabled: boolean;
+  features: Record<string, FeaturePermissionSet>;
+}
+
+/**
+ * Full hierarchical permission schema.
+ */
+export interface PermissionsSchema {
+  operations: SectionPermissions;
+  finance: SectionPermissions;
+  studios: SectionPermissions;
+  management: SectionPermissions;
 }
 
 // ─────────────────────────────────────────────────

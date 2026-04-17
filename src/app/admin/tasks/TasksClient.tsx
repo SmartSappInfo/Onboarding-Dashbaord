@@ -56,10 +56,17 @@ import {
     deleteTaskNonBlocking, 
     updateTaskNonBlocking,
     createTaskNonBlocking,
-    bulkDeleteTasks,
     bulkCompleteTasks,
     getTaskInterlinkUrl
 } from '@/lib/task-actions';
+import { 
+    createTaskAction, 
+    updateTaskAction, 
+    deleteTaskAction, 
+    bulkUpdateTasksAction, 
+    bulkDeleteTasksAction 
+} from '@/lib/task-server-actions';
+import { usePermissions } from '@/hooks/use-permissions';
 import { cn, toTitleCase } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -132,6 +139,11 @@ export default function TasksClient() {
     const { toast } = useToast();
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId, activeOrganizationId } = useTenant();
+
+    const { can } = usePermissions();
+    const canCreate = can('operations', 'tasks', 'create');
+    const canDelete = can('operations', 'tasks', 'delete');
+    const canEdit = can('operations', 'tasks', 'edit');
     
     // View State
     const [activeTab, setActiveTab] = React.useState('list');
@@ -227,21 +239,23 @@ export default function TasksClient() {
     }, [allTasks]);
 
     const handleSaveTask = async (payload: any) => {
-        if (!firestore || !currentUser) return;
+        if (!currentUser) return;
         setIsSaving(true);
         try {
             const finalPayload = { ...payload, workspaceId: activeWorkspaceId };
-            if (editingTask) {
-                updateTaskNonBlocking(firestore, editingTask.id, finalPayload);
-                toast({ title: 'Task Architecture Synchronized' });
+            const res = editingTask 
+                ? await updateTaskAction(editingTask.id, finalPayload, currentUser.uid)
+                : await createTaskAction(finalPayload, currentUser.uid);
+
+            if (res.success) {
+                toast({ title: editingTask ? 'Task Architecture Synchronized' : 'Task Initialized' });
+                setEditorOpen(false);
+                setEditingTask(null);
             } else {
-                await createTaskNonBlocking(firestore, finalPayload);
-                toast({ title: 'Task Initialized' });
+                toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
             }
-            setEditorOpen(false);
-            setEditingTask(null);
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Operation Failed' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to save task." });
         } finally {
             setIsSaving(false);
         }
@@ -266,49 +280,69 @@ export default function TasksClient() {
         setEditorOpen(true);
     };
 
-    const handleConfirmComplete = () => {
-        if (!firestore || !taskToComplete) return;
-        if (taskToComplete.status === 'done') {
-            updateTaskNonBlocking(firestore, taskToComplete.id, { status: 'todo', completedAt: undefined });
-            toast({ title: 'Task Reopened' });
-        } else {
-            completeTaskNonBlocking(firestore, taskToComplete.id);
-            toast({ title: 'Protocol Resolved' });
+    const handleConfirmComplete = async () => {
+        if (!currentUser || !taskToComplete) return;
+        
+        const isDone = taskToComplete.status === 'done';
+        const newStatus = isDone ? 'todo' : 'done';
+        
+        try {
+            const res = await updateTaskAction(taskToComplete.id, { ...taskToComplete, status: newStatus }, currentUser.uid);
+            if (res.success) {
+                toast({ title: isDone ? 'Task Reopened' : 'Protocol Resolved' });
+            } else {
+                toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
         }
         setTaskToComplete(null);
     };
 
-    const handleDelete = (id: string) => {
-        if (!firestore || !confirm('Permanently remove this protocol?')) return;
-        deleteTaskNonBlocking(firestore, id);
-        toast({ title: 'Record Purged' });
+    const handleDelete = async (id: string) => {
+        if (!currentUser || !confirm('Permanently remove this protocol?')) return;
+        try {
+            const res = await deleteTaskAction(id, currentUser.uid);
+            if (res.success) toast({ title: 'Record Purged' });
+            else toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        }
     };
 
     const handleBulkComplete = async () => {
-        if (!firestore || selectedIds.length === 0) return;
+        if (!currentUser || selectedIds.length === 0) return;
         setIsBulkProcessing(true);
         try {
-            await bulkCompleteTasks(firestore, selectedIds);
-            toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
-            setSelectedIds([]);
-            setIsSelectionMode(false);
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Bulk Update Failed' });
+            const res = await bulkUpdateTasksAction(selectedIds, { status: 'done' } as any, currentUser.uid, activeWorkspaceId);
+            if (res.success) {
+                toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
         } finally {
             setIsBulkProcessing(false);
         }
     };
 
     const handleBulkDelete = async () => {
-        if (!firestore || selectedIds.length === 0 || !confirm(`Purge ${selectedIds.length} protocols?`)) return;
+        if (!currentUser || selectedIds.length === 0 || !confirm(`Purge ${selectedIds.length} protocols?`)) return;
         setIsBulkProcessing(true);
         try {
-            await bulkDeleteTasks(firestore, selectedIds);
-            toast({ title: 'Bulk Purge Success' });
-            setSelectedIds([]);
-            setIsSelectionMode(false);
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Bulk Deletion Failed' });
+            const res = await bulkDeleteTasksAction(selectedIds, currentUser.uid, activeWorkspaceId);
+            if (res.success) {
+                toast({ title: 'Bulk Purge Success' });
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
         } finally {
             setIsBulkProcessing(false);
         }
@@ -376,8 +410,12 @@ export default function TasksClient() {
                         {(Object.entries(CATEGORY_MAP) as [TaskCategory, any][]).map(([key, config]) => (
                             <button 
                                 key={key}
-                                onClick={() => handleQuickCategorySelect(key)}
- className="group flex items-center gap-4 p-5 rounded-2xl bg-card/50 border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1"
+                                onClick={() => canCreate && handleQuickCategorySelect(key)}
+                                className={cn(
+                                    "group flex items-center gap-4 p-5 rounded-2xl bg-card/50 border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1",
+                                    !canCreate && "opacity-50 cursor-not-allowed filter grayscale"
+                                )}
+                                disabled={!canCreate}
                             >
  <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", config.color)}>
  <config.icon className="h-5 w-5" />
@@ -409,9 +447,11 @@ export default function TasksClient() {
  className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                             />
                         </div>
- <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-semibold h-11 px-8 shadow-xl active:scale-95 text-[10px]">
-                            + New Task
-                        </Button>
+                        {canCreate && (
+                            <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-semibold h-11 px-8 shadow-xl active:scale-95 text-[10px]">
+                                + New Task
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -423,11 +463,11 @@ export default function TasksClient() {
                             exit={{ y: 50, opacity: 0 }}
  className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
                         >
- <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-border/50/10">
+  <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-border/50/10">
  <span className="px-4 text-[10px] font-semibold border-r border-white/10">{selectedIds.length} Selected</span>
  <div className="flex gap-1.5 p-1 bg-card/5 rounded-xl">
- <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>
- <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold text-[9px] h-9 px-4">Purge Selected</Button>
+ {canEdit && <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>}
+ {canDelete && <Button size="sm" variant="ghost" onClick={handleBulkDelete} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-bold text-[9px] h-9 px-4">Purge Selected</Button>}
  <Separator orientation="vertical" className="h-9 bg-card/10" />
  <Button size="icon" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 w-9 text-white/40 hover:text-white"><X size={16} /></Button>
                                 </div>
@@ -539,16 +579,16 @@ export default function TasksClient() {
                                                             </DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
  <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Operational Logic</DropdownMenuLabel>
- <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3">
+ {canEdit && (<DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="rounded-xl p-2.5 gap-3">
  <Pencil className="h-4 w-4 text-primary" /> <span className="font-bold text-sm ">Modify Blueprint</span>
-                                                                </DropdownMenuItem>
- <DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
+                                                                </DropdownMenuItem>)}
+                                                                {canEdit && (<DropdownMenuItem onClick={() => setTaskToComplete(task)} className="rounded-xl p-2.5 gap-3">
  <CheckCircle2 className="h-4 w-4 text-emerald-500" /> <span className="font-bold text-sm ">{task.status === 'done' ? 'Reopen Protocol' : 'Mark Resolved'}</span>
-                                                                </DropdownMenuItem>
+                                                                </DropdownMenuItem>)}
                                                                 <DropdownMenuSeparator />
- <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
+ {canDelete && (<DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive rounded-xl p-2.5 gap-3 focus:bg-destructive/10">
  <Trash2 className="h-4 w-4" /> <span className="font-bold text-sm ">Purge Protocol</span>
-                                                                </DropdownMenuItem>
+                                                                </DropdownMenuItem>)}
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                     </div>
@@ -561,15 +601,15 @@ export default function TasksClient() {
                                             </div>
                                         )}
 
-                                        {status !== 'done' && (
+                                        {status !== 'done' && canCreate && (
                                             <button 
                                                 onClick={() => {
                                                     setEditingTask({ status } as any);
                                                     setEditorOpen(true);
                                                 }}
- className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
+                                                className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
                                             >
- <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
+                                                <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
                                             </button>
                                         )}
                                     </div>

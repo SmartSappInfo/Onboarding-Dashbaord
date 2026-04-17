@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { Form, FormSubmission } from './types';
 import { revalidatePath } from 'next/cache';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server-side actions for the Form Builder.
@@ -15,8 +16,14 @@ const REVALIDATION_PATH = '/admin/forms';
 /**
  * Creates a new form in the forms collection.
  */
-export async function createFormAction(data: Omit<Form, 'id' | 'createdAt' | 'updatedAt' | 'submissionCount'>) {
+export async function createFormAction(data: Omit<Form, 'id' | 'createdAt' | 'updatedAt' | 'submissionCount'>, userId: string) {
   try {
+    // 0. Permission Check
+    const permission = await canUser(userId, 'studios', 'forms', 'create', data.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
     // Validate unique slug within workspace
     const existing = await adminDb
       .collection('forms')
@@ -49,7 +56,7 @@ export async function createFormAction(data: Omit<Form, 'id' | 'createdAt' | 'up
 /**
  * Updates an existing form.
  */
-export async function updateFormAction(id: string, data: Partial<Form>) {
+export async function updateFormAction(id: string, data: Partial<Form>, userId: string) {
   try {
     const ref = adminDb.collection('forms').doc(id);
     const snap = await ref.get();
@@ -58,6 +65,12 @@ export async function updateFormAction(id: string, data: Partial<Form>) {
     }
 
     const existing = snap.data() as Form;
+
+    // 0. Permission Check
+    const permission = await canUser(userId, 'studios', 'forms', 'edit', existing.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
 
     // If slug changed, validate uniqueness
     if (data.slug && data.slug !== existing.slug) {
@@ -89,12 +102,20 @@ export async function updateFormAction(id: string, data: Partial<Form>) {
 /**
  * Deletes a form and optionally its submissions.
  */
-export async function deleteFormAction(id: string) {
+export async function deleteFormAction(id: string, userId: string) {
   try {
     const ref = adminDb.collection('forms').doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
       return { success: false, error: 'Form not found.' };
+    }
+
+    const existing = snap.data() as Form;
+
+    // 0. Permission Check
+    const permission = await canUser(userId, 'studios', 'forms', 'delete', existing.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
     }
 
     // Delete all related submissions
@@ -119,13 +140,19 @@ export async function deleteFormAction(id: string) {
 /**
  * Clones a form within the same workspace.
  */
-export async function cloneFormAction(formId: string) {
+export async function cloneFormAction(formId: string, userId: string) {
   try {
     const sourceRef = adminDb.collection('forms').doc(formId);
     const snap = await sourceRef.get();
     if (!snap.exists) return { success: false, error: 'Source form not found.' };
 
     const source = snap.data() as Form;
+
+    // 0. Permission Check
+    const permission = await canUser(userId, 'studios', 'forms', 'create', source.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
     const now = new Date().toISOString();
     const newSlug = `${source.slug}-copy-${Date.now().toString(36)}`;
 
@@ -153,9 +180,16 @@ export async function cloneFormAction(formId: string) {
 /**
  * Toggles a form between published and draft status.
  */
-export async function toggleFormStatusAction(id: string, newStatus: 'published' | 'draft' | 'archived') {
+export async function toggleFormStatusAction(id: string, newStatus: 'published' | 'draft' | 'archived', userId: string) {
   try {
     const ref = adminDb.collection('forms').doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) return { success: false, error: "Form not found." };
+    const existing = snap.data() as Form;
+
+    const permission = await canUser(userId, 'studios', 'forms', 'edit', existing.workspaceId);
+    if (!permission.granted) return { success: false, error: permission.reason };
+
     const updates: Record<string, any> = {
       status: newStatus,
       updatedAt: new Date().toISOString(),

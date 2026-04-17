@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { AppField } from '@/lib/types';
 import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction } from '@/lib/fields-actions';
@@ -180,6 +180,7 @@ function getTypeLabel(type: AppField['type']): string {
 export default function FieldsClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useTenant();
+  const { user } = useUser();
   const { toast } = useToast();
 
   // State
@@ -286,7 +287,7 @@ export default function FieldsClient() {
           compatibilityScope: formData.compatibilityScope as AppField['compatibilityScope'],
           validationRules: { required: formData.validationRequired },
           options,
-        });
+        }, user?.uid ?? '');
         if (result.success) {
           toast({ title: 'Field Updated', description: `"${formData.label}" has been saved.` });
           setIsCreateOpen(false);
@@ -310,7 +311,7 @@ export default function FieldsClient() {
           validationRules: { required: formData.validationRequired },
           options,
           status: 'active',
-        });
+        }, user?.uid ?? '');
         if (result.success) {
           toast({ title: 'Field Created', description: `"${formData.label}" has been added to your registry.` });
           setIsCreateOpen(false);
@@ -327,7 +328,7 @@ export default function FieldsClient() {
     if (!deletingField) return;
     setIsSubmitting(true);
     try {
-      const result = await deleteFieldAction(deletingField.id);
+      const result = await deleteFieldAction(deletingField.id, user?.uid ?? '');
       if (result.success) {
         toast({ title: 'Field Deleted', description: `"${deletingField.label}" has been removed.` });
         setDeletingField(null);
@@ -346,7 +347,7 @@ export default function FieldsClient() {
 
   const handleToggleStatus = async (field: AppField) => {
     const newStatus = field.status === 'active' ? 'inactive' : 'active';
-    const result = await updateFieldAction(field.id, { status: newStatus });
+    const result = await updateFieldAction(field.id, { status: newStatus }, user?.uid ?? '');
     if (result.success) {
       toast({ title: newStatus === 'active' ? 'Field Activated' : 'Field Deactivated' });
     } else {

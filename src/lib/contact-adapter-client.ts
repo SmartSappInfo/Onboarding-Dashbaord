@@ -23,13 +23,7 @@ export async function resolveContactClient(
   firestore?: Firestore
 ): Promise<ResolvedContact | null> {
   if (!firestore) {
-    // Dynamically import to avoid circular dependencies
-    const { useFirestore } = await import('@/firebase');
-    firestore = useFirestore();
-  }
-
-  if (!firestore) {
-    console.error('Firestore not available');
+    console.error('Firestore not available - must be provided for client-side resolution');
     return null;
   }
 

@@ -451,8 +451,8 @@ export default function SubmissionBehaviorStep() {
                                     </Label>
                                     <MultiSelect
                                         options={tags?.map(t => ({ label: t.name, value: t.name })) || []}
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value || []}
+                                        onChange={field.onChange}
+                                        value={field.value || []}
                                         placeholder="Add tags to new entities..."
                                         className="rounded-xl border-none bg-muted/20 min-h-11 shadow-none"
                                     />
@@ -470,8 +470,8 @@ export default function SubmissionBehaviorStep() {
                                     </Label>
                                     <MultiSelect
                                         options={automations?.map(a => ({ label: a.name, value: a.id })) || []}
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value || []}
+                                        onChange={field.onChange}
+                                        value={field.value || []}
                                         placeholder="Start workflows..."
                                         className="rounded-xl border-none bg-muted/20 min-h-11 shadow-none"
                                     />

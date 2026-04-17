@@ -25,6 +25,7 @@ type TenantContextType = {
   allowedWorkspaces: Workspace[]; // Alias for backward compatibility
   isSuperAdmin: boolean;
   hasPermission: (perm: AppPermissionId) => boolean;
+  permissionsSchema?: import('@/lib/types').PermissionsSchema;
   isLoading: boolean;
 };
 
@@ -187,11 +188,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
     hasPermission,
+    permissionsSchema: profile?.permissionsSchema,
     isLoading: !isInitialized || isUserLoading || isProfileLoading || isOrgsLoading || isWorkspacesLoading
   }), [
     activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, 
     setActiveOrganization, setActiveWorkspace, organizations, accessibleWorkspaces, 
-    isSuperAdmin, hasPermission, isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
+    isSuperAdmin, hasPermission, profile?.permissionsSchema, isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
   ]);
 
   return (

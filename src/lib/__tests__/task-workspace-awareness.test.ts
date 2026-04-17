@@ -66,7 +66,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
@@ -97,7 +97,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       expect(mockAdd).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -142,7 +142,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith('school_123', 'workspace_1');
@@ -190,7 +190,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       // Verify entityId is maintained, entityId is null for legacy records
       expect(mockAdd).toHaveBeenCalledWith(
@@ -221,7 +221,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       // Verify no contact fields are set
       expect(mockAdd).toHaveBeenCalledWith(
@@ -275,7 +275,7 @@ describe('Task Workspace Awareness (Requirement 13)', () => {
         title: 'Updated task',
       };
 
-      await updateTaskAction('task_123', updates);
+      await updateTaskAction('task_123', updates, 'test_user');
 
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({

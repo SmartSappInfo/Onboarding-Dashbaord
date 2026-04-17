@@ -3,7 +3,9 @@
 import * as React from 'react';
 import { collection, orderBy, query, doc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { UserProfile, Role, AppPermissionId } from '@/lib/types';
+import type { UserProfile, Role, AppPermissionId, PermissionsSchema } from '@/lib/types';
+import { mergePermissionsSchemas } from '@/lib/permissions-engine';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -63,14 +65,25 @@ export default function UsersClient() {
 
     const userDocRef = doc(firestore, 'users', userId);
     
-    // If roles changed, we need to flatten the associated permissions
+    // If roles changed, we need to flatten the associated permissions AND schemas
     if (updates.roles) {
         const selectedRoleObjects = roles.filter(r => updates.roles!.includes(r.id));
+        
+        // Legacy Flattening
         const allPerms = new Set<AppPermissionId>();
         selectedRoleObjects.forEach(r => {
             if (r.permissions) r.permissions.forEach(p => allPerms.add(p));
         });
         updates.permissions = Array.from(allPerms);
+
+        // Hierarchical Merging
+        const schemas = selectedRoleObjects
+            .map(r => r.permissionsSchema)
+            .filter((s): s is PermissionsSchema => !!s);
+        
+        if (schemas.length > 0) {
+            updates.permissionsSchema = mergePermissionsSchemas(schemas);
+        }
     }
 
     try {
@@ -102,9 +115,15 @@ export default function UsersClient() {
                 </h1>
  <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional access levels and flattened permission sets.</p>
             </div>
- <div className="flex items-center gap-3">
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-8 uppercase ">
-                    {users?.length || 0} Registered Members
+ <div className="flex items-center gap-4">
+                <Button asChild variant="outline" className="rounded-2xl font-black h-12 px-6 border-2 hover:bg-primary/5 hover:text-primary transition-all active:scale-95">
+                    <Link href="/admin/users/roles" className="flex items-center gap-2">
+                        <ShieldEllipsis className="h-5 w-5" /> Role Architecture
+                    </Link>
+                </Button>
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-12 rounded-2xl flex items-center gap-2 ">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Registered Members</span>
                 </Badge>
             </div>
         </div>

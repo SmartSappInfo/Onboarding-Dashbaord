@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Create task using server action
-    const result = await createTaskAction(taskData);
+    const result = await createTaskAction(taskData, 'system_api');
 
     if (!result.success) {
       return NextResponse.json(

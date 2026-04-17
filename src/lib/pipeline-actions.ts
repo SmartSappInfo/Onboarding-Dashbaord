@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Pipeline } from './types';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server-side actions for Pipeline management.
@@ -12,8 +13,14 @@ import type { Pipeline } from './types';
 /**
  * Updates an existing pipeline or initializes a new one.
  */
-export async function savePipelineAction(id: string | null, data: Partial<Pipeline>) {
+export async function savePipelineAction(id: string | null, data: Partial<Pipeline>, userId: string) {
     try {
+        // 0. Permission Check
+        const permission = await canUser(userId, 'operations', 'pipeline', id ? 'edit' : 'create', data.workspaceIds?.[0]);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         const timestamp = new Date().toISOString();
         const payload = {
             ...data,
@@ -78,8 +85,18 @@ export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId
 /**
  * Purges a pipeline blueprint.
  */
-export async function deletePipelineAction(id: string) {
+export async function deletePipelineAction(id: string, userId: string) {
     try {
+        const docSnap = await adminDb.collection('pipelines').doc(id).get();
+        if (!docSnap.exists) throw new Error("Pipeline not found.");
+        const workspaceId = docSnap.data()?.workspaceId;
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'operations', 'pipeline', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
         await adminDb.collection('pipelines').doc(id).delete();
         revalidatePath('/admin/pipeline');
         return { success: true };

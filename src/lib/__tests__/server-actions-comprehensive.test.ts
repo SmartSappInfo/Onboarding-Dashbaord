@@ -130,7 +130,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'entity_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
@@ -182,7 +182,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'school_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
@@ -236,7 +236,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'school_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(resolveContact).toHaveBeenCalledWith(
@@ -328,7 +328,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'school_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         // Verify entityId was populated from adapter
         expect(mockAdd).toHaveBeenCalledWith(
@@ -347,7 +347,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'entity_1',
           workspaceId: 'workspace_1',
           organizationId: 'org_1',
-        });
+        }, 'test_user');
 
         expect(mockUpdate).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -387,7 +387,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'entity_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(resolveContact).toHaveBeenCalled();
         expect(mockAdd).toHaveBeenCalledWith(
@@ -415,7 +415,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'entity_nonexistent',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
@@ -470,7 +470,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'school_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(resolveContact).toHaveBeenCalledWith(
           'school_1',
@@ -530,7 +530,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'school_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
@@ -611,7 +611,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           entityId: 'entity_1',
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         // Verify both identifiers are present (dual-write)
         expect(mockAdd).toHaveBeenCalledWith(
@@ -636,7 +636,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
           dueDate: new Date().toISOString(),
           reminders: [],
           reminderSent: false,
-        });
+        }, 'test_user');
 
         expect(result.success).toBe(true);
         expect(mockAdd).toHaveBeenCalledWith(
@@ -1038,7 +1038,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         entityId: 'entity_1',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(taskResult.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
@@ -1080,7 +1080,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         entityId: 'entity_nonexistent',
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(taskResult.success).toBe(true);
       expect(mockAdd).toHaveBeenCalledWith(
@@ -1138,7 +1138,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         dueDate: new Date().toISOString(),
         reminders: [],
         reminderSent: false,
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Firestore error');
@@ -1162,7 +1162,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
         title: 'Updated',
         workspaceId: 'workspace_1',
         organizationId: 'org_1',
-      });
+      }, 'test_user');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Update failed');
@@ -1171,7 +1171,7 @@ describe('Server Actions Comprehensive Tests (Task 34.3)', () => {
     it('should handle delete errors gracefully', async () => {
       mockDelete.mockRejectedValue(new Error('Delete failed'));
 
-      const result = await deleteTaskAction('task_1');
+      const result = await deleteTaskAction('task_1', 'test_user');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Delete failed');

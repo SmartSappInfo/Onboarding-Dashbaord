@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { AppField } from './types';
 import { revalidatePath } from 'next/cache';
+import { canUser } from './workspace-permissions';
 
 /**
  * @fileOverview Server-side actions for the Fields & Variables Manager.
@@ -15,8 +16,14 @@ const REVALIDATION_PATH = '/admin/settings/fields';
 /**
  * Creates a new custom field in the app_fields collection.
  */
-export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' | 'updatedAt'>) {
+export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' | 'updatedAt'>, userId: string) {
   try {
+    // 0. Permission Check
+    const permission = await canUser(userId, 'management', 'fields', 'create', data.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
     // Validate unique variableName within workspace
     const existing = await adminDb
       .collection('app_fields')
@@ -48,15 +55,20 @@ export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' 
 /**
  * Updates an existing field. Native fields can only have limited updates (label, helpText, status).
  */
-export async function updateFieldAction(id: string, data: Partial<AppField>) {
+export async function updateFieldAction(id: string, data: Partial<AppField>, userId: string) {
   try {
     const ref = adminDb.collection('app_fields').doc(id);
     const snap = await ref.get();
     if (!snap.exists) {
       return { success: false, error: 'Field not found.' };
     }
-
     const existing = snap.data() as AppField;
+
+    // 0. Permission Check
+    const permission = await canUser(userId, 'management', 'fields', 'edit', existing.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
 
     // If native, restrict editable fields
     if (existing.isNative) {
@@ -97,7 +109,7 @@ export async function updateFieldAction(id: string, data: Partial<AppField>) {
 /**
  * Deletes a custom field. Native fields cannot be deleted.
  */
-export async function deleteFieldAction(id: string) {
+export async function deleteFieldAction(id: string, userId: string) {
   try {
     const ref = adminDb.collection('app_fields').doc(id);
     const snap = await ref.get();
@@ -106,6 +118,12 @@ export async function deleteFieldAction(id: string) {
     }
 
     const field = snap.data() as AppField;
+    
+    // 0. Permission Check
+    const permission = await canUser(userId, 'management', 'fields', 'delete', field.workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
     if (field.isNative) {
       return { success: false, error: 'Native fields cannot be deleted. You can deactivate them instead.' };
     }

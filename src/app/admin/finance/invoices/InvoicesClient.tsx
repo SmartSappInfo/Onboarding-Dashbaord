@@ -59,6 +59,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -81,6 +82,11 @@ export default function InvoicesClient() {
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [isAdding, setIsAdding] = React.useState(false);
     const [isGenerating, setIsGenerating] = React.useState(false);
+
+    const { can } = usePermissions();
+    const canCreate = can('finance', 'invoices', 'create');
+    const canDelete = can('finance', 'invoices', 'delete');
+    const canEdit = can('finance', 'invoices', 'edit');
 
     // Form State
     const [selectedEntityId, setSelectedEntityId] = React.useState<string | null>(null);
@@ -194,9 +200,11 @@ export default function InvoicesClient() {
                         </h1>
  <p className="text-muted-foreground font-medium mt-1 text-left">Institutional billing records for the {activeWorkspaceId} track.</p>
                     </div>
- <Button onClick={() => setIsAdding(true)} className="rounded-xl font-semibold shadow-lg h-12 px-8 transition-all active:scale-95 text-left">
- <Plus className="mr-2 h-5 w-5" /> Initialize Invoice
-                    </Button>
+                    {canCreate && (
+                        <Button onClick={() => setIsAdding(true)} className="rounded-xl font-semibold shadow-lg h-12 px-8 transition-all active:scale-95 text-left">
+                            <Plus className="mr-2 h-5 w-5" /> Initialize Invoice
+                        </Button>
+                    )}
                 </div>
 
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card text-left">
@@ -262,9 +270,11 @@ export default function InvoicesClient() {
  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" asChild>
  <Link href={`/admin/finance/invoices/${invoice.id}`}><Eye className="h-4 w-4 text-primary" /></Link>
                                                 </Button>
- <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(invoice)}>
- <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {canDelete && (
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(invoice)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

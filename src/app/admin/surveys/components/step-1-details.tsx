@@ -22,6 +22,152 @@ interface Step1DetailsProps {
     institutions?: WorkspaceEntity[];
 }
 
+// Sub-component to avoid hooks-in-render-prop violation
+function EntityPickerField({ 
+    field, 
+    institutions, 
+    setValue 
+}: { 
+    field: { value: string | null; onChange: (v: string | null) => void };
+    institutions?: WorkspaceEntity[];
+    setValue: (name: string, value: any, options?: any) => void;
+}) {
+    const [open, setOpen] = React.useState(false);
+    const [search, setSearch] = React.useState('');
+
+    const entityTypeConfig = {
+        institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+        family: { label: 'Family', icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+        person: { label: 'Person', icon: User, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+        other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
+    };
+
+    const normalizedEntities = (institutions || []).map(e => ({
+        ...e,
+        label: e.displayName || e.entityId || e.id || 'Unnamed Entity',
+        type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig
+    }));
+
+    const filtered = normalizedEntities.filter(e =>
+        e.label.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const grouped = {
+        institution: filtered.filter(e => e.type === 'institution'),
+        family: filtered.filter(e => e.type === 'family'),
+        person: filtered.filter(e => e.type === 'person'),
+        other: filtered.filter(e => !['institution', 'family', 'person'].includes(e.type)),
+    };
+
+    const selectedEntity = normalizedEntities.find(e => e.entityId === field.value);
+    const selectedConfig = selectedEntity ? (entityTypeConfig[selectedEntity.type] || entityTypeConfig.other) : null;
+    const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
+
+    return (
+        <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Associated Entity</Label>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <button
+                        type="button"
+                        className={cn(
+                            "w-full h-11 px-3 flex items-center gap-2.5 rounded-xl bg-muted/20 text-left font-bold text-sm",
+                            "border-none shadow-none hover:bg-muted/30 transition-colors",
+                            !field.value && "text-muted-foreground"
+                        )}
+                    >
+                        {selectedEntity ? (
+                            <>
+                                <div className={cn("p-1 rounded-lg shrink-0", selectedConfig?.bgColor)}>
+                                    <SelectedIcon className={cn("h-3.5 w-3.5", selectedConfig?.color)} />
+                                </div>
+                                <span className="flex-1 truncate">{selectedEntity.label}</span>
+                                <Badge variant="outline" className={cn("text-[9px] font-semibold uppercase shrink-0 border-0", selectedConfig?.bgColor, selectedConfig?.color)}>
+                                    {selectedConfig?.label}
+                                </Badge>
+                            </>
+                        ) : (
+                            <>
+                                <Building className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                                <span>Global / Generic</span>
+                            </>
+                        )}
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[320px] p-0 rounded-2xl shadow-2xl border border-border/50" align="start">
+                    <Command shouldFilter={false}>
+                        <CommandInput
+                            placeholder="Search entities..."
+                            value={search}
+                            onValueChange={setSearch}
+                            className="h-10"
+                        />
+                        <CommandList className="max-h-[280px]">
+                            <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">
+                                No entities found.
+                            </CommandEmpty>
+                            <CommandItem
+                                value="none"
+                                onSelect={() => {
+                                    field.onChange(null);
+                                    setValue('entityName', null, { shouldDirty: true });
+                                    setOpen(false);
+                                    setSearch('');
+                                }}
+                                className={cn("rounded-xl mx-1 my-0.5 gap-2", !field.value && "bg-primary/5 text-primary")}
+                            >
+                                <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-bold text-sm">Global / Generic</span>
+                            </CommandItem>
+                            {Object.entries(grouped).map(([type, entities]) => {
+                                if (entities.length === 0) return null;
+                                const config = entityTypeConfig[type as keyof typeof entityTypeConfig];
+                                const GroupIcon = config.icon;
+                                return (
+                                    <CommandGroup
+                                        key={type}
+                                        heading={
+                                            <span className={cn("flex items-center gap-1.5 text-[9px] font-semibold", config.color)}>
+                                                <GroupIcon className="h-3 w-3" />
+                                                {config.label}s
+                                            </span>
+                                        }
+                                    >
+                                        {entities.map(entity => (
+                                            <CommandItem
+                                                key={entity.entityId || entity.id}
+                                                value={entity.entityId || entity.id}
+                                                onSelect={() => {
+                                                    field.onChange(entity.entityId);
+                                                    setValue('entityName', entity.label, { shouldDirty: true });
+                                                    setOpen(false);
+                                                    setSearch('');
+                                                }}
+                                                className={cn(
+                                                    "rounded-xl mx-1 my-0.5 gap-2",
+                                                    field.value === entity.entityId && "bg-primary/5 text-primary"
+                                                )}
+                                            >
+                                                <div className={cn("p-0.5 rounded shrink-0", config.bgColor)}>
+                                                    <GroupIcon className={cn("h-3 w-3", config.color)} />
+                                                </div>
+                                                <span className="font-bold text-sm flex-1 truncate">{entity.label}</span>
+                                                {field.value === entity.entityId && (
+                                                    <span className="text-primary text-[10px] font-semibold">✓</span>
+                                                )}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                );
+                            })}
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        </div>
+    );
+}
+
 export default function Step1Details({ institutions }: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
 
@@ -67,144 +213,13 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         <Controller
                             name="entityId"
                             control={control}
-                            render={({ field }) => {
-                                const [open, setOpen] = React.useState(false);
-                                const [search, setSearch] = React.useState('');
-
-                                const entityTypeConfig = {
-                                    institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-                                    family: { label: 'Family', icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
-                                    person: { label: 'Person', icon: User, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-                                    other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
-                                };
-
-                                // Normalize entities for searching and grouping
-                                const normalizedEntities = (institutions || []).map(e => ({
-                                    ...e,
-                                    label: e.displayName || e.entityId || e.id || 'Unnamed Entity',
-                                    type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig
-                                }));
-
-                                const filtered = normalizedEntities.filter(e =>
-                                    e.label.toLowerCase().includes(search.toLowerCase())
-                                );
-
-                                const grouped = {
-                                    institution: filtered.filter(e => e.type === 'institution'),
-                                    family: filtered.filter(e => e.type === 'family'),
-                                    person: filtered.filter(e => e.type === 'person'),
-                                    other: filtered.filter(e => !['institution', 'family', 'person'].includes(e.type)),
-                                };
-
-                                const selectedEntity = normalizedEntities.find(e => e.entityId === field.value);
-                                const selectedConfig = selectedEntity ? (entityTypeConfig[selectedEntity.type] || entityTypeConfig.other) : null;
-                                const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
-
-                                return (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Associated Entity</Label>
-                                        <Popover open={open} onOpenChange={setOpen}>
-                                            <PopoverTrigger asChild>
-                                                <button
-                                                    type="button"
- className={cn(
-                                                        "w-full h-11 px-3 flex items-center gap-2.5 rounded-xl bg-muted/20 text-left font-bold text-sm",
-                                                        "border-none shadow-none hover:bg-muted/30 transition-colors",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {selectedEntity ? (
-                                                        <>
- <div className={cn("p-1 rounded-lg shrink-0", selectedConfig?.bgColor)}>
- <SelectedIcon className={cn("h-3.5 w-3.5", selectedConfig?.color)} />
-                                                            </div>
- <span className="flex-1 truncate">{selectedEntity.label}</span>
-                                                            <Badge variant="outline" className={cn("text-[9px] font-semibold uppercase shrink-0 border-0", selectedConfig?.bgColor, selectedConfig?.color)}>
-                                                                {selectedConfig?.label}
-                                                            </Badge>
-                                                        </>
-                                                    ) : (
-                                                        <>
- <Building className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-                                                            <span>Global / Generic</span>
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </PopoverTrigger>
- <PopoverContent className="w-[320px] p-0 rounded-2xl shadow-2xl border border-border/50" align="start">
-                                                <Command shouldFilter={false}>
-                                                    <CommandInput
-                                                        placeholder="Search entities..."
-                                                        value={search}
-                                                        onValueChange={setSearch}
- className="h-10"
-                                                    />
- <CommandList className="max-h-[280px]">
- <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">
-                                                            No entities found.
-                                                        </CommandEmpty>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                field.onChange(null);
-                                                                setValue('entityName', null, { shouldDirty: true });
-                                                                setOpen(false);
-                                                                setSearch('');
-                                                            }}
- className={cn("rounded-xl mx-1 my-0.5 gap-2", !field.value && "bg-primary/5 text-primary")}
-                                                        >
- <Building className="h-3.5 w-3.5 text-muted-foreground" />
- <span className="font-bold text-sm">Global / Generic</span>
-                                                        </CommandItem>
-
-                                                        {Object.entries(grouped).map(([type, entities]) => {
-                                                            if (entities.length === 0) return null;
-                                                            const config = entityTypeConfig[type as keyof typeof entityTypeConfig];
-                                                            const GroupIcon = config.icon;
-                                                            return (
-                                                                <CommandGroup
-                                                                    key={type}
-                                                                    heading={
- <span className={cn("flex items-center gap-1.5 text-[9px] font-semibold ", config.color)}>
- <GroupIcon className="h-3 w-3" />
-                                                                            {config.label}s
-                                                                        </span>
-                                                                    }
-                                                                >
-                                                                    {entities.map(entity => (
-                                                                        <CommandItem
-                                                                            key={entity.entityId || entity.id}
-                                                                            value={entity.entityId || entity.id}
-                                                                            onSelect={() => {
-                                                                                field.onChange(entity.entityId);
-                                                                                setValue('entityName', entity.label, { shouldDirty: true });
-                                                                                setOpen(false);
-                                                                                setSearch('');
-                                                                            }}
- className={cn(
-                                                                                "rounded-xl mx-1 my-0.5 gap-2",
-                                                                                field.value === entity.entityId && "bg-primary/5 text-primary"
-                                                                            )}
-                                                                        >
- <div className={cn("p-0.5 rounded shrink-0", config.bgColor)}>
- <GroupIcon className={cn("h-3 w-3", config.color)} />
-                                                                            </div>
- <span className="font-bold text-sm flex-1 truncate">{entity.label}</span>
-                                                                            {field.value === entity.entityId && (
- <span className="text-primary text-[10px] font-semibold">✓</span>
-                                                                            )}
-                                                                        </CommandItem>
-                                                                    ))}
-                                                                </CommandGroup>
-                                                            );
-                                                        })}
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                );
-                            }}
+                            render={({ field }) => (
+                                <EntityPickerField
+                                    field={field}
+                                    institutions={institutions}
+                                    setValue={setValue}
+                                />
+                            )}
                         />
                         <Controller
                             name="useEntityLogo"

@@ -1,7 +1,9 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Organization } from './types';
+import type { Organization, AppPermissionId } from './types';
+import { getFullAdminPermissions } from './permissions-engine';
+import { migrateToPermissionsSchema } from './permissions-migration';
 
 /**
  * Save (create or update) an organization
@@ -204,11 +206,16 @@ async function provisionOrganizationDefaults(organizationId: string, userId: str
         { name: 'Finance Officer', description: 'Financial oversight and billing management.', color: '#10B981' }
     ];
     for (const role of ferRoles) {
+        const perms: AppPermissionId[] = role.name === 'Administrator' 
+            ? ['system_admin'] // Administrator gets broad bypass
+            : ['schools_view', 'activities_view']; // Basic defaults
+        
         await adminDb.collection('roles').add({
             ...role,
             organizationId,
-            workspaceIds: [], // To be assigned by user
-            permissions: ['users_view', 'entities_view'], // Basic default permissions
+            workspaceIds: [], 
+            permissions: perms,
+            permissionsSchema: role.name === 'Administrator' ? getFullAdminPermissions() : migrateToPermissionsSchema(perms),
             createdAt: timestamp,
             updatedAt: timestamp,
             isDefault: false

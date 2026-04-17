@@ -121,7 +121,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       expect(result.id).toBe('task_123');
@@ -175,7 +175,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       
@@ -239,7 +239,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       
@@ -305,7 +305,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       
@@ -370,7 +370,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       
@@ -421,7 +421,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(true);
       
@@ -636,7 +636,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       // Verify adapter was called
       expect(resolveContact).toHaveBeenCalledWith(
@@ -674,7 +674,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       // Task creation should still succeed
       expect(result.success).toBe(true);
@@ -735,7 +735,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      await createTaskAction(taskData);
+      await createTaskAction(taskData, 'test_user');
 
       // Verify adapter resolved legacy contact
       expect(resolveContact).toHaveBeenCalledWith(
@@ -772,7 +772,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         reminderSent: false,
       };
 
-      const result = await createTaskAction(taskData);
+      const result = await createTaskAction(taskData, 'test_user');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Firestore error');
@@ -813,7 +813,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
       };
 
-      const result = await updateTaskAction('task_123', updates);
+      const result = await updateTaskAction('task_123', updates, 'test_user');
 
       expect(result.success).toBe(true);
       expect(mockUpdate).toHaveBeenCalledWith(
@@ -834,7 +834,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
       };
 
-      await updateTaskAction('task_123', updates);
+      await updateTaskAction('task_123', updates, 'test_user');
 
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -853,7 +853,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
       };
 
-      await updateTaskAction('task_123', updates);
+      await updateTaskAction('task_123', updates, 'test_user');
 
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -872,7 +872,7 @@ describe('Task Module Unit Tests (Task 11.6)', () => {
         organizationId: 'org_1',
       };
 
-      const result = await updateTaskAction('task_123', updates);
+      const result = await updateTaskAction('task_123', updates, 'test_user');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Update failed');
