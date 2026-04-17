@@ -15,6 +15,7 @@ const CHART_COLORS = [
 ];
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
+const getFirstName = (name?: string | null) => name ? name.split(' ')[0] : 'User';
 
 export function UserAssignments({ 
     data, 
@@ -130,50 +131,49 @@ export function UserAssignments({
                     </div>
 
                     {displayData.length > 0 ? (
-                        <div className="space-y-4">
-                            {/* Segmented Bar with Premium styling */}
-                            <div className="flex w-full h-10 gap-1.5 p-1.5 rounded-[1.25rem] bg-muted/20 border border-border/5 shadow-inner overflow-hidden">
+                        <div className="pt-8 pb-4">
+                            {/* Unified Above-Bar-Below Layout */}
+                            <div className="flex w-full gap-2">
                                 {displayData.map((item) => (
                                     <div
                                         key={item.user.id}
-                                        title={`${item.user.name}: ${item.percentage.toFixed(1)}%`}
-                                        className="h-full rounded-lg transition-all hover:brightness-110 hover:scale-[1.02] cursor-pointer"
-                                        style={{
-                                            width: `${item.percentage}%`,
-                                            backgroundColor: item.color,
-                                        }}
-                                    />
-                                ))}
-                            </div>
-
-                            {/* Aligned Labels Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                                {displayData.map((item) => (
-                                    <div
-                                        key={item.user.id}
-                                        className="flex flex-col p-4 rounded-3xl bg-muted/10 border border-transparent hover:border-primary/10 hover:bg-white transition-all group"
+                                        className="flex flex-col group transition-all"
+                                        style={{ width: `${item.percentage}%`, minWidth: item.percentage < 5 ? 'auto' : '60px' }}
                                     >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <Avatar className="h-8 w-8 rounded-xl ring-2 ring-primary/5">
-                                                <AvatarImage src={item.user.photoURL} alt={item.user.name} />
-                                                <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">{getInitials(item.user.name)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-black uppercase tracking-tight text-foreground truncate">{item.user.name}</p>
-                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider opacity-60">
-                                                    {item.percentage.toFixed(0)}% Workload
-                                                </p>
+                                        {/* Statistics Above */}
+                                        <div className="mb-2.5 flex flex-col items-start min-h-[32px] justify-end">
+                                            <div className="flex items-center gap-1.5">
+                                                <Avatar className="h-5 w-5 rounded-md border border-background shadow-sm ring-1 ring-primary/5">
+                                                    <AvatarImage src={item.user.photoURL} alt={item.user.name} />
+                                                    <AvatarFallback className="text-[8px] font-bold bg-primary/5 text-primary">{getInitials(item.user.name)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-[10px] font-black uppercase tracking-tight text-foreground truncate max-w-[50px]">
+                                                    {getFirstName(item.user.name)}
+                                                </span>
+                                            </div>
+                                            <div className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5 ml-6">
+                                                {item.percentage.toFixed(0)}%
                                             </div>
                                         </div>
-                                         <div className="mt-auto space-y-1">
-                                            <p className="text-sm font-black tracking-tight text-primary">
-                                                {item.totalAssigned} <span className="text-[10px] font-bold text-muted-foreground uppercase ml-1">{item.totalAssigned === 1 ? terminology.singular : terminology.plural}</span>
-                                            </p>
-                                            <p className="text-[10px] font-bold text-muted-foreground/80 flex items-center gap-1.5">
-                                                <Users className="h-3 w-3 opacity-40 text-emerald-500" />
-                                                {item.totalStudents.toLocaleString()} Students
-                                            </p>
-                                         </div>
+
+                                        {/* Bar Segment */}
+                                        <div
+                                            className="h-5 w-full rounded-full transition-all hover:brightness-110 shadow-sm border border-black/5"
+                                            style={{ backgroundColor: item.color }}
+                                            title={`${item.user.name}: ${item.percentage.toFixed(1)}%`}
+                                        />
+
+                                        {/* Statistics Below */}
+                                        <div className="mt-3 flex flex-col items-start">
+                                            <div className="text-xs font-black tracking-tighter text-foreground whitespace-nowrap">
+                                                {item.totalAssigned} <span className="text-[8px] font-bold text-muted-foreground uppercase ml-0.5 opacity-60">
+                                                    {item.totalAssigned === 1 ? terminology.singular : terminology.plural}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500/80 uppercase tracking-tighter">
+                                                {item.totalStudents.toLocaleString()} <span className="opacity-60">Students</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
