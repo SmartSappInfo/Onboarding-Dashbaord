@@ -404,14 +404,12 @@ async function handleUpdateSchool(config: any, context: ExecutionContext) {
     // Use adapter to check migration status (Requirement 18)
     const contact = await resolveContact(contactId, context.workspaceId);
     
-    if (contact && contact.migrationStatus === 'migrated' && contact.entityId) {
-        // Update entity instead of school (Requirement 14.4)
+    if (contact && contact.entityId) {
         await adminDb.collection('entities').doc(contact.entityId).update({
             ...config.updates,
             updatedAt: new Date().toISOString()
         });
         
-        // Also update workspace_entities if workspace-specific fields
         if (contact.workspaceEntityId && (config.updates.pipelineId || config.updates.stageId || config.updates.assignedTo)) {
             const workspaceUpdates: any = {
                 updatedAt: new Date().toISOString()
@@ -422,12 +420,6 @@ async function handleUpdateSchool(config: any, context: ExecutionContext) {
             
             await adminDb.collection('workspace_entities').doc(contact.workspaceEntityId).update(workspaceUpdates);
         }
-    } else if (contact?.schoolData?.id) {
-        // Update legacy school document
-        await adminDb.collection('schools').doc(contact.schoolData.id).update({
-            ...config.updates,
-            updatedAt: new Date().toISOString()
-        });
     } else {
         throw new Error("Cannot update contact: Contact not found or invalid.");
     }

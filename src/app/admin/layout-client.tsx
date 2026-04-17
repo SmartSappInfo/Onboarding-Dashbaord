@@ -225,21 +225,21 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={true}>
- <Sidebar collapsible="icon" className="bg-[#0A1427] text-white border-r-0 shadow-2xl print:hidden">
- <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
+      <Sidebar collapsible="icon" className="bg-card text-foreground border-r border-border shadow-2xl print:hidden">
+        <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
            <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
         </SidebarHeader>
         
- <SidebarContent className="mt-4 overflow-x-hidden">
- <SidebarGroup className="px-0">
- <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Operations</SidebarGroupLabel>
- <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+        <SidebarContent className="mt-4 overflow-x-hidden">
+          <SidebarGroup className="px-0">
+            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Operations</SidebarGroupLabel>
+            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {coreNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+                  <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
                       <Link href={item.href}>
- <item.icon className="h-5 w-5 shrink-0" /> 
- <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        <item.icon className="h-5 w-5 shrink-0" /> 
+                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -247,15 +247,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </SidebarGroup>
 
- <SidebarGroup className="mt-4 px-0">
- <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
- <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+          <SidebarGroup className="mt-4 px-0">
+            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Finance Hub</SidebarGroupLabel>
+            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {financeNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
                       <Link href={item.href}>
- <item.icon className="h-5 w-5 shrink-0" />
- <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -263,15 +263,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </SidebarMenu>
           </SidebarGroup>
 
- <SidebarGroup className="mt-4 px-0">
- <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
- <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+          <SidebarGroup className="mt-4 px-0">
+            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Studios</SidebarGroupLabel>
+            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {studioNavItems.filter(i => i.visible).map((item) => (
                 <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+                  <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
                       <Link href={item.href}>
- <item.icon className="h-5 w-5 shrink-0" />
- <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -279,15 +279,15 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </SidebarGroup>
 
- <SidebarGroup className="mt-auto pt-8 mb-4 px-0">
- <SidebarGroupLabel className="text-left text-white/40 font-semibold text-[10px] mb-2 px-6 group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
- <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
+          <SidebarGroup className="mt-auto pt-8 mb-4 px-0">
+            <SidebarGroupLabel className="text-left text-primary/60 dark:text-primary/40 font-semibold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
+            <SidebarMenu className="gap-1 px-3 group-data-[collapsible=icon]:px-2">
               {systemNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
- <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-white/70 hover:text-white hover:bg-card/10 data-[active=true]:bg-primary data-[active=true]:text-white data-[active=true]:shadow-lg rounded-xl h-11 transition-all">
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
                       <Link href={item.href}>
- <item.icon className="h-5 w-5 shrink-0" />
- <span className="font-bold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
                       </Link>
                   </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -296,27 +296,34 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
         
- <SidebarFooter className="p-6 border-t border-white/5 bg-black/20">
+        <SidebarFooter className="p-4 border-t border-border bg-black/5 dark:bg-black/20">
             <SidebarMenu>
                 <SidebarMenuItem>
- <SidebarMenuButton asChild tooltip="Go to public site" className="text-white/40 hover:text-white transition-all h-10 group-data-[collapsible=icon]:justify-center">
- <Link href="/" target="_blank"><ExternalLink className="h-4 w-4 shrink-0" /><span className="font-semibold text-[10px] group-data-[collapsible=icon]:hidden">Live Site</span></Link>
+                    <SidebarMenuButton asChild tooltip="Go to public site" className="text-muted-foreground hover:text-foreground transition-all h-10 group-data-[collapsible=icon]:justify-center">
+                        <Link href="/" target="_blank"><ExternalLink className="h-4 w-4 shrink-0" /><span className="font-semibold text-[10px] group-data-[collapsible=icon]:hidden">Live Site</span></Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
       
- <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
-        {/* Dark Mode Background Aura */}
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,95,255,0.05),transparent_50%)] pointer-events-none hidden dark:block" />
- <header className="glass-header h-16 flex shrink-0 items-center gap-4 px-6 print:hidden">
- <SidebarTrigger className="-ml-1" />
- <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
- <div className="flex items-center gap-3 shrink-0">
+      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
+        {/* Subtle radial gradient accent */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.04),transparent_50%)] pointer-events-none" />
+        <header className="h-16 flex shrink-0 items-center gap-4 px-6 border-b border-border bg-background/80 backdrop-blur-xl print:hidden">
+          <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
+          <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
+          <div className="flex items-center gap-3 shrink-0">
+              <Badge
+                variant="outline"
+                className="text-[8px] uppercase font-bold tracking-[0.15em] px-2.5 h-5 bg-primary/10 border-primary/20 text-primary hidden sm:flex"
+              >
+                Workspace
+              </Badge>
+              <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
               <ThemeToggle />
               <NotificationBell />
- <div className="h-8 w-px bg-border mx-1" />
+              <div className="h-6 w-px bg-border mx-1" />
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
  <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
@@ -326,14 +333,14 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                   </Avatar>
                   </Button>
               </DropdownMenuTrigger>
- <DropdownMenuContent className="w-64 p-2 rounded-2xl border-none shadow-2xl animate-in zoom-in-95 duration-200" align="end">
+ <DropdownMenuContent className="w-64 p-2 rounded-2xl border-border bg-card shadow-lg animate-in zoom-in-95 duration-200" align="end">
  <DropdownMenuLabel className="font-normal px-2 py-3">
  <div className="flex flex-col space-y-1 text-left">
  <p className="text-sm font-semibold tracking-tight leading-none text-foreground">{user?.displayName}</p>
  <p className="text-[10px] leading-none text-muted-foreground font-bold tracking-tight">{user?.email}</p>
  <div className="flex flex-wrap gap-1 mt-3">
                         {userRolesData.map(role => (
-                            <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-semibold px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
+                            <Badge key={role.id} variant="outline" className="text-[7px] uppercase font-bold px-1.5 h-4 bg-primary/10 border-primary/20 text-primary">{role.name}</Badge>
                         ))}
                       </div>
                   </div>

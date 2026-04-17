@@ -364,9 +364,14 @@ export default function TasksClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-12 pb-32">
-                
+ <div className="space-y-6 text-left pb-32">
+                {/* Page Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-foreground tracking-tight">Active Tasks</h1>
+                        <p className="text-sm text-muted-foreground mt-1">Manage global operations and action items.</p>
+                    </div>
+                </div>
                 {/* Executive KPI Stats */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard 
@@ -404,15 +409,15 @@ export default function TasksClient() {
                 </div>
 
                 {/* Recommended Categories Grid */}
- <section className="space-y-6">
- <h3 className="text-xl font-semibold tracking-tight text-foreground ml-1">Recommended Categories</h3>
+ <section className="space-y-4">
+ <h3 className="text-lg font-bold tracking-tight text-foreground">Recommended Categories</h3>
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {(Object.entries(CATEGORY_MAP) as [TaskCategory, any][]).map(([key, config]) => (
                             <button 
                                 key={key}
                                 onClick={() => canCreate && handleQuickCategorySelect(key)}
                                 className={cn(
-                                    "group flex items-center gap-4 p-5 rounded-2xl bg-card/50 border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-xl hover:-translate-y-1",
+                                    "group flex items-center gap-4 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all shadow-sm hover:shadow-md",
                                     !canCreate && "opacity-50 cursor-not-allowed filter grayscale"
                                 )}
                                 disabled={!canCreate}
@@ -427,7 +432,7 @@ export default function TasksClient() {
                 </section>
 
                 {/* Toolbar */}
- <div className="flex flex-col md:flex-row items-center justify-between gap-6 glass-card p-4 rounded-[2rem]">
+ <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-card border border-border p-4 rounded-2xl">
  <div className="flex flex-wrap items-center gap-3">
  <Button variant="outline" size="sm" onClick={() => setIsSelectionMode(!isSelectionMode)} className={cn("rounded-xl font-semibold text-[10px] gap-2 h-10 px-4 transition-all", isSelectionMode ? "bg-primary text-white border-primary" : "border-primary/20 text-primary")}>
  {isSelectionMode ? <CheckSquare className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />} Selection
@@ -463,7 +468,7 @@ export default function TasksClient() {
                             exit={{ y: 50, opacity: 0 }}
  className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
                         >
-  <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-border/50/10">
+                        <Card className="bg-slate-900 text-white rounded-2xl border-none shadow-2xl p-2 flex items-center gap-4 ring-1 ring-white/10">
  <span className="px-4 text-[10px] font-semibold border-r border-white/10">{selectedIds.length} Selected</span>
  <div className="flex gap-1.5 p-1 bg-card/5 rounded-xl">
  {canEdit && <Button size="sm" variant="ghost" onClick={handleBulkComplete} className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 font-bold text-[9px] h-9 px-4">Resolve Bulk</Button>}
@@ -507,8 +512,8 @@ export default function TasksClient() {
                                             return (
                                                 <div 
                                                     key={task.id} 
- className={cn(
-                                                        "group flex items-center gap-4 p-4 sm:p-5 glass-card rounded-[1.5rem] hover:border-primary/30",
+                                                    className={cn(
+                                                        "group flex items-center gap-4 p-4 sm:p-5 bg-card border border-border rounded-2xl hover:border-primary/30 shadow-sm",
                                                         task.status === 'done' && "opacity-60"
                                                     )}
                                                 >
@@ -595,7 +600,7 @@ export default function TasksClient() {
                                                 </div>
                                             );
                                         }) : (
- <div className="py-12 text-center border-2 border-dashed rounded-[2rem] bg-background opacity-30 flex flex-col items-center gap-2">
+ <div className="py-12 text-center border-2 border-dashed rounded-2xl bg-background opacity-30 flex flex-col items-center gap-2">
  <EyeOff className="h-8 w-8 text-muted-foreground" />
  <p className="text-[10px] font-semibold ">No matching tasks in this phase</p>
                                             </div>
@@ -607,7 +612,7 @@ export default function TasksClient() {
                                                     setEditingTask({ status } as any);
                                                     setEditorOpen(true);
                                                 }}
-                                                className="w-full py-4 border-2 border-dashed border-border rounded-[1.5rem] flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
+                                                className="w-full py-4 border-2 border-dashed border-border rounded-xl flex items-center justify-center gap-2 text-[10px] font-semibold text-muted-foreground hover:bg-muted/20 hover:border-primary/20 hover:text-primary transition-all group"
                                             >
                                                 <Plus className="h-4 w-4 transition-transform group-hover:scale-125" /> Add New Task
                                             </button>
@@ -626,20 +631,20 @@ export default function TasksClient() {
                         <TaskCalendar tasks={filteredTasks} onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} />
                     </TabsContent>
                 </Tabs>
-            </div>
 
-            <TaskEditor 
-                open={editorOpen} 
-                onOpenChange={setEditorOpen} 
+
+            <TaskEditor
+                open={editorOpen}
+                onOpenChange={setEditorOpen}
                 task={editingTask}
                 onSave={handleSaveTask}
                 isSaving={isSaving}
             />
 
             <AlertDialog open={!!taskToComplete} onOpenChange={(o) => !o && setTaskToComplete(null)}>
- <AlertDialogContent className="rounded-[3rem] p-0 border-none shadow-2xl overflow-hidden">
+ <AlertDialogContent className="rounded-2xl p-0 border border-border shadow-lg overflow-hidden">
  <div className="p-10 text-center space-y-6">
- <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[1.5rem] flex items-center justify-center">
+ <div className="mx-auto bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center">
  <CheckCircle2 className="h-10 w-10 text-primary" />
                         </div>
  <div className="space-y-2">
@@ -663,8 +668,8 @@ export default function TasksClient() {
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
- <Card className="rounded-[2.5rem] glass-card overflow-hidden group border-none">
- <CardContent className="p-6 flex items-center gap-5">
+        <Card className="rounded-2xl bg-card border-border overflow-hidden group">
+            <CardContent className="p-5 flex items-center gap-4">
  <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
  <Icon className="h-7 w-7" />
                 </div>

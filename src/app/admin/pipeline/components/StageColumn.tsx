@@ -46,10 +46,10 @@ export default function StageColumn({ stage, entities, isOverlay, customWidth = 
     const stageColor = stage.color || '#3B5FFF';
 
     return (
- <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-[2.5rem] min-w-0">
-            <Card 
- className={cn(
-                    "h-full flex flex-col glass-card border-none rounded-[2.5rem] overflow-hidden transition-all duration-500 w-full relative",
+        <div ref={setNodeRef} style={style} className="h-full flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-2xl min-w-0">
+                <Card 
+                    className={cn(
+                        "h-full flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-500 w-full relative",
                     isOverlay && "shadow-2xl scale-105 rotate-1",
                     isOver && "bg-primary/[0.03]"
                 )}

@@ -289,12 +289,11 @@ export default function SurveysClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background">
- <div className=" space-y-8 text-left">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
- <div className="flex flex-col">
- <h1 className="text-3xl font-semibold tracking-tight">Survey Intelligence</h1>
- <p className="text-xs font-bold text-muted-foreground mt-1">Authorized Protocol Blueprints</p>
+ <div className="space-y-6 text-left">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div>
+ <h1 className="text-2xl font-bold text-foreground tracking-tight">Survey Intelligence</h1>
+ <p className="text-sm text-muted-foreground mt-1">Manage public survey templates and response data.</p>
                 </div>
                 <div className="flex justify-end items-center gap-3 shrink-0">
                     {canCreate && (
@@ -316,18 +315,18 @@ export default function SurveysClient() {
                 </div>
             </div>
 
- <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-border">
- <div className="relative flex-grow w-full">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+            <div className="flex flex-col md:flex-row gap-3 items-center">
+                <div className="relative flex-1 w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Search survey titles..." 
- className="pl-11 h-12 rounded-2xl bg-card border-none font-bold ring-1 ring-border focus:ring-primary/20" 
+                        className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
- <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-card border-none font-semibold text-[10px] transition-all hover:bg-accent/10 ring-1 ring-border">
+                    <SelectTrigger className="w-[180px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
                         <SelectValue />
                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -339,16 +338,16 @@ export default function SurveysClient() {
                 </Select>
             </div>
             
- <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
+ <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
             <Table>
-                <TableHeader>
- <TableRow className="bg-card/20 border-b border-border/50">
- <TableHead className="text-[10px] font-semibold py-4 pl-6">Blueprint Title</TableHead>
- <TableHead className="w-[120px] text-[10px] font-semibold py-4 text-center">Status</TableHead>
- <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4">Responses</TableHead>
- <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-semibold py-4">Created At</TableHead>
- <TableHead className="w-[160px] text-right text-[10px] font-semibold py-4 pr-6">Management</TableHead>
-                </TableRow>
+                <TableHeader className="bg-muted/30">
+                    <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 pl-6">Blueprint Title</TableHead>
+                        <TableHead className="w-[120px] text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 text-center">Status</TableHead>
+                        <TableHead className="w-[120px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4">Responses</TableHead>
+                        <TableHead className="w-[180px] hidden md:table-cell text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4">Created At</TableHead>
+                        <TableHead className="w-[160px] text-right text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 pr-6">Management</TableHead>
+                    </TableRow>
                 </TableHeader>
                 <TableBody>
                 {isLoading ? (
@@ -412,9 +411,8 @@ export default function SurveysClient() {
             </Table>
             </div>
         </div>
-      </div>
       <AlertDialog open={!!surveyToDelete} onOpenChange={(open) => !open && setSurveyToDelete(null)}>
- <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="rounded-2xl border-border shadow-lg">
           <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold">Delete Survey?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">

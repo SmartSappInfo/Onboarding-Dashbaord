@@ -335,7 +335,7 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
 
   return (
     <>
- <Card className="glass-card rounded-2xl overflow-hidden">
+    <Card className="rounded-2xl border border-border bg-card overflow-hidden">
  <CardHeader className="bg-background border-b pb-6">
  <CardTitle className="text-sm font-semibold text-foreground">Stage Architect</CardTitle>
  <CardDescription className="text-xs font-medium">Define the progression nodes. Double-click to rename.</CardDescription>
@@ -395,7 +395,7 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
             </CardContent>
         </Card>
         <AlertDialog open={!!stageToDelete} onOpenChange={(open) => !open && setStageToDelete(null)}>
- <AlertDialogContent className="rounded-[2rem]">
+        <AlertDialogContent className="rounded-2xl">
               <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold tracking-tight">Purge Workflow Stage?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium text-left">

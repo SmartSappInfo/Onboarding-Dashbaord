@@ -35,55 +35,7 @@ export async function convertToOnboardingAction(
             .get();
 
         if (weSnap.empty) {
-            // Check legacy school
-            const schoolRef = adminDb.collection('schools').doc(entityId);
-            const schoolSnap = await schoolRef.get();
-            if (!schoolSnap.exists) throw new Error("Entity record not found.");
-            
-            const school = schoolSnap.data() as School;
-            // Legacy conversion
-            const stagesSnap = await adminDb.collection('onboardingStages')
-                .where('pipelineId', '==', targetPipelineId)
-                .orderBy('order', 'asc')
-                .limit(1)
-                .get();
-
-            if (stagesSnap.empty) throw new Error("Target pipeline has no defined stages.");
-            const firstStage = { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage;
-
-            await schoolRef.update({
-                track: 'onboarding',
-                pipelineId: targetPipelineId,
-                stage: {
-                    id: firstStage.id,
-                    name: firstStage.name,
-                    order: firstStage.order,
-                    color: firstStage.color
-                },
-                updatedAt: timestamp
-            });
-
-            await logActivity({
-                entityId: entityId, // Legacy mapping
-                entityName: school.name,
-                entitySlug: school.slug,
-                organizationId: school.organizationId || 'default',
-                userId,
-                workspaceId: school.workspaceIds[0],
-                type: 'pipeline_stage_changed',
-                source: 'user_action',
-                description: `successfully converted "${school.name}" from Prospect to Onboarding.`,
-                metadata: { 
-                    conversionDate: timestamp, 
-                    targetPipeline: targetPipelineId,
-                    previousTrack: 'prospect'
-                }
-            });
-
-            revalidatePath('/admin/entities');
-            revalidatePath('/admin/entities');
-            revalidatePath('/admin/pipeline');
-            return { success: true };
+            throw new Error("Workspace entity record not found.");
         }
 
         const we = weSnap.docs[0];

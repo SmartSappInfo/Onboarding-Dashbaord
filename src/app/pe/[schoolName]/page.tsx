@@ -14,8 +14,13 @@ import Footer from '@/components/footer';
 
 async function getSchoolBySlug(slug: string): Promise<School | null> {
     try {
-        const querySnap = await adminDb.collection('schools').where('slug', '==', slug).limit(1).get();
-        if (querySnap.empty) return null;
+        const querySnap = await adminDb.collection('entities').where('slug', '==', slug).limit(1).get();
+        if (querySnap.empty) {
+            // Fallback: try legacy schools collection for older records
+            const legacySnap = await adminDb.collection('schools').where('slug', '==', slug).limit(1).get();
+            if (legacySnap.empty) return null;
+            return { id: legacySnap.docs[0].id, ...legacySnap.docs[0].data() } as School;
+        }
         return { id: querySnap.docs[0].id, ...querySnap.docs[0].data() } as School;
     } catch (error) {
         return null;

@@ -104,26 +104,22 @@ export default function UsersClient() {
  if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
   return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-10 pb-32">
-        
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+ <div className="space-y-6 text-left pb-32">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
- <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground ">
- <ShieldCheck className="h-10 w-10 text-primary" />
-                    Identity Hub
-                </h1>
- <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional access levels and flattened permission sets.</p>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Identity Hub</h1>
+                <p className="text-sm text-muted-foreground mt-1">Manage institutional access levels and flattened permission sets.</p>
             </div>
- <div className="flex items-center gap-4">
-                <Button asChild variant="outline" className="rounded-2xl font-black h-12 px-6 border-2 hover:bg-primary/5 hover:text-primary transition-all active:scale-95">
+            <div className="flex items-center gap-4">
+                <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 text-foreground bg-card shadow-sm">
                     <Link href="/admin/users/roles" className="flex items-center gap-2">
-                        <ShieldEllipsis className="h-5 w-5" /> Role Architecture
+                        <ShieldEllipsis className="h-4 w-4" /> Role Architecture
                     </Link>
                 </Button>
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-12 rounded-2xl flex items-center gap-2 ">
+                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-11 rounded-xl flex items-center gap-2 ">
                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Registered Members</span>
+                    <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Members</span>
                 </Badge>
             </div>
         </div>
@@ -131,7 +127,7 @@ export default function UsersClient() {
  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Permission Matrix Preview */}
  <div className="lg:col-span-1 space-y-6">
- <Card className="rounded-[2rem] border-none ring-1 ring-border bg-card overflow-hidden shadow-sm">
+ <Card className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
  <CardHeader className="bg-primary/5 border-b pb-4">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Zap className="h-3 w-3" /> Collective Logic
@@ -167,14 +163,14 @@ export default function UsersClient() {
 
             {/* User Registry */}
  <div className="lg:col-span-3">
- <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                     <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>
- <TableHead className="w-16 pl-8 text-[10px] font-semibold py-5">Profile</TableHead>
- <TableHead className="text-[10px] font-semibold py-5">Corporate Identity</TableHead>
- <TableHead className="text-[10px] font-semibold py-5">Architecture</TableHead>
- <TableHead className="w-[120px] text-center text-[10px] font-semibold py-5">Access</TableHead>
+ <TableHead className="w-16 pl-8 text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Profile</TableHead>
+ <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Corporate Identity</TableHead>
+ <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Architecture</TableHead>
+ <TableHead className="w-[120px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Access</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -275,7 +271,6 @@ export default function UsersClient() {
                 </div>
             </div>
         </div>
-      </div>
     </div>
   );
 }

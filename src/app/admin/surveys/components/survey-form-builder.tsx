@@ -246,7 +246,7 @@ export default function SurveyFormBuilder() {
  <div className="flex flex-col md:flex-row gap-8 items-start">
                 {/* Vertical Builder Toolbar - Now Top Left */}
  <div className="hidden md:block w-14 shrink-0 sticky top-24">
- <Card className="shadow-2xl border-none glass-card p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-border">
+                        <Card className="shadow-sm border border-border bg-card p-1.5 rounded-2xl flex flex-col items-center gap-3">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -360,7 +360,7 @@ export default function SurveyFormBuilder() {
                             requestAddElement={requestAddElement}
                         />
                     ) : (
- <div className="text-center py-20 bg-card/20 border-2 border-dashed border-border/50 rounded-[2.5rem] shadow-inner">
+                        <div className="text-center py-20 bg-card border border-dashed border-border/50 rounded-2xl shadow-sm">
  <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
                             <Button type="button" variant="outline" size="lg" onClick={() => {
                                 setInsertionIndex(0);

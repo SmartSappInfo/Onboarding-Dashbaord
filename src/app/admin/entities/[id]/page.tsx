@@ -163,7 +163,7 @@ export default function EntityDetailPage() {
     // Navigation Entity Resolution
     useSetBreadcrumb(entityData?.name || weData?.displayName);
 
- if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
+ if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
  if (!entityData || !weData) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">{singular} Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
 
     const handleTaskComplete = (taskId: string) => {
@@ -211,13 +211,13 @@ export default function EntityDetailPage() {
  <div className={cn("h-full overflow-y-auto bg-background p-4 sm:p-6 lg:p-8", weData.status === 'archived' && "grayscale opacity-80")}>
  <div className="max-w-7xl mx-auto space-y-6">
 
-            <div className="relative overflow-hidden rounded-[2rem] border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     
                     {/* Identity & Logo */}
                     <div className="flex items-center gap-6">
                         <div 
-                            className="relative h-20 w-20 md:h-24 md:w-24 rounded-[1.5rem] bg-card p-1 shadow-sm ring-1 ring-border/50 overflow-hidden shrink-0 group cursor-pointer"
+                            className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-card p-1 shadow-sm ring-1 ring-border/50 overflow-hidden shrink-0 group cursor-pointer"
                             onClick={() => setIsLogoDialogOpen(true)}
                         >
                             {isInstitution && institutionData?.logoUrl ? (
@@ -298,7 +298,7 @@ export default function EntityDetailPage() {
 
  <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
- <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+ <Card className="lg:col-span-2 border-none shadow-sm rounded-2xl bg-card overflow-hidden">
  <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Contact Directory</CardTitle>
                                 </CardHeader>
@@ -336,12 +336,12 @@ export default function EntityDetailPage() {
                                 </CardContent>
                             </Card>
 
- <Card className="border-none shadow-sm rounded-[2rem] bg-card overflow-hidden">
+ <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
  <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
                                 </CardHeader>
  <CardContent className="p-8 space-y-8 text-left">
- <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/10 border border-primary/20 shadow-inner">
+ <div className="flex items-center justify-between p-5 rounded-xl bg-primary/10 border border-primary/20 shadow-inner">
  <div className="space-y-1 text-left">
  <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
  <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{institutionData?.nominalRoll?.toLocaleString() || '0'}</p>
@@ -393,7 +393,7 @@ export default function EntityDetailPage() {
                                     </Card>
                                 ))
                             ) : (
- <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-background/20 opacity-30 flex flex-col items-center gap-2">
+ <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl bg-background/20 opacity-30 flex flex-col items-center gap-2">
  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
  <p className="text-[10px] font-semibold ">No pending actions for this {singular.toLowerCase()}</p>
                                 </div>
@@ -406,7 +406,7 @@ export default function EntityDetailPage() {
                     </TabsContent>
 
  <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
- <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
+ <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
  <div className="mb-10 flex items-center gap-3 text-left">
  <div className="flex flex-col text-left">
                                     <Badge variant="outline" className="w-fit bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary mb-1">Audit Trail</Badge>

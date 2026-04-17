@@ -236,10 +236,10 @@ export default function WorkspaceEditor() {
 
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
- Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
+ Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-2xl" />)
                 ) : workspaces?.map(w => (
  <Card key={w.id} className={cn(
-                        "rounded-[2.5rem] glass-card text-left group transition-all duration-500",
+                        "rounded-2xl border border-border bg-card text-left group transition-all duration-500",
                         w.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                     )}>
  <div className="h-1.5 w-full" style={{ backgroundColor: w.color || '#3B5FFF' }} />
@@ -305,7 +305,7 @@ export default function WorkspaceEditor() {
             </div>
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
- <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
+ <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
  <form onSubmit={handleSave} className="flex flex-col h-full text-left">
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
  <div className="flex items-center gap-4">

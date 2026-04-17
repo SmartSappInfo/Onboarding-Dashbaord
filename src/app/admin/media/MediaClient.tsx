@@ -91,7 +91,7 @@ export default function MediaClient() {
             </div>
         </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-[2.5rem] overflow-hidden glass-card bg-card">
+        <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card">
  <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4 text-left">
  <div className="relative flex-grow w-full">
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -134,14 +134,14 @@ export default function MediaClient() {
  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {isLoading ? (
               Array.from({ length: 10 }).map((_, i) => (
- <Skeleton key={i} className="aspect-square rounded-[2rem]" />
+                <Skeleton key={i} className="aspect-square rounded-2xl" />
               ))
             ) : filteredAssets.length > 0 ? (
               filteredAssets.map(asset => (
                 <MediaAssetCard key={asset.id} asset={asset} />
               ))
             ) : (
- <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background/20 flex flex-col items-center justify-center gap-4 opacity-30">
+              <div className="col-span-full py-32 text-center border border-border border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 opacity-30">
  <Film className="h-16 w-16" />
  <p className="font-semibold text-xs">No {activeTab} in this workspace</p>
               </div>

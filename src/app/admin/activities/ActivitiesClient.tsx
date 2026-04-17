@@ -85,19 +85,23 @@ export default function ActivitiesClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className="max-w-5xl mx-auto space-y-8 text-left">
- <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6 text-left">
- <div className="flex justify-end shrink-0 text-left">
-                        {hasActiveFilters && (
- <Button variant="ghost" onClick={clearFilters} className="text-xs font-semibold gap-2 h-8 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all text-left">
- <X className="h-3 w-3" /> Clear All Filters
-                            </Button>
-                        )}
-                    </div>
-                </div>
+ <div className="space-y-6 text-left max-w-5xl mx-auto pb-32">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Activities Audit</h1>
+                <p className="text-sm text-muted-foreground mt-1">Review operational events and user actions securely.</p>
+            </div>
+            <div className="flex justify-end shrink-0 text-left">
+                {hasActiveFilters && (
+                    <Button variant="ghost" onClick={clearFilters} className="text-xs font-semibold gap-2 h-10 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all text-left">
+                        <X className="h-3 w-3" /> Clear All Filters
+                    </Button>
+                )}
+            </div>
+        </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card text-left">
+        <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardContent className="p-4 sm:p-6 text-left">
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
  <div className="space-y-2 text-left">
@@ -105,10 +109,10 @@ export default function ActivitiesClient() {
  <MapPin className="h-3 w-3" /> Geographic Zone
                                 </Label>
                                 <Select value={zoneId || 'all'} onValueChange={setZoneId}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all text-left">
+                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl transition-all text-left">
                                         <SelectValue placeholder="All Zones" />
                                     </SelectTrigger>
- <SelectContent className="rounded-xl text-left">
+                                    <SelectContent className="rounded-xl border-border bg-card text-left">
                                         <SelectItem value="all">All Zones</SelectItem>
                                         {zones?.map(z => (
                                             <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
@@ -122,10 +126,10 @@ export default function ActivitiesClient() {
  <Building className="h-3 w-3" /> {singular} Context
                                 </Label>
                                 <Select value={entityId || 'all'} onValueChange={setEntityId}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all text-left">
+                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl transition-all text-left">
                                         <SelectValue placeholder={`All ${plural}`} />
                                     </SelectTrigger>
- <SelectContent className="rounded-xl text-left">
+                                    <SelectContent className="rounded-xl border-border bg-card text-left">
                                         <SelectItem value="all">All {plural}</SelectItem>
                                         {entities?.map(s => (
                                             <SelectItem key={s.id} value={s.entityId}>{s.displayName}</SelectItem>
@@ -139,10 +143,10 @@ export default function ActivitiesClient() {
  <User className="h-3 w-3" /> Performed By
                                 </Label>
                                 <Select value={userId || 'all'} onValueChange={setUserId}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all text-left">
+                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl transition-all text-left">
                                         <SelectValue placeholder="All Members" />
                                     </SelectTrigger>
- <SelectContent className="rounded-xl text-left">
+                                    <SelectContent className="rounded-xl border-border bg-card text-left">
                                         <SelectItem value="all">All Team Members</SelectItem>
                                         {users?.map(u => (
                                             <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
@@ -156,10 +160,10 @@ export default function ActivitiesClient() {
  <Tag className="h-3 w-3" /> Event Category
                                 </Label>
                                 <Select value={type || 'all'} onValueChange={setType}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all text-left">
+                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl transition-all text-left">
                                         <SelectValue placeholder="All Categories" />
                                     </SelectTrigger>
- <SelectContent className="rounded-xl text-left">
+                                    <SelectContent className="rounded-xl border-border bg-card text-left">
                                         <SelectItem value="all">All Categories</SelectItem>
                                         {ACTIVITY_TYPES.map(t => (
                                             <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
@@ -171,7 +175,7 @@ export default function ActivitiesClient() {
                     </CardContent>
                 </Card>
 
- <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[600px] text-left">
+                <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm border border-border min-h-[600px] text-left">
  <div className="mb-8 flex items-center gap-3 text-left">
                         <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary">Live Timeline</Badge>
  <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent text-left" />
@@ -184,6 +188,5 @@ export default function ActivitiesClient() {
                     />
                 </div>
             </div>
-        </div>
     );
 }

@@ -280,52 +280,42 @@ export async function deleteTagAction(
       throw new TagValidationError('system tags cannot be deleted.');
     }
     
-    // Remove tag from all schools in batches
-    const schoolsSnap = await adminDb
-      .collection('schools')
-      .where('tags', 'array-contains', tagId)
+    // Remove tag from all workspace_entities in batches
+    const weSnap = await adminDb
+      .collection('workspace_entities')
+      .where('workspaceTags', 'array-contains', tagId)
       .get();
     
     // Process in batches of 500 (Firestore limit)
     const batchSize = 500;
     let processedCount = 0;
     
-    for (let i = 0; i < schoolsSnap.docs.length; i += batchSize) {
+    for (let i = 0; i < weSnap.docs.length; i += batchSize) {
       const batch = adminDb.batch();
-      const batchDocs = schoolsSnap.docs.slice(i, i + batchSize);
+      const batchDocs = weSnap.docs.slice(i, i + batchSize);
       
       batchDocs.forEach(doc => {
-        const tags = (doc.data().tags || []).filter((t: string) => t !== tagId);
-        const taggedAt = { ...doc.data().taggedAt };
-        const taggedBy = { ...doc.data().taggedBy };
-        delete taggedAt[tagId];
-        delete taggedBy[tagId];
-        
-        batch.update(doc.ref, { tags, taggedAt, taggedBy });
+        const workspaceTags = (doc.data().workspaceTags || []).filter((t: string) => t !== tagId);
+        batch.update(doc.ref, { workspaceTags });
         processedCount++;
       });
       
       await batch.commit();
     }
     
-    // Remove tag from all prospects in batches
-    const prospectsSnap = await adminDb
-      .collection('prospects')
-      .where('tags', 'array-contains', tagId)
+    // Also remove from entities.globalTags
+    const entitiesSnap = await adminDb
+      .collection('entities')
+      .where('globalTags', 'array-contains', tagId)
       .get();
     
-    for (let i = 0; i < prospectsSnap.docs.length; i += batchSize) {
+    for (let i = 0; i < entitiesSnap.docs.length; i += batchSize) {
       const batch = adminDb.batch();
-      const batchDocs = prospectsSnap.docs.slice(i, i + batchSize);
+      const batchDocs = entitiesSnap.docs.slice(i, i + batchSize);
       
       batchDocs.forEach(doc => {
-        const tags = (doc.data().tags || []).filter((t: string) => t !== tagId);
-        const taggedAt = { ...doc.data().taggedAt };
-        const taggedBy = { ...doc.data().taggedBy };
-        delete taggedAt[tagId];
-        delete taggedBy[tagId];
-        
-        batch.update(doc.ref, { tags, taggedAt, taggedBy });
+        const globalTags = (doc.data().globalTags || []).filter((t: string) => t !== tagId);
+        batch.update(doc.ref, { globalTags });
         processedCount++;
       });
       
@@ -1058,85 +1048,50 @@ export async function getContactsByTagsAction(
       for (let i = 0; i < effectiveTagIds.length; i += chunkSize) {
         const chunk = effectiveTagIds.slice(i, i + chunkSize);
 
-        const [schoolsSnap, prospectsSnap] = await Promise.all([
-          adminDb
-            .collection('schools')
-            .where('workspaceIds', 'array-contains', workspaceId)
-            .where('tags', 'array-contains-any', chunk)
-            .get(),
-          adminDb
-            .collection('prospects')
-            .where('workspaceId', '==', workspaceId)
-            .where('tags', 'array-contains-any', chunk)
-            .get(),
-        ]);
+        const weSnap = await adminDb
+          .collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('workspaceTags', 'array-contains-any', chunk)
+          .get();
 
-        schoolsSnap.docs.forEach(d => contactIds.add(d.id));
-        prospectsSnap.docs.forEach(d => contactIds.add(d.id));
+        weSnap.docs.forEach(d => contactIds.add(d.data().entityId || d.id));
       }
 
     } else if (logic === 'AND') {
       // Query for the first tag, then filter client-side for the rest
-      const [firstSchoolsSnap, firstProspectsSnap] = await Promise.all([
-        adminDb
-          .collection('schools')
-          .where('workspaceIds', 'array-contains', workspaceId)
-          .where('tags', 'array-contains', effectiveTagIds[0])
-          .get(),
-        adminDb
-          .collection('prospects')
-          .where('workspaceId', '==', workspaceId)
-          .where('tags', 'array-contains', effectiveTagIds[0])
-          .get(),
-      ]);
+      const firstWeSnap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('workspaceTags', 'array-contains', effectiveTagIds[0])
+        .get();
 
       const remainingTagIds = effectiveTagIds.slice(1);
 
       const filterByAllTags = (docTags: string[]) =>
         remainingTagIds.every(tagId => docTags.includes(tagId));
 
-      firstSchoolsSnap.docs.forEach(d => {
-        const docTags: string[] = d.data().tags || [];
-        if (filterByAllTags(docTags)) contactIds.add(d.id);
-      });
-
-      firstProspectsSnap.docs.forEach(d => {
-        const docTags: string[] = d.data().tags || [];
-        if (filterByAllTags(docTags)) contactIds.add(d.id);
+      firstWeSnap.docs.forEach(d => {
+        const docTags: string[] = d.data().workspaceTags || [];
+        if (filterByAllTags(docTags)) contactIds.add(d.data().entityId || d.id);
       });
 
     } else if (logic === 'NOT') {
       // Get all contact IDs in workspace, then subtract those with any of the tags
-      const [allSchoolsSnap, allProspectsSnap] = await Promise.all([
-        adminDb
-          .collection('schools')
-          .where('workspaceIds', 'array-contains', workspaceId)
-          .get(),
-        adminDb
-          .collection('prospects')
-          .where('workspaceId', '==', workspaceId)
-          .get(),
-      ]);
+      const allWeSnap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .get();
 
-      // Collect IDs of contacts that have ANY of the excluded tags
       const excludedIds = new Set<string>();
       const effectiveTagSet = new Set(effectiveTagIds);
 
-      allSchoolsSnap.docs.forEach(d => {
-        const docTags: string[] = d.data().tags || [];
+      allWeSnap.docs.forEach(d => {
+        const docTags: string[] = d.data().workspaceTags || [];
+        const entityId = d.data().entityId || d.id;
         if (docTags.some(t => effectiveTagSet.has(t))) {
-          excludedIds.add(d.id);
+          excludedIds.add(entityId);
         } else {
-          contactIds.add(d.id);
-        }
-      });
-
-      allProspectsSnap.docs.forEach(d => {
-        const docTags: string[] = d.data().tags || [];
-        if (docTags.some(t => effectiveTagSet.has(t))) {
-          excludedIds.add(d.id);
-        } else {
-          contactIds.add(d.id);
+          contactIds.add(entityId);
         }
       });
     }

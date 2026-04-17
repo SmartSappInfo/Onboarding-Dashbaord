@@ -133,13 +133,13 @@ export async function deleteWorkspaceAction(id: string, userId: string) {
         const db = adminDb;
         
         // Audit associated data
-        const schoolsCount = (await db.collection('schools').where('workspaceId', '==', id).limit(1).get()).size;
+        const entitiesCount = (await db.collection('workspace_entities').where('workspaceId', '==', id).limit(1).get()).size;
         const tasksCount = (await db.collection('tasks').where('workspaceId', '==', id).limit(1).get()).size;
         const pipelinesCount = (await db.collection('pipelines').where('workspaceId', '==', id).limit(1).get()).size;
         const activitiesCount = (await db.collection('activities').where('workspaceId', '==', id).limit(1).get()).size;
 
         const associations = [];
-        if (schoolsCount > 0) associations.push("Schools");
+        if (entitiesCount > 0) associations.push("Entities");
         if (tasksCount > 0) associations.push("CRM Tasks");
         if (pipelinesCount > 0) associations.push("Pipelines/Workflows");
         if (activitiesCount > 0) associations.push("Activity Logs");

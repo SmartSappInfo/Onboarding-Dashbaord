@@ -231,26 +231,22 @@ export default function ReportsClient() {
     }
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-12 pb-32">
-                
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 text-left">
- <div className="text-left">
- <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground text-left">
- <BarChart3 className="h-10 w-10 text-primary" />
-                            Intelligence Hub
-                        </h1>
- <p className="text-muted-foreground font-medium text-lg mt-1 text-left">Operational health and CRM performance metrics for your {plural.toLowerCase()}.</p>
-                    </div>
- <div className="flex items-center gap-3 text-left">
- <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary hover:bg-primary/5 shadow-sm text-left">
- <FileText className="h-4 w-4" /> System Audit
-                        </Button>
- <Button className="rounded-xl font-semibold h-11 px-8 shadow-xl shadow-primary/20 text-xs text-left">
-                            Executive Export
-                        </Button>
-                    </div>
-                </div>
+ <div className="space-y-6 text-left pb-32">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Intelligence Hub</h1>
+                <p className="text-sm text-muted-foreground mt-1">Operational health and CRM performance metrics for your {plural.toLowerCase()}.</p>
+            </div>
+            <div className="flex items-center gap-3">
+                <Button variant="outline" className="rounded-xl font-bold h-11 px-6 border-border text-foreground hover:bg-primary/5 shadow-sm">
+                    <FileText className="mr-2 h-4 w-4" /> System Audit
+                </Button>
+                <Button className="rounded-xl font-semibold h-11 px-6 shadow-sm text-xs">
+                    Executive Export
+                </Button>
+            </div>
+        </div>
 
                 {/* KPI Tier */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
@@ -269,7 +265,7 @@ export default function ReportsClient() {
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                     {/* CRM Resolution Trend */}
- <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <Card className="lg:col-span-2 rounded-2xl border border-border shadow-sm overflow-hidden bg-card text-left">
  <CardHeader className="bg-background border-b pb-6 px-8 pt-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
  <Gauge className="h-4 w-4" /> CRM Resolution velocity (7D)
@@ -294,7 +290,7 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Regional Performance */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-2xl overflow-hidden glass-card text-left">
+ <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-card text-left">
  <CardHeader className="bg-background border-b pb-6 px-8 pt-8 text-left">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2 text-left">
  <MapPin className="h-4 w-4" /> Regional Strategic Density
@@ -321,7 +317,7 @@ export default function ReportsClient() {
 
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
                     {/* Functional Lead-Time Analysis */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-card text-left">
  <CardHeader className="bg-primary/10 p-8 border-b border-primary/20 text-left">
  <CardTitle className="text-lg font-semibold tracking-tight text-left">Lead-Time Analysis</CardTitle>
  <CardDescription className="text-xs font-bold text-primary/60 text-left">Average days to resolution per task category.</CardDescription>
@@ -350,7 +346,7 @@ export default function ReportsClient() {
                     </Card>
 
                     {/* Operational Insights */}
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden glass-card text-left">
+ <Card className="rounded-2xl border border-border shadow-sm overflow-hidden bg-card text-left">
  <CardHeader className="bg-background border-b p-8 text-left">
  <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-3 text-left">
  <Zap className="h-5 w-5 text-primary text-left" /> Executive Snapshot
@@ -364,13 +360,12 @@ export default function ReportsClient() {
                     </Card>
                 </div>
             </div>
-        </div>
     );
 }
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
+ <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group hover:border-primary/20 transition-all text-left">
  <CardContent className="p-6 flex items-center gap-5 text-left">
  <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner text-left", bg, color)}>
  <Icon className="h-7 w-7 text-left" />
@@ -394,6 +389,6 @@ function InsightRow({ icon: Icon, title, value, desc }: { icon: any, title: stri
  <p className="text-base font-semibold tracking-tight text-foreground truncate text-left">{value}</p>
  <p className="text-[10px] font-medium text-muted-foreground leading-relaxed line-clamp-2 text-left">{desc}</p>
             </div>
-        </div>
+    </div>
     );
 }

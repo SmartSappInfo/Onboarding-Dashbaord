@@ -131,10 +131,10 @@ export default function PerspectiveEditor() {
 
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
- Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-[2rem]" />)
+ Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-2xl" />)
                 ) : perspectives?.map(p => (
  <Card key={p.id} className={cn(
-                        "rounded-[2.5rem] glass-card text-left group transition-all duration-500",
+                        "rounded-2xl border border-border bg-card text-left group transition-all duration-500",
                         p.status === 'archived' ? "opacity-50 grayscale" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                     )}>
  <div className="h-1.5 w-full" style={{ backgroundColor: p.color || '#3B5FFF' }} />
@@ -169,7 +169,7 @@ export default function PerspectiveEditor() {
             </div>
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border outline-none shadow-2xl">
  <form onSubmit={handleSave} className="text-left">
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
  <div className="flex items-center gap-4">

@@ -113,10 +113,10 @@ export default function OrganizationsClient() {
                 {/* Organizations Grid */}
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {isLoading ? (
- Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2rem]" />)
+ Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)
                     ) : organizations?.map(org => (
  <Card key={org.id} className={cn(
-                            "rounded-[2.5rem] glass-card overflow-hidden text-left group transition-all duration-500",
+                            "rounded-2xl border border-border bg-card overflow-hidden text-left group transition-all duration-500",
                             org.status === 'archived' ? "opacity-50 grayscale ring-border" : "ring-border hover:ring-primary/20 hover:shadow-xl"
                         )}>
  <div className="h-1.5 w-full bg-primary" />

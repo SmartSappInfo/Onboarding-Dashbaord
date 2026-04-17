@@ -243,7 +243,7 @@ export default function NewEntityPage() {
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
  <div className="lg:col-span-2 space-y-8 text-left">
                 {/* Hub Authorization Card */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-primary/10 border-b p-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-card rounded-xl shadow-sm text-primary text-left"><Layout className="h-4 w-4" /></div>
@@ -272,7 +272,7 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left">
@@ -339,7 +339,7 @@ export default function NewEntityPage() {
                 </Card>
 
                 {/* Financial Profile Card */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><Banknote className="h-5 w-5 text-primary" /></div>
@@ -472,7 +472,7 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><UserCheck className="h-5 w-5 text-primary" /></div>
@@ -496,7 +496,7 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><User className="h-5 w-5 text-primary" /></div>
@@ -511,7 +511,7 @@ export default function NewEntityPage() {
                     </CardContent>
                 </Card>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><Plus className="h-5 w-5 text-primary" /></div>
@@ -535,7 +535,7 @@ export default function NewEntityPage() {
 
               {/* Right Sidebar: Operations */}
  <div className="space-y-8 text-left">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden glass-card bg-card text-left">
+ <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-card/20 border-b pb-6 text-left">
  <div className="flex items-center gap-3 text-left">
  <div className="p-2 bg-primary/10 rounded-xl text-left"><MapPin className="h-5 w-5 text-primary" /></div>

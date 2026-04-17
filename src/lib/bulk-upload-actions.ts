@@ -122,57 +122,76 @@ export async function ingestSchoolRowAction(
 
         const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         
-        // 8. Construct Final Data Record
-        const schoolData: Omit<School, 'id'> = {
-            name,
-            initials,
-            slug,
-            slogan,
-            location,
-            nominalRoll,
-            status: 'Active',
-            workspaceIds: ['onboarding'],
-            schoolStatus: 'Lead',
-            pipelineId: '',
-            zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : { id: 'unassigned', name: 'Unassigned' },
-            assignedTo: selectedUser 
-                ? { userId: selectedUser.id, name: selectedUser.name, email: selectedUser.email }
-                : { userId: null, name: 'Unassigned', email: null },
-            subscriptionPackageId: selectedPackage?.id || null,
-            subscriptionPackageName: selectedPackage?.name || 'Standard',
-            subscriptionRate: Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0,
-            discountPercentage: Number(getValue('discountPercentage')) || 0,
-            arrearsBalance: Number(getValue('arrearsBalance')) || 0,
-            creditBalance: Number(getValue('creditBalance')) || 0,
-            billingAddress,
-            currency,
-            entityContacts, // Canonical (FER-01)
-            modules: selectedModules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
-            stage: { id: defaultStage.id, name: defaultStage.name, order: defaultStage.order, color: defaultStage.color },
-            createdAt: new Date().toISOString(),
-            implementationDate: getValue('implementationDate') ? new Date(String(getValue('implementationDate'))).toISOString() :'',
-            referee: String(getValue('referee') || ''),
-            includeDroneFootage: String(getValue('includeDroneFootage')).toLowerCase() === 'yes' || getValue('includeDroneFootage') === true,
-        };
+        // 8. Construct Entity Data
+        const entityId = `entity_bulk_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`;
+        const timestamp = new Date().toISOString();
+        const organizationId = 'smartsapp-hq';
+        const workspaceId = 'onboarding';
 
-        const docRef = await adminDb.collection('schools').add(schoolData);
+        // 8a. Save to Universal Identity Collection
+        await adminDb.collection('entities').doc(entityId).set({
+            id: entityId,
+            organizationId,
+            entityType: 'institution',
+            name,
+            slug,
+            entityContacts, // Canonical (FER-01)
+            globalTags: [],
+            status: 'active',
+            institutionData: {
+                nominalRoll,
+                billingAddress,
+                currency,
+                subscriptionPackageId: selectedPackage?.id || null,
+                subscriptionRate: Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0,
+            },
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        });
+
+        const primaryContact = entityContacts.find(c => c.isPrimary);
+
+        // 8b. Save to Operational Workspace Collection
+        const workspaceEntityId = `${workspaceId}_${entityId}`;
+        await adminDb.collection('workspace_entities').doc(workspaceEntityId).set({
+            id: workspaceEntityId,
+            organizationId,
+            workspaceId,
+            entityId,
+            entityType: 'institution',
+            pipelineId: '',
+            stageId: defaultStage.id,
+            currentStageName: defaultStage.name,
+            status: 'active',
+            assignedTo: selectedUser ? selectedUser.id : null,
+            workspaceTags: [],
+            addedAt: timestamp,
+            updatedAt: timestamp,
+            displayName: name,
+            primaryContactName: primaryContact?.name || '',
+            primaryEmail: primaryContact?.email || '',
+            primaryPhone: primaryContact?.phone || '',
+            entityContacts, // Denormalized for list performance
+            interests: selectedModules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
+        });
 
         await logActivity({
-            entityId: docRef.id,
-            entityName: schoolData.name,
-            entitySlug: schoolData.slug,
-            organizationId: 'default',
+            entityId: entityId,
+            entityType: 'institution',
+            displayName: name,
+            entitySlug: slug,
+            organizationId,
             userId,
-            workspaceId: 'onboarding',
-            type: 'school_created',
+            workspaceId,
+            type: 'entity_created',
             source: 'system',
-            description: `Ingested school record from "${filename}"`
+            description: `Ingested entity record from "${filename}"`
         });
 
         revalidatePath('/admin/entities');
         revalidatePath('/admin/pipeline');
         
-        return { success: true, id: docRef.id, entityName: schoolData.name };
+        return { success: true, id: entityId, entityName: name };
 
     } catch (error: any) {
         console.error(">>> [BULK:INGEST] Logical Error:", error.message);

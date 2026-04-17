@@ -239,53 +239,49 @@ export default function PdfsClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
- <div className="flex flex-col">
- <h1 className="text-3xl font-semibold tracking-tight">Doc Signing Studio</h1>
- <p className="text-xs font-bold text-muted-foreground mt-1">Interactive Institutional Agreements</p>
+ <div className="space-y-6 text-left">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div>
+ <h1 className="text-2xl font-bold text-foreground tracking-tight">Doc Signing Studio</h1>
+ <p className="text-sm text-muted-foreground mt-1">Manage interactive institutional agreements and tracking.</p>
                 </div>
  <div className="flex justify-end items-center shrink-0">
                     <UploadPDFButton />
                 </div>
             </div>
-            
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
- <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
- <div className="relative flex-grow w-full">
- <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                        <Input 
-                            placeholder="Search document titles..." 
- className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
-                        />
-                    </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
- <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-semibold text-[10px] transition-all hover:bg-muted/40">
-                            <SelectValue />
-                        </SelectTrigger>
- <SelectContent className="rounded-xl">
-                            <SelectItem value="all">Global Hub</SelectItem>
-                            <SelectItem value="published">Published</SelectItem>
-                            <SelectItem value="draft">Drafts</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </CardContent>
-            </Card>
+            <div className="flex flex-col md:flex-row gap-3 items-center">
+                <div className="relative flex-1 w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search document titles..." 
+                        className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                    />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-border bg-card">
+                        <SelectItem value="all">Global Hub</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="draft">Drafts</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
 
- <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
             <Table>
                 <TableHeader>
- <TableRow className="bg-muted/30">
- <TableHead className="pl-6 text-[10px] font-semibold py-4">Document Title</TableHead>
- <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4">Status</TableHead>
- <TableHead className="w-[100px] text-center text-[10px] font-semibold py-4">Fields</TableHead>
- <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4">Signed Recs</TableHead>
- <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-semibold py-4">Created At</TableHead>
- <TableHead className="w-[160px] text-right text-[10px] font-semibold py-4 pr-6">Management</TableHead>
+ <TableRow className="bg-muted/30 border-b border-border">
+ <TableHead className="pl-6 text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Document Title</TableHead>
+ <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Status</TableHead>
+ <TableHead className="w-[100px] text-center text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Fields</TableHead>
+ <TableHead className="w-[120px] text-center text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Signed Recs</TableHead>
+ <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-semibold py-4 text-muted-foreground uppercase tracking-widest">Created At</TableHead>
+ <TableHead className="w-[160px] text-right text-[10px] font-semibold py-4 pr-6 text-muted-foreground uppercase tracking-widest">Management</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -302,7 +298,7 @@ export default function PdfsClient() {
                     ))
                 ) : filteredPdfs.length > 0 ? (
                     filteredPdfs.map((pdf) => (
- <TableRow key={pdf.id} className="group hover:bg-muted/30 transition-colors">
+ <TableRow key={pdf.id} className="group hover:bg-muted/30 transition-colors border-border">
  <TableCell className="font-bold pl-6">
  <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
                             {pdf.name}
@@ -339,10 +335,8 @@ export default function PdfsClient() {
             </Table>
             </div>
         </div>
-      </div>
-
       <AlertDialog open={!!formToDelete} onOpenChange={(isOpen) => !isOpen && setFormToDelete(null)}>
- <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="rounded-2xl border-border shadow-lg">
           <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold">Delete Document?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">

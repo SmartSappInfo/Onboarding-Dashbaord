@@ -203,75 +203,82 @@ export default function MessagingClient() {
     }, [logs, emailStats, reportData]);
 
     return (
- <div className="h-full overflow-y-auto  bg-background">
- <div className=" space-y-12">
- <Tabs defaultValue="overview" className="space-y-12">
- <TabsList className="bg-card/50 backdrop-blur-md border shadow-sm h-12 p-1 rounded-xl">
- <TabsTrigger value="overview" className="rounded-lg font-semibold text-[10px] px-6">Hub Overview</TabsTrigger>
- <TabsTrigger value="jobs" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
- <Layers className="h-4 w-4" /> Bulk Jobs
-                        </TabsTrigger>
- <TabsTrigger value="analytics" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
- <BarChart3 className="h-4 w-4" /> Performance
-                        </TabsTrigger>
-                    </TabsList>
+ <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Messaging Hub</h1>
+                <p className="text-sm text-muted-foreground mt-1">Manage omni-channel alerts and campaigns.</p>
+            </div>
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-8">
+            <TabsList className="bg-background border border-border shadow-sm h-12 p-1 rounded-xl">
+                <TabsTrigger value="overview" className="rounded-lg font-semibold text-[10px] px-6">Hub Overview</TabsTrigger>
+                <TabsTrigger value="jobs" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
+                    <Layers className="h-4 w-4" /> Bulk Jobs
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="rounded-lg font-semibold text-[10px] px-6 gap-2">
+                    <BarChart3 className="h-4 w-4" /> Performance
+                </TabsTrigger>
+            </TabsList>
 
  <TabsContent value="overview" className="space-y-16 animate-in fade-in slide-in-from-bottom-2">
                         {/* Operational Intelligence Row */}
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
- <Card className="rounded-3xl glass-card overflow-hidden">
- <CardContent className="p-6 flex items-center gap-5">
- <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner border border-primary/20">
- <Target className="h-7 w-7" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                                <CardContent className="p-6 flex items-center gap-5">
+                                    <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner border border-primary/20">
+                                        <Target className="h-7 w-7" />
                                     </div>
                                     <div>
- <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Delivery Efficiency</p>
- <div className="flex items-baseline gap-2">
- <p className="text-4xl font-semibold tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
+                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Delivery Efficiency</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-4xl font-semibold tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
                                             <Badge variant="outline" className="text-[8px] font-semibold uppercase bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Optimal</Badge>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
- <Card className="rounded-3xl glass-card overflow-hidden">
- <CardContent className="p-6 flex items-center gap-5">
- <div className={cn(
+                            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                                <CardContent className="p-6 flex items-center gap-5">
+                                    <div className={cn(
                                         "p-4 rounded-2xl shrink-0 shadow-inner border",
                                         balance !== null && balance < 50 ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"
                                     )}>
- <Wallet className="h-7 w-7" />
+                                        <Wallet className="h-7 w-7" />
                                     </div>
- <div className="flex-1 min-w-0">
- <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">SMS Unit Balance</p>
- <div className="flex items-center justify-between">
- <p className={cn(
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">SMS Unit Balance</p>
+                                        <div className="flex items-center justify-between">
+                                            <p className={cn(
                                                 "text-4xl font-semibold tabular-nums tracking-tighter",
                                                 balance !== null && balance < 50 && "text-red-500"
                                             )}>
                                                 {isLoadingBalance ? '...' : balance !== null ? balance.toLocaleString() : 'N/A'}
                                             </p>
- <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
- <RefreshCw className={cn("h-4 w-4", isLoadingBalance && "animate-spin")} />
+                                            <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
+                                                <RefreshCw className={cn("h-4 w-4", isLoadingBalance && "animate-spin")} />
                                             </button>
                                         </div>
                                     </div>
                                 </CardContent>
                                 {balance !== null && balance < 50 && (
- <div className="bg-red-500 text-white text-[8px] font-semibold py-1 text-center animate-pulse">Low Units Warning</div>
- ) || <div className="h-1 bg-transparent" />}
+                                    <div className="bg-red-500 text-white text-[8px] font-semibold py-1 text-center animate-pulse">Low Units Warning</div>
+                                )}
                             </Card>
 
- <Card className="rounded-3xl glass-card overflow-hidden">
- <CardContent className="p-6 flex items-center gap-5">
- <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0 shadow-inner border border-emerald-500/20">
- <ShieldCheck className="h-7 w-7" />
+                            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                                <CardContent className="p-6 flex items-center gap-5">
+                                    <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0 shadow-inner border border-emerald-500/20">
+                                        <ShieldCheck className="h-7 w-7" />
                                     </div>
                                     <div>
- <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Gateway Trust</p>
- <div className="flex items-baseline gap-2">
- <p className="text-4xl font-semibold tabular-nums tracking-tighter">100%</p>
- <span className="text-[10px] font-bold text-emerald-500 tracking-tighter">Verified</span>
+                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Gateway Trust</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-4xl font-semibold tabular-nums tracking-tighter">100%</p>
+                                            <span className="text-[10px] font-bold text-emerald-500 tracking-tighter">Verified</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -303,38 +310,38 @@ export default function MessagingClient() {
                         </section>
 
  <section className="pt-8">
- <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2.5rem] overflow-hidden">
- <CardHeader className="p-8 pb-4">
- <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
- <Activity className="h-4 w-4" /> Provider Connectivity Audit
+                            <Card className="bg-primary/5 border border-primary/20 shadow-none rounded-2xl overflow-hidden">
+                                <CardHeader className="p-8 pb-4">
+                                    <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                                        <Activity className="h-4 w-4" /> Provider Connectivity Audit
                                     </CardTitle>
                                 </CardHeader>
- <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
- <div className="flex items-center gap-5 p-6 rounded-3xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
- <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0 shadow-sm border border-blue-100">
- <Mail className="h-6 w-6" />
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
+                                    <div className="flex items-center gap-5 p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md">
+                                        <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0 shadow-sm border border-blue-100 dark:border-blue-500/20">
+                                            <Mail className="h-6 w-6" />
                                         </div>
- <div className="flex-1 min-w-0">
- <p className="font-semibold text-sm text-foreground tracking-tight">Email Port (Resend)</p>
- <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: High Throughput Enabled</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm text-foreground tracking-tight">Email Port (Resend)</p>
+                                            <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: High Throughput Enabled</p>
                                         </div>
- <div className="flex items-center gap-2 shrink-0">
- <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase  px-2.5 h-5">Live</Badge>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
                                         </div>
                                     </div>
                                     
- <div className="flex items-center gap-5 p-6 rounded-3xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
- <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0 shadow-sm border border-orange-100">
- <Smartphone className="h-6 w-6" />
+                                    <div className="flex items-center gap-5 p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md">
+                                        <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0 shadow-sm border border-orange-100 dark:border-orange-500/20">
+                                            <Smartphone className="h-6 w-6" />
                                         </div>
- <div className="flex-1 min-w-0">
- <p className="font-semibold text-sm text-foreground tracking-tight">SMS Uplink (mNotify)</p>
- <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: Gateway Authorized</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm text-foreground tracking-tight">SMS Uplink (mNotify)</p>
+                                            <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: Gateway Authorized</p>
                                         </div>
- <div className="flex items-center gap-2 shrink-0">
- <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase  px-2.5 h-5">Live</Badge>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -348,7 +355,7 @@ export default function MessagingClient() {
 
  <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2">
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
- <Card className="lg:col-span-2 rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm">
+ <Card className="lg:col-span-2 rounded-2xl overflow-hidden border border-border shadow-sm">
  <CardHeader className="bg-muted/30 border-b pb-6">
  <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
  <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends (30D)
@@ -461,6 +468,5 @@ export default function MessagingClient() {
                     </TabsContent>
                 </Tabs>
             </div>
-        </div>
     );
 }

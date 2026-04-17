@@ -297,32 +297,38 @@ export default function MeetingsHubClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background">
- <div className=" space-y-8">
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
- <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
- <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl">
- <TabsTrigger value="list" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
- <LayoutList className="h-4 w-4" /> Hub Registry
-                        </TabsTrigger>
- <TabsTrigger value="calendar" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
- <LayoutGrid className="h-4 w-4" /> Temporal Map
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-
- <div className="flex justify-end items-center gap-3 shrink-0">
- <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
-                        <Link href="/admin/meetings/new">
- <PlusCircle className="mr-2 h-5 w-5" />
-                            Schedule New Session
-                        </Link>
-                    </Button>
-                </div>
+ <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Session Registry</h1>
+                <p className="text-sm text-muted-foreground mt-1">Manage scheduled meetings, webinars, and attendance data.</p>
             </div>
+            
+            <div className="flex justify-end items-center gap-3 shrink-0">
+                <Button asChild className="rounded-xl font-bold shadow-sm h-11 px-6">
+                    <Link href="/admin/meetings/new">
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Schedule New Session
+                    </Link>
+                </Button>
+            </div>
+        </div>
 
- <div className="flex flex-wrap items-center justify-between gap-4">
- <Card className="flex-1 min-w-[280px] max-w-sm border-none shadow-sm ring-1 ring-border rounded-xl bg-card overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+ <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
+            <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-xl">
+                <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
+                    <LayoutList className="h-4 w-4" /> Hub Registry
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
+                    <LayoutGrid className="h-4 w-4" /> Temporal Map
+                </TabsTrigger>
+            </TabsList>
+        </Tabs>
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+            <Card className="flex-1 min-w-[280px] max-w-sm border-border shadow-sm rounded-xl bg-card overflow-hidden">
  <CardContent className="p-2">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
  <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">

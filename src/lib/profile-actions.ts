@@ -91,14 +91,7 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       }
     }
     
-    // Always update legacy schools collection for backward compatibility
-    const schoolRef = adminDb.collection('schools').doc(entityId);
-    await schoolRef.update({
-      ...legacyFields,
-      ...identityFields,
-      ...operationalFields,
-      updatedAt: new Date().toISOString()
-    });
+    // Legacy school sync removed — entities + workspace_entities are the canonical stores
     
     return { success: true };
   } catch (error: any) {

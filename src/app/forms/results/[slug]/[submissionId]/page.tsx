@@ -30,9 +30,16 @@ async function getAuditData(slug: string, submissionId: string) {
         const targetSchoolId = submission.entityId || pdfForm.entityId;
         
         if (targetSchoolId) {
-            const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();
-            if (schoolSnap.exists) {
-                school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+            // Try entities collection first (canonical)
+            const entitySnap = await adminDb.collection('entities').doc(targetSchoolId).get();
+            if (entitySnap.exists) {
+                school = { id: entitySnap.id, ...entitySnap.data() } as School;
+            } else {
+                // Fallback: legacy schools collection for older records
+                const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();
+                if (schoolSnap.exists) {
+                    school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+                }
             }
         }
 

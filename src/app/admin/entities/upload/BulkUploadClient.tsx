@@ -259,7 +259,7 @@ export default function BulkUploadClient() {
                     {currentStep === 'UPLOAD' && (
                         <motion.div key="upload" {...stepTransition}>
  <div className="flex justify-end mb-6"><Button variant="outline" onClick={handleDownloadTemplate} className="gap-2 rounded-xl font-bold"><Download size={16} /> Template</Button></div>
- <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
  <CardHeader className="text-center py-16 bg-card/20 border-b">
  <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl"><Upload className="h-10 w-10 text-primary" /></div>
  <CardTitle className="text-4xl font-semibold tracking-tight ">Institutional Import</CardTitle>
@@ -284,7 +284,7 @@ export default function BulkUploadClient() {
  <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="font-bold gap-2"><ArrowLeft size={16} /> Change File</Button>
                                 <Badge className="bg-primary px-4 h-8 uppercase font-semibold">{rawData.length} Schools Identified</Badge>
                             </div>
- <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
  <CardHeader className="bg-card/20 border-b p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><TableIcon size={24} /></div>
@@ -322,7 +322,7 @@ export default function BulkUploadClient() {
 
                     {currentStep === 'COMPLETE' && (
  <motion.div key="complete" className="space-y-8">
- <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden glass-card bg-card text-center">
+ <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card text-center">
  <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-500/10" : "bg-orange-500/10")}>
  <div className="mx-auto bg-card/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl"><Check size={48} /></div>
  <CardTitle className="text-4xl font-semibold ">Import Report</CardTitle>
@@ -342,7 +342,7 @@ export default function BulkUploadClient() {
                     {currentStep === 'CORRECTION' && (
  <motion.div key="correction" className="space-y-8">
  <div className="flex items-center justify-between mb-8"><Button variant="ghost" onClick={() => setCurrentStep('COMPLETE')} className="font-bold gap-2"><ArrowLeft size={16} /> Summary</Button><h2 className="text-2xl font-semibold text-rose-600">Correction Console</h2></div>
- <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden glass-card bg-card">
+ <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
  <ScrollArea className="h-[500px]">
                                     <Table>
  <TableHeader className="bg-card/20 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="pl-8 py-4 font-semibold text-[10px]">Row</TableHead><TableHead className="py-4 font-semibold text-[10px]">Identity</TableHead><TableHead className="py-4 font-semibold text-[10px]">Logic Failure</TableHead><TableHead className="text-right pr-8 font-semibold text-[10px]">Actions</TableHead></TableRow></TableHeader>
@@ -378,7 +378,7 @@ function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: { open:
     React.useEffect(() => { if (open) setLocalData(data); }, [open, data]);
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border shadow-2xl bg-card">
+ <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden border border-border shadow-2xl bg-card">
  <DialogHeader className="p-8 bg-card/20 border-b shrink-0">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-xl shadow-lg"><Pencil size={24} /></div>

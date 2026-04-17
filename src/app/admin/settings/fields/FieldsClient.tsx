@@ -375,7 +375,7 @@ export default function FieldsClient() {
     return (
       <div className="h-full overflow-y-auto bg-background">
         <div className="flex flex-col items-center justify-center py-32 text-center gap-4">
-          <div className="p-6 bg-card rounded-[2rem] shadow-inner border border-border/50">
+          <div className="p-6 bg-card rounded-2xl shadow-inner border border-border/50">
             <Database className="h-12 w-12 text-muted-foreground/20" />
           </div>
           <p className="text-sm font-semibold text-muted-foreground">No workspace selected. Please select a workspace to manage fields.</p>
@@ -588,7 +588,7 @@ export default function FieldsClient() {
 
           {/* Variables Reference Tab */}
           <TabsContent value="variables" className="mt-6 space-y-6">
-            <Card className="rounded-2xl border-none shadow-sm glass-card overflow-hidden">
+            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
               <CardHeader className="bg-primary/10 border-b pb-4">
                 <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
                   <BookOpen className="h-3 w-3" /> Contextual Variables Reference
@@ -645,7 +645,7 @@ export default function FieldsClient() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={o => { if (!o) { setIsCreateOpen(false); setEditingField(null); } }}>
-        <DialogContent className="sm:max-w-lg rounded-[2rem] bg-card border shadow-2xl">
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-card border shadow-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-5 w-5 text-primary" /></div>

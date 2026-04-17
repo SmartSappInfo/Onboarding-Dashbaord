@@ -260,10 +260,18 @@ export default function EntitiesClient() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
- <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
-                    <div className="flex justify-end items-center gap-3 shrink-0">
+      <div className="space-y-6 text-left">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              {plural} Directory
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your pipeline entities and leads.
+            </p>
+          </div>
+          <div className="flex justify-end items-center gap-3 shrink-0">
                     {selectedEntityIds.length > 0 && (
                         <Button
                             variant="outline"
@@ -296,52 +304,67 @@ export default function EntitiesClient() {
                         </Button>
                     )}
                 </div>
+        </div>
+            
+        {/* Filters */}
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 max-w-sm">
+                    <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl focus:border-primary/50 focus:ring-primary/20" />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-muted border-border rounded-xl">
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={stageFilter} onValueChange={setStageFilter}>
+                    <SelectTrigger className="w-[180px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
+                        <SelectValue placeholder="All Stages" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-muted border-border rounded-xl">
+                        <SelectItem value="all">All Stages</SelectItem>
+                        {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Badge variant="outline" className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center">
+                    {filteredEntities.length} {filteredEntities.length === 1 ? singular : plural}
+                </Badge>
             </div>
+            {/* Tag filter row */}
+            <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
+        </div>
             
- <Card className="glass-card rounded-2xl overflow-hidden">
- <CardContent className="p-4 space-y-3">
- <div className="flex flex-wrap items-center gap-4">
- <div className="flex-1 min-w-[200px]">
- <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
-                        </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
- <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={stageFilter} onValueChange={setStageFilter}>
- <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                <SelectValue placeholder="All Stages" />
-                            </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                <SelectItem value="all">All Stages</SelectItem>
-                                {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {/* Tag filter row — shows active filter badges inline */}
- <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
-                </CardContent>
-            </Card>
-            
- <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
-                <Table>
- <TableHeader className="bg-muted/30">
-                    <TableRow>
- <TableHead className="w-[80px]"></TableHead>
- <TableHead><Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] p-0 h-auto">{termName} <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
- <TableHead className="text-center"><span className="text-[10px] font-bold ">Status</span></TableHead>
- <TableHead><Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
- <TableHead><span className="text-[10px] font-bold ">Contacts</span></TableHead>
- <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
- <TableHead className="text-right pr-6"><span className="text-[10px] font-bold ">Actions</span></TableHead>
+        {/* Data Table */}
+        <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+            <Table>
+                <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-[80px]" />
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                            <Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                {termName} <ArrowUpDown className="ml-2 h-3 w-3" />
+                            </Button>
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">Status</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                            <Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3" />
+                            </Button>
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">Contacts</TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                            <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                Assigned To <ArrowUpDown className="ml-2 h-3 w-3" />
+                            </Button>
+                        </TableHead>
+                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-right pr-6">Actions</TableHead>
                     </TableRow>
-                    </TableHeader>
+                </TableHeader>
                     <TableBody>
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
@@ -350,7 +373,7 @@ export default function EntitiesClient() {
                     ) : sortedEntities.length > 0 ? (
                         sortedEntities.map((entity) => {
                         return (
- <TableRow key={entity.id} className={cn("group hover:bg-muted/30 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
+                                <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
  <TableCell className="pl-6">
  <div className="flex items-center gap-2">
                               <input
@@ -458,13 +481,14 @@ export default function EntitiesClient() {
                         </TableRow>
                         )})
                     ) : (
- <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell></TableRow>
+                        <TableRow className="border-border">
+                            <TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell>
+                        </TableRow>
                     )}
                     </TableBody>
                 </Table>
             </div>
-        </div>
-      </div>
+</div>
       <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
  <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>

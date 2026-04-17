@@ -190,39 +190,38 @@ export default function InvoicesClient() {
     const isLoading = isLoadingInvoices || isLoadingEntities || isLoadingFilter;
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
- <div className="text-left">
- <h1 className="text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3 text-left">
- <Receipt className="h-8 w-8 text-primary" />
-                            Invoice Registry
-                        </h1>
- <p className="text-muted-foreground font-medium mt-1 text-left">Institutional billing records for the {activeWorkspaceId} track.</p>
-                    </div>
-                    {canCreate && (
-                        <Button onClick={() => setIsAdding(true)} className="rounded-xl font-semibold shadow-lg h-12 px-8 transition-all active:scale-95 text-left">
-                            <Plus className="mr-2 h-5 w-5" /> Initialize Invoice
-                        </Button>
-                    )}
-                </div>
+ <div className="space-y-6 text-left pb-32">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">Invoice Registry</h1>
+                <p className="text-sm text-muted-foreground mt-1">Institutional billing records for the {activeWorkspaceId} track.</p>
+            </div>
+            <div className="flex items-center gap-3">
+                {canCreate && (
+                    <Button onClick={() => setIsAdding(true)} className="rounded-xl font-semibold shadow-sm h-11 px-6 active:scale-95 text-left">
+                        <Plus className="mr-2 h-4 w-4" /> Initialize Invoice
+                    </Button>
+                )}
+            </div>
+        </div>
 
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card text-left">
+        <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardContent className="p-4 flex flex-wrap items-center gap-4 text-left">
  <div className="flex-grow min-w-[240px] relative text-left">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40 text-left" />
-                            <Input 
-                                placeholder={`Search reference or ${singular.toLowerCase()}...`} 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
- className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-left"
-                            />
+                                <Input 
+                                    placeholder={`Search reference or ${singular.toLowerCase()}...`} 
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium text-left"
+                                />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
- <SelectTrigger className="w-[160px] h-11 rounded-xl bg-muted/20 border-none font-semibold text-[10px] text-left">
+                            <SelectTrigger className="w-[160px] h-10 bg-muted/50 border-border text-foreground rounded-xl text-left">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
- <SelectContent className="rounded-xl">
+                            <SelectContent className="rounded-xl border-border bg-card">
                                 <SelectItem value="all">Global View</SelectItem>
                                 <SelectItem value="draft">Drafts</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
@@ -233,7 +232,7 @@ export default function InvoicesClient() {
                     </CardContent>
                 </Card>
 
- <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5 text-left">
+ <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden text-left">
  <Table className="text-left">
  <TableHeader className="bg-muted/30 text-left">
  <TableRow className="text-left">
@@ -285,11 +284,10 @@ export default function InvoicesClient() {
                         </TableBody>
                     </Table>
                 </div>
-            </div>
 
             {/* Creation Dialog */}
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl text-left">
+                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border shadow-lg text-left bg-background">
                     <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
  <div className="flex items-center gap-4 text-left">
@@ -300,7 +298,7 @@ export default function InvoicesClient() {
                                 </div>
                             </div>
                         </DialogHeader>
- <div className="p-8 space-y-8 text-left bg-background">
+                        <div className="p-8 space-y-6 text-left bg-background">
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">1. Target {singular}</Label>
                                 <Select onValueChange={setSelectedEntityId} value={selectedEntityId || ''}>
@@ -318,8 +316,8 @@ export default function InvoicesClient() {
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left"><ShieldCheck className="h-3 w-3" /> 3. Financial Protocol (Profile)</Label>
                                 <Select onValueChange={setSelectedProfileId} value={selectedProfileId || ''}>
- <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 shadow-sm font-semibold text-primary text-left"><SelectValue placeholder="Pick billing profile..." /></SelectTrigger>
- <SelectContent className="rounded-xl text-left">{profiles?.map(p => <SelectItem key={p.id} value={p.id} className="text-left">{p.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl text-left"><SelectValue placeholder="Pick billing profile..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border bg-card text-left">{profiles?.map(p => <SelectItem key={p.id} value={p.id} className="text-left">{p.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                         </div>

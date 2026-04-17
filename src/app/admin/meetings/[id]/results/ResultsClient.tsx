@@ -130,9 +130,9 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  <div className="p-8 space-y-8 animate-pulse">
  <div className="h-12 w-64 bg-muted rounded-xl" />
  <div className="grid grid-cols-3 gap-6">
- {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-[2rem]" />)}
+ {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
                 </div>
- <Skeleton className="h-[400px] rounded-[2.5rem]" />
+ <Skeleton className="h-[400px] rounded-2xl" />
             </div>
         );
     }
@@ -201,7 +201,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Attendance Velocity Chart */}
- <Card className="lg:col-span-2 rounded-[2.5rem] glass-card overflow-hidden">
+ <Card className="lg:col-span-2 rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
  <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
@@ -242,7 +242,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                     </Card>
 
                     {/* Operational Details */}
- <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+ <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
  <CardHeader className="bg-background border-b pb-6 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <CalendarCheck className="h-4 w-4" /> Session Blueprint
@@ -264,7 +264,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
                 </div>
 
                 {/* Attendee Registry */}
- <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+ <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
  <CardHeader className="bg-primary/5 p-8 border-b border-primary/10">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
@@ -353,7 +353,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
 
 function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
     return (
- <Card className="rounded-[2rem] glass-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
+ <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all text-left">
  <CardContent className="p-6 flex items-center gap-5">
  <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
  <Icon className="h-7 w-7" />

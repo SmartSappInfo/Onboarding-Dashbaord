@@ -49,3 +49,8 @@ firebase-debug.log
 firestore-debug.log
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Secret credentials - never commit
+serviceAccountKey.json
+*serviceAccount*.json
+*service-account*.json

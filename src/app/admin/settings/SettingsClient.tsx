@@ -23,7 +23,7 @@ export default function SettingsClient() {
  <div className="h-full overflow-y-auto  space-y-12 bg-background text-left">
  <div className=" space-y-12">
         {/* Organization Profile Header */}
- <Card className="rounded-[2.5rem] glass-card overflow-hidden">
+        <Card className="rounded-2xl border border-border bg-card overflow-hidden">
  <div className="h-2 w-full bg-primary" />
  <CardContent className="p-8 md:p-12">
  <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
@@ -33,11 +33,11 @@ export default function SettingsClient() {
                   <img 
                     src={activeOrganization.logoUrl} 
                     alt={activeOrganization.name}
- className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] object-cover shadow-2xl ring-4 ring-primary/5"
+                    className="h-32 w-32 md:h-40 md:w-40 rounded-2xl object-cover shadow-sm ring-1 ring-border"
                   />
                 ) : (
- <div className="h-32 w-32 md:h-40 md:w-40 rounded-[2rem] bg-primary/5 flex items-center justify-center shadow-inner">
- <Building className="h-16 w-16 md:h-20 md:w-20 text-primary opacity-20" />
+                  <div className="h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-muted/50 border border-border flex items-center justify-center">
+                    <Building className="h-16 w-16 md:h-20 md:w-20 text-muted-foreground opacity-40" />
                   </div>
                 )}
               </div>
@@ -102,7 +102,7 @@ export default function SettingsClient() {
         <FeatureManager />
 
  <div className="space-y-8">
-          <Card className="rounded-[2.5rem] glass-card overflow-hidden bg-primary/5 border-primary/20">
+          <Card className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
             <CardContent className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
               <div className="flex items-center gap-4">
                 <div className="p-4 bg-primary text-white rounded-2xl shadow-lg">
