@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '../firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import type { AuditActor, PlatformJob, PlatformJobType } from './backoffice-types';
@@ -94,7 +95,7 @@ export async function cancelJob(
 
     await docRef.update({
       status: 'cancelled',
-      'logs': adminDb.FieldValue.arrayUnion({
+      'logs': FieldValue.arrayUnion({
          timestamp: new Date().toISOString(),
          level: 'warn',
          message: `Job cancelled by ${actor.name} (${actor.email})`
