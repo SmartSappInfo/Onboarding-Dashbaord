@@ -27,7 +27,6 @@ export function MonthlySchoolsChart({
     return (
         <DashboardCard 
             title={`${terminology.plural} Added Per Month`}
-            description={`Monthly trend of new ${terminology.singular.toLowerCase()} registrations.`}
         >
              <div className="w-full h-72">
                 {hasData ? (

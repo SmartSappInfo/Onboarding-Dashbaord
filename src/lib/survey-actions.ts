@@ -6,7 +6,8 @@ import { logActivity } from './activity-logger';
 import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
 import { recordConversion } from './analytics-actions';
 
-import type { Survey, SurveyResponse, Webhook, FocalPerson } from './types';
+import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType } from './types';
+import { createEntityAction, updateEntityAction } from './entity-actions';
 
 /**
  * Get surveys for a specific contact (by entityId or entityId)
@@ -186,14 +187,125 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     const surveySnap = await surveyRef.get();
     let organizationId = 'default';
     let workspaceId = 'default';
+    let surveyData: Survey | null = null;
 
     if (surveySnap.exists) {
-      const surveyData = surveySnap.data() as Survey;
+      surveyData = surveySnap.data() as Survey;
       organizationId = surveyData.organizationId || 'default';
       workspaceId = surveyData.workspaceIds[0] || 'default';
     }
 
-    // 1.1 Handle Analytics if submitted from a campaign page
+    // 3. Transform to Entity/Lead if enabled (Task 12)
+    let finalEntityId = responseData.entityId || null;
+
+    if (surveyData && surveyData.createEntity && surveyData.entityMapping) {
+      const mapping = surveyData.entityMapping;
+      const answers = responseData.answers || [];
+
+      const getAnswerValue = (qId?: string) => {
+        if (!qId) return null;
+        const ans = answers.find((a: any) => a.questionId === qId);
+        return ans ? ans.value : null;
+      };
+
+      const eName = getAnswerValue(mapping.entityNameFieldId);
+      const cName = getAnswerValue(mapping.contactNameFieldId);
+      const cEmail = getAnswerValue(mapping.contactEmailFieldId);
+      const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
+
+      if (eName && cEmail) {
+        // 3.1 Resolution & Deduplication
+        const weRef = adminDb.collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('displayName', '==', eName)
+          .where('primaryEmail', '==', cEmail)
+          .limit(1);
+        
+        const weSnap = await weRef.get();
+        
+        // Get workspace scope
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        const contactScope = (wsSnap.data()?.contactScope || 'institution') as EntityType;
+
+        // 3.1 Advanced Property Mapping (Phase 5)
+        const institutionData: any = {};
+        const personData: any = {};
+
+        if (mapping.additionalMappings?.length) {
+          mapping.additionalMappings.forEach((m: any) => {
+            const val = getAnswerValue(m.questionId);
+            if (val !== null && val !== undefined && val !== '') {
+              if (m.targetField.startsWith('institutionData.')) {
+                const field = m.targetField.replace('institutionData.', '');
+                // Handle numeric casting for known number fields
+                institutionData[field] = field === 'nominalRoll' ? Number(val) : val;
+              } else if (m.targetField.startsWith('personData.')) {
+                const field = m.targetField.replace('personData.', '');
+                personData[field] = val;
+              }
+            }
+          });
+        }
+
+        const entityPayload: any = {
+          name: eName,
+          contacts: [
+            {
+              name: cName || eName,
+              email: cEmail,
+              phone: cPhone,
+              isPrimary: true,
+              typeKey: 'primary'
+            }
+          ],
+          globalTags: surveyData.autoTags || [],
+          workspaceTags: surveyData.autoTags || [],
+        };
+
+        if (Object.keys(institutionData).length > 0) entityPayload.institutionData = institutionData;
+        if (Object.keys(personData).length > 0) entityPayload.personData = personData;
+
+        if (!weSnap.empty) {
+          // Match found -> Update existing
+          const existingWE = weSnap.docs[0].data();
+          finalEntityId = existingWE.entityId;
+          await updateEntityAction(
+            finalEntityId,
+            entityPayload,
+            'system_survey',
+            workspaceId,
+            organizationId
+          );
+        } else {
+          // No match -> Create new
+          const createRes = await createEntityAction(
+            entityPayload,
+            'system_survey',
+            workspaceId,
+            contactScope,
+            organizationId
+          );
+          if (createRes.success) {
+            finalEntityId = createRes.id;
+          }
+        }
+
+        // Link the response to the entity
+        if (finalEntityId) {
+          await docRef.update({ 
+            entityId: finalEntityId,
+            assignedUserId: responseData.assignedUserId || null 
+          });
+          
+          // Trigger automations if enabled
+          if (surveyData.autoAutomations?.length) {
+            console.log(`[SURVEY:AUTOMATION] Triggering ${surveyData.autoAutomations.length} workflows for entity ${finalEntityId}`);
+          }
+        }
+      }
+    }
+
+    // 4. Handle Analytics if submitted from a campaign page
     if (responseData.sourcePageId) {
       await recordConversion(responseData.sourcePageId);
       
@@ -209,9 +321,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       }).catch(console.error);
     }
 
-
-
-    // 2. If session exists, mark as submitted
+    // 5. If session exists, mark as submitted
     if (sessionId) {
       await adminDb.collection('survey_sessions').doc(sessionId).set({
         isSubmitted: true,
@@ -219,23 +329,21 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       }, { merge: true });
     }
     
-    // 3. Handle Notifications (Admin & External)
-    if (surveySnap.exists) {
-      const surveyData = surveySnap.data() as Survey;
-      const workspaceId = surveyData.workspaceIds[0] || 'default';
-      
+    // 6. Handle Notifications (Admin & External)
+    if (surveyData) {
       const notificationVars = {
         ...responseData.answers.reduce((acc: any, ans: any) => ({ ...acc, [ans.questionId]: ans.value }), {}),
         survey_title: surveyData.title,
         survey_id: surveyId,
         submission_id: docRef.id,
-        workspaceId
+        workspaceId,
+        entityId: finalEntityId
       };
 
       // Internal Team Alerts
       if (surveyData.adminAlertsEnabled) {
         await triggerInternalNotification({
-          entityId: responseData.entityId,
+          entityId: finalEntityId,
           notifyManager: surveyData.adminAlertNotifyManager,
           specificUserIds: surveyData.adminAlertSpecificUserIds,
           emailTemplateId: surveyData.adminAlertEmailTemplateId,
@@ -245,16 +353,40 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         });
       }
 
-      // External Stakeholder Alerts (Requirement 3)
-      if (surveyData.externalAlertsEnabled && responseData.entityId) {
+      // External Stakeholder Alerts
+      if (surveyData.externalAlertsEnabled && finalEntityId) {
         await triggerExternalNotification({
-          entityId: responseData.entityId,
+          entityId: finalEntityId,
           contactTypes: surveyData.externalAlertContactTypes || [],
           emailTemplateId: surveyData.externalAlertEmailTemplateId,
           smsTemplateId: surveyData.externalAlertSmsTemplateId,
           variables: notificationVars,
           channel: surveyData.externalAlertChannel
         });
+      }
+
+      // 6.1 Assigned User Attribution Alerts (Phase 3)
+      if (surveyData.notifyAssignedUsers && responseData.assignedUserId) {
+        const assignedUserId = responseData.assignedUserId;
+        const config = surveyData.notifyAssignedUsers;
+
+        const hasEmail = config.email && config.emailTemplateId && config.emailTemplateId !== 'none';
+        const hasSms = config.sms && config.smsTemplateId && config.smsTemplateId !== 'none';
+
+        if (hasEmail || hasSms) {
+          await triggerInternalNotification({
+            entityId: finalEntityId,
+            specificUserIds: [assignedUserId],
+            emailTemplateId: hasEmail ? config.emailTemplateId : undefined,
+            smsTemplateId: hasSms ? config.smsTemplateId : undefined,
+            variables: { 
+              ...notificationVars, 
+              assigned_userId: assignedUserId,
+              is_assigned_alert: true 
+            },
+            channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
+          });
+        }
       }
     }
 

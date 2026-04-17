@@ -9,9 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Trophy, Users, BarChart3, Target, MousePointer2, AlertCircle, TrendingDown, UserMinus } from 'lucide-react';
+import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
+import { ChartConfig, ChartContainer, ChartTooltip } from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from "@/components/ui/progress";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -177,10 +180,94 @@ function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text'
     );
 }
 
+/**
+ * Component to display the representative performance leaderboard
+ */
+function RepresentativeLeaderboard({ data }: { data: any[] }) {
+    return (
+        <Card className="flex flex-col h-full border-none ring-1 ring-border shadow-sm">
+            <CardHeader className="bg-muted/10 border-b pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
+                        <Award className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Representative Performance</CardTitle>
+                        <CardDescription className="text-[10px] font-bold text-muted-foreground/60 uppercase">Attribution & Outreach Metrics</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-auto max-h-[400px]">
+                {data.length === 0 ? (
+                    <div className="h-48 flex flex-col items-center justify-center text-center opacity-30 p-8 grayscale">
+                        <Activity className="h-10 w-10 mb-2" />
+                        <p className="text-[10px] font-bold tracking-tight">No Attribution Data Yet</p>
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/30 hover:bg-muted/30 border-b">
+                                <TableHead className="text-[9px] font-black uppercase py-4 pl-6">Representative</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase py-4 text-center">Responses</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase py-4 text-center">CRM Leads</TableHead>
+                                <TableHead className="text-[9px] font-black uppercase py-4 text-right pr-6">Yield Rate</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {data.map((row, idx) => (
+                                <TableRow key={idx} className="group transition-all hover:bg-blue-50/30">
+                                    <TableCell className="py-4 pl-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                                                <UserIcon className="h-4 w-4 text-blue-600" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-foreground">{row.name}</span>
+                                                <span className="text-[9px] text-muted-foreground font-bold tracking-tighter italic">Unique Link Source</span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-center py-4">
+                                        <span className="text-xs font-bold">{row.responses}</span>
+                                    </TableCell>
+                                    <TableCell className="text-center py-4">
+                                        <div className="flex items-center justify-center gap-1.5">
+                                            <ShieldCheck className="h-3 w-3 text-emerald-500" />
+                                            <span className="text-xs font-black text-emerald-600">{row.leads}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right py-4 pr-6">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className={cn(
+                                                "text-[10px] font-black px-2 py-0.5 rounded-md",
+                                                row.yield === 100 ? "bg-emerald-500 text-white" : "bg-blue-500/10 text-blue-600"
+                                            )}>
+                                                {row.yield}%
+                                            </span>
+                                            <Progress value={row.yield} className="h-1 w-16" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
 export default function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
     const firestore = useFirestore();
+
+    // Fetch Team for resolution
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+    }, [firestore]);
+    const { data: users } = useCollection<any>(usersQuery);
 
     // 1. Fetch Sessions for Drop-off Analytics
     const sessionsQuery = useMemoFirebase(() => {
@@ -333,6 +420,38 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         });
     }, [survey, responses]);
 
+    // 5. Attribution & Outreach Analytics (Phase 4)
+    const attributionData = React.useMemo(() => {
+        if (!responses || !users) return [];
+        
+        const statsMap: Record<string, { responses: number; leads: number }> = {};
+        
+        responses.forEach(res => {
+            if (res.assignedUserId) {
+                if (!statsMap[res.assignedUserId]) {
+                    statsMap[res.assignedUserId] = { responses: 0, leads: 0 };
+                }
+                statsMap[res.assignedUserId].responses++;
+                if (res.entityId) {
+                    statsMap[res.assignedUserId].leads++;
+                }
+            }
+        });
+
+        return Object.entries(statsMap).map(([uid, stats]) => {
+            const user = users.find(u => u.id === uid);
+            return {
+                id: uid,
+                name: user?.name || user?.email || 'Team Member',
+                responses: stats.responses,
+                leads: stats.leads,
+                yield: stats.responses > 0 ? Math.round((stats.leads / stats.responses) * 100) : 0
+            };
+        }).sort((a, b) => b.responses - a.responses);
+    }, [responses, users]);
+
+    const totalLeads = React.useMemo(() => responses.filter(r => r.entityId).length, [responses]);
+
     return (
  <div className="space-y-8">
             
@@ -348,35 +467,47 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                     </CardContent>
                 </Card>
  <Card className="bg-card shadow-sm">
- <CardContent className="p-4 flex items-center gap-4">
- <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
+  <CardContent className="p-4 flex items-center gap-4">
+  <div className="bg-emerald-500/10 p-2.5 rounded-xl"><ShieldCheck className="h-5 w-5 text-emerald-600" /></div>
                         <div>
- <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Total Visits</p>
- <p className="text-2xl font-semibold">{sessions?.length || 0}</p>
+  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">CRM Leads Gen.</p>
+  <p className="text-2xl font-semibold">{totalLeads}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+  <Card className="bg-card shadow-sm">
+  <CardContent className="p-4 flex items-center gap-4">
+  <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
+                        <div>
+  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Total Visits</p>
+  <p className="text-2xl font-semibold">{sessions?.length || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
                 {survey.scoringEnabled && scoringMetrics && (
                     <>
- <Card className="bg-card shadow-sm">
- <CardContent className="p-4 flex items-center gap-4">
- <div className="bg-green-500/10 p-2.5 rounded-xl"><Trophy className="h-5 w-5 text-green-600" /></div>
+  <Card className="bg-card shadow-sm">
+  <CardContent className="p-4 flex items-center gap-4">
+  <div className="bg-green-500/10 p-2.5 rounded-xl"><Trophy className="h-5 w-5 text-green-600" /></div>
                                 <div>
- <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Avg. Score</p>
- <p className="text-2xl font-semibold">{scoringMetrics.avg.toFixed(1)} <span className="text-xs text-muted-foreground font-normal">/ {survey.maxScore}</span></p>
+  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Avg. Score</p>
+  <p className="text-2xl font-semibold">{scoringMetrics.avg.toFixed(1)}</p>
                                 </div>
                             </CardContent>
                         </Card>
- <Card className="bg-card shadow-sm">
- <CardContent className="p-4 flex items-center gap-4">
- <div className="bg-purple-500/10 p-2.5 rounded-xl"><Target className="h-5 w-5 text-purple-600" /></div>
- <div className="flex-grow">
- <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Performance Efficiency</p>
- <div className="flex items-center gap-3">
- <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
- <div className="h-full bg-purple-600" style={{ width: `${(scoringMetrics.avg / (survey.maxScore || 100)) * 100}%` }} />
+  <Card className="bg-card shadow-sm">
+  <CardContent className="p-4 flex items-center gap-4">
+  <div className="bg-blue-500/10 p-2.5 rounded-xl text-blue-600"><Target className="h-5 w-5" /></div>
+                        <div className="flex-grow">
+  <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">Lead Yield Rate</p>
+  <div className="flex items-center gap-3">
+  <div className="h-2 flex-grow bg-secondary rounded-full overflow-hidden">
+                                            <div 
+  className="h-full bg-blue-600 transition-all duration-1000" 
+                                                style={{ width: `${responses.length > 0 ? (totalLeads / responses.length) * 100 : 0}%` }} 
+                                            />
                                         </div>
- <span className="text-sm font-bold">{((scoringMetrics.avg / (survey.maxScore || 100)) * 100).toFixed(0)}%</span>
+  <span className="text-sm font-bold">{responses.length > 0 ? ((totalLeads / responses.length) * 100).toFixed(0) : 0}%</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -555,6 +686,11 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                     </Card>
                 </div>
             )}
+
+            {/* Phase 4: Attribution Leaderboard */}
+            <div className="grid grid-cols-1 gap-6">
+                <RepresentativeLeaderboard data={attributionData} />
+            </div>
 
             {/* Question by Question Breakdown */}
  <div className="space-y-4">

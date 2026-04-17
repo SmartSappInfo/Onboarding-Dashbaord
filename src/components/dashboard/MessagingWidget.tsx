@@ -26,7 +26,7 @@ interface MessagingWidgetProps {
 
 export function MessagingWidget({ emailSuccess, smsSuccess, recentLogs }: MessagingWidgetProps) {
     return (
-        <DashboardCard title="Communication Health" description="Real-time delivery status and channel efficiency.">
+        <DashboardCard title="Communication Health">
             <div className="space-y-8">
                 {/* Efficiency Gaugues */}
                 <div className="grid grid-cols-2 gap-6">

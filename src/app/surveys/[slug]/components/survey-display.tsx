@@ -14,6 +14,7 @@ import SurveyLoader from '../../components/survey-loader';
 interface SurveyDisplayProps {
     survey: Survey;
     sourcePageId?: string;
+    assignedUserId?: string;
 }
 
 const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPattern'], color?: string }) => {
@@ -87,7 +88,7 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPat
     );
 };
 
-export default function SurveyDisplay({ survey, sourcePageId }: SurveyDisplayProps) {
+export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: SurveyDisplayProps) {
     const [isSubmitted, setIsSubmitted] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
 
@@ -191,7 +192,12 @@ export default function SurveyDisplay({ survey, sourcePageId }: SurveyDisplayPro
                         </div>
                     )}
 
-                    <SurveyForm survey={survey} onSubmitted={() => setIsSubmitted(true)} />
+                    <SurveyForm 
+                        survey={survey} 
+                        onSubmitted={() => setIsSubmitted(true)} 
+                        sourcePageId={sourcePageId}
+                        assignedUserId={assignedUserId}
+                    />
                 </div>
             </main>
             <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">

@@ -905,6 +905,14 @@ export interface MediaAsset {
   previewImageUrl?: string;
 }
 
+export interface SurveyEntityMapping {
+  entityNameFieldId?: string;
+  contactNameFieldId?: string;
+  contactEmailFieldId?: string;
+  contactPhoneFieldId?: string;
+  additionalMappings?: { questionId: string; targetField: string }[];
+}
+
 export interface Survey {
   id: string;
   organizationId?: string;
@@ -951,6 +959,19 @@ export interface Survey {
   externalAlertEmailTemplateId?: string;
   externalAlertSmsTemplateId?: string;
   useEntityLogo?: boolean;
+  // Entity Creation & Assignment (Task 12)
+  createEntity?: boolean;
+  entityMapping?: SurveyEntityMapping;
+  assignmentEnabled?: boolean;
+  assignedUsers?: string[];
+  notifyAssignedUsers?: {
+    email: boolean;
+    sms: boolean;
+    emailTemplateId?: string;
+    smsTemplateId?: string;
+  };
+  autoTags?: string[];
+  autoAutomations?: string[];
 }
 
 export interface SurveyElement {
@@ -1061,6 +1082,7 @@ export interface SurveyResponse {
   entityName?: string | null; // Snapshot for display
   entityType?: EntityType; // Type of entity
   workspaceId?: string | null; // Workspace context at time of submission
+  assignedUserId?: string; // User who shared the survey link
 }
 
 export interface SurveySummary {

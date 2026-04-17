@@ -415,16 +415,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "workspaceId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "pipelines",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "workspaceIds",
           "arrayConfig": "CONTAINS"
         },
@@ -658,16 +648,6 @@
         },
         {
           "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "automation_runs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "startedAt",
           "order": "DESCENDING"
         }
       ]
@@ -1463,16 +1443,6 @@
       ]
     },
     {
-      "collectionGroup": "perspectives",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "zones",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1931,16 +1901,6 @@
       ]
     },
     {
-      "collectionGroup": "webhooks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "name",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "app_fields",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1996,6 +1956,38 @@
         },
         {
           "fieldPath": "section",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isAuthorized",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "automations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
           "order": "ASCENDING"
         }
       ]

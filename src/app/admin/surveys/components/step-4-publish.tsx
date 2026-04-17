@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck, Zap, Layout } from 'lucide-react';
+import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import WebhookManager from './webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import ExternalNotificationConfig from './external-notification-config';
@@ -17,10 +21,38 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 
 export default function Step4Publish() {
-    const { control, watch } = useFormContext();
     const { allowedWorkspaces } = useWorkspace();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const { watch, control } = useFormContext();
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+
+    // Fetch assigned users data for display
+    const assignedUserIds = watch('assignedUsers') || [];
+    const assignmentEnabled = watch('assignmentEnabled');
+    const slug = watch('slug');
+
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore || assignedUserIds.length === 0) return null;
+        return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+    }, [firestore, assignedUserIds.length]);
+    const { data: users } = useCollection<any>(usersQuery);
+
+    const filteredUsers = React.useMemo(() => {
+        return (users || []).filter(u => assignedUserIds.includes(u.id));
+    }, [users, assignedUserIds]);
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        toast({ title: 'Link Copied', description: 'Attribution link copied to clipboard.' });
+    };
+
+    const getFullUrl = (refId?: string) => {
+        if (typeof window === 'undefined') return '';
+        const base = `${window.location.origin}/surveys/${slug}`;
+        return refId ? `${base}?ref=${refId}` : base;
+    };
 
     return (
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -130,7 +162,57 @@ export default function Step4Publish() {
                 </CardContent>
             </Card>
 
- <div className="space-y-8">
+            <div className="space-y-8">
+                {assignmentEnabled && (
+                    <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                        <CardHeader className="bg-blue-500/5 border-b pb-6 px-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
+                                    <Link2 className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-sm font-semibold tracking-tight">Assigned Attribution Links</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Unique tracking links for your representatives.</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
+                            {filteredUsers.length === 0 ? (
+                                <div className="p-8 text-center bg-muted/20 rounded-2xl border border-dashed">
+                                    <p className="text-[10px] font-bold text-muted-foreground/50 italic">No users selected in the "Behavior" step yet.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {filteredUsers.map(user => (
+                                        <div key={user.id} className="group p-4 rounded-xl border border-border/50 bg-muted/10 hover:bg-primary/5 hover:border-primary/20 transition-all text-left">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <span className="text-[10px] font-black text-primary uppercase">{user.name?.[0] || user.email?.[0]}</span>
+                                                    </div>
+                                                    <span className="text-[11px] font-black text-foreground">{user.name || user.email}</span>
+                                                </div>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary bg-primary/5">Assigned Link</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 bg-white/50 dark:bg-black/20 px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-mono text-muted-foreground truncate">
+                                                    {getFullUrl(user.id)}
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(getFullUrl(user.id))}
+                                                    className="p-1.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                                                >
+                                                    <Copy className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
                 <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
             </div>

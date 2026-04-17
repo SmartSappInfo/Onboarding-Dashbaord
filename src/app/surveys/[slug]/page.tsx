@@ -68,16 +68,16 @@ export default async function PublicSurveyPage({
     searchParams 
 }: { 
     params: Promise<{ slug: string }>,
-    searchParams: Promise<{ sourcePageId?: string }>
+    searchParams: Promise<{ sourcePageId?: string, ref?: string }>
 }) {
     const { slug } = await params;
-    const { sourcePageId } = await searchParams;
+    const { sourcePageId, ref } = await searchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
         notFound();
     }
     
-    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} />;
+    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} />;
 }
 

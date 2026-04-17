@@ -47,6 +47,7 @@ interface SurveyFormProps {
     onSubmitted: () => void;
     isPreview?: boolean;
     sourcePageId?: string;
+    assignedUserId?: string;
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -690,7 +691,7 @@ type AutomationStatus = {
     icon: React.ElementType;
 };
 
-export default function SurveyForm({ survey, onSubmitted, isPreview = false, sourcePageId }: SurveyFormProps) {
+export default function SurveyForm({ survey, onSubmitted, isPreview = false, sourcePageId, assignedUserId }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -1018,6 +1019,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             entityName: survey.entityName || null,
             entityType: survey.entityId ? 'institution' as const : undefined,
             workspaceId: survey.workspaceIds?.[0] || null,
+            assignedUserId: assignedUserId || null,
         };
         setIsSubmitting(true);
 

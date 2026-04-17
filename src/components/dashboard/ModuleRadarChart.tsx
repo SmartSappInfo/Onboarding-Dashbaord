@@ -3,6 +3,7 @@
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart as RechartsRadarChart } from "recharts";
 import * as React from "react";
 import DashboardCard from "./DashboardCard";
+import { ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
 
 /**
  * @fileOverview Module Implementation Radar Chart.
@@ -49,7 +50,7 @@ export function ModuleRadarChart({
         <RechartsRadarChart data={chartData}>
           <ChartTooltip
             cursor={false}
-            content={({ active, payload }) => {
+            content={({ active, payload }: { active?: boolean; payload?: any[] }) => {
               if (active && payload && payload.length) {
                 const d = payload[0].payload
                 return (

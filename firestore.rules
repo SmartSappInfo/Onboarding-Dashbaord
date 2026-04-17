@@ -65,7 +65,8 @@ service cloud.firestore {
     }
 
     match /roles/{roleId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && isSystemAdmin();
     }
 
@@ -76,14 +77,15 @@ service cloud.firestore {
     }
 
     match /workspaces/{workspaceId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && isSystemAdmin();
     }
 
     // --- Operational Layer (Workspace Shared Array) ---
     match /schools/{schoolId} {
       allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceIds);
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow create: if isAuthorized();
       allow update: if isAuthorized() && (
         isSystemAdmin() ||
@@ -97,14 +99,15 @@ service cloud.firestore {
     }
 
     match /pipelines/{pId} {
-      allow read: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('system_admin') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /meetings/{meetingId} {
       allow read: if true; 
       allow create: if isAuthorized();
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
       
       match /attendees/{aId} {
@@ -119,14 +122,14 @@ service cloud.firestore {
     }
 
     match /invoices/{invoiceId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /billing_periods/{periodId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && isSystemAdmin();
     }
 
@@ -138,7 +141,7 @@ service cloud.firestore {
 
     match /surveys/{surveyId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /responses/{rId} {
@@ -156,7 +159,7 @@ service cloud.firestore {
 
     match /pdfs/{pdfId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /submissions/{sId} {
@@ -166,50 +169,62 @@ service cloud.firestore {
     }
 
     match /media/{mediaId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
 
     match /message_templates/{tId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /sender_profiles/{pId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /message_styles/{sId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /automations/{aId} {
-      allow get, list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
 
     // --- Operational Layer (Strict Workspace Confinement) ---
     match /tasks/{taskId} {
-      allow read, write: if isAuthorized() && (
+      allow get: if isAuthorized() && (
+        isSystemAdmin() || 
+        (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
+      );
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (
         isSystemAdmin() || 
         (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
       );
     }
 
     match /activities/{activityId} {
-      allow read, list: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() || 
         (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
       );
+      allow list: if isAuthorized();
       allow create: if isAuthorized() || isSignedIn();
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
     match /message_logs/{logId} {
-      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
     }
 
     // --- Entity Migration Security Rules (Requirement 29) ---
@@ -264,21 +279,23 @@ service cloud.firestore {
     
     // Automation logs - workspace boundary enforcement
     match /automation_logs/{logId} {
-      allow read, list: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         resource.data.workspaceId in getUserData().workspaceIds
       );
+      allow list: if isAuthorized();
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && isSystemAdmin();
     }
     
     // Entity audit logs - immutable audit trail
     match /entity_audit_logs/{logId} {
-      allow read, list: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('activities_view') && 
          resource.data.workspaceId in getUserData().workspaceIds)
       );
+      allow list: if isAuthorized() && (isSystemAdmin() || hasPermission('activities_view'));
       allow create: if isSignedIn();
       allow update, delete: if false; // Immutable audit logs
     }
@@ -306,12 +323,14 @@ service cloud.firestore {
 
     // --- Landing Pages / Campaign Pages ---
     match /campaign_pages/{pageId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 
     match /campaign_page_versions/{vId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 
@@ -322,8 +341,8 @@ service cloud.firestore {
 
     // --- Contracts ---
     match /contracts/{contractId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
     }
 
@@ -335,7 +354,8 @@ service cloud.firestore {
 
     // --- Zones ---
     match /zones/{zoneId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('schools_edit'));
     }
 
@@ -346,7 +366,8 @@ service cloud.firestore {
 
     // --- Message Jobs ---
     match /message_jobs/{jobId} {
-      allow read, list: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
       allow write: if isAuthorized();
     }
 
@@ -373,10 +394,7 @@ service cloud.firestore {
     // --- App Fields / Variable Registry ---
     match /app_fields/{fieldId} {
       allow get: if isAuthorized();
-      allow list: if isAuthorized() && (
-        isSystemAdmin() ||
-        resource.data.workspaceId in getUserData().workspaceIds
-      );
+      allow list: if isAuthorized();
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && request.resource.data.workspaceId in getUserData().workspaceIds)
@@ -393,10 +411,11 @@ service cloud.firestore {
 
     // --- Contact Tagging System ---
     match /tags/{tagId} {
-      allow read: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         resource.data.workspaceId in getUserData().workspaceIds
       );
+      allow list: if isAuthorized();
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('tags_manage') && request.resource.data.workspaceId in getUserData().workspaceIds)
@@ -416,10 +435,11 @@ service cloud.firestore {
     }
 
     match /tag_audit_logs/{logId} {
-      allow read, list: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('activities_view') && resource.data.workspaceId in getUserData().workspaceIds)
       );
+      allow list: if isAuthorized();
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
@@ -427,13 +447,11 @@ service cloud.firestore {
 
 
     match /entities/{entityId} {
-      // Allow read if user has workspace access to any workspace the entity belongs to
-      // Note: Full workspace membership validation happens at application level
-      // Security rules enforce organization-level access
-      allow read: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         isOrgMatch(resource.data.organizationId)
       );
+      allow list: if isAuthorized();
       
       // Allow create if user has schools_edit permission
       allow create: if isAuthorized() && (
@@ -469,12 +487,11 @@ service cloud.firestore {
       // This denormalization is necessary because Firestore security rules cannot perform
       // complex queries to check role membership dynamically.
       
-      // Allow read if user has access to the specific workspaceId
-      // This enforces workspace boundary and prevents cross-workspace data leakage
-      allow read: if isAuthorized() && (
+      allow get: if isAuthorized() && (
         isSystemAdmin() ||
         resource.data.workspaceId in getUserData().workspaceIds
       );
+      allow list: if isAuthorized();
       
       // Allow create if user has schools_edit permission and workspace access
       // Enforce ScopeGuard: entity.entityType must match workspace.contactScope

@@ -22,7 +22,8 @@ import {
     Share2,
     Settings2,
     Layout,
-    Eye
+    Eye,
+    BarChart3
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School, type WorkspaceEntity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
 import SurveyFormBuilder from '../../components/survey-form-builder';
+import SubmissionBehaviorStep from '../../components/submission-behavior-step';
 import ResultsStep from '../../components/results-step';
 import Step4Publish from '../../components/step-4-publish';
 import LivePreviewPane from '../../components/live-preview-pane';
@@ -91,6 +93,26 @@ const formSchema = z.object({
   entityId: z.string().optional().nullable(),
   entityName: z.string().optional().nullable(),
   workspaceIds: z.array(z.string()).min(1, 'At least one workspace required.'),
+  // Task 12 Fields
+  createEntity: z.boolean().default(false),
+  entityMapping: z.object({
+    entityNameFieldId: z.string().optional(),
+    contactNameFieldId: z.string().optional(),
+    contactEmailFieldId: z.string().optional(),
+    contactPhoneFieldId: z.string().optional(),
+    additionalMappings: z.array(z.object({
+      questionId: z.string(),
+      targetField: z.string()
+    })).default([])
+  }).optional(),
+  assignmentEnabled: z.boolean().default(false),
+  assignedUsers: z.array(z.string()).default([]),
+  notifyAssignedUsers: z.object({
+    email: z.boolean().default(false),
+    sms: z.boolean().default(false)
+  }).default({ email: false, sms: false }),
+  autoTags: z.array(z.string()).default([]),
+  autoAutomations: z.array(z.string()).default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -99,8 +121,9 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = [
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Results', icon: Zap },
-        { n: 4, label: 'Publish', icon: Share2 }
+        { n: 3, label: 'Behavior', icon: Zap },
+        { n: 4, label: 'Results', icon: BarChart3 },
+        { n: 5, label: 'Publish', icon: Share2 }
     ];
 
     return (
@@ -303,7 +326,8 @@ export default function EditSurveyPage() {
         let fieldsToValidate: any[] = [];
         if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
         if (step === 2) fieldsToValidate = ['elements'];
-        if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
+        if (step === 3) fieldsToValidate = ['createEntity', 'entityMapping', 'assignmentEnabled', 'assignedUsers', 'autoTags', 'autoAutomations'];
+        if (step === 4) fieldsToValidate = ['resultRules', 'resultPages'];
         
         const isStepValid = await trigger(fieldsToValidate);
         if (!isStepValid) {
@@ -406,14 +430,20 @@ export default function EditSurveyPage() {
                                 </motion.div>
                             )}
 
-                            {step === 3 && (
+                            { step === 3 && (
                                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <ResultsStep />
+                                    <SubmissionBehaviorStep />
                                 </motion.div>
                             )}
 
                             {step === 4 && (
-                                <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                                <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                    <ResultsStep />
+                                </motion.div>
+                            )}
+
+                            {step === 5 && (
+                                <motion.div key="step5" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                                     <Step4Publish />
                                 </motion.div>
                             )}
@@ -424,7 +454,7 @@ export default function EditSurveyPage() {
  <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
  <div className="flex items-center gap-4 text-left">
  {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
-                                    {step < 4 ? (
+                                    {step < 5 ? (
  <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-semibold shadow-xl rounded-xl transition-all active:scale-95 group">
  Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                         </Button>

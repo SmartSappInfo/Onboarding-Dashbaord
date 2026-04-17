@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2 } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { deleteSurveyResponses } from '@/lib/survey-actions';
 import { resolveContact } from '@/lib/contact-adapter';
@@ -78,11 +79,54 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
     }
 
     return (
- <div className="flex items-center gap-2">
- <Building2 className="h-3 w-3 text-muted-foreground" />
- <span className="text-xs font-medium truncate max-w-[150px]" title={contact.name}>
-                {contact.name}
-            </span>
+        <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+                <Building2 className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-semibold truncate max-w-[150px]" title={contact.name}>
+                    {contact.name}
+                </span>
+            </div>
+            {response.entityId && (
+                <Badge variant="outline" className="w-fit h-4 py-0 text-[8px] font-black uppercase tracking-tighter bg-emerald-500/5 text-emerald-600 border-emerald-500/20 gap-1">
+                    <ShieldCheck className="h-2 w-2" /> Live CRM
+                </Badge>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Component to display who shared the survey link
+ */
+function SharedByInfo({ userId }: { userId?: string }) {
+    const firestore = useFirestore();
+    const [name, setName] = React.useState<string | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        if (!userId || !firestore) {
+            setIsLoading(false);
+            return;
+        }
+        
+        const { getDoc, doc } = require('firebase/firestore');
+        getDoc(doc(firestore, 'users', userId)).then((snap: any) => {
+            if (snap.exists()) {
+                setName(snap.data().name || snap.data().email);
+            }
+            setIsLoading(false);
+        }).catch(() => setIsLoading(false));
+    }, [userId, firestore]);
+
+    if (!userId) return <span className="text-[10px] text-muted-foreground/40 italic">Anonymous</span>;
+    if (isLoading) return <Skeleton className="h-4 w-20" />;
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <div className="p-1 bg-blue-500/10 rounded text-blue-600">
+                <UserIcon className="h-3 w-3" />
+            </div>
+            <span className="text-[10px] font-bold text-blue-700/80 truncate max-w-[100px]">{name || 'Team Member'}</span>
         </div>
     );
 }
@@ -98,6 +142,21 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [password, setPassword] = React.useState('');
     const [authError, setAuthError] = React.useState<string | null>(null);
+    const [attributionFilter, setAttributionFilter] = React.useState<string>('all');
+
+    const filteredResponses = React.useMemo(() => {
+        if (!responses) return [];
+        if (attributionFilter === 'all') return responses;
+        if (attributionFilter === 'anonymous') return responses.filter(r => !r.assignedUserId);
+        return responses.filter(r => r.assignedUserId === attributionFilter);
+    }, [responses, attributionFilter]);
+
+    // Get unique assigned users for filtering
+    const attributedUsers = React.useMemo(() => {
+        if (!responses) return [];
+        const ids = Array.from(new Set(responses.map(r => r.assignedUserId).filter(Boolean))) as string[];
+        return ids;
+    }, [responses]);
 
     const questions = React.useMemo(() => survey ? survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el) : [], [survey]);
 
@@ -181,25 +240,37 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     }
     
     return (
- <div className="relative">
-            {/* Selection Toolbar */}
-            {selectedIds.length > 0 && (
- <div className="sticky top-0 z-30 flex items-center justify-between bg-primary p-3 shadow-lg rounded-b-xl animate-in slide-in-from-top-4">
- <div className="flex items-center gap-3 text-white">
- <CheckSquare className="h-5 w-5" />
- <span className="font-bold text-sm">{selectedIds.length} responses selected</span>
+        <div className="space-y-0 relative">
+
+            {/* Phase 4: Attribution Filter Toolbar */}
+            <div className="flex items-center justify-between p-4 bg-muted/20 border-b border-border/50">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[10px] font-black uppercase tracking-tight text-muted-foreground">Filter Source</span>
                     </div>
- <div className="flex items-center gap-2">
- <Button variant="ghost" size="sm" className="text-white hover:bg-card/10" onClick={() => setSelectedIds([])}>
-                            Cancel
-                        </Button>
- <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700 font-bold" onClick={() => handleDeleteClick()}>
- <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Selected
-                        </Button>
-                    </div>
+                    <Select value={attributionFilter} onValueChange={setAttributionFilter}>
+                        <SelectTrigger className="h-8 w-[180px] bg-background border-none shadow-sm text-[10px] font-bold rounded-lg">
+                            <SelectValue placeholder="All Sources" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all" className="text-[11px] font-medium">All Sources</SelectItem>
+                            <SelectItem value="anonymous" className="text-[11px] font-medium italic">General Link (Anonymous)</SelectItem>
+                            {attributedUsers.map(uid => (
+                                <SelectItem key={uid} value={uid} className="text-[11px] font-bold">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                                        <SharedByInfo userId={uid} />
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-            )}
+                <div className="text-[10px] font-bold text-muted-foreground italic">
+                    Showing {filteredResponses.length} of {responses?.length || 0} responses
+                </div>
+            </div>
 
             <Table>
                 <TableHeader>
@@ -210,10 +281,11 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                                 onCheckedChange={toggleSelectAll} 
                             />
                         </TableHead>
- <TableHead className="sticky left-[50px] bg-muted z-20 w-[200px] whitespace-nowrap text-[10px] font-bold py-4">Submitted At</TableHead>
- <TableHead className="w-[180px] text-[10px] font-bold py-4">Contact</TableHead>
+ <TableHead className="sticky left-[50px] bg-muted z-20 w-[180px] whitespace-nowrap text-[10px] font-bold py-4">Submitted At</TableHead>
+ <TableHead className="w-[180px] text-[10px] font-bold py-4">Contact / Organization</TableHead>
+ <TableHead className="w-[150px] text-[10px] font-bold py-4">Shared By</TableHead>
                         {survey.scoringEnabled && (
- <TableHead className="w-[100px] text-center text-[10px] font-bold py-4">Score</TableHead>
+ <TableHead className="w-[100px] text-center text-[10px] font-bold py-4 text-primary">Score</TableHead>
                         )}
                         {questions.map(q => (
  <TableHead key={q.id} className="min-w-[200px] text-[10px] font-bold py-4">{q.title}</TableHead>
@@ -228,6 +300,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
  <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
  <TableCell className="sticky left-[50px] bg-card"><Skeleton className="h-5 w-3/4" /></TableCell>
  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+ <TableCell><Skeleton className="h-5 w-24" /></TableCell>
  {survey.scoringEnabled && <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>}
                         {questions.map(q => (
  <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
@@ -235,8 +308,8 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
  <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                     ))
-                ) : responses && responses.length > 0 ? (
-                    responses.map((response) => (
+                ) : filteredResponses && filteredResponses.length > 0 ? (
+                    filteredResponses.map((response) => (
  <TableRow key={response.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(response.id) && "bg-primary/5")}>
  <TableCell className="pl-6">
                             <Checkbox 
@@ -249,6 +322,9 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                         </TableCell>
                         <TableCell>
                             <EntityInfo response={response} />
+                        </TableCell>
+                        <TableCell>
+                            <SharedByInfo userId={response.assignedUserId} />
                         </TableCell>
                         {survey.scoringEnabled && (
  <TableCell className="text-center font-bold">
@@ -290,8 +366,8 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                     ))
                 ) : (
                     <TableRow>
- <TableCell colSpan={questions.length + 5} className="h-48 text-center text-muted-foreground italic">
-                        No responses received for this survey yet.
+ <TableCell colSpan={questions.length + 6} className="h-48 text-center text-muted-foreground italic">
+                        {attributionFilter !== 'all' ? "No responses match this filter." : "No responses received for this survey yet."}
                     </TableCell>
                     </TableRow>
                 )}
