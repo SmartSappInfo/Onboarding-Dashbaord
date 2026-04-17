@@ -217,7 +217,7 @@ export interface Organization {
   email?: string;
   phone?: string;
   address?: string;
-  status?: 'active' | 'archived';
+  status?: 'active' | 'trial' | 'suspended' | 'archived';
   settings?: {
     defaultCurrency?: string;
     defaultTimezone?: string;
@@ -503,6 +503,8 @@ export interface UserProfile {
   // AI User Preferences
   preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
   preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
+  /** Backoffice roles for platform control plane access */
+  backofficeRoles?: import('./backoffice/backoffice-types').BackofficeRole[];
   createdAt: string;
 }
 
