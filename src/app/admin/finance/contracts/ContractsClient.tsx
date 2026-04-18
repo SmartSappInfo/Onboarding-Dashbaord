@@ -382,7 +382,7 @@ export default function AgreementsClient() {
                     </Card>
 
                     {/* Institutional Registry */}
- <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                         <Table>
  <TableHeader className="bg-muted/30">
                                 <TableRow>
@@ -490,7 +490,7 @@ export default function AgreementsClient() {
                                                             <DropdownMenuTrigger asChild>
  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted transition-colors"><MoreHorizontal className="h-4 w-4" /></Button>
                                                             </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-60 rounded-2xl border-none shadow-2xl p-2 animate-in zoom-in-95 duration-200">
+ <DropdownMenuContent align="end" className="w-60 rounded-2xl border border-border bg-card shadow-2xl p-2 animate-in zoom-in-95 duration-200">
  <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Agreement Protocols</DropdownMenuLabel>
                                                                 
                                                                 {status === 'signed' ? (
@@ -595,13 +595,13 @@ export default function AgreementsClient() {
                             exit={{ y: 100, opacity: 0 }}
  className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-fit min-w-[320px]"
                         >
- <Card className="bg-slate-900/95 backdrop-blur-md text-white border-none shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-border/50/10">
+ <Card className="bg-card/95 text-foreground border border-border shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
  <CardContent className="p-2 flex items-center justify-between gap-6">
  <div className="flex items-center gap-3 pl-4 pr-2">
  <div className="flex items-center justify-center h-8 w-8 bg-primary/20 rounded-lg">
  <ShieldCheck className="h-4 w-4 text-primary" />
                                         </div>
- <span className="text-xs font-bold tracking-tight whitespace-nowrap">
+ <span className="text-xs font-bold tracking-tight whitespace-nowrap text-foreground">
                                             {selectedEntities.length} Selection{selectedEntities.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
@@ -618,7 +618,7 @@ export default function AgreementsClient() {
                                             variant="ghost" 
                                             size="icon" 
                                             onClick={() => setSelectedEntities([])}
- className="h-9 w-9 rounded-lg text-white/40 hover:text-white hover:bg-card/10"
+ className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
                                         >
  <X className="h-4 w-4" />
                                         </Button>
@@ -650,7 +650,7 @@ export default function AgreementsClient() {
 
                 {/* Single Purge Confirmation */}
                 <AlertDialog open={!!contractToPurge} onOpenChange={(o) => !o && setContractToPurge(null)}>
- <AlertDialogContent className="rounded-[2rem]">
+ <AlertDialogContent className="rounded-2xl border border-border bg-card">
                         <AlertDialogHeader>
  <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
  <ShieldAlert className="h-6 w-6 text-destructive" />
@@ -684,7 +684,7 @@ function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label
     return (
         <Card 
  className={cn(
-                "rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden group hover:ring-primary/20 transition-all text-left",
+                "rounded-2xl border border-border shadow-sm bg-card overflow-hidden group hover:border-primary/50 transition-all text-left",
                 onClick && "cursor-pointer active:scale-95"
             )}
             onClick={onClick}

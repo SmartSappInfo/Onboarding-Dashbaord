@@ -2,12 +2,14 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Automation, AutomationRun, AutomationTrigger, School, MessageTemplate, SenderProfile, TaskCategory, TaskPriority, AutomationJob } from './types';
+import { FieldValue } from 'firebase-admin/firestore';
+import type { Automation, AutomationRun, AutomationTrigger, School, MessageTemplate, SenderProfile, TaskCategory, TaskPriority, AutomationJob, EntityType } from './types';
 import { sendMessage } from './messaging-engine';
 import { createTaskNonBlocking } from './task-actions';
 import { addDays } from 'date-fns';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
+import { evaluateTagCondition } from './tag-condition';
 
 /**
  * @fileOverview The SmartSapp Logic Processor (Execution Engine).
@@ -55,10 +57,19 @@ export async function triggerAutomationProtocols(trigger: AutomationTrigger, pay
         for (const autoDoc of automationsSnap.docs) {
             const automation = { id: autoDoc.id, ...autoDoc.data() } as Automation;
             
-            // Filter by workspaceId (Requirement 10.2)
+            // 1. Filter by workspaceId (Requirement 10.2)
             if (automation.workspaceIds && automation.workspaceIds.length > 0) {
                 if (!automation.workspaceIds.includes(payload.workspaceId)) {
                     console.log(`>>> [LOGIC:PROCESSOR] Skipping automation [${automation.name}] - workspace mismatch`);
+                    continue;
+                }
+            }
+
+            // 2. Filter by Trigger Config (Requirement 4.1.1)
+            // Specialized filtering for Tag-based triggers
+            if (trigger === 'TAG_ADDED' || trigger === 'TAG_REMOVED') {
+                if (!evaluateTriggerConfig(automation, payload)) {
+                    console.log(`>>> [LOGIC:PROCESSOR] Skipping automation [${automation.name}] - trigger config mismatch`);
                     continue;
                 }
             }
@@ -68,6 +79,36 @@ export async function triggerAutomationProtocols(trigger: AutomationTrigger, pay
     } catch (error: any) {
         console.error(`>>> [LOGIC:PROCESSOR] Failed to poll automations:`, error.message);
     }
+}
+
+/**
+ * Filter logic for specialized triggers.
+ */
+function evaluateTriggerConfig(automation: Automation, payload: Record<string, any>): boolean {
+    const triggerNode = automation.nodes.find(n => n.type === 'triggerNode');
+    if (!triggerNode || !triggerNode.data?.config) return true; // Default to allow if no config
+
+    const config = triggerNode.data.config;
+
+    // Tag filtering
+    if (automation.trigger === 'TAG_ADDED' || automation.trigger === 'TAG_REMOVED') {
+        // Filter by Tag IDs
+        if (config.tagIds && config.tagIds.length > 0) {
+            if (!config.tagIds.includes(payload.tagId)) return false;
+        }
+
+        // Filter by Contact Type
+        if (config.contactType && config.contactType !== payload.contactType) return false;
+
+        // Filter by Application Method
+        if (config.appliedBy) {
+            const isAutomatic = payload.appliedBy === 'automation' || (payload.appliedBy && payload.appliedBy.startsWith('system'));
+            if (config.appliedBy === 'manual' && isAutomatic) return false;
+            if (config.appliedBy === 'automatic' && !isAutomatic) return false;
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -222,6 +263,13 @@ async function traverseNodes(nodeId: string, automation: Automation, context: Ex
         // Filter edges to only follow the matching branch
         outgoingEdges = outgoingEdges.filter(e => e.sourceHandle === targetHandle);
         console.log(`>>> [LOGIC:BRANCH] Condition [${currentNode.data.label}] evaluated to: ${isTrue}`);
+    } else if (currentNode.type === 'tagConditionNode') {
+        const isTrue = await evaluateTagConditionNode(currentNode, context);
+        const targetHandle = isTrue ? 'true' : 'false';
+        
+        // Filter edges to only follow the matching branch
+        outgoingEdges = outgoingEdges.filter(e => e.sourceHandle === targetHandle);
+        console.log(`>>> [LOGIC:BRANCH] Tag Condition [${currentNode.data.label}] evaluated to: ${isTrue}`);
     }
 
     for (const edge of outgoingEdges) {
@@ -233,6 +281,8 @@ async function traverseNodes(nodeId: string, automation: Automation, context: Ex
         try {
             if (nextNode.type === 'actionNode') {
                 await processActionNode(nextNode, context);
+            } else if (nextNode.type === 'tagActionNode') {
+                await processTagActionNode(nextNode, context);
             } else if (nextNode.type === 'delayNode') {
                 await handleDelayNode(nextNode, context);
                 // Delays stop linear execution. Resumption will pick up from HERE (nextNode.id).
@@ -302,6 +352,71 @@ function resolveConfigVariables(config: any, payload: Record<string, any>): any 
         return payload[cleanKey] !== undefined ? String(payload[cleanKey]) : match;
     });
     return JSON.parse(resolved);
+}
+
+/**
+ * Evaluates a tag condition node against the current contact's tags.
+ */
+async function evaluateTagConditionNode(node: any, context: ExecutionContext): Promise<boolean> {
+    // Resolve contact to get current tags
+    const contact = await resolveContact(context.entityId!, context.workspaceId);
+    if (!contact) return false;
+
+    return evaluateTagCondition(contact.tags || [], node);
+}
+
+/**
+ * High-fidelity action handler for tag-based operations.
+ */
+async function processTagActionNode(node: any, context: ExecutionContext) {
+    const { action, tagIds } = node.data || {};
+    if (!action || !tagIds || tagIds.length === 0) return;
+
+    const contact = await resolveContact(context.entityId!, context.workspaceId);
+    if (!contact) throw new Error("Tag action failed: Contact not found.");
+
+    const batch = adminDb.batch();
+    const timestamp = new Date().toISOString();
+
+    // Determine target documents based on migration status
+    // Workspace Tags (operational)
+    if (contact.workspaceEntityId) {
+        const weRef = adminDb.collection('workspace_entities').doc(contact.workspaceEntityId);
+        if (action === 'add_tags') {
+            batch.update(weRef, { 
+                workspaceTags: FieldValue.arrayUnion(...tagIds),
+                updatedAt: timestamp
+            });
+        } else if (action === 'remove_tags') {
+            batch.update(weRef, { 
+                workspaceTags: FieldValue.arrayRemove(...tagIds),
+                updatedAt: timestamp
+            });
+        }
+    }
+
+    // Also update legacy schools/prospects if still in dual-write or legacy
+    const schoolRef = adminDb.collection('schools').doc(contact.id);
+    const prospectRef = adminDb.collection('prospects').doc(contact.id);
+    
+    // We try both as we don't know the type for sure without re-fetching, 
+    // but resolveContact usually handles the type mapping.
+    // Actually, ResolvedContact should indicate type.
+    const legacyRef = contact.entityType === 'institution' ? schoolRef : prospectRef;
+
+    if (action === 'add_tags') {
+        batch.update(legacyRef, { 
+            tags: FieldValue.arrayUnion(...tagIds),
+            updatedAt: timestamp
+        });
+    } else if (action === 'remove_tags') {
+        batch.update(legacyRef, { 
+            tags: FieldValue.arrayRemove(...tagIds),
+            updatedAt: timestamp
+        });
+    }
+
+    await batch.commit();
 }
 
 /**

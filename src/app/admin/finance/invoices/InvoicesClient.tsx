@@ -214,11 +214,11 @@ export default function InvoicesClient() {
                                     placeholder={`Search reference or ${singular.toLowerCase()}...`} 
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:border-primary/50 focus:ring-primary/20 font-medium text-left"
+                                    className="pl-10 h-10 bg-muted/20 border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:ring-1 focus:ring-primary/20 font-medium text-left"
                                 />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[160px] h-10 bg-muted/50 border-border text-foreground rounded-xl text-left">
+                            <SelectTrigger className="w-[160px] h-10 bg-muted/20 border-border text-foreground rounded-xl text-left">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border bg-card">
@@ -287,7 +287,7 @@ export default function InvoicesClient() {
 
             {/* Creation Dialog */}
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
-                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border shadow-lg text-left bg-background">
+                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border shadow-2xl text-left bg-card">
                     <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
  <div className="flex items-center gap-4 text-left">
@@ -315,8 +315,8 @@ export default function InvoicesClient() {
                             </div>
  <div className="space-y-2 text-left">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 text-left"><ShieldCheck className="h-3 w-3" /> 3. Financial Protocol (Profile)</Label>
-                                <Select onValueChange={setSelectedProfileId} value={selectedProfileId || ''}>
-                                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl text-left"><SelectValue placeholder="Pick billing profile..." /></SelectTrigger>
+                                 <Select onValueChange={setSelectedProfileId} value={selectedProfileId || ''}>
+                                    <SelectTrigger className="h-10 bg-muted/20 border-border text-foreground rounded-xl text-left"><SelectValue placeholder="Pick billing profile..." /></SelectTrigger>
                                     <SelectContent className="rounded-xl border-border bg-card text-left">{profiles?.map(p => <SelectItem key={p.id} value={p.id} className="text-left">{p.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>

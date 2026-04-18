@@ -4,7 +4,8 @@ import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Tag, TagCategory, TagAuditLog } from './types';
-import { fireTagTrigger } from './tag-trigger';
+import { logActivity } from './activity-logger';
+import { unstable_after as after } from 'next/server';
 import { userHasTagPermission } from './tag-permissions';
 import {
   CreateTagSchema,
@@ -631,15 +632,25 @@ export async function applyTagsAction(
         userName
       });
 
-      // Fire TAG_ADDED automation trigger (FR4.1.1)
+      // Fire TAG_ADDED automation trigger via unified activity bus
       if (tag?.workspaceId) {
-        await fireTagTrigger('TAG_ADDED', {
-          contactId,
-          contactType,
-          tagId,
-          tagName: tag.name,
-          workspaceId: tag.workspaceId,
-          appliedBy: userId,
+        after(async () => {
+          await logActivity({
+            organizationId: tag.organizationId,
+            workspaceId: tag.workspaceId,
+            entityId: contactId,
+            entityType: contactType,
+            type: 'tag_added',
+            source: 'activity', 
+            userId,
+            description: `Tag "${tag.name}" applied to ${contactType}.`,
+            metadata: {
+              tagId,
+              tagName: tag.name,
+              contactType,
+              appliedBy: userId,
+            }
+          });
         });
       }
     }
@@ -726,15 +737,25 @@ export async function removeTagsAction(
         userName
       });
 
-      // Fire TAG_REMOVED automation trigger (FR4.1.1)
+      // Fire TAG_REMOVED automation trigger via unified activity bus
       if (tag?.workspaceId) {
-        await fireTagTrigger('TAG_REMOVED', {
-          contactId,
-          contactType,
-          tagId,
-          tagName: tag.name,
-          workspaceId: tag.workspaceId,
-          appliedBy: userId,
+        after(async () => {
+          await logActivity({
+            organizationId: tag.organizationId,
+            workspaceId: tag.workspaceId,
+            entityId: contactId,
+            entityType: contactType,
+            type: 'tag_removed',
+            source: 'activity',
+            userId,
+            description: `Tag "${tag.name}" removed from ${contactType}.`,
+            metadata: {
+              tagId,
+              tagName: tag.name,
+              contactType,
+              appliedBy: userId,
+            }
+          });
         });
       }
     }

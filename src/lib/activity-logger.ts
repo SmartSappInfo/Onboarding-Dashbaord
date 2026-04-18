@@ -1,9 +1,10 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Activity, AutomationTrigger } from './types';
+import type { Activity, AutomationTrigger, EntityType } from './types';
 import { triggerAutomationProtocols } from './automation-processor';
 import { resolveContact } from './contact-adapter';
+import { unstable_after as after } from 'next/server';
 
 type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
 
@@ -14,6 +15,7 @@ type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  * Updated for workspace awareness (Requirement 12)
  * Updated to fully support entity architecture.
+ * Updated with Vercel Best Practices: Non-blocking automation triggers via after().
  */
 export async function logActivity(activityData: LogActivityInput): Promise<void> {
     try {
@@ -22,7 +24,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
         let entityId: string | null | undefined = activityData.entityId;
         let entityName: string | null | undefined = activityData.entityName;
         let entitySlug: string | null | undefined = activityData.entitySlug;
-        let entityType: 'institution' | 'family' | 'person' | null | undefined = activityData.entityType;
+        let entityType: EntityType | null | undefined = activityData.entityType as EntityType;
         let displayName: string | null | undefined = activityData.displayName;
         
         // Resolution logic
@@ -62,12 +64,14 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             'form_submission': 'SURVEY_SUBMITTED',
             'form_submitted': 'FORM_SUBMITTED',
             'task_completed': 'TASK_COMPLETED',
-            'meeting_created': 'MEETING_CREATED'
+            'meeting_created': 'MEETING_CREATED',
+            'tag_added': 'TAG_ADDED',
+            'tag_removed': 'TAG_REMOVED'
         };
 
         const triggerType = triggerMap[activityData.type];
         if (triggerType) {
-            console.log(`>>> [EVENT:BUS] Signal detected: ${triggerType}. Invoking Logic Processor.`);
+            console.log(`>>> [EVENT:BUS] Signal detected: ${triggerType}. Scheduling Logic Processor.`);
             
             const payload = {
                 ...finalData,
@@ -81,11 +85,19 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 displayName: finalData.displayName,
                 action: activityData.type,
                 actorId: activityData.userId,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                // Extra metadata from activity (tagId, appliedBy, etc.)
+                ...(activityData.metadata || {})
             };
 
-            triggerAutomationProtocols(triggerType, payload).catch(err => {
-                console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
+            // Vercel Best Practice: server-after-nonblocking
+            // Ensures the main operation is not blocked by automation processing
+            after(async () => {
+                try {
+                    await triggerAutomationProtocols(triggerType, payload);
+                } catch (err: any) {
+                    console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
+                }
             });
         }
 

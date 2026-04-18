@@ -163,7 +163,7 @@ export default function FinanceSettingsClient() {
                     </Button>
                 </div>
 
- <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
                     <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>
@@ -212,7 +212,7 @@ export default function FinanceSettingsClient() {
             </div>
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
- <DialogContent className="sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
+ <DialogContent className="sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
  <form onSubmit={handleSave} className="flex flex-col h-full text-left">
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
  <div className="flex items-center gap-4">
@@ -272,7 +272,7 @@ export default function FinanceSettingsClient() {
  <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Digital Identity Signature</Label>
                                             <div 
                                                 onClick={() => setIsSigModalOpen(true)}
- className="h-32 w-full rounded-2xl border-2 border-dashed border-primary/20 bg-background hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center relative overflow-hidden"
+ className="h-32 w-full rounded-xl border-2 border-dashed border-primary/20 bg-background hover:bg-primary/5 transition-all cursor-pointer flex items-center justify-center relative overflow-hidden"
                                             >
                                                 {signatureUrl ? (
  <img src={signatureUrl} alt="Signature" className="h-full w-full object-contain p-4" />

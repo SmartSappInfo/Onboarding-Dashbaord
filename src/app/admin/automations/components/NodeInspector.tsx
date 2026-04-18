@@ -218,6 +218,89 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                     </div>
                                 </div>
                             )}
+
+                            {(data.trigger === 'TAG_ADDED' || data.trigger === 'TAG_REMOVED') && (
+                                <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                                                <Tag className="h-3 w-3" /> Filter by Tags
+                                            </Label>
+                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                {(config.tagIds || []).map((id: string) => {
+                                                    const tag = tags.find(t => t.id === id);
+                                                    return (
+                                                        <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none group">
+                                                            <span className="text-[10px] font-bold tracking-tight">{tag?.name || id}</span>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-4 w-4 rounded-md hover:bg-emerald-500/20"
+                                                                onClick={() => updateConfig({ tagIds: config.tagIds.filter((t: string) => t !== id) })}
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        </Badge>
+                                                    );
+                                                })}
+                                            </div>
+                                            <Select 
+                                                value="" 
+                                                onValueChange={(v) => {
+                                                    const current = config.tagIds || [];
+                                                    if (!current.includes(v)) {
+                                                        updateConfig({ tagIds: [...current, v] });
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                    <SelectValue placeholder="Add tags to watch..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
+                                                    {tags.map(tag => (
+                                                        <SelectItem key={tag.id} value={tag.id} className="rounded-lg p-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                                                                <span className="font-bold text-xs">{tag.name}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-[8px] text-muted-foreground italic">Empty array means this fires for ANY tag.</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-emerald-600">Contact Type</Label>
+                                                <Select value={config.contactType || 'any'} onValueChange={(v) => updateConfig({ contactType: v })}>
+                                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                        <SelectItem value="any" className="text-xs">Any</SelectItem>
+                                                        <SelectItem value="school" className="text-xs">School</SelectItem>
+                                                        <SelectItem value="prospect" className="text-xs">Prospect</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-emerald-600">Applied By</Label>
+                                                <Select value={config.appliedBy || 'any'} onValueChange={(v) => updateConfig({ appliedBy: v })}>
+                                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4 text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                        <SelectItem value="any" className="text-xs">Any</SelectItem>
+                                                        <SelectItem value="manual" className="text-xs">Manual (User)</SelectItem>
+                                                        <SelectItem value="automatic" className="text-xs">Automatic (Engine)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

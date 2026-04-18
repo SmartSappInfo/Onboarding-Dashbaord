@@ -153,7 +153,7 @@ export default function InvoiceStudioClient() {
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Line Items Editor */}
- <Card className="lg:col-span-2 rounded-[2.5rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <Card className="lg:col-span-2 rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
  <CardHeader className="bg-muted/30 border-b p-8">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function InvoiceStudioClient() {
 
                     {/* Summary & Adjustments */}
  <div className="space-y-8">
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm overflow-hidden bg-card">
+ <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
  <CardHeader className="bg-primary/5 border-b p-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Calculator className="h-4 w-4" /> Logic Reconciliation
@@ -283,7 +283,7 @@ export default function InvoiceStudioClient() {
                             </CardContent>
                         </Card>
 
- <div className="p-6 rounded-[2rem] bg-amber-50 border border-amber-100 flex items-start gap-5 shadow-sm">
+ <div className="p-6 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-5 shadow-sm">
  <div className="p-3 bg-amber-100 rounded-2xl text-amber-600 shadow-sm"><Zap className="h-6 w-6" /></div>
  <div className="space-y-1">
  <p className="text-sm font-semibold tracking-tight text-amber-900">Finalization Policy</p>
