@@ -17,12 +17,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
     Workflow, 
-    ArrowRightLeft, 
     Loader2, 
-    ShieldCheck,
     Building,
     Check,
-    Zap,
+    ArrowRightLeft,
     Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -119,17 +117,17 @@ export default function TransferPipelineModal({ entity, open, onOpenChange }: Tr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 bg-emerald-500/10 border-b border-emerald-500/20 shrink-0 text-left">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-500/20">
- <Zap className="h-6 w-6" />
-                </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight text-emerald-500">Pipeline Transfer</DialogTitle>
- <DialogDescription className="text-xs font-bold text-emerald-400 opacity-70">Elevate {entity.displayName} to new workflow</DialogDescription>
-                </div>
+      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+          <div className="flex flex-col items-start gap-2">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+              <ArrowRightLeft className="h-6 w-6" aria-hidden="true" />
             </div>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Pipeline Transfer</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+              Move {entity.displayName} to a new workflow
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
  <div className="p-8 space-y-8 bg-background text-left">
@@ -182,16 +180,23 @@ export default function TransferPipelineModal({ entity, open, onOpenChange }: Tr
             </div>
         </div>
 
- <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Discard</Button>
-            <Button 
-                onClick={handleTransfer} 
-                disabled={isUpdating || !targetPipelineId}
- className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-primary text-white gap-2 text-xs"
-            >
- {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Execute Transfer
-            </Button>
+        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isUpdating}
+            className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+          >
+            Discard
+          </Button>
+          <Button 
+            onClick={handleTransfer} 
+            disabled={isUpdating || !targetPipelineId}
+            className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95 bg-primary text-white"
+          >
+            {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
+            Execute Transfer
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -5,8 +5,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Tag, TagCategory, TagAuditLog } from './types';
 import { logActivity } from './activity-logger';
-import { unstable_after as after } from 'next/server';
 import { userHasTagPermission } from './tag-permissions';
+
+// Polyfill for unstable_after - run async work after response
+const after = (fn: () => Promise<void>) => { fn().catch(console.error); };
 import {
   CreateTagSchema,
   UpdateTagSchema,
@@ -639,7 +641,7 @@ export async function applyTagsAction(
             organizationId: tag.organizationId,
             workspaceId: tag.workspaceId,
             entityId: contactId,
-            entityType: contactType,
+            entityType: contactType as any,
             type: 'tag_added',
             source: 'activity', 
             userId,
@@ -744,7 +746,7 @@ export async function removeTagsAction(
             organizationId: tag.organizationId,
             workspaceId: tag.workspaceId,
             entityId: contactId,
-            entityType: contactType,
+            entityType: contactType as any,
             type: 'tag_removed',
             source: 'activity',
             userId,

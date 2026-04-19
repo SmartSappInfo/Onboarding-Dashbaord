@@ -30,8 +30,11 @@ const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: any }> = {
     low: { color: 'text-slate-500 bg-muted/10 border-slate-200', icon: Circle }
 };
 
+import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
+
 interface TaskCardProps {
     task: Task;
+    entityLogoUrl?: string;
     isOverlay?: boolean;
     onClick?: () => void;
 }
@@ -39,7 +42,7 @@ interface TaskCardProps {
 const getInitials = (name?: string | null) =>
   name ? name.split(' ').map((n) => n[0]).join('').toUpperCase() : '?';
 
-export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
+export default function TaskCard({ task, entityLogoUrl, isOverlay, onClick }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -103,8 +106,14 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
 
  <div className="flex flex-col gap-2 pt-1">
                     {(task.entityName || task.entityId) && (
- <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground tracking-tighter truncate opacity-60">
- <Building className="h-2.5 w-2.5" /> 
+                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground tracking-tighter truncate opacity-60">
+                            <AsyncEntityAvatar 
+                                entityId={task.entityId}
+                                src={entityLogoUrl} 
+                                name={task.entityName || 'Entity'} 
+                                className="h-4 w-4 rounded-sm shadow-none ring-0 p-0"
+                                fallbackClassName="text-[6px]"
+                            /> 
                             {task.entityName || 'Entity'}
                             {task.entityType && (
                                 <Badge variant="outline" className="text-[7px] font-semibold uppercase h-3.5 px-1 rounded-sm border-none bg-primary/10 text-primary ml-1">

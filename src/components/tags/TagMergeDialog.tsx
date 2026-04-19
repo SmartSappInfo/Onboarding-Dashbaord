@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, Search, ArrowRight, Merge, X } from 'lucide-react';
+import { Check, Search, ArrowRight, Merge, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TagMergeDialogProps {
@@ -134,18 +134,20 @@ export function TagMergeDialog({ open, onOpenChange, onComplete }: TagMergeDialo
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="rounded-2xl max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-black uppercase tracking-tight flex items-center gap-2">
-            <Merge className="h-5 w-5" />
-            Merge Tags
-          </DialogTitle>
-          <DialogDescription>
-            Select source tags to merge into a single target tag. Source tags will be deleted after merging.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+          <div className="flex flex-col items-start gap-2">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+              <Merge className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Merge Tags</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+              Select source tags to merge into a single target tag. Source tags will be deleted after merging.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start">
+        <div className="p-8 space-y-6 bg-background">
           {/* Source tags */}
           <div className="space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest">
@@ -264,15 +266,16 @@ export function TagMergeDialog({ open, onOpenChange, onComplete }: TagMergeDialo
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={handleClose} className="rounded-xl font-bold">
+        <DialogFooter className="p-6 bg-muted/30 border-t -mx-8 -mb-8 mt-4 flex justify-between items-center sm:justify-between">
+          <Button variant="ghost" onClick={handleClose} disabled={isProcessing} className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200">
             Cancel
           </Button>
           <Button
             onClick={handleMerge}
             disabled={!canMerge || isProcessing}
-            className="rounded-xl font-bold"
+            className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95"
           >
+            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Merge className="mr-2 h-4 w-4" aria-hidden="true" />}
             {isProcessing ? 'Merging...' : `Merge ${sourceTagIds.length > 0 ? sourceTagIds.length : ''} Tag(s)`}
           </Button>
         </DialogFooter>

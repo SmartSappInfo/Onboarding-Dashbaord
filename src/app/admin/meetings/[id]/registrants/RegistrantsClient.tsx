@@ -151,7 +151,7 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   }
 
   return (
- <div className="h-full overflow-y-auto  bg-background">
+ <div className="h-full overflow-y-auto">
  <div className=" space-y-8 text-left">
           
         {/* Header */}

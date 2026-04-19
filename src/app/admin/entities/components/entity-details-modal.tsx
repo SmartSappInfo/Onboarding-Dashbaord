@@ -12,7 +12,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
+import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
 import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus, Send, Layout } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -84,15 +84,13 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
           
  <SheetHeader className="px-6 pt-6 pb-4 border-b text-left">
  <SheetTitle className="flex items-center gap-3 text-left">
-              {entity.logoUrl ? (
- <div className="relative h-10 w-10 rounded-xl overflow-hidden bg-muted/20 border shadow-sm shrink-0">
- <Image src={entity.logoUrl} alt="logo" fill className="object-contain p-1.5" />
-                </div>
-              ) : (
- <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-semibold shadow-sm shrink-0">
-                      {entity.initials || entity.displayName.substring(0, 2)}
-                  </div>
-              )}
+              <AsyncEntityAvatar 
+                entityId={entity.entityId}
+                src={entity.logoUrl} 
+                name={entity.displayName} 
+                initials={entity.initials}
+                className="h-10 w-10 rounded-xl shadow-sm"
+              />
  <div className="text-left">
  <p className="font-semibold text-xl text-left">{entity.displayName}</p>
                 {entity.initials && <Badge variant="secondary" className="text-[10px] font-semibold uppercase ">{entity.initials}</Badge>}

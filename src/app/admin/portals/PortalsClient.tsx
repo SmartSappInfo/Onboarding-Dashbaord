@@ -35,8 +35,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { SmartSappIcon } from '@/components/icons';
+import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useTenant } from '@/context/TenantContext';
+import { SmartSappIcon } from '@/components/icons';
 
 export default function PortalsClient() {
     const firestore = useFirestore();
@@ -71,9 +72,22 @@ export default function PortalsClient() {
         ) : null, 
     [firestore, activeWorkspaceId]);
 
+    const entitiesQuery = useMemoFirebase(() => 
+        firestore && activeWorkspaceId ? query(
+            collection(firestore, 'workspace_entities'),
+            where('workspaceId', '==', activeWorkspaceId)
+        ) : null,
+    [firestore, activeWorkspaceId]);
+
     const { data: surveys, isLoading: isLoadingSurveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs, isLoading: isLoadingPdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
+    const { data: entities } = useCollection<any>(entitiesQuery);
+
+    const entityLogoMap = React.useMemo(() => {
+        if (!entities) return new Map<string, string>();
+        return new Map(entities.map((e: any) => [e.entityId, e.logoUrl]));
+    }, [entities]);
 
     const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
 
@@ -104,8 +118,8 @@ export default function PortalsClient() {
         });
     };
 
-    const PortalCard = ({ title, school, path, icon: Icon, color }: { title: string, school?: string, path: string, icon: any, color: string }) => (
- <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full text-left">
+    const PortalCard = ({ title, school, path, icon: Icon, color, logoUrl, entityId }: { title: string, school?: string, path: string, icon: any, color: string, logoUrl?: string, entityId?: string }) => (
+  <Card className="group relative overflow-hidden border border-border bg-card hover:border-primary/50 hover:shadow-2xl transition-all duration-500 rounded-2xl flex flex-col h-full text-left">
  <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
  <CardHeader className="p-5 pb-3">
  <div className="flex items-start justify-between gap-4">
@@ -131,8 +145,15 @@ export default function PortalsClient() {
  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     </div>
                     {school && (
- <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground tracking-[0.15em]">
- <Building className="h-3 w-3" /> {school}
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground tracking-tighter opacity-60">
+                            <AsyncEntityAvatar 
+                                entityId={entityId}
+                                src={logoUrl} 
+                                name={school} 
+                                className="h-4 w-4 rounded-sm shadow-none ring-0 p-0"
+                                fallbackClassName="text-[6px]"
+                            /> 
+                            {school}
                         </div>
                     )}
                 </div>
@@ -158,7 +179,7 @@ export default function PortalsClient() {
     );
 
     const StatCard = ({ label, value, icon: Icon }: { label: string, value: number, icon: any }) => (
- <Card className="rounded-2xl border-none ring-1 ring-border shadow-md overflow-hidden bg-card/40 backdrop-blur-sm text-left transition-all hover:shadow-lg">
+  <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden text-left transition-all hover:shadow-md">
  <CardContent className="p-5 flex items-center gap-4">
  <div className="p-3 bg-muted/20 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
                 <div>
@@ -170,16 +191,16 @@ export default function PortalsClient() {
     );
 
     return (
- <div className="h-full overflow-y-auto  bg-background">
- <div className=" space-y-12 pb-32 text-left">
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8">
                 
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
- <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground ">
- <Globe className="h-10 w-10 text-primary" />
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <Globe className="h-10 w-10 text-primary" />
                             Public Launchpad
                         </h1>
- <p className="text-muted-foreground font-medium text-lg mt-1">
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
                             Live system entry points for the <strong>{activeWorkspaceId || 'global'}</strong> track.
                         </p>
                     </div>
@@ -189,7 +210,7 @@ export default function PortalsClient() {
                             placeholder="Filter by school or portal title..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-11 h-12 rounded-2xl bg-muted/20 border-border/50 shadow-inner ring-1 ring-border focus:ring-primary/20 font-bold transition-all"
+                             className="pl-11 h-12 rounded-2xl bg-muted/20 border-border shadow-inner focus:ring-1 focus:ring-primary/20 font-bold transition-all"
                         />
                     </div>
                 </div>
@@ -231,14 +252,16 @@ export default function PortalsClient() {
                                 <SectionHeader title="Intelligent Surveys" badge={filteredSurveys.length} icon={ClipboardList} />
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredSurveys.map(s => (
-                                        <PortalCard 
-                                            key={s.id} 
-                                            title={s.title} 
-                                            school={s.entityName || 'SmartSapp'} 
-                                            path={`/surveys/${s.slug}`} 
-                                            icon={ClipboardList} 
-                                            color="bg-blue-500" 
-                                        />
+                                         <PortalCard 
+                                             key={s.id} 
+                                             title={s.title} 
+                                             school={s.entityName || 'SmartSapp'} 
+                                             path={`/surveys/${s.slug}`} 
+                                             icon={ClipboardList} 
+                                             color="bg-blue-500" 
+                                             logoUrl={s.logoUrl || (s.entityId ? entityLogoMap.get(s.entityId) : undefined)}
+                                             entityId={s.entityId!}
+                                         />
                                     ))}
                                 </div>
                             </section>
@@ -249,14 +272,16 @@ export default function PortalsClient() {
                                 <SectionHeader title="Doc Signing Portals" badge={filteredPdfs.length} icon={FileText} />
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredPdfs.map(p => (
-                                        <PortalCard 
-                                            key={p.id} 
-                                            title={p.publicTitle || p.name} 
-                                            school={p.entityName || 'SmartSapp'} 
-                                            path={`/forms/${p.slug || p.id}`} 
-                                            icon={FileText} 
-                                            color="bg-orange-500" 
-                                        />
+                                         <PortalCard 
+                                             key={p.id} 
+                                             title={p.publicTitle || p.name} 
+                                             school={p.entityName || 'SmartSapp'} 
+                                             path={`/forms/${p.slug || p.id}`} 
+                                             icon={FileText} 
+                                             color="bg-orange-500" 
+                                             logoUrl={p.logoUrl || (p.entityId ? entityLogoMap.get(p.entityId) : undefined)}
+                                             entityId={p.entityId || undefined}
+                                         />
                                     ))}
                                 </div>
                             </section>
@@ -269,14 +294,16 @@ export default function PortalsClient() {
                                     {filteredMeetings.map(m => {
                                         const typeSlug = m.type?.slug || 'parent-engagement';
                                         return (
-                                            <PortalCard 
-                                                key={m.id} 
-                                                title={m.type?.name || 'Session'} 
-                                                school={m.entityName || undefined} 
-                                                path={`/meetings/${typeSlug}/${m.entitySlug}`} 
-                                                icon={Calendar} 
-                                                color="bg-purple-500" 
-                                            />
+                                             <PortalCard 
+                                                 key={m.id} 
+                                                 title={m.type?.name || 'Session'} 
+                                                 school={m.entityName || undefined} 
+                                                 path={`/meetings/${typeSlug}/${m.entitySlug}`} 
+                                                 icon={Calendar} 
+                                                 color="bg-purple-500" 
+                                                 logoUrl={m.entityId ? entityLogoMap.get(m.entityId) : undefined}
+                                                 entityId={m.entityId}
+                                             />
                                         );
                                     })}
                                 </div>
@@ -285,7 +312,7 @@ export default function PortalsClient() {
 
                         {(searchTerm && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) || 
                          (!isLoading && filteredSurveys.length === 0 && filteredPdfs.length === 0 && filteredMeetings.length === 0) ? (
- <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-40">
+  <div className="py-20 text-center border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 opacity-100">
  <LayoutList className="h-16 w-16" />
  <p className="font-semibold text-lg">
                                     {searchTerm ? 'No portals matched your search' : `No active portals in the ${activeWorkspaceId} hub`}

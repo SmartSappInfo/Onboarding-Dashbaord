@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -29,6 +30,7 @@ import {
     AudioWaveform,
     FileText,
     Code,
+    PlusSquare,
 } from 'lucide-react';
 import type { SurveyElement } from '@/lib/types';
 
@@ -71,14 +73,19 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Add a New Element</DialogTitle>
-                    <DialogDescription>
-                        Select the type of element you want to add to your survey.
-                    </DialogDescription>
+            <DialogContent className="sm:max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                    <div className="flex flex-col items-start gap-2">
+                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+                            <PlusSquare className="h-6 w-6" aria-hidden="true" />
+                        </div>
+                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add a New Element</DialogTitle>
+                        <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                            Select the type of element you want to add to your survey.
+                        </DialogDescription>
+                    </div>
                 </DialogHeader>
- <div className="space-y-6 py-4">
+                <div className="space-y-6 p-8 bg-background">
                     <div>
  <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Question Elements</h3>
  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">

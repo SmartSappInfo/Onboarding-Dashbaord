@@ -112,19 +112,22 @@ export default function NewPageClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto bg-background p-6 lg:p-12 relative">
+        <div className="h-full overflow-y-auto">
             <div className="max-w-5xl mx-auto space-y-12 pb-32">
-                <div className="flex items-center gap-4">
-                    <Button asChild variant="ghost" className="rounded-xl h-10 w-10 p-0 hover:bg-muted">
-                        <Link href="/admin/pages"><ArrowLeft className="h-5 w-5" /></Link>
-                    </Button>
-                    <div>
-                        <h1 className="text-3xl font-semibold tracking-tighter flex items-center gap-3">
-                            Let's build a page
-                        </h1>
-                        <p className="text-muted-foreground font-medium mt-1">
-                            Set up the foundation for your new public campaign page.
-                        </p>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <Button asChild variant="ghost" className="rounded-xl h-10 w-10 p-0 text-muted-foreground hover:text-primary transition-colors">
+                            <Link href="/admin/pages"><ArrowLeft className="h-5 w-5" /></Link>
+                        </Button>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4">
+                                <Sparkles className="h-10 w-10 text-primary" />
+                                Let's build a page
+                            </h1>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">
+                                Set up the foundation for your new public campaign page.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

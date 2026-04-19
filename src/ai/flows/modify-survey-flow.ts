@@ -4,96 +4,22 @@
  * @fileOverview An AI flow to modify an existing survey structure based on user chat instructions.
  *
  * - modifySurvey - A function that takes current survey state and a message to produce an updated state.
+ * 
+ * Uses shared schemas from @/ai/schemas/survey-schemas.ts for alignment with types.ts.
  */
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
-
-// Redefining schemas for the prompt to ensure the model has full context of the structure
-const resultBlockSchema = z.object({
-  id: z.string(),
-  type: z.enum(['heading', 'text', 'image', 'video', 'button', 'quote', 'divider', 'score-card']),
-  title: z.string().optional(),
-  content: z.string().optional(),
-  url: z.string().optional(),
-  link: z.string().optional(),
-  openInNewTab: z.boolean().optional(),
-  variant: z.enum(['h1', 'h2', 'h3']).optional(),
-  style: z.object({
-    textAlign: z.enum(['left', 'center', 'right']).optional(),
-    variant: z.string().optional(),
-    animate: z.boolean().optional(),
-  }).optional(),
-});
-
-const resultPageSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  isDefault: z.boolean(),
-  blocks: z.array(resultBlockSchema),
-});
-
-const resultRuleSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  minScore: z.number(),
-  maxScore: z.number(),
-  priority: z.number(),
-  pageId: z.string(),
-});
-
-const questionSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload', 'email', 'phone']),
-  options: z.array(z.string()).optional(),
-  allowOther: z.boolean().optional(),
-  isRequired: z.boolean(),
-  hidden: z.boolean().optional(),
-  placeholder: z.string().optional(),
-  defaultValue: z.any().optional(),
-  minLength: z.number().optional(),
-  maxLength: z.number().optional(),
-  enableScoring: z.boolean().optional(),
-  optionScores: z.array(z.number()).optional(),
-  yesScore: z.number().optional(),
-  noScore: z.number().optional(),
-  autoAdvance: z.boolean().optional(),
-});
-
-const layoutBlockSchema = z.object({
-  id: z.string(),
-  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
-  title: z.string().optional(),
-  text: z.string().optional(),
-  url: z.string().url().optional(),
-  html: z.string().optional(),
-  hidden: z.boolean().optional(),
-  description: z.string().optional(),
-  renderAsPage: z.boolean().optional(),
-  validateBeforeNext: z.boolean().optional(),
-  stepperTitle: z.string().optional(),
-  variant: z.enum(['h1', 'h2', 'h3']).optional(),
-});
-
-const logicActionSchema = z.object({
-  type: z.enum(['jump', 'require', 'show', 'hide', 'disableSubmit']),
-  targetElementId: z.string().optional(),
-  targetElementIds: z.array(z.string()).optional(),
-});
-
-const logicBlockSchema = z.object({
-  id: z.string(),
-  type: z.enum(['logic']),
-  rules: z.array(z.object({
-    sourceQuestionId: z.string(),
-    operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
-    targetValue: z.any().optional(),
-    action: logicActionSchema,
-  })),
-});
-
-const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
+import {
+  questionSchema,
+  layoutBlockSchema,
+  logicBlockSchema,
+  elementSchema,
+  resultBlockSchema,
+  resultPageSchema,
+  resultRuleSchema,
+  BACKGROUND_PATTERNS,
+} from '@/ai/schemas/survey-schemas';
 
 const ModifySurveyInputSchema = z.object({
   userMessage: z.string().describe('The user\'s request for changes.'),
@@ -141,7 +67,7 @@ const ModifySurveyOutputSchema = z.object({
         resultPages: z.array(resultPageSchema),
         // Preserved Metadata and Styling
         backgroundColor: z.string().optional(),
-        backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).optional(),
+        backgroundPattern: z.enum(BACKGROUND_PATTERNS).optional(),
         patternColor: z.string().optional(),
         logoUrl: z.string().optional(),
         bannerImageUrl: z.string().optional(),

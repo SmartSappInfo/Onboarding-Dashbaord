@@ -327,8 +327,8 @@ export default function NewMeetingPage() {
   };
 
   if (isLoadingEntities) {
-    return (
- <div className="h-full overflow-y-auto  space-y-8 bg-background">
+      return (
+        <div className="h-full overflow-y-auto space-y-8">
  <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
  <CardHeader><Skeleton className="h-8 w-1/3" /></CardHeader>
  <CardContent className="space-y-8">
@@ -341,8 +341,8 @@ export default function NewMeetingPage() {
     );
   }
 
-  return (
- <div className="h-full overflow-y-auto  bg-background">
+    return (
+        <div className="h-full overflow-y-auto">
  <div className="max-w-5xl mx-auto space-y-8 text-left">
         
         {/* Header */}
@@ -404,7 +404,7 @@ export default function NewMeetingPage() {
         </div>
 
         <FormProvider {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-12">
 
             {/* ──────── STEP 1: Configuration ──────── */}
  <div className={cn(currentStep !== 0 && "hidden")}>

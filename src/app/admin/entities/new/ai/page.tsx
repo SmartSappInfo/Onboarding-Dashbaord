@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default function NewSchoolAiPage() {
-  return (
- <div className="h-full overflow-y-auto  bg-background">
+    return (
+        <div className="h-full overflow-y-auto">
  <div className="max-w-5xl mx-auto space-y-8">
         <AiSchoolGenerator />
       </div>

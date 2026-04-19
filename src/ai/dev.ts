@@ -8,6 +8,7 @@ import './flows/query-survey-data-flow';
 import './flows/detect-pdf-fields-flow';
 import './flows/identify-primary-field-flow';
 import './flows/modify-survey-flow';
+import './flows/generate-survey-chunked-flow';
 import './flows/generate-visual-style-flow';
 import './flows/generate-email-template-flow';
 import './flows/refine-message-flow';

@@ -56,7 +56,7 @@ import {
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext'; // Added useTenant import
@@ -295,29 +295,33 @@ export default function MeetingsHubClient() {
     );
   };
 
-  return (
-    <TooltipProvider>
- <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">Session Registry</h1>
-                <p className="text-sm text-muted-foreground mt-1">Manage scheduled meetings, webinars, and attendance data.</p>
-            </div>
-            
-            <div className="flex justify-end items-center gap-3 shrink-0">
-                <Button asChild className="rounded-xl font-bold shadow-sm h-11 px-6">
-                    <Link href="/admin/meetings/new">
-                        <PlusCircle className="mr-2 h-5 w-5" />
-                        Schedule New Session
-                    </Link>
-                </Button>
-            </div>
-        </div>
+    return (
+        <TooltipProvider>
+            <div className="h-full overflow-y-auto">
+                <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                        <div className="flex flex-col items-start">
+                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                                <CalendarIcon className="h-10 w-10 text-primary" />
+                                Session Registry
+                            </h1>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">
+                                Scheduled meetings, webinars, and attendance data
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 shrink-0">
+                            <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+                                <Link href="/admin/meetings/new">
+                                    <PlusCircle className="mr-2 h-5 w-5" />
+                                    Schedule New Session
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
  <Tabs value={activeView} onValueChange={setActiveView} className="w-fit">
-            <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-xl">
+            <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl ring-1 ring-border">
                 <TabsTrigger value="list" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
                     <LayoutList className="h-4 w-4" /> Hub Registry
                 </TabsTrigger>
@@ -328,8 +332,7 @@ export default function MeetingsHubClient() {
         </Tabs>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-            <Card className="flex-1 min-w-[280px] max-w-sm border-border shadow-sm rounded-xl bg-card overflow-hidden">
- <CardContent className="p-2">
+            <div className="flex-1 min-w-[280px] max-w-sm border border-border bg-transparent shadow-sm rounded-3xl p-4 ring-1 ring-border">
                         <Select value={typeFilter} onValueChange={setTypeFilter}>
  <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                 <SelectValue placeholder="Filter by category..." />
@@ -341,13 +344,13 @@ export default function MeetingsHubClient() {
                                 ))}
                             </SelectContent>
                         </Select>
-                    </CardContent>
-                </Card>
+                    </div>
+            </div>
             </div>
             
  <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
  <TabsContent value="list" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
- <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+ <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
                         <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>
@@ -379,10 +382,12 @@ export default function MeetingsHubClient() {
                                 return (
                                 <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
-                                        <Avatar className="h-10 w-10 ring-2 ring-border/50 shadow-sm">
-                                        <AvatarImage src={logoUrl} alt={safeEntityName} />
-                                        <AvatarFallback className="font-bold text-xs">{getInitials(safeEntityName)}</AvatarFallback>
-                                        </Avatar>
+                                        <AsyncEntityAvatar 
+                                            entityId={meeting.entityId}
+                                            src={logoUrl} 
+                                            name={safeEntityName} 
+                                            className="h-10 w-10 ring-2 ring-border/50 shadow-sm"
+                                        />
                                     </TableCell>
                                     <TableCell className="font-semibold text-sm text-foreground tracking-tight">
                                         <Link href={`/admin/meetings/${meeting.id}/edit`} className="hover:text-primary hover:underline transition-colors">
@@ -424,8 +429,8 @@ export default function MeetingsHubClient() {
                     <MeetingCalendar meetings={filteredMeetings} onMeetingClick={(m) => router.push(`/admin/meetings/${m.id}/results`)} />
                 </TabsContent>
             </Tabs>
-        </div>
-      </div>
+                </div>
+            </div>
 
       <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
  <AlertDialogContent className="rounded-[2.5rem]">
@@ -441,6 +446,6 @@ export default function MeetingsHubClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+        </TooltipProvider>
   );
 }

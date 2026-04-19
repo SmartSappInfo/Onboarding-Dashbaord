@@ -208,8 +208,8 @@ export default function EntityDetailPage() {
     const displayName = entityData.name || weData.displayName;
 
     return (
- <div className={cn("h-full overflow-y-auto bg-background p-4 sm:p-6 lg:p-8", weData.status === 'archived' && "grayscale opacity-80")}>
- <div className="max-w-7xl mx-auto space-y-6">
+        <div className={cn("h-full overflow-y-auto", weData.status === 'archived' && "grayscale opacity-80")}>
+            <div className="max-w-7xl mx-auto space-y-6">
 
             <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">

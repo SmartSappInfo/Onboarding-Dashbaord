@@ -143,8 +143,8 @@ export default function PipelineClient() {
   const hasActiveFilters = searchTerm !== '' || zoneFilter !== 'all' || statusFilter !== 'all';
 
   return (
- <div className="flex h-full flex-col overflow-hidden bg-background">
- <header className="shrink-0 bg-background/80 backdrop-blur-md border-b shadow-sm z-30">
+    <div className="flex h-full flex-col overflow-hidden">
+        <header className="shrink-0 bg-card/80 backdrop-blur-md border-b shadow-sm z-30">
  <div className="p-4 sm:p-6 flex items-center justify-between gap-4">
  <div className="flex items-center gap-4 shrink-0 text-left">
  <div className="hidden sm:flex p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 rotate-3">

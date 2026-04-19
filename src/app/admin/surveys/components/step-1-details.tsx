@@ -26,11 +26,13 @@ interface Step1DetailsProps {
 function EntityPickerField({ 
     field, 
     institutions, 
-    setValue 
+    setValue,
+    watch
 }: { 
     field: { value: string | null; onChange: (v: string | null) => void };
     institutions?: WorkspaceEntity[];
     setValue: (name: string, value: any, options?: any) => void;
+    watch: (name: string) => any;
 }) {
     const [open, setOpen] = React.useState(false);
     const [search, setSearch] = React.useState('');
@@ -140,6 +142,12 @@ function EntityPickerField({
                                                 onSelect={() => {
                                                     field.onChange(entity.entityId);
                                                     setValue('entityName', entity.label, { shouldDirty: true });
+                                                    
+                                                    // Auto-sync logo if enabled
+                                                    if (watch('useEntityLogo') && entity.logoUrl) {
+                                                        setValue('logoUrl', entity.logoUrl, { shouldDirty: true });
+                                                    }
+                                                    
                                                     setOpen(false);
                                                     setSearch('');
                                                 }}
@@ -218,6 +226,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                     field={field}
                                     institutions={institutions}
                                     setValue={setValue}
+                                    watch={watch}
                                 />
                             )}
                         />

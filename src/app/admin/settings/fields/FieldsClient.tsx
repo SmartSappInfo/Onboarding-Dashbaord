@@ -72,6 +72,7 @@ import {
   MapPin,
   Eye,
   EyeOff,
+  LayoutGrid,
   Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -373,7 +374,7 @@ export default function FieldsClient() {
 
   if (!activeWorkspaceId) {
     return (
-      <div className="h-full overflow-y-auto bg-background">
+     <div className="h-full overflow-y-auto">
         <div className="flex flex-col items-center justify-center py-32 text-center gap-4">
           <div className="p-6 bg-card rounded-2xl shadow-inner border border-border/50">
             <Database className="h-12 w-12 text-muted-foreground/20" />
@@ -388,77 +389,80 @@ export default function FieldsClient() {
   // Render
   // ────────────────────────────────────────
   return (
-    <div className="h-full overflow-y-auto bg-background">
-      <div className="space-y-8">
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-5xl mx-auto space-y-8 pb-32">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Fields & Variables</h1>
-            <p className="text-sm text-muted-foreground font-medium mt-1">
-              Manage data capture fields, template variables, and workspace-scoped sections
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="flex flex-col items-start">
+            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground">
+                <Database className="h-10 w-10 text-primary" />
+                Fields Hub
+            </h1>
+            <p className="text-muted-foreground font-medium text-lg mt-1">
+              Data capture schema and template variable registry
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Button
               variant="outline"
               onClick={handleSeed}
               disabled={isSeeding || isLoading}
-              className="rounded-xl font-semibold h-11 gap-2 shadow-sm border-primary/20 hover:bg-primary/5"
+              className="rounded-xl font-bold h-11 gap-2 bg-transparent ring-1 ring-border shadow-sm border-border hover:bg-primary/5 hover:text-primary transition-all"
             >
               {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Seed Defaults
             </Button>
             <Button
               onClick={openCreate}
-              className="rounded-xl font-bold shadow-lg h-11 px-6"
+              className="rounded-xl font-bold shadow-lg h-11 px-6 transform active:scale-95 transition-all"
             >
-              <Plus className="mr-2 h-5 w-5" /> New Field
+              <Plus className="mr-1 h-5 w-5" /> New Schema Field
             </Button>
           </div>
         </div>
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-none shadow-sm rounded-2xl bg-card">
+          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
             <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-4 w-4 text-primary" /></div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0"><Database className="h-5 w-5" /></div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground">Total Fields</p>
-                  <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : (fields?.length || 0)}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Aggregate</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : (fields?.length || 0)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-card">
+          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
             <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-xl"><ShieldCheck className="h-4 w-4 text-emerald-600" /></div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0"><ShieldCheck className="h-5 w-5" /></div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground">Native</p>
-                  <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : nativeFields.length}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Native</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : nativeFields.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-card">
+          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
             <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-xl"><Pencil className="h-4 w-4 text-amber-600" /></div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0"><Pencil className="h-5 w-5" /></div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground">Custom</p>
-                  <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : customFields.length}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Custom</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : customFields.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-sm rounded-2xl bg-card">
+          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
             <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-xl"><Layers className="h-4 w-4 text-blue-600" /></div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0"><Layers className="h-5 w-5" /></div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground">Sections</p>
-                  <p className="text-2xl font-semibold tabular-nums">{isLoading ? '—' : sections.length}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Sections</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : sections.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -467,32 +471,32 @@ export default function FieldsClient() {
 
         {/* Main Tabs */}
         <Tabs value={mainTab} onValueChange={v => setMainTab(v as any)}>
-          <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl gap-1">
-            <TabsTrigger value="native" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-white">
-              <ShieldCheck className="h-3.5 w-3.5" /> Native Fields
+          <TabsList className="bg-transparent border border-border shadow-sm h-12 p-1 rounded-2xl gap-1 ring-1 ring-border">
+            <TabsTrigger value="native" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
+              <ShieldCheck className="h-4 w-4" /> Native Registry
             </TabsTrigger>
-            <TabsTrigger value="custom" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-white">
-              <Pencil className="h-3.5 w-3.5" /> Custom Fields
+            <TabsTrigger value="custom" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
+              <Pencil className="h-4 w-4" /> Workspace Schema
             </TabsTrigger>
-            <TabsTrigger value="sections" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-white">
-              <Layers className="h-3.5 w-3.5" /> Sections
+            <TabsTrigger value="sections" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
+              <Layers className="h-4 w-4" /> Data Sections
             </TabsTrigger>
-            <TabsTrigger value="variables" className="rounded-xl font-semibold text-[10px] px-4 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-white">
-              <Code className="h-3.5 w-3.5" /> Variables Reference
+            <TabsTrigger value="variables" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
+              <Code className="h-4 w-4" /> Variables Index
             </TabsTrigger>
           </TabsList>
 
           {/* Search Bar */}
           {(mainTab === 'native' || mainTab === 'custom') && (
-            <Card className="border-none shadow-sm rounded-2xl bg-card mt-6">
+            <Card className="border border-border shadow-sm rounded-2xl bg-transparent ring-1 ring-border mt-6">
               <CardContent className="p-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                   <Input
-                    placeholder="Search by label, variable name, or section…"
+                    placeholder="Filter schema fields by label, variable, or section…"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 h-10 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="pl-11 h-12 rounded-xl bg-background border border-border shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
               </CardContent>
@@ -506,7 +510,7 @@ export default function FieldsClient() {
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-2xl" />)}
               </div>
             ) : filteredFields.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-background">
+              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
                 <Database className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-[10px] font-semibold text-muted-foreground">
                   {searchTerm ? 'No native fields match your search' : 'No native fields yet. Click "Seed Defaults" to populate.'}
@@ -530,7 +534,7 @@ export default function FieldsClient() {
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-2xl" />)}
               </div>
             ) : filteredFields.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-background">
+              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
                 <Pencil className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-[10px] font-semibold text-muted-foreground">
                   {searchTerm ? 'No custom fields match your search' : 'No custom fields created yet.'}
@@ -553,29 +557,29 @@ export default function FieldsClient() {
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
               </div>
             ) : sections.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl bg-background">
+              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
                 <Layers className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-[10px] font-semibold text-muted-foreground">No sections yet. Create fields to auto-generate sections.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sections.map(sec => (
-                  <Card key={sec.name} className="border-border/50 shadow-sm rounded-2xl bg-card hover:shadow-md transition-all">
+                  <Card key={sec.name} className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border hover:shadow-md transition-all group">
                     <CardContent className="p-6">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                          <Layers className="h-4 w-4 text-primary" />
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0 group-hover:scale-110 transition-transform">
+                          <Layers className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="font-semibold text-sm tracking-tight capitalize">{sec.name.replace(/_/g, ' ')}</p>
-                          <p className="text-[10px] text-muted-foreground font-medium">{sec.count} fields</p>
+                          <p className="font-bold text-base tracking-tight capitalize">{sec.name.replace(/_/g, ' ')}</p>
+                          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">{sec.count} fields tracked</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Badge variant="outline" className="text-[9px] font-semibold bg-emerald-50 text-emerald-700 border-emerald-200">
+                        <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-0.5 rounded-lg">
                           {sec.native} Native
                         </Badge>
-                        <Badge variant="outline" className="text-[9px] font-semibold bg-amber-50 text-amber-700 border-amber-200">
+                        <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-500 border-amber-500/20 px-3 py-0.5 rounded-lg">
                           {sec.custom} Custom
                         </Badge>
                       </div>

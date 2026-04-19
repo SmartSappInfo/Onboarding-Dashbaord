@@ -738,6 +738,7 @@ export interface ResolvedContact {
   id: string;
   name: string;
   slug?: string;
+  logoUrl?: string | null;
   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
   contacts?: any[]; // @deprecated - legacy focal persons array fallback
   // Workspace-specific operational state

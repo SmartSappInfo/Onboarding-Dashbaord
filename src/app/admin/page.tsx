@@ -33,7 +33,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
 
     if (!activeWorkspaceId) {
         return (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-background">
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                 <div className="max-w-md space-y-6">
                     <div className="w-16 h-16 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
                         <LayoutGrid className="h-8 w-8 text-primary" />
@@ -149,7 +149,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     });
 
     return (
-        <div className="h-full overflow-y-auto bg-background text-left p-4 sm:p-8">
+        <div className="h-full overflow-y-auto text-left">
             <DashboardClientWrapper 
                 activeWorkspaceId={activeWorkspaceId}
                 activeWorkspace={activeWorkspace}

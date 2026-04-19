@@ -280,7 +280,7 @@ export default function SenderProfilesPage() {
     }
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
+        <div className="h-full overflow-y-auto text-left">
  <div className=" space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">

@@ -198,8 +198,8 @@ export default function MessageStylesPage() {
     };
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
+        <div className="h-full overflow-y-auto">
+            <div className="space-y-8">
  <div className="flex items-center justify-end flex-wrap gap-4">
  <div className="flex items-center gap-2">
  <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl">
@@ -250,7 +250,7 @@ export default function MessageStylesPage() {
                     </Card>
                 )}
 
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
                     {isLoading ? (
  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2.5rem]" />)
                     ) : styles?.length ? (
@@ -284,7 +284,7 @@ export default function MessageStylesPage() {
                             </Card>
                         ))
                     ) : (
- <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
+                        <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center gap-4 opacity-30">
  <Palette className="h-16 w-16" />
  <p className="font-semibold text-xs">No styles in this workspace hub</p>
                         </div>
@@ -305,7 +305,7 @@ export default function MessageStylesPage() {
                         </div>
                     </DialogHeader>
                     
- <div className="flex-1 flex flex-col overflow-hidden bg-background">
+ <div className="flex-1 flex flex-col overflow-hidden ">
  <div className="p-8 border-b grid grid-cols-1 md:grid-cols-2 gap-8 shrink-0">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Reference</Label>

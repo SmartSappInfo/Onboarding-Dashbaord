@@ -86,7 +86,7 @@ export default function MessageTemplatesPage() {
 
     const entitiesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'workspace_entities'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('displayName', 'asc'));
+        return query(collection(firestore, 'workspace_entities'), where('workspaceId', '==', activeWorkspaceId), orderBy('displayName', 'asc'));
     }, [firestore, activeWorkspaceId]);
 
     const meetingsQuery = useMemoFirebase(() => {
@@ -235,7 +235,7 @@ export default function MessageTemplatesPage() {
     };
 
     return (
- <div className="h-full flex flex-col overflow-hidden bg-background">
+        <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
                 {isAdding ? (
                     <TemplateWorkshop 
@@ -252,13 +252,12 @@ export default function MessageTemplatesPage() {
                         isSaving={false}
                     />
                 ) : (
- <div className="flex-1 overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
- <div className="flex items-center justify-end flex-wrap gap-4">
- <div className="flex items-center gap-3">
+                    <div className="flex-1 overflow-y-auto text-left">
+                        <div className=" space-y-8">
+                            <div className="flex items-center justify-end flex-wrap gap-4">
+                                <div className="flex items-center gap-3">
                                     <RainbowButton 
                                         onClick={() => setIsAiModalOpen(true)} 
- className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl"
                                     >
  <Sparkles className="h-4 w-4" /> AI Architect
                                     </RainbowButton>

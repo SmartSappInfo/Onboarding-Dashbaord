@@ -26,27 +26,25 @@ export default function DashboardCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
       className="h-full"
     >
       <Card 
         className={cn(
-          "h-full rounded-[2.5rem] border-none bg-background/50 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden relative group",
+          "h-full rounded-2xl border border-border bg-transparent shadow-sm ring-1 ring-border hover:shadow-md transition-all duration-300 overflow-hidden relative group",
           className
         )} 
         {...props}
       >
-        {/* Premium internal glow */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-        
-        <CardHeader className="h-16 flex items-center justify-start py-0 px-6 border-b border-border/5">
-          <CardTitle className="text-[11px] font-black tracking-[0.1em] uppercase opacity-50">
+        <CardHeader className="h-14 flex items-center justify-start py-0 px-6 border-b border-border/50 bg-muted/20">
+          <CardTitle className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-60 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
             {displayTitle}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow pt-6 p-6">
+        <CardContent className="flex-grow pt-8 p-8">
           {children}
         </CardContent>
       </Card>

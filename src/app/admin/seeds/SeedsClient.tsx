@@ -75,23 +75,23 @@ export default function SeedsClient() {
     }
   };
 
-  return (
-    <div className="min-h-full bg-background relative overflow-y-auto w-full flex justify-center pb-20">
-        <main className="max-w-4xl w-full p-4 lg:p-10 space-y-16">
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-12 pb-32">
             
             {/* Header */}
-            <div>
-                <Badge variant="outline" className="mb-4 bg-primary/5 text-primary border-primary/20 font-bold uppercase tracking-widest text-[9px]">Workspace Integrations</Badge>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Seeding Actions</h1>
-                <p className="text-muted-foreground font-medium md:text-lg">
-                    Execute core schema enrichments and cross-workspace mappings.
+            <div className="flex flex-col items-start text-left">
+                <Badge variant="outline" className="mb-4 bg-primary/5 text-primary border-primary/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1 ring-1 ring-primary/20">System Governance</Badge>
+                <h1 className="text-4xl font-black tracking-tighter mb-2 text-foreground">Infrastructure Seeding</h1>
+                <p className="text-muted-foreground font-medium text-lg mt-1">
+                    Execute core schema enrichments and cross-workspace mappings
                 </p>
             </div>
 
             {/* Core Migrations */}
-            <section className="space-y-6">
-                <div className="flex flex-col gap-1 items-start mb-6">
-                    <h3 className="text-2xl font-bold tracking-tight">Active Protocols</h3>
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Active Protocols</h3>
                     <p className="text-muted-foreground font-medium">Currently active Fetch, Enrich, and Restore (FER) streams.</p>
                 </div>
 
@@ -114,7 +114,7 @@ export default function SeedsClient() {
                     />
                 </div>
             </section>
-        </main>
+        </div>
     </div>
   );
 }
@@ -130,22 +130,28 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
   syncLabel?: string;
 }) {
     return (
-        <div className="p-8 rounded-[2.5rem] bg-card border shadow-sm flex flex-col justify-between gap-6 group hover:border-primary/40 transition-all ring-1 ring-border shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)]">
-            <div className="space-y-4">
-                <div className="p-3 bg-primary/5 rounded-2xl w-fit shadow-xs text-primary border border-primary/10 group-hover:scale-105 transition-transform"><Icon className="h-6 w-6" /></div>
-                <h4 className="text-lg font-bold tracking-tight text-foreground">{title}</h4>
-                <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-2xl">{description}</p>
-            </div>
-            <div className="flex gap-4 pt-4 border-t">
-                <Button onClick={onSync} disabled={status === 'seeding'} className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-95">
-                    {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} {syncLabel}
-                </Button>
-                {onRollback && (
-                    <Button variant="outline" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 hover:bg-rose-50 h-12 px-6 shadow-sm active:scale-95 transition-all">
-                        <TriangleAlert className="h-5 w-5 mr-2" /> Rollback
+        <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border overflow-hidden text-left group">
+            <CardContent className="p-8 space-y-6">
+                <div className="flex items-start justify-between gap-6">
+                    <div className="space-y-4">
+                        <div className="p-4 bg-primary/10 rounded-2xl w-fit text-primary ring-1 ring-primary/20 group-hover:scale-110 transition-transform"><Icon className="h-6 w-6" /></div>
+                        <div>
+                            <h4 className="text-xl font-bold tracking-tight text-foreground">{title}</h4>
+                            <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-2xl mt-2">{description}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-4 pt-6 mt-4 border-t border-border/50">
+                    <Button onClick={onSync} disabled={status === 'seeding'} className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transform active:scale-95 transition-all">
+                        {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} {syncLabel}
                     </Button>
-                )}
-            </div>
-        </div>
+                    {onRollback && (
+                        <Button variant="ghost" onClick={onRollback} className="rounded-xl font-bold border-rose-200 text-rose-600 hover:bg-rose-50 h-12 px-6 shadow-sm active:scale-95 transition-all ring-1 ring-rose-200/50">
+                            <TriangleAlert className="h-5 w-5 mr-2" /> Rollback
+                        </Button>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

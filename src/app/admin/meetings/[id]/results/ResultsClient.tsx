@@ -158,7 +158,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
  if (!meeting) return <div className="p-20 text-center font-semibold opacity-20">Session Not Found</div>;
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
+ <div className="h-full overflow-y-auto text-left">
  <div className=" space-y-10 pb-32">
 
                 {/* Executive Header */}

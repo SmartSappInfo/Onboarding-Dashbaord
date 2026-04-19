@@ -145,22 +145,24 @@ export default function PeriodsClient() {
     };
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className="max-w-6xl mx-auto space-y-8">
- <div className="flex items-center justify-between">
-                    <div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3">
- <Timer className="h-8 w-8 text-primary" />
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <Timer className="h-10 w-10 text-primary" />
                             Billing Cycles
                         </h1>
- <p className="text-muted-foreground font-medium mt-1">Define term-based windows for the {activeWorkspaceId} track.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Define term-based windows for the {activeWorkspaceId} track
+                        </p>
                     </div>
- <Button onClick={() => setIsAdding(true)} className="rounded-xl font-semibold shadow-lg h-12 px-8 transition-all active:scale-95">
- <Plus className="mr-2 h-5 w-5" /> Initialize Cycle
+                    <Button onClick={() => setIsAdding(true)} className="rounded-xl font-bold shadow-sm h-11 px-8 transition-all active:scale-95 text-foreground bg-transparent ring-1 ring-border">
+                        <Plus className="mr-2 h-5 w-5" /> Initialize Cycle
                     </Button>
                 </div>
 
- <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
                     <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>

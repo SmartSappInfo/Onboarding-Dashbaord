@@ -98,16 +98,16 @@ export function Inspector() {
   const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time' || selectedField?.type === 'static-text' || selectedField?.type === 'variable';
 
   return (
- <ScrollArea className="flex-grow">
+ <ScrollArea className="flex-grow bg-card">
  <div className="p-4 space-y-4 text-left">
         
         {/* Selection Context */}
         {selectedField ? (
- <Card className="border-primary/20 bg-primary/5">
+  <Card className="border border-primary/20 bg-primary/5 rounded-2xl shadow-sm">
  <CardHeader className="py-4">
  <CardTitle className="flex justify-between items-center text-sm font-semibold">
                 <span>Field Properties</span>
- <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
+ <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
  <Trash2 className="h-4 w-4" />
                 </Button>
               </CardTitle>
@@ -135,7 +135,7 @@ export function Inspector() {
                                 value={selectedField.variableKey} 
                                 onValueChange={(val) => updateField(selectedField.id, { variableKey: val, label: SCHOOL_VARIABLES.find(v => v.key === val)?.label })}
                             >
- <SelectTrigger className="h-11 rounded-xl bg-background border-primary/20 font-bold shadow-sm">
+                                 <SelectTrigger className="h-11 rounded-xl bg-background border border-border font-bold shadow-sm focus:ring-1 focus:ring-primary/20 transition-all">
                                     <SelectValue placeholder="Pick school field..." />
                                 </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -175,7 +175,7 @@ export function Inspector() {
  <div className="space-y-2">
  <Label className="text-[10px] font-bold text-muted-foreground ml-1">Type</Label>
                 <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
- <SelectTrigger className="h-9 text-sm capitalize rounded-xl bg-background border-border/50"><SelectValue /></SelectTrigger>
+  <SelectTrigger className="h-9 text-sm capitalize rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"><SelectValue /></SelectTrigger>
  <SelectContent className="rounded-xl">{Object.keys(fieldIcons).map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -210,7 +210,7 @@ export function Inspector() {
               )}
               
               {selectedField.type !== 'static-text' && selectedField.type !== 'variable' && (
- <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
+  <div className="flex items-center justify-between rounded-xl border border-border p-3 bg-background shadow-sm">
  <Label className="text-xs font-bold">Required Field</Label>
                     <Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} />
                 </div>

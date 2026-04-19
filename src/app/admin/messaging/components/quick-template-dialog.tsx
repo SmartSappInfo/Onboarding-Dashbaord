@@ -333,45 +333,43 @@ export default function QuickTemplateDialog({
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
  <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
- <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
- <div className="flex items-center justify-between text-left">
- <div className="flex items-center gap-4">
- <div className={cn(
-                                "p-3 rounded-2xl border shadow-xl",
-                                channel === 'email' ? "bg-blue-500/10 text-blue-500 border-blue-100" : "bg-orange-500/10 text-orange-500 border-orange-100"
-                            )}>
- {channel === 'email' ? <Mail className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
-                            </div>
-                            <div>
- <DialogTitle className="text-2xl font-semibold tracking-tight">
-                                    {templateId ? 'Template Editor' : 'Quick Template Studio'}
-                                </DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground">Drafting {channel} protocol for {category}</DialogDescription>
-                            </div>
-                        </div>
- <div className="flex items-center gap-3">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
- className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
-                                onClick={() => setIsTestModalOpen(true)}
-                            >
- <FlaskConical className="h-4 w-4" /> Send Test
-                            </Button>
-                            {!templateId && (
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
- className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
-                                    onClick={() => setShowAiInput(!showAiInput)}
-                                >
- <Sparkles className="h-4 w-4" />
-                                    {showAiInput ? 'Designer Mode' : 'Draft with AI'}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </DialogHeader>
+          <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
+            <div className="flex items-start justify-between text-left">
+              <div className="flex flex-col items-start gap-2">
+                <div className={cn(
+                  "p-3 rounded-2xl shadow-sm mb-1",
+                  channel === 'email' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500"
+                )}>
+                  {channel === 'email' ? <Mail className="h-6 w-6" aria-hidden="true" /> : <Smartphone className="h-6 w-6" aria-hidden="true" />}
+                </div>
+                <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
+                  {templateId ? 'Template Editor' : 'Quick Template Studio'}
+                </DialogTitle>
+                <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Drafting {channel} protocol for {category}</DialogDescription>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary cursor-pointer transition-colors duration-200"
+                  onClick={() => setIsTestModalOpen(true)}
+                >
+                  <FlaskConical className="h-4 w-4" aria-hidden="true" /> Send Test
+                </Button>
+                {!templateId && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary cursor-pointer transition-colors duration-200"
+                    onClick={() => setShowAiInput(!showAiInput)}
+                  >
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                    {showAiInput ? 'Designer Mode' : 'Draft with AI'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
 
  <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
  <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background relative text-left">
@@ -516,31 +514,30 @@ export default function QuickTemplateDialog({
                     </div>
                 </div>
 
- <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
- <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
-                    
- <div className="flex-grow shrink-0 flex gap-3 sm:justify-end">
-                        {templateId && (
-                            <Button 
-                                variant="outline"
-                                onClick={() => handleCommit('new')} 
-                                disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
- className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 h-12 px-6 gap-2"
-                            >
- <CopyPlus className="h-4 w-4" />
-                                Save as New
-                            </Button>
-                        )}
-                        <Button 
-                            onClick={() => handleCommit(templateId ? 'update' : 'new')} 
-                            disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
- className="px-16 rounded-2xl font-semibold shadow-2xl h-12 text-sm transition-all active:scale-95 flex-grow sm:flex-grow-0"
-                        >
- {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : templateId ? <Save className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-                            {templateId ? 'Update Current' : 'Save Template'}
-                        </Button>
-                    </div>
-                </DialogFooter>
+        <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
+          <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Cancel</Button>
+          <div className="flex-grow shrink-0 flex gap-3 sm:justify-end">
+            {templateId && (
+              <Button 
+                variant="outline"
+                onClick={() => handleCommit('new')} 
+                disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+                className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 h-12 px-6 gap-2 cursor-pointer transition-colors duration-200"
+              >
+                <CopyPlus className="h-4 w-4" aria-hidden="true" />
+                Save as New
+              </Button>
+            )}
+            <Button 
+              onClick={() => handleCommit(templateId ? 'update' : 'new')} 
+              disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+              className="px-16 rounded-2xl font-semibold shadow-lg h-12 text-sm cursor-pointer transition-all duration-200 active:scale-95 flex-grow sm:flex-grow-0"
+            >
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : templateId ? <Save className="mr-2 h-4 w-4" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
+              {templateId ? 'Update Current' : 'Save Template'}
+            </Button>
+          </div>
+        </DialogFooter>
             </DialogContent>
 
             <TestDispatchDialog 

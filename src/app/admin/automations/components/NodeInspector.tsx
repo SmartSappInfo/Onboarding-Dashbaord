@@ -228,7 +228,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                             </Label>
                                             <div className="flex flex-wrap gap-2 mb-2">
                                                 {(config.tagIds || []).map((id: string) => {
-                                                    const tag = tags.find(t => t.id === id);
+                                                    const tag = allTags?.find((t: TagType) => t.id === id);
                                                     return (
                                                         <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-600 border-none group">
                                                             <span className="text-[10px] font-bold tracking-tight">{tag?.name || id}</span>
@@ -257,7 +257,7 @@ export function NodeInspector({ node, onUpdate }: NodeInspectorProps) {
                                                     <SelectValue placeholder="Add tags to watch..." />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[300px] overflow-y-auto">
-                                                    {tags.map(tag => (
+                                                    {(allTags || []).map((tag: TagType) => (
                                                         <SelectItem key={tag.id} value={tag.id} className="rounded-lg p-2">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="h-2 w-2 rounded-full" style={{ backgroundColor: tag.color }} />

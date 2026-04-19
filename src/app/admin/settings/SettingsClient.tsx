@@ -20,15 +20,13 @@ export default function SettingsClient() {
   const [isOrgDialogOpen, setIsOrgDialogOpen] = React.useState(false);
 
   return (
- <div className="h-full overflow-y-auto  space-y-12 bg-background text-left">
- <div className=" space-y-12">
-        {/* Organization Profile Header */}
-        <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <div className="h-2 w-full bg-primary" />
- <CardContent className="p-8 md:p-12">
- <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-5xl mx-auto space-y-8 pb-32">
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-transparent mt-8">
+          <CardContent className="p-8 md:p-12">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
               {/* Logo Section */}
- <div className="shrink-0">
+              <div className="shrink-0">
                 {activeOrganization?.logoUrl ? (
                   <img 
                     src={activeOrganization.logoUrl} 
@@ -43,15 +41,15 @@ export default function SettingsClient() {
               </div>
 
               {/* Info Section */}
- <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
- <div className="space-y-2">
- <div className="flex flex-col md:flex-row items-center justify-between gap-4">
- <h1 className="text-4xl md:text-5xl font-semibold tracking-tighter text-foreground leading-none">
-                      {activeOrganization?.name || 'Organization Settings'}
+              <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
+                <div className="space-y-2">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-none">
+                      {activeOrganization?.name || 'System Parameters'}
                     </h1>
                     {activeOrganization && (
- <Button variant="outline" size="sm" onClick={() => setIsOrgDialogOpen(true)} className="rounded-xl font-bold text-[10px] h-8 shrink-0">
- <Pencil className="w-3 h-3 mr-2" />
+                      <Button variant="outline" size="sm" onClick={() => setIsOrgDialogOpen(true)} className="rounded-xl font-bold text-[10px] h-8 shrink-0">
+                        <Pencil className="w-3 h-3 mr-2" />
                         Edit Organization
                       </Button>
                     )}
@@ -134,5 +132,5 @@ export default function SettingsClient() {
         organization={activeOrganization} 
       />
     </div>
-  );
+    );
 }

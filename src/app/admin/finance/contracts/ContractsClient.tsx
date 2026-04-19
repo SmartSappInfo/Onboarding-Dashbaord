@@ -282,17 +282,17 @@ export default function AgreementsClient() {
 
     return (
         <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background text-left relative">
- <div className=" space-y-10 pb-32">
-                    
-                    {/* Header */}
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3">
- <FileCheck className="h-8 w-8 text-primary" />
-                                Agreements & Contracts
+            <div className="h-full overflow-y-auto">
+                <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                        <div className="flex flex-col items-start">
+                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                                <FileCheck className="h-10 w-10 text-primary" />
+                                Agreements Hub
                             </h1>
- <p className="text-muted-foreground font-medium mt-1">Manage institutional legal contracts for the {activeWorkspaceId} track.</p>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">
+                                Institutional legal contracts and compliance records for the {activeWorkspaceId} track
+                            </p>
                         </div>
                     </div>
 
@@ -337,7 +337,7 @@ export default function AgreementsClient() {
                     </div>
 
                     {/* Search & Filters */}
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
+                    <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border">
  <CardContent className="p-4 flex flex-wrap items-center gap-4">
  <div className="flex-grow min-w-[240px] relative">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -382,7 +382,7 @@ export default function AgreementsClient() {
                     </Card>
 
                     {/* Institutional Registry */}
- <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                    <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
                         <Table>
  <TableHeader className="bg-muted/30">
                                 <TableRow>
@@ -683,8 +683,8 @@ export default function AgreementsClient() {
 function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string, onClick?: () => void }) {
     return (
         <Card 
- className={cn(
-                "rounded-2xl border border-border shadow-sm bg-card overflow-hidden group hover:border-primary/50 transition-all text-left",
+            className={cn(
+                "rounded-2xl border border-border shadow-sm bg-transparent ring-1 ring-border overflow-hidden group hover:border-primary/50 transition-all text-left",
                 onClick && "cursor-pointer active:scale-95"
             )}
             onClick={onClick}

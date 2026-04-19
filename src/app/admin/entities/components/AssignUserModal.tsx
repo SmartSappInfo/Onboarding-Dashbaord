@@ -105,16 +105,16 @@ export default function AssignUserModal({ entity, open, onOpenChange }: AssignUs
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <UserIcon className="h-6 w-6" />
+      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+          <div className="flex flex-col items-start gap-2">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+              <UserIcon className="h-6 w-6" aria-hidden="true" />
             </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Assign Account Owner</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground">Select a team member for "{entity?.displayName}"</DialogDescription>
-            </div>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Assign Account Owner</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+              Select a team member for &quot;{entity?.displayName}&quot;
+            </DialogDescription>
           </div>
         </DialogHeader>
         
@@ -183,11 +183,18 @@ export default function AssignUserModal({ entity, open, onOpenChange }: AssignUs
             </ScrollArea>
         </div>
 
- <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-between gap-3">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isAssigning} className="rounded-xl font-bold h-11 px-8">Discard</Button>
- <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse px-4">
- {isAssigning && <><Loader2 className="h-3 w-3 animate-spin"/> Syncing...</>}
-            </div>
+        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse">
+            {isAssigning && <><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Syncing...</>}
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isAssigning}
+            className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+          >
+            Discard
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

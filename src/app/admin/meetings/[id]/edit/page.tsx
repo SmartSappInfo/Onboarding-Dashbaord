@@ -356,7 +356,7 @@ export default function EditMeetingPage() {
   }
 
   return (
- <div className="h-full flex flex-col items-center bg-background">
+ <div className="h-full flex flex-col items-center">
  <div className="w-full max-w-5xl px-4 sm:px-6 md:px-8 py-8 space-y-8 flex-1 text-left">
         
         {/* Header */}
@@ -426,7 +426,7 @@ export default function EditMeetingPage() {
         </div>
 
         <FormProvider {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-12">
 
             {/* ──────── STEP 1: Configuration ──────── */}
  <div className={cn(currentStep !== 0 && "hidden")}>

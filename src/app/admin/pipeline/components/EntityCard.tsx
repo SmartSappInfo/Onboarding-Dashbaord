@@ -4,8 +4,10 @@ import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WorkspaceEntity } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 import { 
     ShieldCheck, 
     MoreVertical, 
@@ -97,15 +99,12 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
         >
  <div className="flex items-center gap-3 min-w-0 flex-1">
  <div className="relative shrink-0">
- <Avatar className={cn(
-                        "h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background",
-                        entity.logoUrl ? "rounded-xl" : "rounded-full"
-                    )}>
- <AvatarImage src={entity.logoUrl} alt={entity.displayName} className="object-contain p-1.5" />
- <AvatarFallback className="text-[10px] font-semibold bg-primary/5 text-primary">
-                            {entity.displayName.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                    <AsyncEntityAvatar 
+                        entityId={entity.entityId}
+                        src={entity.logoUrl} 
+                        name={entity.displayName} 
+                        className="h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background"
+                    />
  <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: statusMeta?.color || '#cbd5e1' }} />
                 </div>
  <div className="min-w-0 flex-1 text-left">

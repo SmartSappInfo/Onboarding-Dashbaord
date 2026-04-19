@@ -116,42 +116,44 @@ export default function ProfileClient() {
   const name = form.watch('name');
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={24} />;
 
-  if (isUserLoading || isLoadingProfile) {
-    return (
- <div className="">
- <Card className="max-w-2xl mx-auto">
-                <CardHeader>
-                    <CardTitle>Account Profile</CardTitle>
-                    <CardDescription>Update your personal information.</CardDescription>
-                </CardHeader>
- <CardContent className="space-y-8">
- <div className="flex justify-center">
- <Skeleton className="w-32 h-32 rounded-full" />
-                    </div>
- <Skeleton className="h-10 w-full" />
- <Skeleton className="h-10 w-full" />
- <Skeleton className="h-10 w-full" />
-                </CardContent>
-            </Card>
-        </div>
-    )
-  }
-
-  return (
- <div className="h-full overflow-y-auto  bg-background">
- <div className="max-w-2xl mx-auto space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <Settings2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Identity Settings</CardTitle>
- <CardDescription className="text-xs font-medium">Core account and contact information.</CardDescription>
+    if (isUserLoading || isLoadingProfile) {
+        return (
+            <div className="h-full overflow-y-auto">
+                <div className="max-w-2xl mx-auto space-y-8 pb-32">
+                    <div className="flex flex-col items-start pt-8">
+                        <Skeleton className="h-10 w-64 mb-2" />
+                        <Skeleton className="h-6 w-48" />
                     </div>
                 </div>
-            </CardHeader>
+            </div>
+        )
+    }
+
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-2xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col items-start pt-8">
+                    <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                        <UserIcon className="h-10 w-10 text-primary" />
+                        Account Profile
+                    </h1>
+                    <p className="text-muted-foreground font-medium text-lg mt-1">
+                        Manage your identity and communication preferences
+                    </p>
+                </div>
+
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-transparent">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Settings2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg font-semibold tracking-tight text-foreground">Identity Settings</CardTitle>
+                                <CardDescription className="text-xs font-medium">Core account and contact information.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
  <CardContent className="p-8">
                 <Form {...form}>
  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

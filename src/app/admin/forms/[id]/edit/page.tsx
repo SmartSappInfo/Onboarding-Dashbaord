@@ -294,9 +294,9 @@ export default function EditFormPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-muted/30">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
+      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4 text-left">
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => router.push('/admin/forms')}>
             <ArrowLeft className="h-4 w-4" />
@@ -340,7 +340,7 @@ export default function EditFormPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Left Column */}
                   <div className="space-y-6">
-                    <Card className="rounded-2xl border-none shadow-sm">
+                    <Card className="rounded-2xl border border-border shadow-sm bg-card">
                       <CardHeader>
                         <CardTitle className="text-base font-semibold">Form Identity</CardTitle>
                         <CardDescription className="text-xs">Basic information about your form.</CardDescription>
@@ -355,7 +355,7 @@ export default function EditFormPage() {
                               updateField('slug', slugify(e.target.value));
                             }}
                             placeholder="e.g. Parent Enrollment Form"
-                            className="h-11 rounded-xl bg-muted/20 border-none"
+                            className="h-11 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"
                           />
                         </div>
                         <div className="space-y-2 text-left">
@@ -364,7 +364,7 @@ export default function EditFormPage() {
                             value={formData.title || ''}
                             onChange={e => updateField('title', e.target.value)}
                             placeholder="e.g. Enrollment Application"
-                            className="h-11 rounded-xl bg-muted/20 border-none"
+                            className="h-11 rounded-xl bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"
                           />
                         </div>
                         <div className="space-y-2 text-left">
@@ -384,14 +384,14 @@ export default function EditFormPage() {
                             value={formData.description || ''}
                             onChange={e => updateField('description', e.target.value)}
                             placeholder="Brief description shown to respondents..."
-                            className="rounded-xl min-h-[60px] resize-none bg-muted/20 border-none"
+                            className="rounded-xl min-h-[60px] resize-none bg-background border border-border shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"
                             rows={2}
                           />
                         </div>
                       </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-none shadow-sm">
+                    <Card className="rounded-2xl border border-border shadow-sm bg-card">
                       <CardHeader>
                         <CardTitle className="text-base font-semibold">Form Type</CardTitle>
                       </CardHeader>
@@ -419,7 +419,7 @@ export default function EditFormPage() {
 
                   {/* Right Column: Theme */}
                   <div className="space-y-6">
-                    <Card className="rounded-2xl border-none shadow-sm">
+                    <Card className="rounded-2xl border border-border shadow-sm bg-card">
                       <CardHeader>
                         <CardTitle className="text-base font-semibold">Theme & Style</CardTitle>
                       </CardHeader>
@@ -431,10 +431,10 @@ export default function EditFormPage() {
                               type="button"
                               onClick={() => updateField('theme', { ...formData.theme!, preset: preset.value })}
                               className={cn(
-                                'p-4 rounded-xl border-2 text-left transition-all hover:shadow-md',
+                                'p-4 rounded-xl border-2 text-left transition-all hover:shadow-md bg-card',
                                 formData.theme?.preset === preset.value
-                                  ? 'border-primary bg-primary/5 shadow-sm'
-                                  : 'border-border/50 hover:border-primary/30'
+                                  ? 'border-primary bg-primary/5 shadow-md'
+                                  : 'border-border/30 hover:border-primary/30'
                               )}
                             >
                               <p className="text-sm font-bold">{preset.label}</p>
@@ -509,7 +509,7 @@ export default function EditFormPage() {
                     </Card>
 
                     {/* Success Behavior */}
-                    <Card className="rounded-2xl border-none shadow-sm">
+                    <Card className="rounded-2xl border border-border shadow-sm bg-card">
                       <CardHeader>
                         <CardTitle className="text-base font-semibold">After Submission</CardTitle>
                       </CardHeader>

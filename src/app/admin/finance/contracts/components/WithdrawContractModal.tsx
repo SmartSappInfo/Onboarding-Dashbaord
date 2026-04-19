@@ -121,18 +121,18 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
- <DialogHeader className="p-8 bg-rose-50 border-b border-rose-100 shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
- <ShieldAlert className="h-6 w-6" />
-                        </div>
- <div className="text-left">
- <DialogTitle className="text-2xl font-semibold tracking-tight text-rose-950">Record Withdrawal</DialogTitle>
- <DialogDescription className="text-xs font-bold text-rose-700 opacity-70">Auditing legal submissions for {entity.displayName}</DialogDescription>
-                        </div>
-                    </div>
-                </DialogHeader>
+        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
+          <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+            <div className="flex flex-col items-start gap-2">
+              <div className="p-3 bg-destructive/10 text-destructive rounded-2xl shadow-sm mb-2">
+                <ShieldAlert className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Record Withdrawal</DialogTitle>
+              <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                Auditing legal submissions for {entity.displayName}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
  <div className="flex-1 overflow-hidden relative bg-card">
                     {isLoadingData ? (
@@ -207,17 +207,17 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
                     )}
                 </div>
 
- <DialogFooter className="p-8 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-4">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPurging} className="font-bold rounded-xl h-14 px-10">Cancel Audit</Button>
-                    <Button 
-                        onClick={handlePurge} 
-                        disabled={isPurging || isLoadingData || (selectedSubIds.length === 0 && submissions.length > 0)}
- className="rounded-2xl font-semibold h-14 px-12 shadow-2xl bg-rose-600 hover:bg-rose-700 text-white tracking-[0.1em] text-sm gap-3 active:scale-95 transition-all"
-                    >
- {isPurging ? <Loader2 className="h-6 w-6 animate-spin" /> : <Trash2 className="h-6 w-6" />}
-                        Purge Selected History
-                    </Button>
-                </DialogFooter>
+          <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-4">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPurging} className="font-bold rounded-xl h-12 px-10 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Cancel Audit</Button>
+            <Button 
+              onClick={handlePurge} 
+              disabled={isPurging || isLoadingData || (selectedSubIds.length === 0 && submissions.length > 0)}
+              className="rounded-2xl font-semibold h-12 px-12 shadow-lg bg-destructive hover:bg-destructive/90 text-white tracking-[0.05em] text-sm gap-3 cursor-pointer active:scale-95 transition-all duration-200"
+            >
+              {isPurging ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Trash2 className="h-5 w-5" aria-hidden="true" />}
+              Purge Selected History
+            </Button>
+          </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -551,7 +551,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 border-t print:hidden">
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-6 bg-white border-b shrink-0 z-10 shadow-sm">
+            <header className="h-16 flex items-center justify-between px-6 bg-card border-b shrink-0 z-10 shadow-sm">
                 <div className="flex items-center gap-4">
                     <Button asChild variant="ghost" className="h-9 w-9 p-0 rounded-lg hover:bg-slate-100">
                         <Link href="/admin/pages"><ArrowLeft className="h-4 w-4" /></Link>
@@ -616,39 +616,39 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Panel: Blocks */}
-                <aside className="w-80 bg-white border-r flex flex-col shrink-0 z-10 shadow-sm relative">
+                <aside className="w-80 bg-card border-r flex flex-col shrink-0 z-10 shadow-sm relative">
                     <div className="flex items-center gap-1 p-2 border-b bg-slate-50/50">
                         <Button 
                             variant="ghost" 
-                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'add' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            className={cn("flex-1 h-9 rounded-xl text-[11px] font-semibold transition-all", activeTab === 'add' ? "bg-background shadow-sm text-primary ring-1 ring-border" : "text-slate-600 hover:bg-muted/50")}
                             onClick={() => setActiveTab('add')}
                         >
                             <PlusSquare className="w-4 h-4 mr-2" /> Add Block
                         </Button>
                         <Button 
                             variant="ghost" 
-                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'edit' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            className={cn("flex-1 h-9 rounded-xl text-[11px] font-semibold transition-all", activeTab === 'edit' ? "bg-background shadow-sm text-primary ring-1 ring-border" : "text-slate-600 hover:bg-muted/50")}
                             onClick={() => setActiveTab('edit')}
                         >
                             <Settings2 className="w-4 h-4 mr-2" /> Block
                         </Button>
                         <Button 
                             variant="ghost" 
-                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'performance' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            className={cn("flex-1 h-9 rounded-xl text-[11px] font-semibold transition-all", activeTab === 'performance' ? "bg-background shadow-sm text-primary ring-1 ring-border" : "text-slate-600 hover:bg-muted/50")}
                             onClick={() => setActiveTab('performance')}
                         >
                             <TrendingUp className="w-4 h-4 mr-2" /> Stats
                         </Button>
                         <Button 
                             variant="ghost" 
-                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'settings' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            className={cn("flex-1 h-9 rounded-xl text-[11px] font-semibold transition-all", activeTab === 'settings' ? "bg-background shadow-sm text-primary ring-1 ring-border" : "text-slate-600 hover:bg-muted/50")}
                             onClick={() => setActiveTab('settings')}
                         >
                             <Settings2 className="w-4 h-4 mr-2" /> Setup
                         </Button>
                         <Button 
                             variant="ghost" 
-                            className={cn("flex-1 h-9 rounded-lg text-[11px] font-semibold", activeTab === 'library' ? "bg-white shadow-sm text-primary" : "text-slate-600")}
+                            className={cn("flex-1 h-9 rounded-xl text-[11px] font-semibold transition-all", activeTab === 'library' ? "bg-background shadow-sm text-primary ring-1 ring-border" : "text-slate-600 hover:bg-muted/50")}
                             onClick={() => setActiveTab('library')}
                         >
                             <History className="w-4 h-4 mr-2" /> History
@@ -662,7 +662,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 <section>
                                     <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 block">Overview</Label>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                                        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-1 hover:shadow-md transition-all">
                                             <span className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
                                                 {page?.stats?.views || 0}
                                             </span>
@@ -671,7 +671,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                 <span className="text-[9px] font-bold uppercase tracking-wider">Total Views</span>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                                        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-1 hover:shadow-md transition-all">
                                             <span className="text-2xl font-black text-emerald-600 leading-tight tracking-tight">
                                                 {page?.stats?.views ? ((page.stats.conversions / page.stats.views) * 100).toFixed(1) : '0'}%
                                             </span>
@@ -680,7 +680,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                 <span className="text-[9px] font-bold uppercase tracking-wider">CVR</span>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                                        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-1 hover:shadow-md transition-all">
                                             <span className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
                                                 {page?.stats?.conversions || 0}
                                             </span>
@@ -689,7 +689,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                                 <span className="text-[9px] font-bold uppercase tracking-wider">Conversions</span>
                                             </div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+                                        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-1 hover:shadow-md transition-all">
                                             <span className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
                                                 {page?.stats?.clicks || 0}
                                             </span>
@@ -1605,7 +1605,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 </aside>
 
                 {/* Center Canvas */}
-                <main className="flex-1 overflow-y-auto bg-slate-100/50 p-6 flex justify-center custom-scrollbar">
+                <main className="flex-1 overflow-y-auto bg-slate-100 p-8 flex justify-center custom-scrollbar">
                     <div 
                         className={cn(
                             "bg-white shadow-xl ring-1 ring-black/5 transition-all duration-300 origin-top overflow-hidden min-h-[800px]",
@@ -1624,13 +1624,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                             <Button 
                                                 variant="secondary" 
                                                 size="icon" 
-                                                className="h-6 w-6 rounded shadow-sm hover:text-primary transition-all"
+                                                className="h-7 w-7 rounded-xl shadow-lg border border-border bg-card hover:text-primary transition-all"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleSaveSectionAsTemplate(section);
                                                 }}
                                             >
-                                                <FolderHeart className="w-3 h-3" />
+                                                <FolderHeart className="w-4 h-4" />
                                             </Button>
                                         </div>
 

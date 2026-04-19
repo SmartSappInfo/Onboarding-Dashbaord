@@ -239,6 +239,7 @@ async function resolveFromEntity(
       id: entity.id,
       name: entity.name,
       slug: entity.slug,
+      logoUrl: entity.institutionData?.logoUrl || (entity as any).logoUrl,
       contacts: legacyContacts, // Legacy backward compat
       entityContacts, // Canonical (FER-01)
       pipelineId: workspaceEntity?.pipelineId,
@@ -274,6 +275,7 @@ async function resolveFromSchool(
     id: schoolData.id,
     name: schoolData.name,
     slug: schoolData.slug,
+    logoUrl: schoolData.logoUrl,
     contacts: schoolData.focalPersons || [],
     pipelineId: schoolData.pipelineId,
     stageId: schoolData.stage?.id,

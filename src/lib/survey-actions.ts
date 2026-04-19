@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
+import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
 
 import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType } from './types';
@@ -389,9 +390,24 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             assignedUserId: responseData.assignedUserId || null 
           });
           
-          // Trigger automations if enabled
+          // Trigger automations via the Logic Processor (Phase 1 completion)
           if (surveyData.autoAutomations?.length) {
-            console.log(`[SURVEY:AUTOMATION] Triggering ${surveyData.autoAutomations.length} workflows for entity ${finalEntityId}`);
+            const automationPayload = {
+              entityId: finalEntityId,
+              entityName: eName,
+              workspaceId,
+              organizationId,
+              surveyId,
+              surveyTitle: surveyData.title,
+              submissionId: docRef.id,
+              assignedUserId: responseData.assignedUserId || null,
+              score: responseData.score || null,
+              autoTags: surveyData.autoTags || [],
+              source: 'survey_submission',
+            };
+
+            // Fire SURVEY_SUBMITTED trigger for each matching automation
+            await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload);
           }
         }
       }
@@ -480,6 +496,28 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           });
         }
       }
+    }
+
+    // 7. Activity Logging — Creates a timeline entry for entity and survey analytics
+    if (surveyData) {
+      await logActivity({
+        entityId: finalEntityId || undefined,
+        organizationId,
+        workspaceId,
+        userId: responseData.assignedUserId || 'anonymous',
+        type: 'survey_submitted' as any, // Uses a non-bus type to avoid double-triggering automations
+        source: 'public_survey',
+        description: `Survey "${surveyData.title}" submitted${finalEntityId ? ` — entity linked` : ''}`,
+        metadata: {
+          surveyId,
+          submissionId: docRef.id,
+          surveyTitle: surveyData.title,
+          score: responseData.score || null,
+          assignedUserId: responseData.assignedUserId || null,
+          entityCreated: !!finalEntityId,
+          sourcePageId: responseData.sourcePageId || null,
+        },
+      });
     }
 
     return { success: true, id: docRef.id };

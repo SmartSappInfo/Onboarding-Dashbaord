@@ -563,7 +563,7 @@ export default function ComposerWizard() {
 
  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
                 {step === 1 && (
- <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
+ <Card className="shadow-2xl border border-border rounded-2xl overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b pb-6 p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -583,7 +583,7 @@ export default function ComposerWizard() {
                                         <Button
                                             type="button"
                                             variant={watchedChannel === 'email' ? 'default' : 'outline'}
- className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'email' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
+ className={cn("h-28 flex-col gap-2 rounded-2xl border-2 transition-all duration-500", watchedChannel === 'email' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'email')}
                                         >
  <Mail className="h-7 w-7" />
@@ -592,7 +592,7 @@ export default function ComposerWizard() {
                                         <Button
                                             type="button"
                                             variant={watchedChannel === 'sms' ? 'default' : 'outline'}
- className={cn("h-28 flex-col gap-2 rounded-3xl border-2 transition-all duration-500", watchedChannel === 'sms' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
+ className={cn("h-28 flex-col gap-2 rounded-2xl border-2 transition-all duration-500", watchedChannel === 'sms' ? "shadow-2xl scale-105 border-primary bg-primary text-white" : "border-muted-foreground/10")}
                                             onClick={() => setValue('channel', 'sms')}
                                         >
  <Smartphone className="h-7 w-7" />
@@ -619,7 +619,7 @@ export default function ComposerWizard() {
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
+ <SelectTrigger className="h-16 rounded-xl bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
                                                     <SelectValue placeholder="Pick template..." />
                                                 </SelectTrigger>
  <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
@@ -641,7 +641,7 @@ export default function ComposerWizard() {
                             </div>
 
                             {selectedTemplate && (
- <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-muted/10 border-2 border-dashed border-slate-200 space-y-8 text-left">
+ <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-2xl bg-muted/10 border-2 border-dashed border-slate-200 space-y-8 text-left">
  <div className="flex justify-between items-center px-2">
  <div className="flex items-center gap-3">
  <Zap className="h-5 w-5 text-primary" />
@@ -682,7 +682,7 @@ export default function ComposerWizard() {
                 )}
 
                 {step === 2 && (
- <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-card">
+ <Card className="shadow-2xl border border-border rounded-2xl overflow-hidden bg-card">
  <CardHeader className="bg-muted/30 border-b pb-6 p-8">
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -703,7 +703,7 @@ export default function ComposerWizard() {
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
+ <SelectTrigger className="h-16 rounded-xl bg-muted/20 border-none shadow-inner font-semibold text-xl px-6 transition-all">
                                                     <SelectValue placeholder="Sender ID..." />
                                                 </SelectTrigger>
  <SelectContent className="rounded-2xl p-2 border-none shadow-2xl">
@@ -723,7 +723,7 @@ export default function ComposerWizard() {
 
  <div className="space-y-4">
  <Label className="text-[10px] font-semibold text-primary ml-1">4. Dispatch Mode</Label>
- <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50 shadow-inner">
+ <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50 shadow-inner">
                                         <Button
                                             type="button"
                                             variant={watchedMode === 'single' ? 'secondary' : 'ghost'}

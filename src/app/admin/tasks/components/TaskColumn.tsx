@@ -23,10 +23,11 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string, color: string, icon: an
 interface TaskColumnProps {
     status: TaskStatus;
     tasks: Task[];
+    entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
 }
 
-export default function TaskColumn({ status, tasks, onTaskClick }: TaskColumnProps) {
+export default function TaskColumn({ status, tasks, entityLogoMap, onTaskClick }: TaskColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: status,
         data: { type: 'COLUMN', status }
@@ -57,7 +58,12 @@ export default function TaskColumn({ status, tasks, onTaskClick }: TaskColumnPro
  <CardContent className="p-3">
                         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                             {tasks.map(task => (
-                                <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+                                <TaskCard 
+                                    key={task.id} 
+                                    task={task} 
+                                    entityLogoUrl={task.entityId ? entityLogoMap?.get(task.entityId) : undefined}
+                                    onClick={() => onTaskClick(task)} 
+                                />
                             ))}
                         </SortableContext>
                         

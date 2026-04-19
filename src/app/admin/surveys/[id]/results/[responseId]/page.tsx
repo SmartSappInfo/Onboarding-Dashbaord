@@ -162,8 +162,9 @@ export default function ResponseDetailPage() {
     const answersMap = new Map(response.answers.map(a => [a.questionId, a.value]));
 
     return (
- <div className="w-full max-w-3xl mx-auto px-4 pb-20">
- <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8">
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-20">
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8">
  <div className="flex justify-end items-center">
                     {allResponses && totalResponses > 0 && currentIndex !== -1 && (
  <div className="flex items-center gap-2">
@@ -281,6 +282,7 @@ export default function ResponseDetailPage() {
                     })}
                 </CardContent>
             </Card>
+            </div>
         </div>
     );
 }

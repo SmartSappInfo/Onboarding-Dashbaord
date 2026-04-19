@@ -246,7 +246,7 @@ export default function SurveyFormBuilder() {
  <div className="flex flex-col md:flex-row gap-8 items-start">
                 {/* Vertical Builder Toolbar - Now Top Left */}
  <div className="hidden md:block w-14 shrink-0 sticky top-24">
-                        <Card className="shadow-sm border border-border bg-card p-1.5 rounded-2xl flex flex-col items-center gap-3">
+                        <Card className="shadow-lg border border-border bg-card p-1.5 rounded-2xl flex flex-col items-center gap-3">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -275,7 +275,7 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant={allPagesEnabled ? "secondary" : "ghost"} 
- className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
+                                         className={cn("h-10 w-10 rounded-xl transition-all", allPagesEnabled ? "bg-primary text-white shadow-md" : "hover:bg-primary/10")}
                                         onClick={toggleAllPageBreaks}
                                     >
  <Layout className="h-5 w-5" />
@@ -290,7 +290,7 @@ export default function SurveyFormBuilder() {
                                         type="button"
                                         size="icon" 
                                         variant={allValidationEnabled ? "secondary" : "ghost"} 
- className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
+                                         className={cn("h-10 w-10 rounded-xl transition-all", allValidationEnabled ? "bg-primary text-white shadow-md" : "hover:bg-primary/10")}
                                         onClick={toggleAllValidation}
                                     >
  <ShieldCheck className="h-5 w-5" />

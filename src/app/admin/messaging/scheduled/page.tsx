@@ -168,11 +168,11 @@ export default function ScheduledMessagesPage() {
     const isLoading = isLoadingSms || isLoadingEmails;
 
     return (
- <div className="h-full overflow-y-auto  bg-background">
- <div className="max-w-6xl mx-auto">
- <div className="mb-8 flex justify-end">
- <Button variant="outline" onClick={loadSms} disabled={isLoading} className="rounded-xl font-bold h-10 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
- <RefreshCw className={cn("h-4 w-4 text-primary", isLoading && "animate-spin")} />
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-6xl mx-auto">
+                <div className="mb-8 flex justify-end">
+                    <Button variant="outline" onClick={loadSms} disabled={isLoading} className="rounded-xl font-bold h-10 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
+                        <RefreshCw className={cn("h-4 w-4 text-primary", isLoading && "animate-spin")} />
                         Refresh Queue
                     </Button>
                 </div>

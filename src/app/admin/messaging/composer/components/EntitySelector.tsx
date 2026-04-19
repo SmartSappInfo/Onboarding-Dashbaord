@@ -25,6 +25,7 @@ import {
 import { Search, X, Building, AlertCircle, ChevronLeft, ChevronRight, Users, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { AsyncEntityAvatar } from '../../../components/AsyncEntityAvatar';
 
 interface EntitySelectorProps {
   channel: 'email' | 'sms';
@@ -94,6 +95,7 @@ export function EntitySelector({
                 tags: we.workspaceTags || [],
                 migrationStatus: 'migrated',
                 entityType: we.entityType || 'institution',
+                logoUrl: we.logoUrl,
                 entityContacts: [], // Will be resolved during dispatch
             });
         });
@@ -259,16 +261,21 @@ export function EntitySelector({
  <ScrollArea className="h-32">
  <div className="space-y-2">
                 {selectedEntities.map((entity) => {
-                  const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType as keyof typeof ENTITY_TYPE_ICONS] || Building;
                   return (
                     <div
                       key={entity.entityId || entity.id}
- className="flex items-center justify-between p-2 bg-muted rounded-md"
+ className="flex items-center justify-between p-2 bg-muted rounded-xl"
                     >
- <div className="flex items-center gap-2 flex-1 min-w-0">
- <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
- <span className="text-sm truncate">{entity.name}</span>
-                        <Badge variant="outline" className="text-xs">
+ <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <AsyncEntityAvatar 
+                            entityId={entity.entityId || entity.id}
+                            src={entity.logoUrl} 
+                            name={entity.name} 
+                            className="h-8 w-8 rounded-lg shadow-none ring-0 p-0"
+                            fallbackClassName="text-[8px]"
+                          />
+ <span className="text-sm font-semibold truncate">{entity.name}</span>
+                        <Badge variant="outline" className="text-[8px] font-bold uppercase h-4 px-1.5 rounded-sm">
                           {entity.entityType || 'Unknown'}
                         </Badge>
                         {entity.stageName && (
@@ -320,7 +327,6 @@ export function EntitySelector({
                   {paginatedEntities.map((entity) => {
                     const mappedEntityId = entity.entityId || entity.id;
                     const isSelected = selectedEntityIds.includes(mappedEntityId);
-                    const EntityIcon = ENTITY_TYPE_ICONS[entity.entityType as keyof typeof ENTITY_TYPE_ICONS] || Building;
 
                     return (
                       <div
@@ -342,13 +348,20 @@ export function EntitySelector({
                         >
  <div className="flex items-center justify-between">
  <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2">
- <EntityIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
- <p className="text-sm font-medium truncate">{entity.name}</p>
-                                <Badge variant="outline" className="text-xs">
-                                  {entity.entityType || 'Unknown'}
-                                </Badge>
-                              </div>
+ <div className="flex items-center gap-3">
+                                  <AsyncEntityAvatar 
+                                    src={entity.logoUrl} 
+                                    name={entity.name} 
+                                    className="h-9 w-9 ring-1 ring-border/50 shadow-none p-0"
+                                    fallbackClassName="text-[10px]"
+                                  />
+  <div className="flex-1 min-w-0">
+                                   <p className="text-sm font-bold truncate tracking-tight">{entity.name}</p>
+                                    <Badge variant="outline" className="text-[7px] font-bold uppercase h-3.5 px-1 rounded-sm">
+                                      {entity.entityType || 'Unknown'}
+                                    </Badge>
+                                  </div>
+                                </div>
  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                 {getContactEmail(entity) && (
  <span className="truncate">{getContactEmail(entity)}</span>

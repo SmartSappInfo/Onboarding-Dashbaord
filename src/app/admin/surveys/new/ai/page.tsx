@@ -8,7 +8,7 @@ import AiSurveyGenerator from '../../components/ai-survey-generator';
 
 export default function NewSurveyAiPage() {
   return (
- <div className="h-full overflow-y-auto  bg-background">
+ <div className="h-full overflow-y-auto">
  <div className="max-w-5xl mx-auto space-y-8">
         <AiSurveyGenerator />
       </div>

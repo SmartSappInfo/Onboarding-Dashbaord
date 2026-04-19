@@ -171,7 +171,7 @@ export default function MessageLogsPage() {
     };
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
+        <div className="h-full overflow-y-auto text-left">
  <div className="grid gap-6">
  <div className="flex justify-end gap-3">
                     <Button 

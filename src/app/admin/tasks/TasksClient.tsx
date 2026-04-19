@@ -42,7 +42,8 @@ import {
     EyeOff,
     ChevronDown,
     Target,
-    TrendingUp
+    TrendingUp,
+    LayoutList
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,7 +102,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { useWorkspace } from '@/context/WorkspaceContext';
+import { EntityAvatar } from '../components/EntityAvatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
@@ -194,6 +195,11 @@ export default function TasksClient() {
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
+
+    const entityLogoMap = React.useMemo(() => {
+        if (!entities) return new Map<string, string | undefined>();
+        return new Map(entities.map(e => [e.entityId, e.logoUrl]));
+    }, [entities]);
 
     const isLoading = isLoadingTasks || isLoadingFilter;
 
@@ -364,16 +370,21 @@ export default function TasksClient() {
     };
 
     return (
- <div className="space-y-6 text-left pb-32">
-                {/* Page Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground tracking-tight">Active Tasks</h1>
-                        <p className="text-sm text-muted-foreground mt-1">Manage global operations and action items.</p>
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <LayoutList className="h-10 w-10 text-primary" />
+                            Operations Hub
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Action items, global workflows, and execution protocols
+                        </p>
                     </div>
                 </div>
                 {/* Executive KPI Stats */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard 
                         label="Active Actions" 
                         value={isLoading ? '...' : stats.active} 
@@ -531,7 +542,16 @@ export default function TasksClient() {
                                                                 {task.title}
                                                             </h4>
  <div className="text-[10px] font-bold text-muted-foreground flex items-center gap-2">
- {task.category} {task.entityName && <>· <Building className="h-2.5 w-2.5" /> {task.entityName}</>}
+ {task.category} {task.entityName && (
+                                                                    <>
+                                                                        · <EntityAvatar 
+                                                                            src={task.entityId ? entityLogoMap.get(task.entityId) : undefined} 
+                                                                            name={task.entityName} 
+                                                                            className="h-4 w-4 rounded-sm shadow-none ring-0 p-0"
+                                                                            fallbackClassName="text-[6px]"
+                                                                        /> {task.entityName}
+                                                                    </>
+                                                                )}
                                                                 {task.entityType && (
                                                                     <Badge variant="outline" className="text-[7px] font-semibold uppercase h-4 px-1.5 rounded-sm border-none bg-primary/10 text-primary ml-1">
                                                                         {task.entityType}
@@ -624,7 +644,11 @@ export default function TasksClient() {
                     </TabsContent>
 
  <TabsContent value="board" className="m-0 h-[calc(100vh-350px)]">
-                        <TaskBoard tasks={filteredTasks} onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} />
+                        <TaskBoard 
+                            tasks={filteredTasks} 
+                            entityLogoMap={entityLogoMap}
+                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }} 
+                        />
                     </TabsContent>
 
  <TabsContent value="calendar" className="m-0">
@@ -662,6 +686,7 @@ export default function TasksClient() {
                     </div>
                 </AlertDialogContent>
             </AlertDialog>
+            </div>
         </div>
     );
 }

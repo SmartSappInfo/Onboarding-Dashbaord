@@ -16,13 +16,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
     CheckCircle2, 
-    Zap, 
-    UserMinus, 
     Loader2, 
     ShieldCheck,
-    AlertCircle,
     Info,
-    Circle
+    Circle,
+    ToggleLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
@@ -103,16 +101,16 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <ShieldCheck className="h-6 w-6" />
+      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+          <div className="flex flex-col items-start gap-2">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+              <ToggleLeft className="h-6 w-6" aria-hidden="true" />
             </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">{singular} Status Architect</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground">Modify current state for {entity.displayName}</DialogDescription>
-            </div>
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">{singular} Status</DialogTitle>
+            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+              Modify current lifecycle state for {entity.displayName}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
@@ -161,8 +159,18 @@ export default function ChangeStatusModal({ entity, open, onOpenChange }: Change
             </div>
         </div>
 
- <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold">Discard</Button>
+        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse">
+            {isUpdating && <><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Updating...</>}
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isUpdating}
+            className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+          >
+            Discard
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

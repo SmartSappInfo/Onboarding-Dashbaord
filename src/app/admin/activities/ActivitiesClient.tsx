@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { WorkspaceEntity, UserProfile, Activity, Zone } from '@/lib/types';
-import { X, Building, User, Tag, MapPin } from 'lucide-react';
+import { X, Building, User, Tag, MapPin, Activity as ActivityIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -85,23 +85,32 @@ export default function ActivitiesClient() {
     };
 
     return (
- <div className="space-y-6 text-left max-w-5xl mx-auto pb-32">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">Activities Audit</h1>
-                <p className="text-sm text-muted-foreground mt-1">Review operational events and user actions securely.</p>
-            </div>
-            <div className="flex justify-end shrink-0 text-left">
-                {hasActiveFilters && (
-                    <Button variant="ghost" onClick={clearFilters} className="text-xs font-semibold gap-2 h-10 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all text-left">
-                        <X className="h-3 w-3" /> Clear All Filters
-                    </Button>
-                )}
-            </div>
-        </div>
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <ActivityIcon className="h-10 w-10 text-primary" />
+                            Activities Audit
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Review operational events and user actions securely
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {hasActiveFilters && (
+                            <Button 
+                                variant="outline" 
+                                onClick={clearFilters} 
+                                className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent ring-1 ring-border transition-all active:scale-95"
+                            >
+                                <X className="h-4 w-4 mr-2" /> Reset Filters
+                            </Button>
+                        )}
+                    </div>
+                </div>
 
-        <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
+                <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border text-left">
  <CardContent className="p-4 sm:p-6 text-left">
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
  <div className="space-y-2 text-left">
@@ -187,6 +196,7 @@ export default function ActivitiesClient() {
                         zoneId={zoneId}
                     />
                 </div>
-            </div>
+                </div>
+        </div>
     );
 }

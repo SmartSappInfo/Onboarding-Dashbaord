@@ -53,34 +53,34 @@ export default function RenameMediaDialog({ asset, open, onOpenChange }: RenameM
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
                 <form onSubmit={handleSave}>
-                    <DialogHeader>
- <div className="flex items-center gap-3 mb-2">
- <div className="p-2 bg-primary/10 rounded-xl">
- <TextCursorInput className="h-5 w-5 text-primary" />
+                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                        <div className="flex flex-col items-start gap-2">
+                            <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+                                <TextCursorInput className="h-6 w-6" aria-hidden="true" />
                             </div>
- <DialogTitle className="text-xl font-semibold tracking-tight">Rename Asset</DialogTitle>
+                            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Rename Asset</DialogTitle>
+                            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                                Update the internal label for this media element.
+                            </DialogDescription>
                         </div>
- <DialogDescription className="text-xs font-medium text-muted-foreground ">
-                            Update the internal label for this media element.
-                        </DialogDescription>
                     </DialogHeader>
- <div className="py-6 space-y-4">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Asset Name</Label>
+                    <div className="p-8 space-y-4 bg-background">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Asset Name</Label>
                             <Input 
                                 value={name} 
                                 onChange={(e) => setName(e.target.value)}
- className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg px-4"
+                                className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg px-4"
                                 autoFocus
                             />
                         </div>
                     </div>
- <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-2">
- <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button>
- <Button type="submit" disabled={isSaving || !name.trim()} className="rounded-xl font-bold px-8 shadow-lg gap-2">
- {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Cancel</Button>
+                        <Button type="submit" disabled={isSaving || !name.trim()} className="rounded-xl font-bold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95 gap-2">
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                             Apply Changes
                         </Button>
                     </DialogFooter>

@@ -357,8 +357,8 @@ export default function EditSurveyPage() {
 
     return (
         <FormProvider {...form}>
- <div className="h-full flex flex-col bg-muted/30">
- <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
+ <div className="h-full flex flex-col">
+ <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
  <div className="flex items-center gap-4 text-left">
  <div className="p-2 bg-primary/10 rounded-xl">
  <SmartSappIcon className="h-6 w-6 text-primary" />

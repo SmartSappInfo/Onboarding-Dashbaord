@@ -14,7 +14,7 @@ import { getContactsByTagsAction } from '@/lib/tag-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon, Mail, Phone, MessageCircle } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +54,7 @@ import TransferPipelineModal from './components/TransferPipelineModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
+import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 
 import { useTerminology } from '@/hooks/use-terminology';
@@ -258,275 +259,279 @@ export default function EntitiesClient() {
     });
   };
 
-  return (
-    <TooltipProvider>
-      <div className="space-y-6 text-left">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              {plural} Directory
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage your pipeline entities and leads.
-            </p>
-          </div>
-          <div className="flex justify-end items-center gap-3 shrink-0">
-                    {selectedEntityIds.length > 0 && (
-                        <Button
-                            variant="outline"
-                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
-                            onClick={() => setIsBulkTagOpen(true)}
-                        >
-                            <TagIcon className="h-4 w-4" />
-                            Tag {selectedEntityIds.length} Selected
-                        </Button>
-                    )}
-                    <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
-                        <Link href="/admin/entities/upload">
-                            <FileUp className="mr-2 h-4 w-4" />
-                            {importBulk}
-                        </Link>
-                    </Button>
-                    {canCreate && (
-                        <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
-                            <Link href="/admin/entities/new/ai">
-                                <Sparkles className="h-4 w-4" /> AI Architect
-                            </Link>
-                        </RainbowButton>
-                    )}
-                    {canCreate && (
-                        <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
-                            <Link href="/admin/entities/new">
-                                <PlusCircle className="mr-2 h-5 w-5" />
-                                {addNew}
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-        </div>
+    return (
+        <TooltipProvider>
+            <div className="h-full overflow-y-auto">
+                <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                        <div className="flex flex-col items-start">
+                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                                <Building2 className="h-10 w-10 text-primary" />
+                                {plural} Hub
+                            </h1>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">
+                                Pipeline entities and relationship management
+                            </p>
+                        </div>
+                        <div className="flex justify-end items-center gap-3 shrink-0">
+                            {selectedEntityIds.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                                    onClick={() => setIsBulkTagOpen(true)}
+                                >
+                                    <TagIcon className="h-4 w-4" />
+                                    Tag {selectedEntityIds.length} Selected
+                                </Button>
+                            )}
+                            <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
+                                <Link href="/admin/entities/upload">
+                                    <FileUp className="mr-2 h-4 w-4" />
+                                    {importBulk}
+                                </Link>
+                            </Button>
+                            {canCreate && (
+                                <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
+                                    <Link href="/admin/entities/new/ai">
+                                        <Sparkles className="h-4 w-4" /> AI Architect
+                                    </Link>
+                                </RainbowButton>
+                            )}
+                            {canCreate && (
+                                <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+                                    <Link href="/admin/entities/new">
+                                        <PlusCircle className="mr-2 h-5 w-5" />
+                                        {addNew}
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
             
-        {/* Filters */}
-        <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
-                    <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl focus:border-primary/50 focus:ring-primary/20" />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
-                        <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-muted border-border rounded-xl">
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                </Select>
-                <Select value={stageFilter} onValueChange={setStageFilter}>
-                    <SelectTrigger className="w-[180px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
-                        <SelectValue placeholder="All Stages" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-muted border-border rounded-xl">
-                        <SelectItem value="all">All Stages</SelectItem>
-                        {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-                <Badge variant="outline" className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center">
-                    {filteredEntities.length} {filteredEntities.length === 1 ? singular : plural}
-                </Badge>
-            </div>
-            {/* Tag filter row */}
-            <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
-        </div>
+                    {/* Filters Area */}
+                    <div className="flex flex-col md:flex-row items-center gap-4 bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
+                        <div className="relative flex-1 max-w-sm">
+                            <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl focus:border-primary/50 focus:ring-primary/20" />
+                        </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-background/50 backdrop-blur-sm border border-border shadow-sm font-semibold text-[10px] transition-all hover:bg-accent/10 focus:ring-1 focus:ring-primary/20">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-muted border-border rounded-xl">
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="archived">Archived</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={stageFilter} onValueChange={setStageFilter}>
+                            <SelectTrigger className="w-[180px] h-10 bg-muted/50 border-border text-foreground rounded-xl">
+                                <SelectValue placeholder="All Stages" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-muted border-border rounded-xl">
+                                <SelectItem value="all">All Stages</SelectItem>
+                                {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center">
+                            {filteredEntities.length} {filteredEntities.length === 1 ? singular : plural}
+                        </Badge>
+                    </div>
+                    {/* Tag filter row */}
+                    <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
             
-        {/* Data Table */}
-        <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="w-[80px]" />
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                            <Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
-                                {termName} <ArrowUpDown className="ml-2 h-3 w-3" />
-                            </Button>
-                        </TableHead>
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">Status</TableHead>
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                            <Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
-                                Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3" />
-                            </Button>
-                        </TableHead>
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">Contacts</TableHead>
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                            <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
-                                Assigned To <ArrowUpDown className="ml-2 h-3 w-3" />
-                            </Button>
-                        </TableHead>
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-right pr-6">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                    <TableBody>
-                    {isLoading ? (
-                        Array.from({ length: 5 }).map((_, i) => (
- <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
-                        ))
-                    ) : sortedEntities.length > 0 ? (
-                        sortedEntities.map((entity) => {
-                        return (
-                                <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
- <TableCell className="pl-6">
- <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedEntityIds.includes(entity.id)}
-                                onChange={() => toggleEntitySelection(entity.id)}
- className="h-4 w-4 rounded border-border cursor-pointer"
-                                aria-label={`Select ${entity.displayName}`}
-                              />
- <Avatar className="h-10 w-10 ring-2 ring-background shadow-sm">
- <AvatarFallback className="font-bold text-xs">{getInitials(entity.displayName)}</AvatarFallback>
-                              </Avatar>
-                            </div>
-                            </TableCell>
- <TableCell className="py-4">
- <div className="flex flex-col text-left gap-1">
- <Link href={`/admin/entities/${entity.entityId}`} className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors tracking-tight">{entity.displayName}</Link>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
- <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
-                                    </span>
-                                    {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
-                                        <TagBadges
-                                            tagIds={entity.workspaceTags}
-                                            allTags={allTags}
-                                            maxVisible={3}
-                                        />
-                                    )}
-                                </div>
-                            </TableCell>
- <TableCell className="text-center">
-                                <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-semibold uppercase px-2.5 h-5">{entity.status}</Badge>
-                            </TableCell>
-                            <TableCell>
-                            <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.currentStageName || 'Welcome'}</Badge>
-                            </TableCell>
-                            <TableCell>
-                                <CompactContactList entityId={entity.entityId} />
-                            </TableCell>
- <TableCell className="text-xs font-medium text-muted-foreground">
- {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
-                            </TableCell>
- <TableCell className="text-right pr-6">
- <div className="flex items-center justify-end gap-1 transition-opacity">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageEntity(entity)}>
- <Workflow className="h-4 w-4" />
+                    {/* Data Table */}
+                    <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="border-border hover:bg-transparent">
+                                    <TableHead className="w-[80px]" />
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                                        <Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                            {termName} <ArrowUpDown className="ml-2 h-3 w-3" />
                                         </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Change Stage</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
- <UserPlus className="h-4 w-4" />
+                                    </TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">Status</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                                        <Button variant="ghost" onClick={() => handleSort('currentStageName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                            Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3" />
                                         </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Assign User</TooltipContent>
-                                </Tooltip>
-                                <DropdownMenu modal={false}>
-                                <DropdownMenuTrigger asChild>
- <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
- <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
- <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
- <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
-                                    
- <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
- <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">{updateStatus}</span>
-                                    </DropdownMenuItem>
- <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringEntity(entity)}>
- <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">Transfer Pipeline</span>
-                                    </DropdownMenuItem>
- <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
- <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">Manage Tags</span>
-                                    </DropdownMenuItem>
+                                    </TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">Contacts</TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
+                                        <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
+                                            Assigned To <ArrowUpDown className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-right pr-6">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+                                ))
+                            ) : sortedEntities.length > 0 ? (
+                                sortedEntities.map((entity) => {
+                                return (
+                                        <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
+                                            <TableCell className="pl-6">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedEntityIds.includes(entity.id)}
+                                                        onChange={() => toggleEntitySelection(entity.id)}
+                                                        className="h-4 w-4 rounded border-border cursor-pointer"
+                                                        aria-label={`Select ${entity.displayName}`}
+                                                    />
+                                                    <AsyncEntityAvatar 
+                                                        entityId={entity.entityId}
+                                                        src={entity.logoUrl} 
+                                                        name={entity.displayName} 
+                                                        initials={entity.initials}
+                                                        className="h-10 w-10 ring-2 ring-background shadow-sm"
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col text-left gap-1">
+                                                    <Link href={`/admin/entities/${entity.entityId}`} className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors tracking-tight">{entity.displayName}</Link>
+                                                    <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
+                                                        <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
+                                                    </span>
+                                                    {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
+                                                        <TagBadges
+                                                            tagIds={entity.workspaceTags}
+                                                            allTags={allTags}
+                                                            maxVisible={3}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge variant={getStatusBadgeVariant(entity.status)} className="rounded-full text-[10px] font-semibold uppercase px-2.5 h-5">{entity.status}</Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge className="text-[10px] font-bold uppercase border-none h-6 bg-primary/10 text-primary">{entity.currentStageName || 'Welcome'}</Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <CompactContactList entityId={entity.entityId} />
+                                            </TableCell>
+                                            <TableCell className="text-xs font-medium text-muted-foreground">
+                                                {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
+                                            </TableCell>
+                                            <TableCell className="text-right pr-6">
+                                                <div className="flex items-center justify-end gap-1 transition-opacity">
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageEntity(entity)}>
+                                                                <Workflow className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Change Stage</TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningEntity(entity)}>
+                                                                <UserPlus className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Assign User</TooltipContent>
+                                                    </Tooltip>
+                                                    <DropdownMenu modal={false}>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+                                                            <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
+                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{viewConsole}</span></Link></DropdownMenuItem>
+                                                            
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusEntity(entity)}>
+                                                                <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">{updateStatus}</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringEntity(entity)}>
+                                                                <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Transfer Pipeline</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
+                                                                <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Manage Tags</span>
+                                                            </DropdownMenuItem>
 
- <DropdownMenuSeparator className="my-2" />
-                                    
- <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
- <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
- <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
-                                        <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`}>
- <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">Send Message</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    
-                                    <DropdownMenuSeparator className="my-2" />
-                                    {canDelete && (
-                                        <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}>
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                            <span className="font-bold text-sm">{deleteLabel}</span>
-                                        </DropdownMenuItem>
-                                    )}
-                                </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            </TableCell>
-                        </TableRow>
-                        )})
-                    ) : (
-                        <TableRow className="border-border">
-                            <TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell>
-                        </TableRow>
-                    )}
-                    </TableBody>
-                </Table>
+                                                            <DropdownMenuSeparator className="my-2" />
+                                                            
+                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/entities/${entity.entityId}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">{editProfile}</span></Link></DropdownMenuItem>
+                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?entityId=${entity.entityId}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                                            <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
+                                                                <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || entity.primaryPhone || ''}`}>
+                                                                    <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
+                                                                    <span className="font-bold text-sm">Send Message</span>
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            
+                                                            <DropdownMenuSeparator className="my-2" />
+                                                            {canDelete && (
+                                                                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                    <span className="font-bold text-sm">{deleteLabel}</span>
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                        )})
+                            ) : (
+                                <TableRow className="border-border">
+                                    <TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">{noFound}</TableCell>
+                                </TableRow>
+                            )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
             </div>
-</div>
-      <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
- <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
-      </AlertDialog>
-      
-      <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
-      <ChangeStageModal entity={changingStageEntity} open={!!changingStageEntity} onOpenChange={(open) => !open && setChangingStageEntity(null)} />
-      <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
-      <TransferPipelineModal entity={transferringEntity} open={!!transferringEntity} onOpenChange={(open) => !open && setTransferringEntity(null)} />
-      
-      {taggingEntity && (
-        <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>
- <AlertDialogContent className="rounded-2xl max-w-md">
-            <AlertDialogHeader>
- <AlertDialogTitle className="font-semibold">Manage Tags</AlertDialogTitle>
- <AlertDialogDescription className="text-xs text-muted-foreground">
-                {taggingEntity.displayName}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <TagSelector
-              contactId={taggingEntity.entityId}
-              contactType="school"
-              currentTagIds={taggingEntity.workspaceTags ?? []}
+            <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
+                <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+            </AlertDialog>
+            
+            <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
+            <ChangeStageModal entity={changingStageEntity} open={!!changingStageEntity} onOpenChange={(open) => !open && setChangingStageEntity(null)} />
+            <ChangeStatusModal entity={changingStatusEntity} open={!!changingStatusEntity} onOpenChange={(open) => !open && setChangingStatusEntity(null)} />
+            <TransferPipelineModal entity={transferringEntity} open={!!transferringEntity} onOpenChange={(open) => !open && setTransferringEntity(null)} />
+            
+            {taggingEntity && (
+                <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>
+                    <AlertDialogContent className="rounded-2xl max-w-md">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="font-semibold">Manage Tags</AlertDialogTitle>
+                            <AlertDialogDescription className="text-xs text-muted-foreground">
+                                {taggingEntity.displayName}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <TagSelector
+                            contactId={taggingEntity.entityId}
+                            contactType="school"
+                            currentTagIds={taggingEntity.workspaceTags ?? []}
+                        />
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            <BulkTagOperations
+                open={isBulkTagOpen}
+                onOpenChange={setIsBulkTagOpen}
+                selectedContactIds={selectedEntityIds}
+                contactType="school"
+                onComplete={() => setSelectedEntityIds([])}
             />
-            <AlertDialogFooter>
- <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-      <BulkTagOperations
-        open={isBulkTagOpen}
-        onOpenChange={setIsBulkTagOpen}
-        selectedContactIds={selectedEntityIds}
-        contactType="school"
-        onComplete={() => setSelectedEntityIds([])}
-      />
-    </TooltipProvider>
-  );
+        </TooltipProvider>
+    );
 }
 
 function PrimaryContactName({ entityId, fallback }: { entityId: string, fallback?: string }) {

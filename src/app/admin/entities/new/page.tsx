@@ -236,12 +236,12 @@ export default function NewEntityPage() {
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-8">
+    <div className="h-full overflow-y-auto text-left">
+      <div className="space-y-8">
         <FormProvider {...methods}>
- <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
- <div className="lg:col-span-2 space-y-8 text-left">
+          <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+              <div className="lg:col-span-2 space-y-8 text-left">
                 {/* Hub Authorization Card */}
  <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
  <CardHeader className="bg-primary/10 border-b p-6 text-left">

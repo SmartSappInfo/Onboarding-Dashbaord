@@ -31,17 +31,17 @@ interface ValidationErrorModalProps {
 export default function ValidationErrorModal({ open, onOpenChange, errors, onFix }: ValidationErrorModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-xl">
-                <DialogHeader>
- <div className="flex items-center gap-3 mb-2">
- <div className="bg-destructive/10 p-2 rounded-full">
- <AlertCircle className="h-6 w-6 text-destructive" />
+            <DialogContent className="sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                    <div className="flex flex-col items-start gap-2">
+                        <div className="p-3 bg-destructive/10 text-destructive rounded-2xl shadow-sm mb-2">
+                            <AlertCircle className="h-6 w-6" aria-hidden="true" />
                         </div>
- <DialogTitle className="text-xl font-bold">Incomplete Survey Structure</DialogTitle>
+                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Incomplete Survey Structure</DialogTitle>
+                        <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                            We found {errors.length} issue{errors.length !== 1 ? 's' : ''} that need to be resolved before you can proceed.
+                        </DialogDescription>
                     </div>
-                    <DialogDescription>
-                        We found {errors.length} issue{errors.length !== 1 ? 's' : ''} that need to be resolved before you can proceed.
-                    </DialogDescription>
                 </DialogHeader>
 
  <ScrollArea className="max-h-[40vh] border rounded-md my-4">
@@ -68,11 +68,14 @@ export default function ValidationErrorModal({ open, onOpenChange, errors, onFix
                     </div>
                 </ScrollArea>
 
- <DialogFooter className="sm:justify-between items-center">
- <p className="text-xs text-muted-foreground hidden sm:block italic">
+                <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between">
+                    <p className="text-xs text-muted-foreground hidden sm:block italic">
                         Click an error to jump to that block.
                     </p>
-                    <Button onClick={() => onOpenChange(false)}>
+                    <Button 
+                        onClick={() => onOpenChange(false)}
+                        className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95"
+                    >
                         Got it, I'll fix them
                     </Button>
                 </DialogFooter>

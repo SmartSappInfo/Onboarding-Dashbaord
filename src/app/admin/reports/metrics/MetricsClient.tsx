@@ -159,7 +159,7 @@ export default function MetricsClient() {
 
   if (isLoading) {
     return (
- <div className="p-8 space-y-8">
+      <div className="space-y-8">
  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
  <Skeleton key={i} className="h-32 rounded-2xl" />
@@ -174,8 +174,8 @@ export default function MetricsClient() {
   }
 
   return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className=" space-y-12 pb-32">
+    <div className="h-full overflow-y-auto text-left">
+      <div className="space-y-12">
         {/* Header */}
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>

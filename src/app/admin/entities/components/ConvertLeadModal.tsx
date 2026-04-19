@@ -83,15 +83,15 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
  <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
- <DialogHeader className="p-8 bg-emerald-50 border-b border-emerald-100 shrink-0 text-left">
- <div className="flex items-center gap-4 text-left">
- <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-200 text-left">
- <Zap className="h-6 w-6" />
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+ <div className="flex flex-col items-start gap-2">
+ <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+ <Zap className="h-6 w-6" aria-hidden="true" />
                         </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight text-emerald-950 text-left">Lead Conversion</DialogTitle>
- <DialogDescription className="text-xs font-bold text-emerald-700 opacity-70 text-left text-left">Elevate {entity.displayName} to Onboarding</DialogDescription>
-                        </div>
+ <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Lead Conversion</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                            Elevate {entity.displayName} to Onboarding
+                        </DialogDescription>
                     </div>
                 </DialogHeader>
 
@@ -146,13 +146,20 @@ export default function ConvertLeadModal({ entity, open, onOpenChange }: Convert
                 </div>
 
  <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between text-left">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isConverting} className="rounded-xl font-bold h-12 px-8 text-left">Discard</Button>
+ <Button 
+                        variant="ghost" 
+                        onClick={() => onOpenChange(false)} 
+                        disabled={isConverting} 
+ className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+                    >
+                        Discard
+                    </Button>
                     <Button 
                         onClick={handleConvert} 
                         disabled={isConverting || !targetPipelineId}
- className="rounded-xl font-semibold h-12 px-10 shadow-2xl bg-primary text-white gap-3 text-xs transition-all active:scale-95 text-left"
+ className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95 bg-primary text-white"
                     >
- {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+ {isConverting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />}
                         Execute Conversion
                     </Button>
                 </DialogFooter>

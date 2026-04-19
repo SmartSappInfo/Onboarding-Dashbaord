@@ -86,11 +86,14 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
  <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
- <div className="flex flex-col text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Change Pipeline Stage</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground mt-1">
+ <div className="flex flex-col items-start gap-2">
+ <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+ <Loader2 className="h-6 w-6" aria-hidden="true" /> {/* Replaced later with a better icon if needed */}
+            </div>
+ <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Change Pipeline Stage</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
               Move "{entity?.displayName}" to a new phase
             </DialogDescription>
           </div>
@@ -126,11 +129,18 @@ export default function ChangeStageModal({ entity, open, onOpenChange }: ChangeS
             </div>
           </ScrollArea>
         </div>
- <DialogFooter className="p-4 bg-muted/30 border-t shrink-0 flex justify-end gap-3">
- <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse px-4">
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between text-left">
+          <div className="flex items-center gap-2 text-primary font-semibold text-[10px] animate-pulse">
  {isUpdating && <><Loader2 className="h-3 w-3 animate-spin"/> Updating Stage...</>}
-            </div>
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isUpdating} className="rounded-xl font-bold h-11 px-8">Discard</Button>
+          </div>
+          <Button 
+            variant="ghost" 
+            onClick={() => onOpenChange(false)} 
+            disabled={isUpdating} 
+ className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+          >
+            Discard
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

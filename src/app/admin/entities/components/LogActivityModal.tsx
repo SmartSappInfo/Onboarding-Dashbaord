@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Activity as ActivityIcon } from 'lucide-react';
 
 interface LogActivityModalProps {
   entity: WorkspaceEntity | null;
@@ -126,15 +126,20 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
- <DialogContent className="rounded-[2rem] text-left">
- <DialogHeader className="text-left">
- <DialogTitle className="text-xl font-semibold text-left">Log Activity for {entity.displayName}</DialogTitle>
- <DialogDescription className="text-left">
-            Record an interaction or add a note. This will be added to the {singular.toLowerCase()}&apos;s chronological timeline.
-          </DialogDescription>
+ <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+ <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+ <div className="flex flex-col items-start gap-2">
+ <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+ <ActivityIcon className="h-6 w-6" aria-hidden="true" />
+            </div>
+ <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Log Activity for {entity.displayName}</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+              Record an interaction or add a note. This will be added to the {singular.toLowerCase()}&apos;s chronological timeline.
+            </DialogDescription>
+          </div>
         </DialogHeader>
         <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4 text-left">
+ <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4 text-left px-8 pb-8">
             <FormField
               control={form.control}
               name="type"
@@ -176,12 +181,22 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
                 </FormItem>
               )}
             />
- <DialogFooter className="gap-2 text-left">
- <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold text-left">
-                Cancel
+ <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between items-center sm:justify-between text-left -mx-8 -mb-8 mt-4">
+ <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => handleOpenChange(false)} 
+                disabled={isSubmitting} 
+ className="rounded-xl font-bold h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+              >
+                Discard
               </Button>
- <Button type="submit" disabled={isSubmitting} className="rounded-xl px-8 font-semibold shadow-lg text-left">
- {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+ className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95"
+              >
+ {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <ActivityIcon className="mr-2 h-4 w-4" aria-hidden="true" />}
                 Save Log
               </Button>
             </DialogFooter>

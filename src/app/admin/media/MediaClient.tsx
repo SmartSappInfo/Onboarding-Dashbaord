@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Film, LayoutList } from 'lucide-react';
+import { Search, Film, LayoutList, Layers } from 'lucide-react';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
@@ -74,36 +74,38 @@ export default function MediaClient() {
 
   const isLoading = isWorkspaceLoading || isMediaLoading;
 
-  return (
- <div className="h-full overflow-y-auto  bg-background">
- <div className=" space-y-8 text-left">
-        
- <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
- <div className="flex flex-col items-start">
- <h1 className="text-3xl font-semibold tracking-tight">Media Hub</h1>
- <p className="text-xs font-bold text-muted-foreground mt-1">
-                    Workspace Assets for {activeWorkspaceId || 'Global Hub'}
-                </p>
-            </div>
- <div className="flex justify-end items-center gap-3 shrink-0">
-                <AddLinkButton />
-                <UploadButton />
-            </div>
-        </div>
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground">
+                            <Layers className="h-10 w-10 text-primary" />
+                            Media Hub
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Workspace assets and visual resources
+                        </p>
+                    </div>
+                    <div className="flex justify-end items-center gap-3 shrink-0">
+                        <AddLinkButton />
+                        <UploadButton />
+                    </div>
+                </div>
 
-        <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card">
+        <div className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border p-4">
  <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4 text-left">
  <div className="relative flex-grow w-full">
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                    <Input 
+                     <Input 
                         placeholder="Filter your assets..." 
- className="pl-11 h-12 rounded-2xl bg-background/50 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
+                         className="pl-11 h-12 rounded-xl border border-border shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
- <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
- <TabsList className="bg-card/20 h-12 p-1 rounded-2xl border w-full">
+  <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
+ <TabsList className="bg-background h-12 p-1 rounded-2xl border border-border shadow-sm w-full">
                         {TABS.map(tab => (
                             <TabsTrigger 
                                 key={tab.id} 
@@ -116,7 +118,7 @@ export default function MediaClient() {
                     </TabsList>
                 </Tabs>
             </CardContent>
-        </Card>
+        </div>
 
  <div className="min-h-[600px]">
           {error && (
@@ -148,7 +150,7 @@ export default function MediaClient() {
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
+            </div>
+        </div>
+    );
 }

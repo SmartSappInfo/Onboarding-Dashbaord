@@ -1,6 +1,12 @@
 'use server';
 /**
  * @fileOverview An AI flow to generate an intelligent, scored survey from various content sources.
+ * 
+ * @deprecated Use `generate-survey-chunked-flow.ts` instead. This monolithic flow
+ * generates the entire survey in a single AI call, which causes timeouts on complex inputs.
+ * The chunked flow splits generation into three focused phases (Blueprint → Questions → Logic).
+ * 
+ * This file is kept for backward compatibility with the modify-survey chat editor.
  */
 
 import { ai, getModel } from '@/ai/genkit';

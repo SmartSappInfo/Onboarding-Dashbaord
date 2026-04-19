@@ -103,31 +103,36 @@ export default function UsersClient() {
 
  if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
-  return (
- <div className="space-y-6 text-left pb-32">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">Identity Hub</h1>
-                <p className="text-sm text-muted-foreground mt-1">Manage institutional access levels and flattened permission sets.</p>
-            </div>
-            <div className="flex items-center gap-4">
-                <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 text-foreground bg-card shadow-sm">
-                    <Link href="/admin/users/roles" className="flex items-center gap-2">
-                        <ShieldEllipsis className="h-4 w-4" /> Role Architecture
-                    </Link>
-                </Button>
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-11 rounded-xl flex items-center gap-2 ">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Members</span>
-                </Badge>
-            </div>
-        </div>
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <UserIcon className="h-10 w-10 text-primary" />
+                            Identity Hub
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Institutional access levels and flattened permissions
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 text-foreground bg-transparent ring-1 ring-border shadow-sm">
+                            <Link href="/admin/users/roles" className="flex items-center gap-2">
+                                <ShieldEllipsis className="h-4 w-4" /> Role Architecture
+                            </Link>
+                        </Button>
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-11 rounded-xl flex items-center gap-2 ">
+                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Members</span>
+                        </Badge>
+                    </div>
+                </div>
 
  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Permission Matrix Preview */}
- <div className="lg:col-span-1 space-y-6">
- <Card className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+  <div className="lg:col-span-1 space-y-6">
+  <Card className="rounded-2xl border border-border bg-transparent ring-1 ring-border overflow-hidden shadow-sm">
  <CardHeader className="bg-primary/5 border-b pb-4">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
  <Zap className="h-3 w-3" /> Collective Logic
@@ -163,7 +168,7 @@ export default function UsersClient() {
 
             {/* User Registry */}
  <div className="lg:col-span-3">
- <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+ <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden">
                     <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>
@@ -269,6 +274,7 @@ export default function UsersClient() {
                         </TableBody>
                     </Table>
                 </div>
+            </div>
             </div>
         </div>
     </div>

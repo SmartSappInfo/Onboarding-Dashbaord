@@ -25,10 +25,11 @@ const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'waiting', 'review',
 
 interface TaskBoardProps {
     tasks: Task[];
+    entityLogoMap?: Map<string, string | undefined>;
     onTaskClick: (task: Task) => void;
 }
 
-export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
+export default function TaskBoard({ tasks, entityLogoMap, onTaskClick }: TaskBoardProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
@@ -125,14 +126,15 @@ export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
             onDragEnd={handleDragEnd}
             collisionDetection={closestCorners}
         >
- <div className="h-full relative overflow-hidden">
- <ScrollArea className="h-full w-full">
- <div className="flex h-full gap-6 p-1">
+            <div className="h-full relative overflow-hidden">
+                <ScrollArea className="h-full w-full">
+                    <div className="flex h-full gap-6 p-1">
                         {TASK_STATUSES.map(status => (
                             <TaskColumn 
                                 key={status} 
                                 status={status} 
                                 tasks={tasksByStatus[status]} 
+                                entityLogoMap={entityLogoMap}
                                 onTaskClick={onTaskClick}
                             />
                         ))}
@@ -143,8 +145,12 @@ export default function TaskBoard({ tasks, onTaskClick }: TaskBoardProps) {
 
             <DragOverlay dropAnimation={null}>
                 {activeTask ? (
- <div className="w-72 pointer-events-none">
-                        <TaskCard task={activeTask} isOverlay />
+                    <div className="w-72 pointer-events-none">
+                        <TaskCard 
+                            task={activeTask} 
+                            entityLogoUrl={activeTask.entityId ? entityLogoMap?.get(activeTask.entityId) : undefined} 
+                            isOverlay 
+                        />
                     </div>
                 ) : null}
             </DragOverlay>

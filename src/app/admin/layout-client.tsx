@@ -307,7 +307,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden bg-background relative">
+      <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden relative">
         {/* Subtle radial gradient accent */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.04),transparent_50%)] pointer-events-none" />
         <header className="h-16 flex shrink-0 items-center gap-4 px-6 border-b border-border bg-background/80 backdrop-blur-xl print:hidden">

@@ -68,6 +68,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { EntityAvatar } from '../components/EntityAvatar';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -290,16 +291,19 @@ export default function FormsClient() {
     </div>
   );
 
-  return (
-    <TooltipProvider>
-      <div className="h-full overflow-y-auto bg-background">
-        <div className="space-y-8 text-left">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex flex-col">
-              <h1 className="text-3xl font-semibold tracking-tight">Form Builder</h1>
-              <p className="text-xs font-bold text-muted-foreground mt-1">Design and deploy data capture forms</p>
-            </div>
+    return (
+        <TooltipProvider>
+            <div className="h-full overflow-y-auto">
+                <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                        <div className="flex flex-col">
+                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                                <ClipboardSignature className="h-10 w-10 text-primary" />
+                                Form Studio
+                            </h1>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">Design and deploy data capture forms</p>
+                        </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
               {canCreate && (
                 <Button onClick={handleCreateNew} disabled={isCreating} className="h-11 rounded-xl font-bold shadow-lg">
@@ -312,7 +316,7 @@ export default function FormsClient() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-none shadow-sm rounded-2xl bg-card">
+            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-xl"><ClipboardSignature className="h-4 w-4 text-primary" /></div>
@@ -323,7 +327,7 @@ export default function FormsClient() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm rounded-2xl bg-card">
+            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 rounded-xl"><Eye className="h-4 w-4 text-emerald-600" /></div>
@@ -334,7 +338,7 @@ export default function FormsClient() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm rounded-2xl bg-card">
+            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-amber-100 rounded-xl"><FileText className="h-4 w-4 text-amber-600" /></div>
@@ -345,7 +349,7 @@ export default function FormsClient() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm rounded-2xl bg-card">
+            <Card className="border border-border shadow-sm rounded-2xl bg-transparent transition-all hover:bg-accent/5">
               <CardContent className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-xl"><Hash className="h-4 w-4 text-blue-600" /></div>
@@ -359,20 +363,21 @@ export default function FormsClient() {
           </div>
 
           {/* Search & Filter */}
-          <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-border">
+          <div className="flex flex-col md:flex-row gap-4 items-center bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
             <div className="relative flex-grow w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-              <Input
+               <Input
                 placeholder="Search forms by name or slug..."
-                className="pl-11 h-12 rounded-2xl bg-card border-none font-bold ring-1 ring-border focus:ring-primary/20"
+                className="pl-11 h-12 rounded-2xl bg-background/50 backdrop-blur-sm border border-border font-bold shadow-sm focus:ring-1 focus:ring-primary/20 transition-all"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-card border-none font-semibold text-[10px] transition-all hover:bg-accent/10 ring-1 ring-border">
-                <SelectValue />
-              </SelectTrigger>
+             <Select value={statusFilter} onValueChange={setStatusFilter}>
+               <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-background/50 backdrop-blur-sm border border-border shadow-sm font-semibold text-[10px] transition-all hover:bg-accent/10 focus:ring-1 focus:ring-primary/20">
+                 <SelectValue />
+               </SelectTrigger>
+
               <SelectContent className="rounded-xl">
                 <SelectItem value="all">All Forms</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
@@ -382,11 +387,11 @@ export default function FormsClient() {
             </Select>
           </div>
 
-          {/* Table */}
-          <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-border">
+           {/* Table */}
+          <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden">
             <Table>
-              <TableHeader>
-                <TableRow className="bg-card/20 border-b border-border/50">
+               <TableHeader>
+                <TableRow className="bg-muted/10 border-b border-border/50">
                   <TableHead className="text-[10px] font-semibold py-4 pl-6">Form Name</TableHead>
                   <TableHead className="w-[100px] text-[10px] font-semibold py-4 text-center">Type</TableHead>
                   <TableHead className="w-[120px] text-[10px] font-semibold py-4 text-center">Status</TableHead>

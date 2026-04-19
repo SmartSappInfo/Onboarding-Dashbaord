@@ -156,33 +156,32 @@ export default function RolesClient() {
     }
   };
 
-  return (
-    <div className="h-full bg-background relative overflow-y-auto">
-      <div className="space-y-10 pb-32">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
-              <ShieldEllipsis className="h-10 w-10 text-primary" />
-              Role Architecture
-            </h1>
-            <p className="text-muted-foreground font-medium text-lg mt-1">Define structural authorization silos across the organization.</p>
-          </div>
-          
-          <Dialog open={newRoleDialogOpen} onOpenChange={(open) => {
-             setNewRoleDialogOpen(open);
-             if (!open) {
-                // Reset on close
-                setNewRoleData({ name: '', description: '', color: '#3B82F6', clonedSchema: null });
-                setSelectedTemplate('blank');
-             }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="rounded-2xl font-black h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl transition-all active:scale-95">
-                <Plus className="mr-2 h-5 w-5" /> New Role Blueprint
-              </Button>
-            </DialogTrigger>
+    return (
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <ShieldEllipsis className="h-10 w-10 text-primary" />
+                            Role Architecture
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Define structural authorization silos across the organization
+                        </p>
+                    </div>
+                    
+                    <Dialog open={newRoleDialogOpen} onOpenChange={(open) => {
+                         setNewRoleDialogOpen(open);
+                         if (!open) {
+                            setNewRoleData({ name: '', description: '', color: '#3B82F6', clonedSchema: null });
+                            setSelectedTemplate('blank');
+                         }
+                    }}>
+                        <DialogTrigger asChild>
+                            <Button className="rounded-xl font-bold h-11 px-8 active:scale-95 text-foreground bg-transparent ring-1 ring-border shadow-sm">
+                                <Plus className="mr-2 h-5 w-5" /> New Role Blueprint
+                            </Button>
+                        </DialogTrigger>
             <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tight">Create Role Blueprint</DialogTitle>
@@ -233,11 +232,11 @@ export default function RolesClient() {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* List Sidebar */}
-          <div className="lg:col-span-4 space-y-4">
-            <Card className="rounded-[2rem] border-none ring-1 ring-border bg-card shadow-sm overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* List Sidebar */}
+                    <div className="lg:col-span-4 space-y-4">
+                        <Card className="rounded-[2rem] border-none ring-1 ring-border bg-transparent shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/30 border-b pb-4">
                 <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Available Silos</CardTitle>
               </CardHeader>
@@ -370,7 +369,7 @@ export default function RolesClient() {
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
+            </div>
+        </div>
+    );
 }

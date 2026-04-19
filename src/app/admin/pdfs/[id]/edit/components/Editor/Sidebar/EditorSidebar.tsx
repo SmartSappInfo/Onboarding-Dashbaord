@@ -15,11 +15,11 @@ export function EditorSidebar() {
   return (
     <div 
  className={cn(
-        "h-full bg-card border-l hidden md:flex flex-col z-30 shadow-xl transition-all duration-300 ease-in-out",
+        "h-full bg-background border-l hidden md:flex flex-col z-30 transition-all duration-300 ease-in-out",
         isSidebarCollapsed ? "w-16" : "w-[384px]"
       )}
     >
- <div className="flex items-center justify-between p-4 border-b shrink-0 bg-background/50 backdrop-blur-sm">
+ <div className="flex items-center justify-between p-4 border-b shrink-0 bg-muted/5">
         {!isSidebarCollapsed && (
  <div className="flex flex-col">
  <h2 className="font-bold text-xs tracking-wider text-muted-foreground">Properties</h2>

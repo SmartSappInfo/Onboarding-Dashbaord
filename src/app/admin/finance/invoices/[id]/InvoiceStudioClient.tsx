@@ -126,18 +126,17 @@ export default function InvoiceStudioClient() {
     const isFinalized = invoice.status !== 'draft';
 
     return (
- <div className="h-full overflow-y-auto  bg-background text-left">
- <div className="max-w-6xl mx-auto space-y-8 pb-32">
-                
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
- <div className="flex items-center gap-4">
- <Button variant="ghost" onClick={() => router.push('/admin/finance/invoices')} className="rounded-xl h-10 w-10 p-0"><ArrowLeft className="h-5 w-5" /></Button>
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" onClick={() => router.push('/admin/finance/invoices')} className="rounded-xl h-10 w-10 p-0 text-muted-foreground hover:text-primary transition-colors"><ArrowLeft className="h-5 w-5" /></Button>
                         <div>
- <h1 className="text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3">
- <Receipt className="h-8 w-8 text-primary" />
+                            <h1 className="text-4xl font-black tracking-tighter text-foreground flex items-center gap-4">
+                                <Receipt className="h-10 w-10 text-primary" />
                                 Invoice Studio
                             </h1>
- <p className="text-muted-foreground font-medium mt-1">Reviewing {invoice.invoiceNumber} for {invoice.entityName}</p>
+                            <p className="text-muted-foreground font-medium text-lg mt-1">Reviewing {invoice.invoiceNumber} for {invoice.entityName}</p>
                         </div>
                     </div>
  <div className="flex items-center gap-3">

@@ -330,9 +330,22 @@ export default function SubmissionsPage() {
 
   return (
     <TooltipProvider>
- <div className="h-full overflow-y-auto  bg-background text-left">
- <Tabs value={activeTab} onValueChange={(v) => router.push(`${pathname}?view=${v}`)} className="space-y-8">
- <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <BarChart3 className="h-10 w-10 text-primary" />
+                            Record Audit
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Reviewing signatures for <span className="text-foreground font-bold">{pdf?.name || 'Document'}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <Tabs value={activeTab} onValueChange={(v) => router.push(`${pathname}?view=${v}`)} className="space-y-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
  <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
  <TabsTrigger value="list" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
  <FileText className="h-4 w-4" /> Submission Log
@@ -593,7 +606,8 @@ export default function SubmissionsPage() {
                 onDownloadFinished={onDownloadFinished} onCancel={handleCancelBatch}
             />
         )}
-      </div>
+            </div>
+        </div>
     </TooltipProvider>
   );
 }

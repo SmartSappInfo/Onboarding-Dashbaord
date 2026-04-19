@@ -128,21 +128,19 @@ export default function TestDispatchDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-[2.5rem]">
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
- <div className="flex items-center gap-4">
- <div className={cn(
-                            "p-3 rounded-2xl shadow-xl",
-                            channel === 'email' ? "bg-blue-500 text-white shadow-blue-200" : "bg-orange-500 text-white shadow-orange-200"
-                        )}>
- <FlaskConical className="h-6 w-6" />
-                        </div>
- <div className="text-left">
- <DialogTitle className="text-2xl font-semibold tracking-tight">Test Delivery Hub</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground">Populate context and verify resolution.</DialogDescription>
-                        </div>
-                    </div>
-                </DialogHeader>
+        <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-[2.5rem]">
+          <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+            <div className="flex flex-col items-start gap-2">
+              <div className={cn(
+                "p-3 rounded-2xl shadow-sm mb-2",
+                channel === 'email' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500"
+              )}>
+                <FlaskConical className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Test Delivery Hub</DialogTitle>
+              <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Populate context and verify resolution.</DialogDescription>
+            </div>
+          </DialogHeader>
 
  <div className="flex-1 overflow-hidden relative bg-background">
  <ScrollArea className="h-full">
@@ -206,17 +204,17 @@ export default function TestDispatchDialog({
                     </ScrollArea>
                 </div>
 
- <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex flex-col sm:flex-row gap-4">
- <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending} className="font-bold rounded-xl h-14 px-10 flex-1">Discard</Button>
-                    <Button 
-                        onClick={handleSend} 
-                        disabled={isSending || !recipient.trim()}
- className="rounded-2xl font-semibold h-14 px-12 shadow-2xl bg-primary text-white flex-[2] tracking-[0.1em] text-sm gap-3 active:scale-95 transition-all"
-                    >
- {isSending ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
-                        {isSending ? 'Launching Test...' : 'Execute Dispatch'}
-                    </Button>
-                </DialogFooter>
+          <DialogFooter className="bg-muted/30 p-6 border-t shrink-0 flex flex-col sm:flex-row gap-4">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending} className="font-bold rounded-xl h-12 px-10 flex-1 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Discard</Button>
+            <Button 
+              onClick={handleSend} 
+              disabled={isSending || !recipient.trim()}
+              className="rounded-2xl font-semibold h-12 px-12 shadow-lg bg-primary text-white flex-[2] tracking-[0.1em] text-sm gap-3 cursor-pointer active:scale-95 transition-all duration-200"
+            >
+              {isSending ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" /> : <Send className="h-6 w-6" aria-hidden="true" />}
+              {isSending ? 'Launching Test...' : 'Execute Dispatch'}
+            </Button>
+          </DialogFooter>
             </DialogContent>
         </Dialog>
     );

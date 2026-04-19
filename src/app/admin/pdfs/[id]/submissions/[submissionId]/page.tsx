@@ -181,9 +181,9 @@ export default function SubmissionDetailPage() {
 
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
-  return (
- <div className="h-full overflow-hidden flex flex-col bg-background text-left">
- <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
+    return (
+        <div className="h-full overflow-hidden flex flex-col text-left">
+            <div className="flex-shrink-0 border-b flex items-center justify-between bg-background/95 backdrop-blur-sm h-16 px-4 print:hidden">
  <div className="flex items-center gap-2 min-w-0">
  <h1 className="text-sm sm:text-base font-semibold tracking-tight truncate px-2">
               {isLoadingSubmission ? (
@@ -214,7 +214,7 @@ export default function SubmissionDetailPage() {
  className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y"
                 style={{ minWidth: 'fit-content' }}
             >
- <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
+                <div className="max-w-5xl mx-auto space-y-8 print:space-y-0 pb-32">
                     {isLoading ? (
  Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-md mb-4 flex-shrink-0" key={i} />)
                     ) : pdfDoc && pdfForm && submission ? (

@@ -31,68 +31,71 @@ export function DashboardHeader({
     const isProspectTrack = activeWorkspaceId === 'prospects' || activeWorkspaceId === 'prospect';
 
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-border/10">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 pb-10 border-b border-border/40">
             <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col gap-1 text-left"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col gap-1.5 text-left"
             >
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-headline font-semibold tracking-tight">Intelligence Hub</h1>
+                <div className="flex items-center gap-4">
+                    <h1 className="text-4xl font-black tracking-tighter text-foreground">Intelligence Hub</h1>
                     <Badge 
                         variant="outline" 
-                        className="font-semibold text-[10px] px-3 h-6 border-2"
+                        className="font-bold text-[10px] px-3 h-6 border uppercase tracking-widest ring-1 ring-border/50"
                         style={{ 
-                            borderColor: `${activeWorkspace?.color || '#3B5FFF'}40`,
+                            borderColor: `${activeWorkspace?.color || '#3B5FFF'}60`,
                             color: activeWorkspace?.color,
-                            backgroundColor: `${activeWorkspace?.color || '#3B5FFF'}05`
+                            backgroundColor: `${activeWorkspace?.color || '#3B5FFF'}10`
                         }}
                     >
-                        {activeWorkspace?.name || 'Active Workspace'}
+                        {activeWorkspace?.name || 'Main Operational Track'}
                     </Badge>
                 </div>
-                <p className="text-xs font-bold text-muted-foreground opacity-60">
-                    Real-time performance audit for the {activeWorkspaceId} track.
+                <p className="text-muted-foreground font-medium text-lg mt-1">
+                    Enterprise performance audit for the <span className="text-primary font-bold italic">{activeWorkspaceId}</span> subsystem
                 </p>
             </motion.div>
 
             <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 shrink-0"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex flex-col sm:flex-row items-center gap-4 shrink-0"
             >
-                <h3 className="text-[10px] font-headline font-semibold text-muted-foreground whitespace-nowrap shrink-0 ml-1 opacity-40 uppercase tracking-widest">Quick Actions:</h3>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button asChild variant="outline" size="sm" className="rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
-                        <Link href="/admin/entities/new">
-                            <PlusCircle className="h-4 w-4 mr-2 text-primary" /> 
-                            {isProspectTrack ? 'Add Lead' : `Add ${terminology.singular}`}
-                        </Link>
-                    </Button>
-
-                    <Button asChild variant="outline" size="sm" className="rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
-                        <Link href="/admin/meetings/new">
-                            <CalendarPlus className="h-4 w-4 mr-2 text-primary" /> Session
-                        </Link>
-                    </Button>
-
-                    <Button asChild variant="outline" size="sm" className="rounded-xl font-bold h-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all">
-                        <Link href="/admin/surveys/new">
-                            <FilePlus className="h-4 w-4 mr-2 text-primary" /> Survey
-                        </Link>
-                    </Button>
-
-                    {canManageDashboard && (
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={onOpenCustomizer}
-                            className="rounded-xl h-9 w-9 bg-background/50 backdrop-blur-sm border-primary/10 hover:border-primary/30 hover:bg-background/80 transition-all"
-                            title="Customize Dashboard"
-                        >
-                            <LayoutGrid className="h-4 w-4 text-primary" />
+                <div className="flex flex-col items-end gap-2">
+                    <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mr-1">Operations Console</span>
+                    <div className="flex items-center gap-2">
+                        <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold h-11 px-6 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm">
+                            <Link href="/admin/entities/new">
+                                <PlusCircle className="h-4 w-4 mr-2" /> 
+                                {isProspectTrack ? 'Add Lead' : `New ${terminology.singular}`}
+                            </Link>
                         </Button>
-                    )}
+
+                        <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold h-11 px-6 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm">
+                            <Link href="/admin/meetings/new">
+                                <CalendarPlus className="h-4 w-4 mr-2" /> Session
+                            </Link>
+                        </Button>
+
+                        <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold h-11 px-6 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm">
+                            <Link href="/admin/surveys/new">
+                                <FilePlus className="h-4 w-4 mr-2" /> Survey
+                            </Link>
+                        </Button>
+
+                        {canManageDashboard && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={onOpenCustomizer}
+                                className="rounded-xl h-11 w-11 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm"
+                                title="Customize Perspective"
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </motion.div>
         </div>

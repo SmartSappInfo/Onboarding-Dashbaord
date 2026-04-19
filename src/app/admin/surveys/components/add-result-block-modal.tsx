@@ -19,6 +19,7 @@ import {
     Square,
     Trophy,
     List,
+    LayoutList,
 } from 'lucide-react';
 import type { SurveyResultBlock } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,14 +50,19 @@ export default function AddResultBlockModal({ open, onOpenChange, onSelect }: Ad
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>Add Content to Result Page</DialogTitle>
-                    <DialogDescription>
-                        Select a block type to add to this outcome.
-                    </DialogDescription>
+            <DialogContent className="sm:max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+                    <div className="flex flex-col items-start gap-2">
+                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm mb-2">
+                            <LayoutList className="h-6 w-6" aria-hidden="true" />
+                        </div>
+                        <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Add Content to Result Page</DialogTitle>
+                        <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                            Select a block type to add to this outcome.
+                        </DialogDescription>
+                    </div>
                 </DialogHeader>
- <ScrollArea className="max-h-[60vh] -mx-6">
+                <ScrollArea className="max-h-[60vh]">
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-6 py-4">
                         {blockTypes.map(({ type, label, description, icon: Icon }) => (
                             <Button

@@ -242,11 +242,11 @@ export default function EditPdfPage() {
 
   return (
     <FormProvider {...form}>
- <div className="h-full flex flex-col bg-muted/30">
+ <div className="h-full flex flex-col">
  <div className="flex-1 overflow-y-auto ">
  <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
- <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-32">
+ <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-12">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
@@ -274,7 +274,32 @@ export default function EditPdfPage() {
  <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">User-Facing Header</Label><Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold text-lg" /></div>
                                                 )} />
                                                 <Controller name="entityId" control={form.control} render={({ field }) => (
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sample Data Context</Label><Select onValueChange={(val) => { const ent = entities?.find(s => s.id === val); field.onChange(val === 'none' ? null : val); setValue('entityName', ent ? ent.displayName : 'SmartSapp'); }} value={field.value || 'none'}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue placeholder="Select context..." /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="none">Generic (No Context)</SelectItem>{entities?.map(ent => (<SelectItem key={ent.id} value={ent.id}>{ent.displayName}</SelectItem>))}</SelectContent></Select></div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sample Data Context</Label>
+                                                        <Select 
+                                                            onValueChange={(val) => { 
+                                                                const ent = entities?.find(s => s.id === val); 
+                                                                field.onChange(val === 'none' ? null : val); 
+                                                                setValue('entityName', ent ? ent.displayName : 'SmartSapp', { shouldDirty: true }); 
+                                                                
+                                                                // Sync logo if institution has one
+                                                                if (ent?.logoUrl) {
+                                                                    setValue('logoUrl', ent.logoUrl, { shouldDirty: true });
+                                                                }
+                                                            }} 
+                                                            value={field.value || 'none'}
+                                                        >
+                                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+                                                                <SelectValue placeholder="Select context..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="none">Generic (No Context)</SelectItem>
+                                                                {entities?.map(ent => (
+                                                                    <SelectItem key={ent.id} value={ent.id}>{ent.displayName}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 )} />
                                             </CardContent>
                                         </Card>

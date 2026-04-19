@@ -135,38 +135,43 @@ export default function AutomationsClient() {
     };
 
     return (
- <div className="space-y-6 text-left pb-32">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 className="text-2xl font-bold text-foreground tracking-tight">Automation Hub</h1>
-                <p className="text-sm text-muted-foreground mt-1">Design and audit proactive logic for your {plural.toLowerCase()}.</p>
-            </div>
-            <div className="flex items-center gap-3">
-                <Button 
-                    variant="outline" 
-                    onClick={handlePulseEngine} 
-                    disabled={isPulsing}
-                    className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-card shadow-sm transition-all active:scale-95"
-                >
-                    {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    Pulse Engine
-                </Button>
-                <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-sm">
-                    <Link href="/admin/automations/new">
-                        <Plus className="mr-2 h-4 w-4" /> Initialize Workflow
-                    </Link>
-                </Button>
-            </div>
-        </div>
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-5xl mx-auto space-y-8 pb-32">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div className="flex flex-col items-start">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
+                            <Zap className="h-10 w-10 text-primary" />
+                            Automation Hub
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                            Proactive relationship logic and event-driven protocols
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="outline" 
+                            onClick={handlePulseEngine} 
+                            disabled={isPulsing}
+                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95"
+                        >
+                            {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            Pulse Engine
+                        </Button>
+                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl">
+                            <Link href="/admin/automations/new">
+                                <Plus className="mr-2 h-4 w-4" /> Initialize Workflow
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
 
         <Tabs defaultValue="blueprints" className="space-y-6">
-            <TabsList className="bg-card border border-border shadow-sm p-1 h-12 rounded-xl w-fit">
+            <TabsList className="bg-transparent border border-border shadow-sm p-1 h-12 rounded-xl w-fit ring-1 ring-border">
                 <TabsTrigger value="blueprints" className="rounded-lg font-semibold text-[10px] px-8">Active Blueprints</TabsTrigger>
                 <TabsTrigger value="runs" className="rounded-lg font-semibold text-[10px] px-8 gap-2">
                     <History className="h-4 w-4" /> Run Ledger
                 </TabsTrigger>
-                    </TabsList>
+            </TabsList>
 
  <TabsContent value="blueprints" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                         <div className="relative group max-w-sm">
@@ -183,7 +188,7 @@ export default function AutomationsClient() {
                             {isLoadingAuth ? (
  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[2.5rem]" />)
                             ) : filteredAutomations.length > 0 ? filteredAutomations.map((auth) => (
-                                <Card key={auth.id} className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden group hover:border-primary/30 transition-all">
+                                <Card key={auth.id} className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden group hover:bg-accent/5 ring-1 ring-border transition-all">
  <CardHeader className="bg-background border-b p-6 pb-4">
  <div className="flex items-center justify-between">
  <div className={cn(
@@ -236,7 +241,7 @@ export default function AutomationsClient() {
                                     </CardContent>
                                 </Card>
                             )) : (
-                                <div className="col-span-full py-24 text-center border-2 border-dashed border-border rounded-3xl bg-background flex flex-col items-center gap-4">
+                                <div className="col-span-full py-24 text-center border-2 border-dashed border-border rounded-3xl flex flex-col items-center gap-4">
                                     <Zap className="h-12 w-12 opacity-20 text-muted-foreground" />
                                     <p className="text-[10px] font-semibold text-muted-foreground">No matching blueprints</p>
                                 </div>
@@ -244,8 +249,8 @@ export default function AutomationsClient() {
                         </div>
                     </TabsContent>
 
- <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
- <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+  <TabsContent value="runs" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+ <div className="rounded-2xl border border-border bg-transparent shadow-sm overflow-hidden ring-1 ring-border">
  <div className="p-6 border-b bg-background flex items-center justify-between">
  <div className="flex items-center gap-3">
  <Activity className="h-4 w-4 text-primary" />
@@ -417,6 +422,7 @@ export default function AutomationsClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            </div>
         </div>
     );
 }

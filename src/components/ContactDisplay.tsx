@@ -5,6 +5,7 @@ import { Building, Users, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { AsyncEntityAvatar as EntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
 
 interface ContactDisplayProps {
   entityId?: string | null;
@@ -76,6 +77,7 @@ export function ContactDisplay({
   nameClassName,
 }: ContactDisplayProps) {
   const [contactName, setContactName] = React.useState<string | null>(displayName || entityName || null);
+  const [logo, setLogo] = React.useState<string | null>(null);
   const [entityType, setEntityType] = React.useState<'institution' | 'family' | 'person' | null>(providedEntityType || null);
   const [isLegacy, setIsLegacy] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -120,11 +122,13 @@ export function ContactDisplay({
         
         if (contact) {
           setContactName(contact.name);
+          setLogo(contact.logoUrl ?? null);
           setEntityType(contact.entityType || 'institution');
           setIsLegacy(contact.migrationStatus === 'legacy');
         } else {
           // Fallback to null if contact not found
           setContactName(null);
+          setLogo(null);
           setEntityType(null);
           setIsLegacy(!entityId);
         }
@@ -132,6 +136,7 @@ export function ContactDisplay({
         console.error('Error resolving contact:', error);
         // Fallback to null on error
         setContactName(null);
+        setLogo(null);
         setEntityType(null);
         setIsLegacy(!entityId);
       } finally {
@@ -150,11 +155,14 @@ export function ContactDisplay({
     return <span className={cn("text-xs text-muted-foreground italic", className)}>No contact</span>;
   }
 
-  const EntityIcon = entityType ? ENTITY_TYPE_ICONS[entityType] : Building;
-
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <EntityIcon className={cn("h-4 w-4 text-muted-foreground flex-shrink-0", iconClassName)} />
+      <EntityAvatar 
+        src={logo ?? undefined} 
+        name={contactName} 
+        className={cn("h-4 w-4 rounded-sm shadow-none ring-0 p-0", iconClassName)}
+        fallbackClassName="text-[6px]"
+      />
       <span className={cn("text-sm font-medium truncate", nameClassName)}>{contactName}</span>
       {showType && entityType && (
         <Badge variant="outline" className="text-xs">

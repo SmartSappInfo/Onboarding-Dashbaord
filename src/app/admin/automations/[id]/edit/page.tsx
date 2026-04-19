@@ -77,9 +77,9 @@ export default function EditAutomationPage() {
     }
 
     return (
- <div className="h-full flex flex-col overflow-hidden bg-background">
+ <div className="h-full flex flex-col overflow-hidden">
             {/* Executive Canvas Header */}
- <header className="h-16 shrink-0 bg-background border-b px-6 flex items-center justify-between z-30 shadow-sm">
+ <header className="h-16 shrink-0 bg-card/80 border-b px-6 flex items-center justify-between z-30 shadow-sm">
  <div className="flex items-center gap-4 min-w-0">
  <Button variant="ghost" size="icon" onClick={() => router.push('/admin/automations')} className="rounded-xl h-10 w-10">
  <ArrowLeft className="h-5 w-5" />

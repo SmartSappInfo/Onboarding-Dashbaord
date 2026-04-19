@@ -4,7 +4,9 @@ import { adminDb } from './firebase-admin';
 import type { Activity, AutomationTrigger, EntityType } from './types';
 import { triggerAutomationProtocols } from './automation-processor';
 import { resolveContact } from './contact-adapter';
-import { unstable_after as after } from 'next/server';
+
+// Polyfill for unstable_after - run async work after response
+const after = (fn: () => Promise<void>) => { fn().catch(console.error); };
 
 type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
 

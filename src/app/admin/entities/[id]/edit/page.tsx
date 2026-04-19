@@ -667,7 +667,7 @@ export default function EditEntityPage() {
   const { singular } = useTerminology();
 
   return (
- <div className="h-full overflow-y-auto  bg-background">
+        <div className="h-full overflow-y-auto">
  <div className="max-w-5xl mx-auto space-y-8">
  {entityId ? <EditEntityForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">{singular} context not found.</p>}
       </div>
