@@ -12,7 +12,7 @@ import {
     AlertTriangle, 
     ShieldAlert, 
     Circle, 
-    Building, 
+    Building2, 
     Link as LinkIcon,
     Bell,
     ArrowRight

@@ -14,13 +14,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis, UserPlus, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { useTenant } from '@/context/TenantContext';
+import InviteUserModal from './components/InviteUserModal';
+import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -33,6 +35,7 @@ export default function UsersClient() {
   const { toast } = useToast();
   const { activeOrganizationId, isSuperAdmin } = useTenant();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
 
   // 1. DATA SUBSCRIPTIONS - ORG SCOPED
   const usersQuery = useMemoFirebase(() => {
@@ -101,6 +104,24 @@ export default function UsersClient() {
     }
   };
 
+  const handleResetPassword = async (userId: string, userName: string) => {
+      if (!confirm(`Are you sure you want to reset the password for ${userName}? A new temporary password will be sent via Email/SMS.`)) return;
+      
+      setUpdatingId(userId);
+      try {
+          const result = await adminResetUserPasswordAction(userId);
+          if (result.success) {
+              toast({ title: 'Reset Successful', description: result.message });
+          } else {
+              throw new Error(result.error);
+          }
+      } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Reset Failed', description: error.message });
+      } finally {
+          setUpdatingId(null);
+      }
+  };
+
  if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
     return (
@@ -117,6 +138,12 @@ export default function UsersClient() {
                         </p>
                     </div>
                     <div className="flex items-center gap-4">
+                        <Button 
+                            onClick={() => setIsInviteModalOpen(true)}
+                            className="rounded-xl font-bold h-11 px-6 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                        >
+                            <UserPlus className="h-4 w-4 mr-2" /> Invite Member
+                        </Button>
                         <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 text-foreground bg-transparent ring-1 ring-border shadow-sm">
                             <Link href="/admin/users/roles" className="flex items-center gap-2">
                                 <ShieldEllipsis className="h-4 w-4" /> Role Architecture
@@ -175,7 +202,7 @@ export default function UsersClient() {
  <TableHead className="w-16 pl-8 text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Profile</TableHead>
  <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Corporate Identity</TableHead>
  <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Architecture</TableHead>
- <TableHead className="w-[120px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Access</TableHead>
+ <TableHead className="w-[180px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Access & Security</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -252,12 +279,31 @@ export default function UsersClient() {
                                             </div>
                                         </TableCell>
  <TableCell className="text-center">
-                                            <Switch
-                                                checked={user.isAuthorized}
-                                                onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
- className="mx-auto scale-90"
-                                                disabled={updatingId === user.id}
-                                            />
+                                            <div className="flex items-center justify-center gap-4">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 rounded-lg hover:bg-warning/10 hover:text-warning text-muted-foreground"
+                                                                onClick={() => handleResetPassword(user.id, user.name || 'User')}
+                                                                disabled={updatingId === user.id}
+                                                            >
+                                                                <Key className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Reset Password</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+
+                                                <Switch
+                                                    checked={user.isAuthorized}
+                                                    onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
+                                                    className="scale-90"
+                                                    disabled={updatingId === user.id}
+                                                />
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -276,6 +322,12 @@ export default function UsersClient() {
                 </div>
             </div>
             </div>
+            
+            <InviteUserModal 
+                open={isInviteModalOpen} 
+                onOpenChange={setIsInviteModalOpen} 
+                roles={roles || []} 
+            />
         </div>
     </div>
   );

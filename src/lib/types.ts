@@ -229,6 +229,7 @@ export interface Organization {
   openaiApiKey?: string;
   claudeApiKey?: string; // Optional if using OpenRouter directly
   defaultWorkspaceId?: string;
+  defaultRoleId?: string; // Default role for new invites
   /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
   enabledFeatures?: FeatureToggleMap;
   createdAt: string;

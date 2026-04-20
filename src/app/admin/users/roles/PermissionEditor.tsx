@@ -12,6 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { useFeatures } from '@/hooks/use-features';
+import { featureToCoordinates } from '@/lib/permissions-engine';
 import { cn } from '@/lib/utils';
 import { Shield, ShieldAlert, CheckCircle2, XCircle } from 'lucide-react';
 
@@ -71,6 +74,17 @@ const ACTIONS: { id: AppPermissionAction; label: string }[] = [
 ];
 
 export function PermissionEditor({ schema, onChange, readOnly = false }: PermissionEditorProps) {
+  const { isFeatureEnabled } = useFeatures();
+
+  // Helper to find if a feature coordinate is enabled globally
+  const isGlobalFeatureEnabled = (sectionId: string, featureId: string) => {
+    // Look up which AppFeatureId this coordinate maps to
+    const entry = Object.entries(featureToCoordinates).find(
+      ([_, coords]) => coords.section === sectionId && coords.feature === featureId
+    );
+    if (!entry) return true; // If not in our map, assume it's a fixed core feature
+    return isFeatureEnabled(entry[0] as any);
+  };
   
   const handleSectionToggle = (sectionId: keyof PermissionsSchema, enabled: boolean) => {
     const newSchema = { ...schema };
@@ -157,24 +171,39 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {SECTION_FEATURES[section.id].map((feature) => {
-                  const featureSet = schema[section.id].features[feature.id];
-                  const isFeatureEnabled = !!featureSet?.view;
+                   const featureSet = schema[section.id].features[feature.id];
+                   const isFeatureEnabledUI = !!featureSet?.view;
+                   const isGloballyActive = isGlobalFeatureEnabled(section.id, feature.id);
 
-                  return (
-                    <div key={feature.id} className="p-5 rounded-3xl bg-white border border-border/50 shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-black uppercase tracking-tight cursor-pointer" htmlFor={`feat-${feature.id}`}>
-                          {feature.label}
-                        </Label>
-                        <Switch 
-                          id={`feat-${feature.id}`}
-                          checked={isFeatureEnabled}
-                          disabled={readOnly}
-                          onCheckedChange={(checked) => handleFeatureToggle(section.id, feature.id, checked)}
-                        />
-                      </div>
+                   return (
+                     <div key={feature.id} className={cn(
+                        "p-5 rounded-3xl bg-white border border-border/50 shadow-sm space-y-4 relative overflow-hidden",
+                        !isGloballyActive && "bg-muted/30 border-dashed"
+                     )}>
+                       {!isGloballyActive && (
+                          <div className="absolute top-2 right-2">
+                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-black uppercase tracking-widest">
+                                Disabled by Org
+                             </Badge>
+                          </div>
+                       )}
 
-                      {isFeatureEnabled && (
+                       <div className="flex items-center justify-between">
+                         <Label className={cn(
+                           "text-sm font-black uppercase tracking-tight cursor-pointer",
+                           !isGloballyActive && "opacity-50"
+                         )} htmlFor={`feat-${feature.id}`}>
+                           {feature.label}
+                         </Label>
+                         <Switch 
+                           id={`feat-${feature.id}`}
+                           checked={isFeatureEnabledUI && isGloballyActive}
+                           disabled={readOnly || !isGloballyActive}
+                           onCheckedChange={(checked) => handleFeatureToggle(section.id, feature.id, checked)}
+                         />
+                       </div>
+
+                       {isFeatureEnabledUI && isGloballyActive && (
                         <div className="flex flex-wrap gap-4 pt-2 border-t border-dashed">
                           {ACTIONS.map((action) => (
                             <div key={action.id} className="flex items-center space-x-2">

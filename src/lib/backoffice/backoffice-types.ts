@@ -146,7 +146,8 @@ export type PlatformTemplateType =
   | 'automation'
   | 'pipeline'
   | 'task'
-  | 'theme';
+  | 'theme'
+  | 'role_architecture';
 
 /**
  * Version record for template history.
@@ -239,6 +240,7 @@ export type PlatformJobType =
   | 'retry_campaigns'
   | 'restore_archived'
   | 'migrate_data'
+  | 'migrate_hierarchical_rbac'
   | 'custom';
 
 /**
@@ -285,7 +287,7 @@ export interface PlatformJob {
 /**
  * Provider type identifier.
  */
-export type PlatformProviderType = 'email' | 'sms' | 'webhook' | 'storage';
+export type PlatformProviderType = 'email' | 'sms' | 'webhook' | 'storage' | 'ai';
 
 /**
  * Platform Provider Setting — stored in `platform_provider_settings` collection.
@@ -295,6 +297,7 @@ export interface PlatformProviderSetting {
   provider: string;               // e.g., "resend", "mnotify"
   type: PlatformProviderType;
   config: Record<string, unknown>; // Provider-specific config (encrypted secrets)
+  supportedModels?: string[];      // For AI providers: governs the allowable models that can be used globally
   isDefault: boolean;
   orgOverrides: Record<string, Record<string, unknown>>;
   rateLimits: {

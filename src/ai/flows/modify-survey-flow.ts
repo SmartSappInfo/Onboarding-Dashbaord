@@ -152,14 +152,8 @@ const modifySurveyFlow = ai.defineFlow(
         
         while (retries < maxRetries) {
             try {
-                // Resolve dynamic model based on organization and user preference
-                const resolvedModel = await getModel({
-                    organizationId: input.organizationId,
-                    provider: input.provider || 'googleai',
-                    modelId: input.modelId || 'gemini-1.5-flash',
-                });
-
-                const { output } = await modifyPrompt(input, { model: resolvedModel });
+                // For now, use the system default model until we can properly implement dynamic model selection
+                const { output } = await modifyPrompt(input);
                 if (!output) throw new Error("The AI model failed to process the request.");
                 return output;
             } catch (error: any) {

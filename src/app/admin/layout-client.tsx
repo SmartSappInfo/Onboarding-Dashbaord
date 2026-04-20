@@ -46,7 +46,9 @@ import {
     Tags,
     ClipboardSignature,
     Database,
-    ShieldEllipsis
+    ShieldEllipsis,
+    Mail,
+    Cog
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -76,6 +78,7 @@ import { useFeatures } from '@/hooks/use-features';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 import type { AppFeatureId, Role } from '@/lib/types';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useBackofficeAccess } from '@/hooks/use-backoffice-access';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -95,6 +98,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
   const [userRolesData, setUserRolesData] = React.useState<{ id: string, name: string }[]>([]);
   const { can, isSystemAdmin } = usePermissions();
+  const { hasBackofficeAccess } = useBackofficeAccess();
 
   // 1. Hydration Guard
   React.useEffect(() => {
@@ -186,6 +190,14 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     return `${href}${separator}track=${activeWorkspaceId}`;
   };
 
+  type NavItem = {
+    href: string;
+    icon: any;
+    label: string;
+    visible: boolean;
+    external?: boolean;
+  };
+
   const coreNavItems = [
     { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: isVisible(can('operations', 'dashboard', 'view')) },
     { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(can('operations', 'campuses', 'view'), 'entities') },
@@ -215,12 +227,14 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: wrapHref('/admin/finance/settings'), icon: Settings2, label: 'Billing Setup', visible: isVisible(can('finance', 'billingSetup', 'view'), 'billing_setup') },
   ];
 
-  const systemNavItems = [
+  const systemNavItems: NavItem[] = [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
     { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: can('management', 'users', 'view') },
     { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
+    { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
     { href: wrapHref('/admin/settings'), icon: Settings, label: 'System', visible: can('management', 'systemSettings', 'view') },
+    { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
   ];
 
   return (
@@ -285,10 +299,17 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               {systemNavItems.filter(i => i.visible).map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label} className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-lg data-[active=true]:shadow-primary/5 rounded-xl h-11 transition-all duration-200">
-                      <Link href={item.href}>
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
-                      </Link>
+                      {item.external ? (
+                        <a href={item.href} target="_blank" rel="noopener noreferrer">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        </a>
+                      ) : (
+                        <Link href={item.href}>
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">{item.label}</span>
+                        </Link>
+                      )}
                   </SidebarMenuButton>
                   </SidebarMenuItem>
               ))}

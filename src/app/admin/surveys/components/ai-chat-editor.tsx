@@ -242,7 +242,16 @@ function AiChatPanel() {
                         router.push(`/admin/surveys/${saveResult.id}/edit`);
                         return;
                     } else {
-                        toast({ variant: 'destructive', title: 'Persistence Failed', description: saveResult.error });
+                        setMessages(prev => [...prev, { 
+                            role: 'assistant', 
+                            content: `I couldn't save the survey: ${saveResult.error}. Please try creating it manually or fix the issue and try again.` 
+                        }]);
+                        toast({ 
+                            variant: 'destructive', 
+                            title: 'Save Failed', 
+                            description: saveResult.error 
+                        });
+                        return;
                     }
                 }
 
@@ -253,8 +262,39 @@ function AiChatPanel() {
             }
 
         } catch (error: any) {
-            setMessages(prev => [...prev, { role: 'assistant', content: "I encountered an error while modifying the survey. Please try rephrasing your request." }]);
-            toast({ variant: 'destructive', title: 'AI Modification Failed', description: error.message });
+            console.error('AI modification error:', error);
+            
+            let errorMessage = "I encountered an error while modifying the survey.";
+            let suggestion = "Please try rephrasing your request.";
+            
+            if (error.message) {
+                if (error.message.includes('API key')) {
+                    errorMessage = "AI service configuration error.";
+                    suggestion = "Please check your AI provider settings or contact an administrator.";
+                } else if (error.message.includes('quota') || error.message.includes('limit')) {
+                    errorMessage = "AI service quota exceeded.";
+                    suggestion = "Please try again later or contact an administrator about upgrading your plan.";
+                } else if (error.message.includes('network') || error.message.includes('timeout')) {
+                    errorMessage = "Network connection error.";
+                    suggestion = "Please check your internet connection and try again.";
+                } else if (error.message.includes('unavailable')) {
+                    errorMessage = "AI service is temporarily unavailable.";
+                    suggestion = "Please try again in a few moments.";
+                } else {
+                    suggestion = `Error details: ${error.message}`;
+                }
+            }
+            
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: `${errorMessage} ${suggestion}` 
+            }]);
+            
+            toast({ 
+                variant: 'destructive', 
+                title: 'AI Modification Failed', 
+                description: error.message || 'An unexpected error occurred while processing your request.'
+            });
         } finally {
             setIsLoading(false);
         }

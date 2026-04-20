@@ -19,16 +19,12 @@ import {
   FirestorePermissionError 
 } from '@/firebase';
 import type { Role, PermissionsSchema } from '@/lib/types';
-import { useTenant } from '@/context/TenantContext';
-import { useToast } from '@/hooks/use-toast';
-import { PermissionEditor } from './PermissionEditor';
 import { 
   getBlankPermissions, 
   getFullAdminPermissions,
-  getFinancePermissions,
-  getMarketingPermissions,
-  getOperationsPermissions
 } from '@/lib/permissions-engine';
+import { listAllTemplates } from '@/lib/backoffice/backoffice-template-actions';
+import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -58,6 +54,9 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/context/TenantContext';
+import { PermissionEditor } from './PermissionEditor';
 
 export default function RolesClient() {
   const firestore = useFirestore();
@@ -68,10 +67,27 @@ export default function RolesClient() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
 
+  const [platformTemplates, setPlatformTemplates] = React.useState<PlatformTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = React.useState(false);
+
   // New Role State
   const [newRoleDialogOpen, setNewRoleDialogOpen] = React.useState(false);
   const [newRoleData, setNewRoleData] = React.useState({ name: '', description: '', color: '#3B82F6', clonedSchema: null as PermissionsSchema | null });
-  const [selectedTemplate, setSelectedTemplate] = React.useState<'blank'|'admin'|'finance'|'marketing'|'operations'>('blank');
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>('blank');
+
+  // Load Platform Templates
+  React.useEffect(() => {
+    async function loadTemplates() {
+      setIsLoadingTemplates(true);
+      const res = await listAllTemplates();
+      if (res.success && res.data) {
+        // Only show role architecture blueprints
+        setPlatformTemplates(res.data.filter(t => t.type === 'role_architecture'));
+      }
+      setIsLoadingTemplates(false);
+    }
+    loadTemplates();
+  }, []);
 
   // 1. DATA SUBSCRIPTION
   const rolesQuery = useMemoFirebase(() => {
@@ -113,11 +129,14 @@ export default function RolesClient() {
     
     let finalSchema = newRoleData.clonedSchema;
     if (!finalSchema) {
-      if (selectedTemplate === 'admin') finalSchema = getFullAdminPermissions();
-      else if (selectedTemplate === 'finance') finalSchema = getFinancePermissions();
-      else if (selectedTemplate === 'marketing') finalSchema = getMarketingPermissions();
-      else if (selectedTemplate === 'operations') finalSchema = getOperationsPermissions();
-      else finalSchema = getBlankPermissions();
+      if (selectedTemplateId === 'admin') {
+        finalSchema = getFullAdminPermissions();
+      } else if (selectedTemplateId !== 'blank') {
+        const template = platformTemplates.find(t => t.id === selectedTemplateId);
+        finalSchema = (template?.content as PermissionsSchema) || getBlankPermissions();
+      } else {
+        finalSchema = getBlankPermissions();
+      }
     }
 
     try {
@@ -174,7 +193,7 @@ export default function RolesClient() {
                          setNewRoleDialogOpen(open);
                          if (!open) {
                             setNewRoleData({ name: '', description: '', color: '#3B82F6', clonedSchema: null });
-                            setSelectedTemplate('blank');
+                            setSelectedTemplateId('blank');
                          }
                     }}>
                         <DialogTrigger asChild>
@@ -210,15 +229,15 @@ export default function RolesClient() {
                    <div className="space-y-2 pb-2">
                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Base Template</Label>
                      <select 
-                        value={selectedTemplate}
-                        onChange={(e) => setSelectedTemplate(e.target.value as any)}
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
                         className="flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                      >
                         <option value="blank">Blank Slate</option>
-                        <option value="finance">Finance Administrator</option>
-                        <option value="marketing">Marketing & Studios</option>
-                        <option value="operations">Operations Manager</option>
                         <option value="admin">Super Admin (All Access)</option>
+                        {platformTemplates.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
                      </select>
                    </div>
                 )}
@@ -328,7 +347,7 @@ export default function RolesClient() {
                             color: selectedRole.color || '#3B82F6', 
                             clonedSchema: selectedRole.permissionsSchema || getBlankPermissions() 
                           });
-                          setSelectedTemplate('blank');
+                          setSelectedTemplateId('blank');
                           setNewRoleDialogOpen(true);
                         }}
                         className="rounded-xl px-4"

@@ -36,7 +36,7 @@ import {
     AlertTriangle, 
     ShieldAlert, 
     User, 
-    Building, 
+    Building2, 
     Zap,
     Plus,
     Link as LinkIcon,
@@ -304,7 +304,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
  <Controller name="assignedTo" control={control} render={({ field }) => (<Select value={field.value} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left"><SelectValue placeholder="Assign..." /></SelectTrigger><SelectContent className="rounded-xl text-left">{users?.map(u => (<SelectItem key={u.id} value={u.id} className="text-left">{u.name}</SelectItem>))}</SelectContent></Select>)} />
                                     </div>
  <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Building className="h-3 w-3" /> {singular} Binding</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2 text-left"><Building2 className="h-3 w-3" /> {singular} Binding</Label>
  <Controller name="entityId" control={control} render={({ field }) => (<Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold text-left"><SelectValue placeholder="General" /></SelectTrigger><SelectContent className="rounded-xl text-left"><SelectItem value="none" className="text-left">General / Non-Specific</SelectItem>{entities?.map(s => (<SelectItem key={s.id} value={s.entityId} className="text-left">{s.displayName}</SelectItem>))}</SelectContent></Select>)} />
                                     </div>
                                 </div>

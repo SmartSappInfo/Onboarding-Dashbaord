@@ -4,6 +4,7 @@ import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
+import { processRbacMigration } from './rbac-migration-logic';
 import type { AuditActor, PlatformJob, PlatformJobType } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
@@ -165,6 +166,41 @@ export async function runTenantDiagnostics(
      };
   } catch (error: any) {
     console.error('[BACKOFFICE_DIAGNOSTICS] runTenantDiagnostics failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Executes a pending platform job.
+ * Dispatches to specific handlers based on job type.
+ */
+export async function executeJob(
+  jobId: string,
+  actor: AuditActor
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const jobSnap = await adminDb.collection('platform_jobs').doc(jobId).get();
+    if (!jobSnap.exists) throw new Error('Job not found');
+
+    const job = jobSnap.data() as PlatformJob;
+
+    if (job.status === 'running' || job.status === 'completed') {
+      throw new Error(`Job is already ${job.status}`);
+    }
+
+    // Router
+    switch (job.type) {
+      case 'migrate_hierarchical_rbac':
+        // This is a long running task. In a real environment, 
+        // you might want to return early and run this in a worker.
+        // For now, we await the completion.
+        return await processRbacMigration(jobId, actor);
+      
+      default:
+        throw new Error(`Execution logic for job type "${job.type}" is not yet implemented.`);
+    }
+  } catch (error: any) {
+    console.error('[BACKOFFICE_JOBS] executeJob failed:', error);
     return { success: false, error: error.message };
   }
 }

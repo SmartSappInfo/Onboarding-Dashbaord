@@ -162,6 +162,13 @@ export default function LoginPage() {
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
         toast({ title: 'Login Successful', description: 'Welcome back!' });
         const data = docSnap.data();
+
+        // 1. Mandatory Password Reset Wall
+        if (data.requiresPasswordReset) {
+            router.push('/force-password-reset');
+            return;
+        }
+
         if (data.permissions?.includes('system_admin')) {
           router.push('/admin/settings/organizations');
         } else {
@@ -337,10 +344,11 @@ export default function LoginPage() {
               />
 
               <div className="flex items-center justify-end">
-                <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                <Link href="/forgot-password" title="Forgot Password" className="text-sm font-medium text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
+
 
               <Button type="submit" className="w-full" disabled={isBusy}>
                 {isSubmitting ? 'Signing In...' : 'Sign In'}

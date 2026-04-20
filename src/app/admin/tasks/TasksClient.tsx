@@ -12,7 +12,7 @@ import {
     Clock, 
     AlertTriangle, 
     ShieldAlert, 
-    Building, 
+    Building2, 
     Phone, 
     MapPin, 
     FileText, 

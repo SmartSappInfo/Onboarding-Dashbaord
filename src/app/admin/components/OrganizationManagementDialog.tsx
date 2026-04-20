@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import type { Organization } from '@/lib/types';
 import { 
@@ -65,6 +66,8 @@ export default function OrganizationManagementDialog({
     const [claudeApiKey, setClaudeApiKey] = React.useState('');
     
     // UI State
+    const [roles, setRoles] = React.useState<{ id: string; name: string }[]>([]);
+    const [defaultRoleId, setDefaultRoleId] = React.useState('');
     const [showApiKeys, setShowApiKeys] = React.useState(false);
 
     // Settings
@@ -89,6 +92,7 @@ export default function OrganizationManagementDialog({
             setOpenRouterApiKey(organization.openRouterApiKey || '');
             setOpenaiApiKey(organization.openaiApiKey || '');
             setClaudeApiKey(organization.claudeApiKey || '');
+            setDefaultRoleId(organization.defaultRoleId || '');
         } else {
             // Reset for new organization
             setName('');
@@ -101,6 +105,7 @@ export default function OrganizationManagementDialog({
             setDefaultCurrency('USD');
             setDefaultTimezone('UTC');
             setDefaultLanguage('en');
+            setDefaultRoleId('');
 
             setGeminiApiKey('');
             setOpenRouterApiKey('');
@@ -108,6 +113,22 @@ export default function OrganizationManagementDialog({
             setClaudeApiKey('');
         }
     }, [organization, open]);
+
+    // Load Organization Roles
+    React.useEffect(() => {
+        async function loadRoles() {
+            if (!firestore || !organization?.id || !open) return;
+            try {
+                const q = query(collection(firestore, 'roles'), where('organizationId', '==', organization.id));
+                const snap = await getDocs(q);
+                const roleList = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+                setRoles(roleList);
+            } catch (err) {
+                console.error('Error loading roles for settings:', err);
+            }
+        }
+        loadRoles();
+    }, [firestore, organization?.id, open]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -129,6 +150,7 @@ export default function OrganizationManagementDialog({
                     defaultTimezone,
                     defaultLanguage,
                 },
+                defaultRoleId,
                 geminiApiKey: geminiApiKey.trim(),
                 openRouterApiKey: openRouterApiKey.trim(),
                 openaiApiKey: openaiApiKey.trim(),
@@ -279,45 +301,62 @@ export default function OrganizationManagementDialog({
                                 <Separator />
 
                                 {/* Default Settings */}
- <div className="space-y-4">
- <h4 className="text-xs font-semibold text-primary">Default Settings</h4>
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-primary">Default Settings</h4>
                                     
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Currency
                                             </Label>
                                             <Input 
                                                 value={defaultCurrency} 
                                                 onChange={e => setDefaultCurrency(e.target.value)} 
                                                 placeholder="USD" 
- className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Timezone
                                             </Label>
                                             <Input 
                                                 value={defaultTimezone} 
                                                 onChange={e => setDefaultTimezone(e.target.value)} 
                                                 placeholder="UTC" 
- className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
 
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Language
                                             </Label>
                                             <Input 
                                                 value={defaultLanguage} 
                                                 onChange={e => setDefaultLanguage(e.target.value)} 
                                                 placeholder="en" 
- className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
+                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                            Default Provisioning Role (New Invites)
+                                        </Label>
+                                        <select 
+                                            value={defaultRoleId}
+                                            onChange={e => setDefaultRoleId(e.target.value)}
+                                            className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                                        >
+                                            <option value="">No Default (Manual Selection Required)</option>
+                                            {roles.map(r => (
+                                                <option key={r.id} value={r.id}>{r.name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[9px] text-muted-foreground ml-1 font-bold">This role will be pre-selected in the invitation modal.</p>
                                     </div>
                                 </div>
 

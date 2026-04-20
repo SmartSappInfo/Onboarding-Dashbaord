@@ -48,32 +48,36 @@ export async function getModel(params: {
     else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY;
   }
 
-  // 3. Construct the dynamic model instance
+  // 3. If no API key is available, fall back to system defaults
   if (!apiKey) {
-    throw new Error(`AI configuration error: API key for provider "${provider}" is missing. Please configure it in Organization Settings or environment variables.`);
+    console.warn(`No API key found for provider "${provider}", falling back to system default`);
+    // Return a model reference using the system default configuration
+    if (provider === 'googleai') {
+      return `googleai/${modelId}`;
+    }
+    return `${provider}/${modelId}`;
   }
 
-  // 4. Return a localized model action tailored correctly for this request
+  // 4. Create a new genkit instance with the specific API key for this request
   if (provider === 'googleai') {
-    const instance = genkit({
-      plugins: [googleAI({ apiKey })]
-    });
-    return (instance as any).model(`googleai/${modelId}`);
+    // customAi is created for side-effect of registering the plugin with the key;
+    // we return the model string for use with the global ai instance
+    genkit({ plugins: [googleAI({ apiKey })] });
+    return `googleai/${modelId}`;
   }
 
   // Handle openrouter and openai with openAICompatible
   const baseURL = provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : undefined;
-  
-  const instance = genkit({
-      plugins: [
-          (openAICompatible as any)({ 
-            name: provider,
-            apiKey, 
-            baseURL,
-            models: [modelId]
-          })
-      ]
+
+  genkit({
+    plugins: [
+      openAICompatible({
+        name: provider,
+        apiKey,
+        baseURL,
+      })
+    ]
   });
 
-  return (instance as any).model(`${provider}/${modelId}`);
+  return `${provider}/${modelId}`;
 }

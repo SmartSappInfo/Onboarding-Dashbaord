@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Sparkles,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,6 +47,7 @@ const platformNavItems: NavItem[] = [
   { href: '/backoffice', icon: LayoutDashboard, label: 'Dashboard', module: 'dashboard' },
   { href: '/backoffice/organizations', icon: Building2, label: 'Organizations', module: 'organizations' },
   { href: '/backoffice/workspaces', icon: Layers, label: 'Workspaces', module: 'workspaces' },
+  { href: '/backoffice/settings/system-defaults', icon: Sparkles, label: 'System Defaults', module: 'settings' },
 ];
 
 const controlNavItems: NavItem[] = [
