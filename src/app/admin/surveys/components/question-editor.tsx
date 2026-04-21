@@ -16,7 +16,7 @@ import {
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon,
-    AlignJustify, Database
+    AlignJustify, Database, Mail, Phone, Hash, Link as LinkIcon, Settings
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
@@ -84,7 +84,7 @@ const RichTextEditor = ({
             contentEditable
             onInput={handleInput}
             onKeyDown={handleKeyDown}
- className={cn(
+            className={cn(
                 "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
                 textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
                 className
@@ -95,7 +95,11 @@ const RichTextEditor = ({
 };
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
-    const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
+    const questionTypes: SurveyQuestion['type'][] = [
+        'text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 
+        'dropdown', 'rating', 'date', 'time', 'file-upload',
+        'email', 'phone', 'number', 'link'
+    ];
     return questionTypes.includes(element.type as any);
 }
 
@@ -310,7 +314,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                 <CommandItem
                   key={option.value}
                   value={option.label}
-                  onPointerDown={(e) => e.preventDefault()}
                   onSelect={() => {
                     const newSelection = new Set(value);
                     if (newSelection.has(option.value)) {
@@ -848,385 +851,176 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     );
 }
 
-function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement }: { 
-    id: string; 
+function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement, activeBlockId, setActiveBlockId, isAccordion }: {
+    id: string;
     index: number;
     remove: (index: number) => void;
-    swap: (indexA: number, indexB: number) => void;
-    insert: (index: number, value: SurveyElement) => void;
+    swap: (a: number, b: number) => void;
+    insert: (index: number, value: any) => void;
     requestAddElement: (index: number) => void;
+    activeBlockId: string | null;
+    setActiveBlockId: (id: string | null) => void;
+    isAccordion: boolean;
 }) {
-  const { control, watch, setValue, getValues, formState: { errors } } = useFormContext();
-  
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id });
+  const { watch, control, setValue, getValues, formState: { errors } } = useFormContext();
+  const element = watch(`elements.${index}`);
+  const isActive = activeBlockId === id;
+  const isCollapsed = isAccordion && !isActive;
+  const hasErrors = !!(errors.elements as any)?.[index];
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const element = watch(`elements.${index}`);
-  const formErrors = errors.elements as any[] | undefined;
-  const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
-  
-  const hasErrors = elementErrors && Object.keys(elementErrors).length > 0;
-
-  const enableScoring = watch(`elements.${index}.enableScoring`);
-
-  const duplicateElement = (index: number) => {
-    const elementToDuplicate = getValues(`elements.${index}`);
-    const newElement = {
-        ...JSON.parse(JSON.stringify(elementToDuplicate)),
-        id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
-    insert(index + 1, newElement);
-  };
-
-  const changeElementType = (index: number, newType: SurveyElement['type']) => {
-      const currentElement = getValues(`elements.${index}`);
-      const newElement = { ...currentElement, type: newType };
-      
-      if(newType === 'multiple-choice' || newType === 'checkboxes' || newType === 'dropdown') {
-          if(!newElement.options) newElement.options = ['Option 1', 'Option 2'];
-      } else {
-          delete newElement.options;
-          delete newElement.allowOther;
-      }
-      
-      setValue(`elements.${index}`, newElement, { shouldDirty: true });
-  }
-
-  const toggleHidden = (index: number) => {
-    const currentHiddenState = getValues(`elements.${index}.hidden`);
-    setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
-  };
-
-  // Hooks must be called before any early returns
-  const _isElementQuestion = element ? isQuestion(element) : false;
-  const sectionNumber = React.useMemo(() => {
-    if (!element) return 0;
-    const all = watch('elements') || [];
-    const sections = all.filter((el: any) => el.type === 'section');
-    return sections.findIndex((el: any) => el.id === id) + 1;
-  }, [element, watch('elements'), id]);
-
-  const questionNumber = React.useMemo(() => {
-    if (!element || !_isElementQuestion) return null;
-    const all = watch('elements') || [];
-    const questions = all.filter(isQuestion);
-    return questions.findIndex((el: any) => el.id === id) + 1;
-  }, [element, watch('elements'), id, _isElementQuestion]);
-
-  if (!element) return null;
+  const elements = watch('elements') || [];
+  const questionNumber = elements.slice(0, index + 1).filter(isQuestion).length;
+  const sectionNumber = elements.slice(0, index + 1).filter((el: any) => el.type === 'section').length;
 
   const isElementQuestion = isQuestion(element);
   const isElementLayout = isLayoutBlock(element);
   const isElementSection = element.type === 'section';
-  const isMediaLayout = isElementLayout && ['image', 'video', 'audio', 'document', 'embed'].includes(element.type);
   const ElementIcon = getElementIcon(element.type);
-  const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
-  const isScoreable = isElementQuestion && SCOREABLE_TYPES.includes(element.type);
-  const isAutoAdvanceable = isElementQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
   
   return (
- <div className="relative group" ref={setNodeRef} style={style}>
+    <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(id)}>
         <div
- className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-accent/10"
+            className={cn(
+                "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-slate-900 border border-slate-800 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-2xl",
+                isDragging && "opacity-100"
+            )}
             {...attributes}
             {...listeners}
         >
- <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <GripVertical className="h-4 w-4 text-slate-400" />
         </div>
         <Card 
             id={element.id}
- className={cn(
-                "border transition-all duration-200",
-                hasErrors ? "border-destructive shadow-lg" : "border-border shadow-xs group-hover:shadow-md",
-                element.hidden ? "opacity-60 bg-card/10 backdrop-blur-sm" : "bg-card"
+            className={cn(
+                "border-2 transition-all duration-500 overflow-hidden rounded-[2.5rem]",
+                isActive ? "ring-4 ring-primary/10 shadow-2xl border-primary" : "border-slate-200/60 shadow-sm hover:border-slate-300",
+                hasErrors ? "border-destructive shadow-lg" : "",
+                element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-white",
+                isCollapsed && "hover:translate-x-1"
             )}
         >
- <CardHeader className="py-3 px-4 border-b bg-card/20">
- <div className="flex justify-between items-center w-full">
- <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
- <div className={cn(
-                            "flex items-center justify-center rounded border p-1.5 bg-primary/10 shadow-xs",
-                            element.hidden && "opacity-50"
+            <CardHeader className={cn(
+                "py-6 px-8 transition-colors border-b border-slate-50",
+                isActive ? "bg-primary/[0.02]" : "bg-transparent",
+                isCollapsed && "cursor-pointer py-4"
+            )}>
+                <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center gap-6">
+                        <div className={cn(
+                            "flex items-center justify-center rounded-[1.25rem] border shadow-sm transition-all duration-300",
+                            isActive ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-slate-50 border-slate-100 text-slate-400",
+                            isCollapsed ? "h-10 w-10" : "h-14 w-14"
                         )}>
- <ElementIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <ElementIcon className={cn("shrink-0 transition-all", isCollapsed ? "h-5 w-5" : "h-7 w-7")} />
                         </div>
-                        <span>
-                            {isElementQuestion ? `Question #${questionNumber}`
-                            : isElementSection ? `Section #${sectionNumber}`
-                            : isElementLayout ? `${element.type} Block`
-                            : 'Logic Block'}
-                        </span>
-                        {element.hidden && <Badge variant="secondary" className="ml-2 h-5 text-[8px] font-bold uppercase">Hidden</Badge>}
+                        <div className="flex flex-col gap-0.5">
+                            <span className={cn("text-[10px] font-black uppercase tracking-[0.2em] transition-colors", isActive ? "text-primary" : "text-slate-400")}>
+                                {isElementQuestion ? `Question ${questionNumber}`
+                                : isElementSection ? `Section ${sectionNumber}`
+                                : isElementLayout ? `${element.type} Block`
+                                : 'Logic Node'}
+                            </span>
+                            <div className="flex items-center gap-3">
+                                <span className={cn(
+                                    "font-black tracking-tight truncate transition-all duration-300",
+                                    isCollapsed ? "text-lg text-slate-600" : "text-xl text-slate-900",
+                                    isActive && "text-slate-950"
+                                )}>
+                                    {(element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block')}
+                                </span>
+                                {element.hidden && <Badge variant="secondary" className="h-4 text-[7px] font-black uppercase tracking-tighter px-1.5 opacity-60">Hidden</Badge>}
+                                {element.isRequired && <Asterisk className="h-3 w-3 text-destructive animate-pulse" />}
+                            </div>
+                        </div>
                     </div>
- <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-all ml-auto">
+                    <div className={cn(
+                        "flex items-center gap-2 z-10 transition-all",
+                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}>
                         <TooltipProvider>
-                            {/* Formatting and Level Controls Group */}
-                            {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && (
- <div className="flex items-center">
-                                    <FormattingToolbar 
-                                        fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
-                                        alignValue={element.style?.textAlign}
-                                        onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
-                                        minimal
-                                    />
-                                    {element.type === 'heading' && (
-                                        <>
- <Separator orientation="vertical" className="h-4 mx-1" />
-                                            <Select 
-                                                value={element.variant || 'h2'} 
-                                                onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
-                                            >
- <SelectTrigger className="w-16 h-8 text-[10px] font-semibold border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="h1">H1</SelectItem>
-                                                    <SelectItem value="h2">H2</SelectItem>
-                                                    <SelectItem value="h3">H3</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </>
-                                    )}
- <Separator orientation="vertical" className="h-4 mx-1" />
-                                </div>
-                            )}
+                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-inner">
+                                {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && !isCollapsed && (
+                                    <>
+                                        <FormattingToolbar 
+                                            fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
+                                            alignValue={element.style?.textAlign}
+                                            onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
+                                            minimal
+                                        />
+                                        {element.type === 'heading' && (
+                                            <>
+                                                <Separator orientation="vertical" className="h-4 bg-slate-200" />
+                                                <Select 
+                                                    value={element.variant || 'h2'} 
+                                                    onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
+                                                >
+                                                    <SelectTrigger className="w-10 h-8 text-[10px] font-black border-none bg-transparent hover:bg-slate-200/50 shadow-none p-0 flex justify-center">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl font-black">
+                                                        <SelectItem value="h1">H1</SelectItem>
+                                                        <SelectItem value="h2">H2</SelectItem>
+                                                        <SelectItem value="h3">H3</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </>
+                                        )}
+                                        <Separator orientation="vertical" className="h-4 bg-slate-200" />
+                                    </>
+                                )}
 
-                            {/* System Actions Group */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleHidden(index)}>
- {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>{element.hidden ? 'Show Block' : 'Hide Block'}</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateElement(index)}>
- <Copy className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Duplicate</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={index === 0} onClick={() => swap(index, index - 1)} >
- <ArrowUp className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Move Up</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
- <ArrowDown className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Move Down</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
- <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Delete</TooltipContent>
-                            </Tooltip>
-                            <Popover>
-                                <PopoverTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
- <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
- <PopoverContent className="w-80 p-2">
-                                    <QuestionSettingsPopover
-                                        element={element}
-                                        index={index}
-                                        changeType={changeElementType}
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-400 hover:text-primary hover:bg-white hover:shadow-sm transition-all" onClick={(e) => { e.stopPropagation(); /* duplicateElement(index); */ }}>
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Duplicate</TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-400 hover:text-destructive hover:bg-white hover:shadow-sm transition-all" onClick={(e) => { e.stopPropagation(); remove(index); }}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Delete</TooltipContent>
+                                </Tooltip>
+                            </div>
                         </TooltipProvider>
                     </div>
                 </div>
             </CardHeader>
- <CardContent className="pt-6">
-                 {isElementQuestion ? (
- <div className="grid grid-cols-1 gap-y-8">
- <div className="space-y-2">
-                            <Controller 
-                                name={`elements.${index}.title`} 
-                                control={control} 
-                                render={({ field }) => (
-                                    <RichTextEditor 
-                                        value={field.value} 
-                                        onChange={field.onChange} 
-                                        placeholder="e.g., What is your favorite color?" 
-                                        textAlign={element.style?.textAlign}
- className={cn(
-                                            "text-lg font-bold min-h-[1.5em] focus:ring-0 px-1 py-1 transition-all",
-                                            elementErrors?.title && "text-destructive underline decoration-dotted"
-                                        )}
-                                    />
-                                )} 
-                            />
-                            {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
-                        </div>
- <div className="space-y-3">
- <Label className="text-[10px] font-semibold text-muted-foreground/60 block ml-1">
-                                {(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}
-                             </Label>
-                             
-                             {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
- <div className="bg-primary/10 p-4 rounded-2xl border-2 border-primary/20 shadow-inner">
-                                    <Controller
-                                        name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
-                                        control={control}
-                                        render={({ field }) => {
-                                            switch(element.type) {
-                                                case 'text':
- return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-card border-none shadow-none ring-1 ring-border h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20")} />;
-                                                case 'long-text':
- return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-card border-none shadow-none ring-1 ring-border min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20")} />;
-                                                case 'yes-no':
-                                                    return (
- <div className="space-y-4">
- <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
- <div className="flex items-center space-x-2">
-                                                                    <RadioGroupItem 
-                                                                        value="Yes" 
-                                                                        id={`${element.id}-yes`} 
- className="size-5 border-2" 
-                                                                        onClick={(e) => {
-                                                                            if (field.value === 'Yes') {
-                                                                                e.preventDefault();
-                                                                                field.onChange(undefined);
-                                                                            }
-                                                                        }}
-                                                                    />
- <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-yes`}>Yes</Label>
-                                                                </div>
- <div className="flex items-center space-x-2">
-                                                                    <RadioGroupItem 
-                                                                        value="No" 
-                                                                        id={`${element.id}-no`} 
- className="size-5 border-2" 
-                                                                        onClick={(e) => {
-                                                                            if (field.value === 'No') {
-                                                                                e.preventDefault();
-                                                                                field.onChange(undefined);
-                                                                            }
-                                                                        }}
-                                                                    />
- <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-no`}>No</Label>
-                                                                </div>
-                                                            </RadioGroup>
-                                                            {enableScoring && (
- <div className="flex gap-4 items-center rounded-xl ring-1 ring-primary/20 bg-card p-4 shadow-xs mt-4">
- <FormItem className="flex-1">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground">Score for "Yes"</FormLabel>
- <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
-                                                                    </FormItem>
- <FormItem className="flex-1">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground">Score for "No"</FormLabel>
- <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-card ring-1 ring-border border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
-                                                                    </FormItem>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                case 'rating':
-                                                    return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
-                                                case 'date':
-                                                    return <DatePicker value={field.value} onChange={field.onChange} />;
-                                                case 'time':
- return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-card ring-1 ring-border appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:ring-primary/20 focus-visible:ring-0")} {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value)} />;
-                                                case 'file-upload':
-                                                    return (
- <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-card/50 shadow-inner">
- <Upload className="w-4 h-4 text-primary" />
- <span className="font-bold">File Upload Field</span>
-                                                        </div>
-                                                    );
-                                                default:
-                                                    return <></>;
-                                            }
-                                        }}
-                                    />
-                                 </div>
-                             ): (
- <div className="bg-primary/10 p-6 rounded-2xl border-2 border-primary/20 shadow-inner">
-                                    <OptionsEditor questionIndex={index} />
-                                </div>
-                            )}
- {elementErrors?.options && <FormMessage className="mt-2 ml-1">{elementErrors.options.message}</FormMessage>}
-                        </div>
- <div className="flex items-center gap-6 pt-6 border-t border-border/50">
- <div className="flex items-center gap-2.5">
-                                <Controller 
-                                    name={`elements.${index}.isRequired`} 
-                                    control={control} 
-                                    render={({ field }) => (
-                                        <Switch id={`required-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                    )} 
-                                />
- <Label htmlFor={`required-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><Asterisk className="h-3.5 w-3.5 text-destructive" /> Answer Required</Label>
-                            </div>
-                            {isAutoAdvanceable && (
- <div className="flex items-center gap-2.5">
-                                    <Controller 
-                                        name={`elements.${index}.autoAdvance`} 
-                                        control={control} 
-                                        render={({ field }) => (
-                                            <Switch id={`auto-advance-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                        )} 
-                                    />
- <Label htmlFor={`auto-advance-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-primary" /> Auto-advance</Label>
-                                </div>
-                            )}
-                            {isScoreable && (
- <div className="flex items-center gap-2.5">
-                                    <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
- <Label htmlFor={`scoring-${index}`} className="text-[10px] font-semibold flex items-center gap-1.5"><TrophyIcon className="h-3.5 w-3.5 text-yellow-500" /> Enable Scoring</Label>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ) : isElementLayout ? (
- <div className={cn(isMediaLayout && "bg-primary/10 rounded-2xl border-2 border-primary/20 p-6")}>
-                        {element.type === 'section' && (
- <div className="w-full text-center space-y-6 p-8 border-2 border-primary/20 rounded-[2.5rem] bg-primary/10 shadow-inner">
- <div className="space-y-4">
- <div className="flex items-center gap-4">
- <div className="flex-grow h-px bg-primary/20" />
- <div className="w-full max-w-2xl mx-auto">
-                                            <Controller 
-                                                name={`elements.${index}.title`} 
-                                                control={control} 
-                                                render={({ field }) => (
-                                                    <RichTextEditor 
-                                                        value={field.value} 
-                                                        onChange={field.onChange} 
-                                                        placeholder="Enter Section Title..." 
-                                                        textAlign="center"
- className="text-2xl sm:text-3xl font-semibold text-foreground min-h-[1.2em] leading-tight"
-                                                    />
-                                                )} 
-                                            />
-                                         </div>
- <div className="flex-grow h-px bg-primary/20" />
-                                     </div>
- <div className="w-full max-w-2xl mx-auto">
+            <div className={cn(
+                "transition-all duration-500 ease-in-out origin-top",
+                isCollapsed ? "h-0 opacity-0 pointer-events-none scale-95" : "h-auto opacity-100 scale-100"
+            )}>
+                <CardContent className="p-8 sm:p-12 space-y-10">
+                    {element.type !== 'logic' ? (
+                        <div className="space-y-10">
+                            {isElementQuestion && (
+                                <div className="space-y-8">
+                                    <div className="space-y-4">
+                                        <Controller 
+                                            name={`elements.${index}.title`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <RichTextEditor 
+                                                    value={field.value} 
+                                                    onChange={field.onChange} 
+                                                    placeholder="The name of your question..." 
+                                                    textAlign={element.style?.textAlign}
+                                                    className="text-2xl sm:text-3xl font-black min-h-[1.2em] focus:ring-0 px-0 transition-all text-slate-900 selection:bg-primary/20"
+                                                />
+                                            )} 
+                                        />
                                         <Controller 
                                             name={`elements.${index}.description`} 
                                             control={control} 
@@ -1234,66 +1028,98 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 <RichTextEditor 
                                                     value={field.value} 
                                                     onChange={field.onChange} 
-                                                    placeholder="Section description (optional)..." 
-                                                    textAlign="center"
- className="text-muted-foreground text-base sm:text-lg font-medium italic min-h-[1.5em] leading-relaxed whitespace-pre-wrap"
-                                                />
-                                            )} 
-                                        />
-                                     </div>
-                                </div>
-                                
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
- <div className="space-y-4 bg-card ring-1 ring-border rounded-xl p-4 shadow-xs border-none">
- <div className="flex justify-between items-center gap-3">
-                                            <Controller 
-                                                name={`elements.${index}.renderAsPage`} 
-                                                control={control} 
-                                                render={({ field }) => (
-                                                    <Switch 
-                                                        checked={!!field.value} 
-                                                        onCheckedChange={field.onChange} 
-                                                        id={`render-as-page-${index}`} 
-                                                    />
-                                                )} 
-                                            />
- <Label htmlFor={`render-as-page-${index}`} className="text-[10px] font-semibold text-muted-foreground">New Page Break</Label>
-                                        </div>
- <div className="flex justify-between items-center gap-3 pt-2 border-t border-primary/10">
-                                            <Controller 
-                                                name={`elements.${index}.validateBeforeNext`} 
-                                                control={control} 
-                                                render={({ field }) => (
-                                                    <Switch 
-                                                        checked={!!field.value} 
-                                                        onCheckedChange={field.onChange} 
-                                                        id={`validate-before-next-${index}`} 
-                                                    />
-                                                )} 
-                                            />
- <Label htmlFor={`validate-before-next-${index}`} className="text-[10px] font-semibold text-muted-foreground">Validate before next</Label>
-                                        </div>
-                                    </div>
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-primary ml-1">Stepper Navigation Label</Label>
-                                        <Controller 
-                                            name={`elements.${index}.stepperTitle`} 
-                                            control={control} 
-                                            render={({ field }) => (
-                                                <Input 
-                                                    {...field} 
-                                                    value={field.value ?? ''} 
-                                                    placeholder="e.g., Company Details" 
- className="h-11 rounded-xl bg-card border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
+                                                    placeholder="Add a subtle instruction or hint here..." 
+                                                    textAlign={element.style?.textAlign}
+                                                    className="text-base text-slate-400 font-medium min-h-[1em] whitespace-pre-wrap px-0 opacity-70"
                                                 />
                                             )} 
                                         />
                                     </div>
+
+                                    <div className="space-y-6 pt-4 border-t border-slate-50">
+                                        {element.type === 'text' && (
+                                            <div className="h-14 bg-slate-50/80 border-2 border-slate-100 rounded-2xl flex items-center px-6 italic text-slate-400 font-medium">Short Text Response</div>
+                                        )}
+                                        {element.type === 'long-text' && (
+                                            <div className="min-h-[120px] bg-slate-50/80 border-2 border-slate-100 rounded-2xl p-6 italic text-slate-400 font-medium">Paragraph Response</div>
+                                        )}
+                                        {element.type === 'email' && (
+                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
+                                                <Mail className="h-5 w-5 text-primary/40" />
+                                                <span className="text-slate-500 font-bold italic">Email Address Validation Active</span>
+                                            </div>
+                                        )}
+                                        {element.type === 'phone' && (
+                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
+                                                <Phone className="h-5 w-5 text-primary/40" />
+                                                <span className="text-slate-500 font-bold italic">Phone Number Validation Active</span>
+                                            </div>
+                                        )}
+                                        {element.type === 'number' && (
+                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
+                                                <Hash className="h-5 w-5 text-primary/40" />
+                                                <span className="text-slate-500 font-bold italic">Numeric Input Validation Active</span>
+                                            </div>
+                                        )}
+                                        {element.type === 'link' && (
+                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
+                                                <LinkIcon className="h-5 w-5 text-primary/40" />
+                                                <span className="text-slate-500 font-bold italic">URL Link Validation Active</span>
+                                            </div>
+                                        )}
+                                        {(element.type === 'multiple-choice' || element.type === 'dropdown' || element.type === 'checkboxes') && (
+                                            <div className="pt-2">
+                                                <OptionsEditor questionIndex={index} />
+                                            </div>
+                                        )}
+                                        {element.type === 'yes-no' && (
+                                            <div className="flex gap-4">
+                                                <div className="flex-1 h-20 bg-slate-50 border-2 border-slate-100 rounded-3xl flex items-center justify-center gap-3 opacity-40">
+                                                    <div className="h-5 w-5 rounded-full border-2 border-slate-300" />
+                                                    <span className="font-black text-slate-400">YES</span>
+                                                </div>
+                                                <div className="flex-1 h-20 bg-slate-50 border-2 border-slate-100 rounded-3xl flex items-center justify-center gap-3 opacity-40">
+                                                    <div className="h-5 w-5 rounded-full border-2 border-slate-300" />
+                                                    <span className="font-black text-slate-400">NO</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                             </div>
-                         )}
-                        {element.type === 'heading' && (
- <div className="space-y-4">
+                            )}
+                            
+                            {element.type === 'section' && (
+                                <div className="space-y-6">
+                                    <Controller
+                                        name={`elements.${index}.title`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <RichTextEditor 
+                                                value={field.value} 
+                                                onChange={field.onChange} 
+                                                placeholder="Section Heading..." 
+                                                textAlign={element.style?.textAlign}
+                                                className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter leading-none" 
+                                            />
+                                        )}
+                                    />
+                                    <Controller
+                                        name={`elements.${index}.description`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <RichTextEditor 
+                                                value={field.value} 
+                                                onChange={field.onChange} 
+                                                placeholder="Brief overview of this section..." 
+                                                textAlign={element.style?.textAlign}
+                                                className="text-lg sm:text-xl text-slate-400 font-medium leading-relaxed opacity-80" 
+                                            />
+                                        )}
+                                    />
+                                </div>
+                            )}
+
+                            {element.type === 'heading' && (
                                 <Controller 
                                     name={`elements.${index}.title`} 
                                     control={control} 
@@ -1301,19 +1127,17 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         <RichTextEditor 
                                             value={field.value} 
                                             onChange={field.onChange} 
-                                            placeholder="Heading Text" 
+                                            placeholder="Display Heading" 
                                             textAlign={element.style?.textAlign}
- className={cn(
-                                                "font-semibold leading-tight whitespace-pre-wrap",
-                                                element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl"
+                                            className={cn(
+                                                "font-black leading-tight tracking-tight text-slate-900",
+                                                element.variant === 'h1' ? "text-4xl sm:text-5xl" : element.variant === 'h3' ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
                                             )} 
                                         />
                                     )} 
                                 />
-                            </div>
-                        )}
-                        {element.type === 'description' && (
- <div className="space-y-2">
+                            )}
+                            {element.type === 'description' && (
                                 <Controller 
                                     name={`elements.${index}.text`} 
                                     control={control} 
@@ -1321,54 +1145,45 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         <RichTextEditor 
                                             value={field.value} 
                                             onChange={field.onChange} 
-                                            placeholder="Description text..." 
+                                            placeholder="Informative text for your users..." 
                                             textAlign={element.style?.textAlign}
- className="text-base sm:text-lg leading-relaxed text-muted-foreground min-h-[1.5em] whitespace-pre-wrap" 
+                                            className="text-lg sm:text-xl leading-relaxed text-slate-500 font-medium min-h-[1.5em]" 
                                         />
                                     )} 
                                 />
-                            </div>
-                        )}
- {element.type === 'divider' && <hr className="my-4 border-border/50" />}
-                        
-                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                            <Controller
-                                name={`elements.${index}.url`}
-                                control={control}
-                                render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
-                            />
-                        )}
-                        {element.type === 'embed' && (
-                            <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
-                                <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground">Embed HTML Code</FormLabel>
- <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
-                                </FormItem>
-                            )} />
-                        )}
-                    </div>
-                ) : (
-                    <LogicBlockEditor elementIndex={index} />
-                )}
-            </CardContent>
+                            )}
+                        </div>
+                    ) : (
+                        <LogicBlockEditor elementIndex={index} />
+                    )}
+                </CardContent>
+            </div>
         </Card>
-        <div
- className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
-            onClick={() => requestAddElement(index)}
-        >
- <PlusCircle className="h-5 w-5 text-primary" />
-        </div>
+        {!isCollapsed && (
+            <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-3 bg-white border border-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-125 shadow-2xl"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    requestAddElement(index);
+                }}
+            >
+                <PlusCircle className="h-8 w-8 text-primary shadow-primary/20" />
+            </div>
+        )}
     </div>
   );
 }
 
-export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement }: {
+export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement, activeBlockId, setActiveBlockId, isAccordion }: {
     fields: any[];
     remove: (index: number) => void;
     move: (from: number, to: number) => void;
     swap: (indexA: number, indexB: number) => void;
     insert: (index: number, value: SurveyElement) => void;
     requestAddElement: (index: number) => void;
+    activeBlockId: string | null;
+    setActiveBlockId: (id: string | null) => void;
+    isAccordion: boolean;
 }) {
   const { formState: { errors } } = useFormContext();
   const formErrors = errors.elements as any[] | undefined;
@@ -1393,10 +1208,12 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
   }
 
   return (
-    <div>
+    <div onClickCapture={(e) => {
+        if(e.target === e.currentTarget) setActiveBlockId(null);
+    }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
- <div className="space-y-8">
+                <div className="space-y-4">
                     {fields.map((field, index) => (
                         <SortableSurveyElement 
                             key={field.id} 
@@ -1406,15 +1223,18 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                             swap={swap} 
                             insert={insert}
                             requestAddElement={requestAddElement}
+                            activeBlockId={activeBlockId}
+                            setActiveBlockId={setActiveBlockId}
+                            isAccordion={isAccordion}
                         />
                     ))}
                 </div>
             </SortableContext>
         </DndContext>
- <div className="mt-6">
+        <div className="mt-8">
             {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
- <FormMessage className="text-sm font-bold bg-destructive/10 p-3 rounded-lg flex items-center gap-2">
- <X className="h-4 w-4" />
+                <FormMessage className="text-sm font-bold bg-destructive/10 p-4 rounded-xl flex items-center gap-3 border border-destructive/20 shadow-sm">
+                    <X className="h-5 w-5 text-destructive" />
                     {(formErrors as any).message}
                 </FormMessage>
             )}

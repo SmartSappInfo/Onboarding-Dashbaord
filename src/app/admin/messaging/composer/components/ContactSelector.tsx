@@ -115,7 +115,7 @@ export function ContactSelector({
           </div>
         )}
 
- <ScrollArea className="h-64">
+ <div className="h-64 overflow-y-auto pr-2">
  <div className="space-y-2">
             {filteredContacts.map(({ contact, originalIndex }) => {
               const isSelected = selectedContactIndices.includes(originalIndex);
@@ -187,7 +187,7 @@ export function ContactSelector({
               );
             })}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Selection Summary (Requirement 2.7) */}
  <div className="mt-4 pt-4 border-t">

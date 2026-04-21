@@ -54,8 +54,8 @@ export const UpdateTagSchema = z.object({
 
 export const ApplyTagsSchema = z.object({
   contactId: z.string().min(1, 'Contact ID is required'),
-  contactType: z.enum(['school', 'prospect'], {
-    errorMap: () => ({ message: 'Contact type must be "school" or "prospect"' }),
+  contactType: z.enum(['school', 'prospect', 'workspace_entity', 'entity'], {
+    errorMap: () => ({ message: 'Contact type must be "school", "prospect", "workspace_entity", or "entity"' }),
   }),
   tagIds: z.array(z.string().min(1)).min(1, 'At least one tag ID is required'),
   userId: z.string().min(1, 'User ID is required'),
@@ -63,8 +63,8 @@ export const ApplyTagsSchema = z.object({
 
 export const BulkTagSchema = z.object({
   contactIds: z.array(z.string().min(1)).min(1, 'At least one contact ID is required'),
-  contactType: z.enum(['school', 'prospect'], {
-    errorMap: () => ({ message: 'Contact type must be "school" or "prospect"' }),
+  contactType: z.enum(['school', 'prospect', 'workspace_entity', 'entity'], {
+    errorMap: () => ({ message: 'Contact type must be "school", "prospect", "workspace_entity", or "entity"' }),
   }),
   tagIds: z.array(z.string().min(1)).min(1, 'At least one tag ID is required'),
   userId: z.string().min(1, 'User ID is required'),

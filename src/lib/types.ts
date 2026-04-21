@@ -701,6 +701,8 @@ export interface WorkspaceEntity {
   status: 'active' | 'archived';
   lifecycleStatus?: string; // Dynamic workspace-defined status (e.g., "Onboarding", "Active", "Churned")
   workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
+  taggedAt?: { [tagId: string]: string }; // Tag assignment timestamps
+  taggedBy?: { [tagId: string]: string }; // Tag assignment user IDs
   lastContactedAt?: string;
   addedAt: string;
   updatedAt: string;
@@ -967,6 +969,7 @@ export interface Survey {
   externalAlertEmailTemplateId?: string;
   externalAlertSmsTemplateId?: string;
   useEntityLogo?: boolean;
+  logoMode?: 'organization' | 'custom' | 'placeholder';
   // Entity Creation & Assignment (Task 12)
   createEntity?: boolean;
   entityMapping?: SurveyEntityMapping;
@@ -993,8 +996,9 @@ export interface SurveyElement {
 }
 
 export interface SurveyQuestion extends SurveyElement {
-  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone';
+  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone' | 'number' | 'link';
   title: string;
+  description?: string;
   isRequired: boolean;
   placeholder?: string;
   defaultValue?: any;

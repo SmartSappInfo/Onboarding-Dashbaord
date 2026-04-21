@@ -513,8 +513,8 @@ export default function EntitiesClient() {
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <TagSelector
-                            contactId={taggingEntity.entityId}
-                            contactType="school"
+                            contactId={taggingEntity.id}
+                            contactType="workspace_entity"
                             currentTagIds={taggingEntity.workspaceTags ?? []}
                         />
                         <AlertDialogFooter>
@@ -527,7 +527,7 @@ export default function EntitiesClient() {
                 open={isBulkTagOpen}
                 onOpenChange={setIsBulkTagOpen}
                 selectedContactIds={selectedEntityIds}
-                contactType="school"
+                contactType="workspace_entity"
                 onComplete={() => setSelectedEntityIds([])}
             />
         </TooltipProvider>

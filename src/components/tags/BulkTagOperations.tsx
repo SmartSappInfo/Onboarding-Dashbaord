@@ -29,7 +29,7 @@ interface BulkTagOperationsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedContactIds: string[];
-  contactType: 'school' | 'prospect';
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity';
   onComplete?: () => void;
 }
 
@@ -116,10 +116,6 @@ export function BulkTagOperations({
 
     try {
       const total = selectedContactIds.length;
-      const onProgress = (processed: number) => {
-        setProgress(Math.round((processed / total) * 100));
-      };
-
       let res;
       if (operation === 'add') {
         res = await bulkApplyTagsAction(
@@ -127,8 +123,7 @@ export function BulkTagOperations({
           contactType,
           selectedTagIds,
           user.uid,
-          user.displayName || undefined,
-          onProgress
+          user.displayName || undefined
         );
       } else {
         res = await bulkRemoveTagsAction(
@@ -136,8 +131,7 @@ export function BulkTagOperations({
           contactType,
           selectedTagIds,
           user.uid,
-          user.displayName || undefined,
-          onProgress
+          user.displayName || undefined
         );
       }
 

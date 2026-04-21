@@ -56,9 +56,9 @@ const isLogic = (element: SurveyElement): element is SurveyLogicBlock => element
 const generateSchema = (elements: SurveyElement[]) => {
     const questions = elements.filter(isQuestion);
     const baseSchemaObject = questions.reduce((acc, q) => {
-        let schema: z.ZodTypeAny = z.any();
+        let schema: z.ZodTypeAny = z.string();
         
-        if (q.type === 'text' || q.type === 'long-text' || q.type === 'email' || q.type === 'phone') {
+        if (q.type === 'text' || q.type === 'long-text') {
             let textSchema = z.string();
             if (q.minLength !== undefined) {
                 textSchema = textSchema.min(q.minLength, { message: `Must be at least ${q.minLength} characters.` });
@@ -67,6 +67,25 @@ const generateSchema = (elements: SurveyElement[]) => {
                 textSchema = textSchema.max(q.maxLength, { message: `Cannot exceed ${q.maxLength} characters.` });
             }
             schema = textSchema;
+        }
+
+        if (q.type === 'email') {
+            schema = z.string().email({ message: "Please enter a valid email address." });
+        }
+
+        if (q.type === 'phone') {
+            // Basic phone regex: allows +, digits, spaces, parens, hyphens
+            schema = z.string().regex(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/im, {
+                message: "Please enter a valid phone number (e.g. +1 555-0123)"
+            });
+        }
+
+        if (q.type === 'number') {
+            schema = z.string().regex(/^-?\d*\.?\d*$/, { message: "Please enter a valid number." });
+        }
+
+        if (q.type === 'link') {
+            schema = z.string().url({ message: "Please enter a valid URL (including http:// or https://)" });
         }
 
         if (q.type === 'file-upload') {
@@ -103,9 +122,9 @@ const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (v
                 <Star
                     key={star}
                     className={cn(
-                        'w-10 h-10 cursor-pointer',
+                        'w-10 h-10 cursor-pointer transition-all hover:scale-110 active:scale-95',
                         star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
-                        disabled ? 'cursor-not-allowed' : ''
+                        disabled ? 'cursor-not-allowed opacity-50' : ''
                     )}
                     onClick={() => !disabled && onChange(value === star ? 0 : star)}
                 />
@@ -119,12 +138,12 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-white rounded-xl text-base border-slate-200", !dateValue && "text-muted-foreground")} disabled={disabled}>
-                    <CalendarIcon className="mr-3 h-5 w-5" />
+                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-white rounded-xl text-base border-slate-200 shadow-sm hover:shadow-md transition-all", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                    <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden border-none shadow-2xl" align="start">
                 <Calendar
                   mode="single"
                   selected={dateValue}
@@ -216,24 +235,30 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
   
   if (uploadProgress !== null && fileName) {
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 p-4 bg-muted/20 rounded-xl">
             <div className="flex items-center gap-3 text-base">
-                <FileIcon className="h-5 w-5 text-muted-foreground" />
-                <span className="truncate flex-1 font-medium">{fileName}</span>
-                {uploadProgress === 100 ? <span className="text-green-600 font-bold">Done!</span> : <span className="font-bold">{Math.round(uploadProgress)}%</span>}
+                <FileIcon className="h-5 w-5 text-primary" />
+                <span className="truncate flex-1 font-bold">{fileName}</span>
+                {uploadProgress === 100 ? (
+                    <div className="flex items-center gap-1 text-emerald-600 font-bold">
+                        <CheckCircle2 className="h-4 w-4" /> Done
+                    </div>
+                ) : (
+                    <span className="font-bold text-primary">{Math.round(uploadProgress)}%</span>
+                )}
             </div>
             <Progress value={uploadProgress} className="h-2" />
-            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+            {error && <p className="text-sm text-destructive font-bold">{error}</p>}
         </div>
     );
   }
 
   if (value && fileName) {
     return (
-      <div className="flex items-center gap-4 p-3 border border-primary/20 rounded-xl bg-primary/5">
-        <FileIcon className="h-5 w-5 text-primary" />
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm font-bold truncate flex-1 hover:underline">{fileName}</a>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={handleRemoveFile} disabled={disabled}>
+      <div className="flex items-center gap-4 p-4 border-2 border-primary/20 rounded-xl bg-primary/5 group transition-all hover:bg-primary/10">
+        <FileIcon className="h-6 w-6 text-primary" />
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-base font-bold truncate flex-1 hover:underline">{fileName}</a>
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleRemoveFile} disabled={disabled}>
             <X className="h-4 w-4" />
         </Button>
       </div>
@@ -242,10 +267,10 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-12 px-6 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-base font-bold uppercase tracking-tight border-slate-200">
+      <Button asChild variant="outline" disabled={disabled} className="h-14 px-8 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-base font-black uppercase tracking-widest border-slate-200 hover:border-primary/50 group">
         <div className="cursor-pointer">
-            <Upload className="mr-3 h-4 w-4 text-primary" />
-            <span>Upload a file</span>
+            <Upload className="mr-3 h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+            <span>Upload Document</span>
         </div>
       </Button>
       <input
@@ -285,7 +310,7 @@ const ElementRenderer = ({
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
-        const isTextInput = ['text', 'long-text', 'email', 'phone'].includes(question.type);
+        const isTextInput = ['text', 'long-text', 'email', 'phone', 'number', 'link'].includes(question.type);
         
         const handleValueChange = (val: any, onChange: (v: any) => void) => {
             onChange(val);
@@ -297,27 +322,34 @@ const ElementRenderer = ({
 
         return (
             <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
-                <div className="space-y-1.5">
-                    <Label className="text-xl font-bold block leading-snug text-foreground">
+                <div className="space-y-2">
+                    <Label className="text-2xl font-black block leading-tight text-foreground tracking-tight">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
-                        {isRequired && <span className="text-destructive ml-1">*</span>}
+                        {isRequired && <span className="text-destructive ml-1.5">*</span>}
                     </Label>
-                    {question.placeholder && !isTextInput && (
-                        <p className="text-base text-muted-foreground font-medium whitespace-pre-wrap leading-relaxed">
-                            {question.placeholder}
-                        </p>
+                    {question.description && (
+                        <div 
+                            className="text-base text-muted-foreground font-medium whitespace-pre-wrap leading-relaxed opacity-70"
+                            dangerouslySetInnerHTML={{ __html: question.description }}
+                        />
                     )}
                 </div>
-                <div className="mt-1">
-                    {(question.type === 'text' || question.type === 'email' || question.type === 'phone') && (
+                <div className="mt-2">
+                    {isTextInput && (
                         <Controller control={control} name={question.id} render={({ field }) => (
                             <Input 
                                 {...field} 
                                 value={field.value || ''} 
-                                type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
+                                type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : question.type === 'number' ? 'text' : question.type === 'link' ? 'url' : 'text'}
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
-                                placeholder={question.placeholder || (question.type === 'email' ? 'email@example.com' : question.type === 'phone' ? 'e.g. +233 20 000 0000' : "Type your answer here...")} 
-                                className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl shadow-none", errors[question.id] && "border-destructive")} 
+                                placeholder={question.placeholder || (
+                                    question.type === 'email' ? 'email@example.com' : 
+                                    question.type === 'phone' ? '+1 555-0123' : 
+                                    question.type === 'number' ? 'e.g. 42' : 
+                                    question.type === 'link' ? 'https://example.com' : 
+                                    "Type your answer here..."
+                                )} 
+                                className={cn("text-lg h-14 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl shadow-none px-5 font-medium", errors[question.id] && "border-destructive ring-1 ring-destructive/20")} 
                             />
                         )} />
                     )}

@@ -508,12 +508,24 @@ export async function resolveRecipientContacts(params: {
   workspaceId?: string;
   contactScope: 'primary' | 'signatories' | 'all' | 'custom';
   channel: 'email' | 'sms';
+  contactTypeFilter?: string | null; // e.g. 'father', 'mother', 'guardian'
 }): Promise<string[]> {
-  const { entityId, workspaceId = 'onboarding', contactScope, channel } = params;
+  const { entityId, workspaceId = 'onboarding', contactScope, channel, contactTypeFilter } = params;
 
   try {
     const contact = await resolveContact(entityId, workspaceId);
     if (!contact) return [];
+
+    const sourceContacts = contact.entityContacts || contact.contacts || [];
+
+    // If a contact type filter is active, narrow to that type first then apply scope
+    if (contactTypeFilter) {
+      const typed = sourceContacts.filter((c: any) => c.typeKey === contactTypeFilter);
+      const recipients = typed
+        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
+        .filter((v: any) => !!v) as string[];
+      return recipients.length > 0 ? recipients : [''];
+    }
 
     let recipients: string[] = [];
 
@@ -523,24 +535,19 @@ export async function resolveRecipientContacts(params: {
       const val = channel === 'email' ? email : phone;
       recipients = val ? [val] : [];
     } else if (contactScope === 'signatories') {
-      // FER-01: Use canonical entityContacts
-      const sourceContacts = contact.entityContacts || contact.contacts || [];
       recipients = sourceContacts
-        .filter(c => c.isSignatory)
-        .map(c => channel === 'email' ? c.email : (c.phone || ''))
-        .filter(v => !!v) as string[];
+        .filter((c: any) => c.isSignatory)
+        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
+        .filter((v: any) => !!v) as string[];
     } else if (contactScope === 'all') {
-      // FER-01: Use canonical entityContacts
-      const sourceContacts = contact.entityContacts || contact.contacts || [];
       recipients = sourceContacts
-        .map(c => channel === 'email' ? c.email : (c.phone || ''))
-        .filter(v => !!v) as string[];
+        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
+        .filter((v: any) => !!v) as string[];
     }
 
-    // Return recipients or empty array for sendMessage to handle auto-resolution
     return recipients.length > 0 ? recipients : [''];
   } catch (error) {
     console.error(`[RESOLVE_CONTACTS] Error for ${entityId}:`, error);
-    return ['']; // Fallback to auto-resolution
+    return [''];
   }
 }

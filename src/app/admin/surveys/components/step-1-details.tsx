@@ -231,33 +231,21 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             )}
                         />
                         <Controller
-                            name="useEntityLogo"
+                            name="logoMode"
                             control={control}
                             render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1 opacity-0">-</Label>
- <div className={cn(
-                                        "flex items-center justify-between h-11 px-4 rounded-xl border-2 transition-all duration-300",
-                                        field.value ? "border-primary/20 bg-primary/5" : "border-transparent bg-muted/20 grayscale opacity-40"
-                                    )}>
- <div className="flex items-center gap-2">
- <Building className="h-4 w-4 text-primary" />
- <span className="text-[10px] font-semibold tracking-tight">Sync Entity Logo</span>
-                                        </div>
-                                        <Switch 
-                                            disabled={!watch('entityId')}
-                                            checked={field.value} 
-                                            onCheckedChange={(checked) => {
-                                                field.onChange(checked);
-                                                if (checked) {
-                                                    const entityId = watch('entityId');
-                                                    const institution = institutions?.find(i => i.entityId === entityId);
-                                                    const logo = institution?.logoUrl;
-                                                    if (logo) setValue('logoUrl', logo, { shouldDirty: true });
-                                                }
-                                            }} 
-                                        />
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Branding Mode</Label>
+                                    <Select onValueChange={field.onChange} value={field.value || 'organization'}>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                            <SelectValue placeholder="Inheritance mode..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="organization">Inherit from Organization</SelectItem>
+                                            <SelectItem value="custom">Custom Brand (Manual Upload)</SelectItem>
+                                            <SelectItem value="placeholder">Generic Placeholder</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             )}
                         />
@@ -360,11 +348,16 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                                 {...field} 
                                                 filterType="image" 
                                                 className="rounded-xl" 
-                                                disabled={watch('useEntityLogo')}
+                                                disabled={watch('logoMode') !== 'custom'}
                                             />
-                                            {watch('useEntityLogo') && (
+                                            {watch('logoMode') === 'organization' && (
                                                 <p className="text-[9px] font-bold text-primary tracking-tighter ml-1 italic">
                                                     Branding is being managed by the associated entity.
+                                                </p>
+                                            )}
+                                            {watch('logoMode') === 'placeholder' && (
+                                                <p className="text-[9px] font-bold text-muted-foreground tracking-tighter ml-1 italic">
+                                                    Using a generic system placeholder.
                                                 </p>
                                             )}
                                         </div>

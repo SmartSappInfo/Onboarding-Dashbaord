@@ -76,7 +76,7 @@ const TAG_COLORS = [
 
 interface TagSelectorProps {
   contactId: string;
-  contactType: 'school' | 'prospect';
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity';
   currentTagIds: string[];
   onTagsChange?: (tagIds: string[]) => void;
   className?: string;

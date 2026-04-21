@@ -555,3 +555,53 @@ export async function triggerSurveyWebhook(webhookId: string, payload: any) {
         return { success: false, error: error.message || "Failed to trigger webhook." };
     }
 }
+
+/**
+ * Robust asynchronous autosave action for the survey builder.
+ * Handles both new survey creation (auto-initialization) and updates.
+ */
+export async function autoSaveSurveyAction(
+    surveyId: string | 'new-survey',
+    data: Partial<Survey>,
+    userId: string
+) {
+    try {
+        const surveysCol = adminDb.collection('surveys');
+        const now = new Date().toISOString();
+        
+        // 1. Determine if we are creating or updating
+        let targetId = surveyId;
+        let isNew = surveyId === 'new-survey';
+
+        // 2. Permission Check
+        const workspaceId = data.workspaceIds?.[0] || 'generic';
+        const permission = await canUser(userId, 'studios', 'surveys', isNew ? 'create' : 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        // 3. Prepare payload
+        const payload = {
+            ...JSON.parse(JSON.stringify(data)), // Ensure plain object
+            updatedAt: now,
+        };
+
+        if (isNew) {
+            // Auto-initialization defaults
+            payload.createdAt = now;
+            payload.status = payload.status || 'draft';
+            payload.slug = payload.slug || `survey-${Math.random().toString(36).substring(2, 7)}`;
+            
+            const docRef = await surveysCol.add(payload);
+            targetId = docRef.id;
+        } else {
+            await surveysCol.doc(surveyId).update(payload);
+        }
+
+        return { success: true, id: targetId };
+    } catch (error: any) {
+        console.error("AutoSave Survey Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+

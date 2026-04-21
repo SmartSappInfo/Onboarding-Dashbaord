@@ -560,7 +560,7 @@ export async function getTagAction(tagId: string) {
  */
 export async function applyTagsAction(
   contactId: string,
-  contactType: 'school' | 'prospect',
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity',
   tagIds: string[],
   userId: string,
   userName?: string
@@ -580,7 +580,9 @@ export async function applyTagsAction(
       throw new TagPermissionError('You do not have permission to apply tags.');
     }
 
-    const collection = contactType === 'school' ? 'schools' : 'prospects';
+    const collection = contactType === 'school' ? 'schools' : 
+                       contactType === 'prospect' ? 'prospects' : 
+                       contactType === 'workspace_entity' ? 'workspace_entities' : 'entities';
     const contactRef = adminDb.collection(collection).doc(contactId);
     const contactSnap = await contactRef.get();
 
@@ -589,7 +591,10 @@ export async function applyTagsAction(
     }
 
     const contactData = contactSnap.data()!;
-    const existingTags = new Set<string>(contactData.tags || []);
+    const tagsField = contactType === 'workspace_entity' ? 'workspaceTags' : 
+                      contactType === 'entity' ? 'globalTags' : 'tags';
+
+    const existingTags = new Set<string>(contactData[tagsField] || []);
     const taggedAt: Record<string, string> = { ...contactData.taggedAt };
     const taggedBy: Record<string, string> = { ...contactData.taggedBy };
     const timestamp = new Date().toISOString();
@@ -603,7 +608,7 @@ export async function applyTagsAction(
     });
 
     await contactRef.update({
-      tags: Array.from(existingTags),
+      [tagsField]: Array.from(existingTags),
       taggedAt,
       taggedBy
     });
@@ -671,7 +676,7 @@ export async function applyTagsAction(
  */
 export async function removeTagsAction(
   contactId: string,
-  contactType: 'school' | 'prospect',
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity',
   tagIds: string[],
   userId: string,
   userName?: string
@@ -691,7 +696,9 @@ export async function removeTagsAction(
       throw new TagPermissionError('You do not have permission to apply tags.');
     }
 
-    const collection = contactType === 'school' ? 'schools' : 'prospects';
+    const collection = contactType === 'school' ? 'schools' : 
+                       contactType === 'prospect' ? 'prospects' : 
+                       contactType === 'workspace_entity' ? 'workspace_entities' : 'entities';
     const contactRef = adminDb.collection(collection).doc(contactId);
     const contactSnap = await contactRef.get();
 
@@ -700,18 +707,21 @@ export async function removeTagsAction(
     }
 
     const contactData = contactSnap.data()!;
+    const tagsField = contactType === 'workspace_entity' ? 'workspaceTags' : 
+                      contactType === 'entity' ? 'globalTags' : 'tags';
+
     const taggedAt: Record<string, string> = { ...contactData.taggedAt };
     const taggedBy: Record<string, string> = { ...contactData.taggedBy };
 
-    const removedTagIds = (contactData.tags || []).filter((t: string) => tagIds.includes(t));
-    const remainingTags = (contactData.tags || []).filter((t: string) => !tagIds.includes(t));
+    const removedTagIds = (contactData[tagsField] || []).filter((t: string) => tagIds.includes(t));
+    const remainingTags = (contactData[tagsField] || []).filter((t: string) => !tagIds.includes(t));
 
     removedTagIds.forEach((tagId: string) => {
       delete taggedAt[tagId];
       delete taggedBy[tagId];
     });
 
-    await contactRef.update({ tags: remainingTags, taggedAt, taggedBy });
+    await contactRef.update({ [tagsField]: remainingTags, taggedAt, taggedBy });
 
     // Decrement usage counts for actually removed tags
     if (removedTagIds.length > 0) {
@@ -779,11 +789,10 @@ export async function removeTagsAction(
  */
 export async function bulkApplyTagsAction(
   contactIds: string[],
-  contactType: 'school' | 'prospect',
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity',
   tagIds: string[],
   userId: string,
-  userName?: string,
-  onProgress?: (processed: number, total: number) => void
+  userName?: string
 ): Promise<{
   success: boolean;
   processedCount?: number;
@@ -798,7 +807,11 @@ export async function bulkApplyTagsAction(
   }
 
   try {
-    const collection = contactType === 'school' ? 'schools' : 'prospects';
+    const collection = contactType === 'school' ? 'schools' : 
+                       contactType === 'prospect' ? 'prospects' : 
+                       contactType === 'workspace_entity' ? 'workspace_entities' : 'entities';
+    const tagsField = contactType === 'workspace_entity' ? 'workspaceTags' : 
+                      contactType === 'entity' ? 'globalTags' : 'tags';
     const timestamp = new Date().toISOString();
     const batchSize = 100;
     let processedCount = 0;
@@ -819,7 +832,7 @@ export async function bulkApplyTagsAction(
           if (!contactSnap.exists) continue;
 
           const data = contactSnap.data()!;
-          const existingTags = new Set<string>(data.tags || []);
+          const existingTags = new Set<string>(data[tagsField] || []);
           const taggedAt: Record<string, string> = { ...data.taggedAt };
           const taggedBy: Record<string, string> = { ...data.taggedBy };
 
@@ -832,7 +845,7 @@ export async function bulkApplyTagsAction(
           });
 
           batch.update(contactRef, {
-            tags: Array.from(existingTags),
+            [tagsField]: Array.from(existingTags),
             taggedAt,
             taggedBy
           });
@@ -856,7 +869,7 @@ export async function bulkApplyTagsAction(
         partialFailures.push(...chunkProcessed);
       }
 
-      onProgress?.(processedCount, total);
+      // onProgress callback removed - not part of function signature
     }
 
     // Update tag usage counts — chunk to stay within the 500-op batch limit
@@ -908,11 +921,10 @@ export async function bulkApplyTagsAction(
  */
 export async function bulkRemoveTagsAction(
   contactIds: string[],
-  contactType: 'school' | 'prospect',
+  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity',
   tagIds: string[],
   userId: string,
-  userName?: string,
-  onProgress?: (processed: number, total: number) => void
+  userName?: string
 ): Promise<{
   success: boolean;
   processedCount?: number;
@@ -927,7 +939,11 @@ export async function bulkRemoveTagsAction(
   }
 
   try {
-    const collection = contactType === 'school' ? 'schools' : 'prospects';
+    const collection = contactType === 'school' ? 'schools' : 
+                       contactType === 'prospect' ? 'prospects' : 
+                       contactType === 'workspace_entity' ? 'workspace_entities' : 'entities';
+    const tagsField = contactType === 'workspace_entity' ? 'workspaceTags' : 
+                      contactType === 'entity' ? 'globalTags' : 'tags';
     const batchSize = 100;
     let processedCount = 0;
     let failedCount = 0;
@@ -950,13 +966,13 @@ export async function bulkRemoveTagsAction(
           const taggedAt: Record<string, string> = { ...data.taggedAt };
           const taggedBy: Record<string, string> = { ...data.taggedBy };
 
-          const remainingTags = (data.tags || []).filter((t: string) => !tagIds.includes(t));
+          const remainingTags = (data[tagsField] || []).filter((t: string) => !tagIds.includes(t));
           tagIds.forEach(tagId => {
             delete taggedAt[tagId];
             delete taggedBy[tagId];
           });
 
-          batch.update(contactRef, { tags: remainingTags, taggedAt, taggedBy });
+          batch.update(contactRef, { [tagsField]: remainingTags, taggedAt, taggedBy });
           chunkProcessed.push(contactId);
         } catch (readErr: any) {
           partialFailures.push(contactId);
@@ -976,7 +992,7 @@ export async function bulkRemoveTagsAction(
         partialFailures.push(...chunkProcessed);
       }
 
-      onProgress?.(processedCount, total);
+      // onProgress callback removed - not part of function signature
     }
 
     // Decrement tag usage counts — chunk to stay within the 500-op batch limit

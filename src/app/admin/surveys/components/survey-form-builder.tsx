@@ -2,14 +2,15 @@
 
 import * as React from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
+import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, Loader2, Check, Layout, ShieldCheck, Zap, GripVertical } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
@@ -17,6 +18,9 @@ import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
+import { autoSaveSurveyAction } from '@/lib/survey-actions';
+import { AnimatePresence, motion } from 'framer-motion';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -27,6 +31,9 @@ export default function SurveyFormBuilder() {
     const { getValues, setValue, watch, formState: { isDirty }, control, reset } = useFormContext();
     const { toast } = useToast();
     const params = useParams();
+    const router = useRouter();
+    const { user } = useUser();
+    
     const surveyId = (params?.id as string) || 'new-survey';
     const storageKey = `survey-autosave-${surveyId}`;
     
@@ -37,6 +44,8 @@ export default function SurveyFormBuilder() {
     
     const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
+    const [isAccordion, setIsAccordion] = React.useState(true);
+    const [activeBlockId, setActiveBlockId] = React.useState<string | null>(null);
 
     const elements = watch('elements') || [];
     const sections = elements.filter((el: any) => el.type === 'section');
@@ -44,34 +53,36 @@ export default function SurveyFormBuilder() {
     const allPagesEnabled = sections.length > 0 && sections.every((s: any) => s.renderAsPage);
     const allValidationEnabled = sections.length > 0 && sections.every((s: any) => s.validateBeforeNext);
 
+    const toggleAccordion = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsAccordion(!isAccordion);
+        toast({
+            title: isAccordion ? "Standard View" : "Accordion Mode",
+            description: isAccordion ? "All blocks are now fully expanded." : "Only the active block will be expanded."
+        });
+    };
+
     const toggleAllPageBreaks = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const newState = !allPagesEnabled;
-        const currentElements = getValues('elements');
-        const updatedElements = currentElements.map((el: any) => 
+        const updatedElements = getValues('elements').map((el: any) => 
             el.type === 'section' ? { ...el, renderAsPage: newState } : el
         );
         setValue('elements', updatedElements, { shouldDirty: true });
-        toast({ 
-            title: newState ? 'All sections updated' : 'Page breaks removed',
-            description: newState ? 'Every section is now a separate page.' : 'Sections will now scroll continuously.'
-        });
+        toast({ title: newState ? 'All sections updated' : 'Page breaks removed' });
     };
 
     const toggleAllValidation = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const newState = !allValidationEnabled;
-        const currentElements = getValues('elements');
-        const updatedElements = currentElements.map((el: any) => 
+        const updatedElements = getValues('elements').map((el: any) => 
             el.type === 'section' ? { ...el, validateBeforeNext: newState } : el
         );
         setValue('elements', updatedElements, { shouldDirty: true });
-        toast({ 
-            title: newState ? 'All sections updated' : 'Validation disabled',
-            description: newState ? 'Strict validation enabled for all sections.' : 'Users can now skip between sections.'
-        });
+        toast({ title: newState ? 'Strict validation enabled' : 'Validation disabled' });
     };
 
     const requestAddElement = (index: number) => {
@@ -86,7 +97,7 @@ export default function SurveyFormBuilder() {
           hidden: false,
         };
     
-        const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
+        const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload', 'email', 'phone', 'number', 'link'];
     
         if (questionTypes.includes(type as SurveyQuestion['type'])) {
             (newElement as SurveyQuestion).title = '';
@@ -94,36 +105,22 @@ export default function SurveyFormBuilder() {
             if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
                 (newElement as SurveyQuestion).options = ['Option 1', 'Option 2'];
             }
-            if (type === 'checkboxes') {
-                (newElement as SurveyQuestion).allowOther = false;
-            }
-        } else if (type === 'logic') {
-            (newElement as any).rules = [{
-                sourceQuestionId: '',
-                operator: 'isEqualTo',
-                action: { type: 'jump' },
-            }];
         } else if (type === 'section') {
             const sectionsCount = getValues('elements').filter((el: SurveyElement) => el.type === 'section').length;
             (newElement as SurveyLayoutBlock).title = `Section ${sectionsCount + 1}`;
             (newElement as SurveyLayoutBlock).stepperTitle = `Step ${sectionsCount + 1}`;
-            (newElement as SurveyLayoutBlock).description = '';
             (newElement as SurveyLayoutBlock).renderAsPage = false;
         } else if (isLayoutBlock(newElement as SurveyElement)) {
-            if(type === 'heading') {
-                (newElement as SurveyLayoutBlock).title = 'New Heading';
-                (newElement as SurveyLayoutBlock).variant = 'h2';
-            }
+            if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Heading';
             if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
-            if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
-            if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
         }
         
         insert(insertionIndex, newElement);
+        setActiveBlockId(newElement.id || null);
     };
 
     const watchedForm = watch();
-    const debouncedForm = useDebounce(watchedForm, 5000);
+    const debouncedForm = useDebounce(watchedForm, 1000);
 
     const {
         state: historyState,
@@ -139,146 +136,92 @@ export default function SurveyFormBuilder() {
     const lastSavedRef = React.useRef<string>(JSON.stringify(getValues()));
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
-    React.useEffect(() => {
-        resetHistory(getValues());
-
-        const savedData = localStorage.getItem(storageKey);
-        if (savedData) {
-            try {
-                const parsedData = JSON.parse(savedData);
-                if (parsedData.elements) {
-                    parsedData.elements.forEach((el: any) => {
-                        if (el.type === 'date' && el.defaultValue && typeof el.defaultValue === 'string') {
-                            el.defaultValue = new Date(el.defaultValue);
-                        }
-                    });
-                }
-
-                const currentData = getValues();
-                if (JSON.stringify(parsedData.elements) !== JSON.stringify(currentData.elements)) {
-                    toast({
-                        title: "Unsaved Changes Found",
-                        description: "We found a newer version of this survey in your local cache. Would you like to restore it?",
-                        action: (
-                            <Button 
-                                variant="default" 
-                                size="sm" 
-                                className="rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-all"
-                                onClick={() => {
-                                    reset(parsedData);
-                                    resetHistory(parsedData);
-                                    lastSavedRef.current = JSON.stringify(parsedData);
-                                    toast({ title: 'Restored', description: 'Your unsaved changes have been applied.' });
-                                    localStorage.removeItem(storageKey);
-                                }}
-                            >
-                                Restore Changes
-                            </Button>
-                        ),
-                        duration: 10000,
-                    });
-                }
-            } catch (e) {
-                console.error("Failed to parse autosaved data", e);
-                localStorage.removeItem(storageKey);
-            }
-        }
-    }, [reset, getValues, resetHistory, storageKey, toast]);
-
-    React.useEffect(() => {
-        if (isProgrammaticChange.current) return;
-        setHistory(watchedForm);
-    }, [watchedForm, setHistory]);
-
-    React.useEffect(() => {
-        if (isProgrammaticChange.current) {
-            reset(historyState, {
-                keepErrors: true,
-                keepDirty: true,
-                keepIsSubmitted: true,
-                keepTouched: true,
-                keepIsValid: true,
-                keepSubmitCount: true,
-            });
-            isProgrammaticChange.current = false;
-        }
-    }, [historyState, reset]);
-
-    React.useEffect(() => {
-        if (!isDirty) return;
-
-        const currentString = JSON.stringify(debouncedForm);
+    const triggerSave = React.useCallback(async (data: any) => {
+        if (!user || !isDirty) return;
+        const currentString = JSON.stringify(data);
         if (currentString === lastSavedRef.current) return;
 
         setAutosaveStatus('saving');
-        
         try {
-            localStorage.setItem(storageKey, currentString);
-            lastSavedRef.current = currentString;
-            
-            const timer = setTimeout(() => setAutosaveStatus('saved'), 1000);
-            const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 3000);
-            
-            return () => {
-                clearTimeout(timer);
-                clearTimeout(idleTimer);
-            };
-        } catch (e) {
-            console.error("Auto-save failed:", e);
+            const result = await autoSaveSurveyAction(surveyId, data, user.uid);
+            if (result.success) {
+                lastSavedRef.current = currentString;
+                setAutosaveStatus('saved');
+                if (surveyId === 'new-survey' && result.id) {
+                    router.replace(`/admin/surveys/${result.id}/edit`);
+                }
+                setTimeout(() => setAutosaveStatus('idle'), 3000);
+            }
+        } catch (error) {
+            console.error("Autosave failed:", error);
             setAutosaveStatus('idle');
         }
-    }, [debouncedForm, storageKey, isDirty]);
+    }, [user, isDirty, surveyId, router]);
 
-    const handleUndo = () => {
-        if (!canUndo) return;
-        isProgrammaticChange.current = true;
-        undoHistory();
-    };
+    React.useEffect(() => { triggerSave(debouncedForm); }, [debouncedForm, triggerSave]);
+    React.useEffect(() => { if (activeBlockId) triggerSave(getValues()); }, [activeBlockId, triggerSave, getValues]);
 
-    const handleRedo = () => {
-        if (!canRedo) return;
-        isProgrammaticChange.current = true;
-        redoHistory();
-    };
+    React.useEffect(() => {
+        if (isProgrammaticChange.current) {
+            reset(historyState, { keepDirty: true });
+            isProgrammaticChange.current = false;
+        } else {
+            setHistory(watchedForm);
+        }
+    }, [watchedForm, historyState, reset, setHistory]);
+
+    const handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
+    const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
 
     return (
- <div className="relative">
- <div className="flex flex-col md:flex-row gap-8 items-start">
-                {/* Vertical Builder Toolbar - Now Top Left */}
- <div className="hidden md:block w-14 shrink-0 sticky top-24">
-                        <Card className="shadow-lg border border-border bg-card p-1.5 rounded-2xl flex flex-col items-center gap-3">
-                        <TooltipProvider>
+        <div className="relative h-full">
+            <div className="flex h-[calc(100vh-10rem)] gap-0 overflow-hidden bg-background">
+                {/* 1. Left Toolbar - Minimized & Dark/Premium */}
+                <div className="w-16 flex flex-col items-center py-6 border-r border-border/50 bg-slate-950 text-slate-400 shrink-0 select-none">
+                    <TooltipProvider>
+                        <div className="flex flex-col gap-6 items-center">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="h-10 w-10 flex items-center justify-center">
+                                        {autosaveStatus === 'saving' ? (
+                                            <CloudUpload className="h-5 w-5 animate-pulse text-primary" />
+                                        ) : autosaveStatus === 'saved' ? (
+                                            <Check className="h-5 w-5 text-emerald-500" />
+                                        ) : (
+                                            <ShieldCheck className="h-5 w-5 opacity-20" />
+                                        )}
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Cloud Sync Status</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8 bg-slate-800" />
+
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button 
-                                        type="button"
                                         size="icon" 
                                         variant="ghost" 
- className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
-                                        onClick={() => requestAddElement(fields.length - 1)}
+                                        className={cn("h-10 w-10 rounded-xl transition-all", isAccordion ? "bg-primary/20 text-primary" : "hover:text-white")}
+                                        onClick={toggleAccordion}
                                     >
- <PlusCircle className="h-5 w-5 text-primary" />
+                                        {isAccordion ? <FoldVertical className="h-5 w-5" /> : <UnfoldVertical className="h-5 w-5" />}
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="right">Add Block</TooltipContent>
+                                <TooltipContent side="right">Toggle Focus Mode</TooltipContent>
                             </Tooltip>
-
- <Separator className="w-8" />
 
                             <AiChatEditor variant="icon" />
 
- <Separator className="w-8" />
-
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button 
-                                        type="button"
                                         size="icon" 
-                                        variant={allPagesEnabled ? "secondary" : "ghost"} 
-                                         className={cn("h-10 w-10 rounded-xl transition-all", allPagesEnabled ? "bg-primary text-white shadow-md" : "hover:bg-primary/10")}
+                                        variant="ghost" 
+                                        className={cn("h-10 w-10 rounded-xl transition-all", allPagesEnabled ? "bg-emerald-500/20 text-emerald-500" : "hover:text-white")}
                                         onClick={toggleAllPageBreaks}
                                     >
- <Layout className="h-5 w-5" />
+                                        <Layout className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Toggle All Page Breaks</TooltipContent>
@@ -287,93 +230,137 @@ export default function SurveyFormBuilder() {
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button 
-                                        type="button"
                                         size="icon" 
-                                        variant={allValidationEnabled ? "secondary" : "ghost"} 
-                                         className={cn("h-10 w-10 rounded-xl transition-all", allValidationEnabled ? "bg-primary text-white shadow-md" : "hover:bg-primary/10")}
+                                        variant="ghost" 
+                                        className={cn("h-10 w-10 rounded-xl transition-all", allValidationEnabled ? "bg-amber-500/20 text-amber-500" : "hover:text-white")}
                                         onClick={toggleAllValidation}
                                     >
- <ShieldCheck className="h-5 w-5" />
+                                        <ShieldCheck className="h-5 w-5" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="right">Toggle All Strict Validation</TooltipContent>
+                                <TooltipContent side="right">Strict Section Validation</TooltipContent>
                             </Tooltip>
 
- <Separator className="w-8" />
+                            <Separator className="w-8 bg-slate-800/50" />
 
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant="ghost" 
- className="h-10 w-10 rounded-xl disabled:opacity-30"
-                                        onClick={handleUndo} 
-                                        disabled={!canUndo}
-                                    >
- <Undo className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">Undo</TooltipContent>
-                            </Tooltip>
+                            <div className="flex flex-col gap-3">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-20" 
+                                            onClick={handleUndo} 
+                                            disabled={!canUndo}
+                                        >
+                                            <Undo className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">Undo (⌘Z)</TooltipContent>
+                                </Tooltip>
+                                
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="h-9 w-9 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-20" 
+                                            onClick={handleRedo} 
+                                            disabled={!canRedo}
+                                        >
+                                            <Redo className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">Redo (⌘⇧Z)</TooltipContent>
+                                </Tooltip>
+                            </div>
 
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant="ghost" 
- className="h-10 w-10 rounded-xl disabled:opacity-30"
-                                        onClick={handleRedo} 
-                                        disabled={!canRedo}
-                                    >
- <Redo className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">Redo</TooltipContent>
-                            </Tooltip>
+                            <Separator className="w-8 bg-slate-800/50" />
 
- <Separator className="w-8" />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
- <div className="inline-block">
- <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
- <Eye className="h-5 w-5 text-primary" />
-                                        </SurveyPreviewButton>
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="right">Preview Survey</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </Card>
+                            <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 text-primary hover:bg-primary/20 hover:text-primary rounded-xl">
+                                <Eye className="h-5 w-5" />
+                            </SurveyPreviewButton>
+                        </div>
+                    </TooltipProvider>
                 </div>
 
- <div className="flex-1 w-full">
-                    {fields.length > 0 ? (
-                        <QuestionEditor 
-                            fields={fields} 
-                            remove={remove} 
-                            move={move} 
-                            swap={swap} 
-                            insert={insert}
-                            requestAddElement={requestAddElement}
-                        />
-                    ) : (
-                        <div className="text-center py-20 bg-card border border-dashed border-border/50 rounded-2xl shadow-sm">
- <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
-                            <Button type="button" variant="outline" size="lg" onClick={() => {
-                                setInsertionIndex(0);
-                                setIsAddElementModalOpen(true);
-                            }}>
- <PlusCircle className="mr-2 h-5 w-5" />
-                                Add First Element
-                            </Button>
+                {/* 2. Middle Canvas - The Question Editor */}
+                <div className="flex-1 relative overflow-hidden bg-slate-50/50 flex flex-col">
+                    <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth p-6 md:p-12 lg:p-20">
+                        <div className="max-w-3xl mx-auto space-y-16 pb-96">
+                            {fields.length > 0 ? (
+                                <QuestionEditor 
+                                    fields={fields} 
+                                    remove={remove} 
+                                    move={move} 
+                                    swap={swap} 
+                                    insert={insert}
+                                    requestAddElement={requestAddElement}
+                                    activeBlockId={activeBlockId}
+                                    setActiveBlockId={setActiveBlockId}
+                                    isAccordion={isAccordion}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-40 bg-white border-2 border-dashed border-slate-200 rounded-[3rem] shadow-sm space-y-8">
+                                    <div className="h-24 w-24 rounded-full bg-primary/5 flex items-center justify-center">
+                                        <PlusCircle className="h-12 w-12 text-primary/30" />
+                                    </div>
+                                    <div className="text-center space-y-3">
+                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight">Your survey is waiting...</h3>
+                                        <p className="text-slate-500 font-medium max-w-xs mx-auto">Start building manually or let AI generate a structure for you.</p>
+                                    </div>
+                                    <Button 
+                                        onClick={() => requestAddElement(0)} 
+                                        size="lg"
+                                        className="rounded-full px-10 h-14 text-lg font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all"
+                                    >
+                                        Build from Scratch
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
+
+                    {/* Premium Autosave Status Pill */}
+                    <AnimatePresence>
+                        {autosaveStatus !== 'idle' && (
+                            <motion.div 
+                                initial={{ y: 50, opacity: 0, x: '-50%' }}
+                                animate={{ y: 0, opacity: 1, x: '-50%' }}
+                                exit={{ y: 50, opacity: 0, x: '-50%' }}
+                                className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50"
+                            >
+                                <div className={cn(
+                                    "flex items-center gap-3 px-5 py-2.5 rounded-full border shadow-2xl backdrop-blur-xl transition-all duration-500",
+                                    autosaveStatus === 'saving' 
+                                        ? "bg-primary/10 border-primary/20 text-primary" 
+                                        : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
+                                )}>
+                                    {autosaveStatus === 'saving' ? (
+                                        <>
+                                            <CloudUpload className="h-4 w-4 animate-bounce" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Syncing to Cloud...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="h-4 w-4 flex items-center justify-center">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">All Changes Saved</span>
+                                        </>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                {/* 3. Right Sidebar - Contextual Settings */}
+                <div className="w-80 shrink-0 border-l border-border/50 bg-white hidden xl:block overflow-hidden">
+                    <BlockSettingsSidebar activeBlockId={activeBlockId} />
                 </div>
             </div>
-            
+
             <AddElementModal 
                 open={isAddElementModalOpen}
                 onOpenChange={setIsAddElementModalOpen}

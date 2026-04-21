@@ -58,6 +58,7 @@ const formSchema = z.object({
   thankYouTitle: z.string().optional(),
   thankYouDescription: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
+  logoMode: z.enum(['organization', 'custom', 'placeholder']).optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoThumbnailUrl: z.string().url().optional().or(z.literal('')),

@@ -14,6 +14,15 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { AssignContactsToTagDialog } from '@/components/tags/AssignContactsToTagDialog';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -40,7 +49,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { PlusCircle, Tag as TagIcon, Edit, Trash2, Hash, TrendingUp, Users, Search, BarChart3, Wrench, History } from 'lucide-react';
+import { PlusCircle, Tag as TagIcon, Edit, Trash2, Hash, TrendingUp, Users, Search, BarChart3, Wrench, History, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagUsageDashboard } from '@/components/tags/TagUsageDashboard';
 import { TagCleanupTools } from '@/components/tags/TagCleanupTools';
@@ -86,6 +95,80 @@ const defaultFormData: TagFormData = {
   color: '#3B82F6',
 };
 
+function TagForm({ formData, setFormData }: { formData: TagFormData, setFormData: React.Dispatch<React.SetStateAction<TagFormData>> }) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label className="text-[10px] font-semibold ">Tag Name *</Label>
+        <Input
+          value={formData.name}
+          onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+          placeholder="e.g. Hot Lead"
+          className="rounded-xl"
+          maxLength={50}
+        />
+        <p className="text-[10px] text-muted-foreground">{formData.name.length}/50 characters</p>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-[10px] font-semibold ">Description</Label>
+        <Textarea
+          value={formData.description}
+          onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+          placeholder="Optional description..."
+          className="rounded-xl resize-none"
+          rows={2}
+          maxLength={200}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-[10px] font-semibold ">Category</Label>
+          <Select
+            value={formData.category}
+            onValueChange={v => setFormData(p => ({ ...p, category: v as TagCategory }))}
+          >
+            <SelectTrigger className="rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              {TAG_CATEGORIES.map(cat => (
+                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-[10px] font-semibold ">Color</Label>
+          <div className="flex flex-wrap gap-2 p-2 border rounded-xl">
+            {TAG_COLORS.map(color => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setFormData(p => ({ ...p, color }))}
+                className="h-6 w-6 rounded-full transition-transform hover:scale-110 ring-offset-2"
+                style={{
+                  backgroundColor: color,
+                  outline: formData.color === color ? `2px solid ${color}` : 'none',
+                  outlineOffset: '2px',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
+        <span className="text-[10px] font-semibold text-muted-foreground">Preview:</span>
+        <Badge
+          className="text-white border-none font-bold text-xs"
+          style={{ backgroundColor: formData.color }}
+        >
+          {formData.name || 'Tag Name'}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
 const PAGE_SIZE = 50;
 
 function TagsClientInner() {
@@ -99,6 +182,7 @@ function TagsClientInner() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
+  const [assigningTag, setAssigningTag] = useState<Tag | null>(null);
   const [formData, setFormData] = useState<TagFormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mainTab, setMainTab] = useState<'tags' | 'analytics' | 'cleanup' | 'audit'>('tags');
@@ -247,78 +331,6 @@ function TagsClientInner() {
       setIsSubmitting(false);
     }
   };
-
-  const TagForm = () => (
- <div className="space-y-4">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold ">Tag Name *</Label>
-        <Input
-          value={formData.name}
-          onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-          placeholder="e.g. Hot Lead"
- className="rounded-xl"
-          maxLength={50}
-        />
- <p className="text-[10px] text-muted-foreground">{formData.name.length}/50 characters</p>
-      </div>
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold ">Description</Label>
-        <Textarea
-          value={formData.description}
-          onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-          placeholder="Optional description..."
- className="rounded-xl resize-none"
-          rows={2}
-          maxLength={200}
-        />
-      </div>
- <div className="grid grid-cols-2 gap-4">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold ">Category</Label>
-          <Select
-            value={formData.category}
-            onValueChange={v => setFormData(p => ({ ...p, category: v as TagCategory }))}
-          >
- <SelectTrigger className="rounded-xl">
-              <SelectValue />
-            </SelectTrigger>
- <SelectContent className="rounded-xl">
-              {TAG_CATEGORIES.map(cat => (
-                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold ">Color</Label>
- <div className="flex flex-wrap gap-2 p-2 border rounded-xl">
-            {TAG_COLORS.map(color => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setFormData(p => ({ ...p, color }))}
- className="h-6 w-6 rounded-full transition-transform hover:scale-110 ring-offset-2"
-                style={{
-                  backgroundColor: color,
-                  outline: formData.color === color ? `2px solid ${color}` : 'none',
-                  outlineOffset: '2px',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
- <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl">
- <span className="text-[10px] font-semibold text-muted-foreground">Preview:</span>
-        <Badge
- className="text-white border-none font-bold text-xs"
-          style={{ backgroundColor: formData.color }}
-        >
-          {formData.name || 'Tag Name'}
-        </Badge>
-      </div>
-    </div>
-  );
 
   return (
     <div className="h-full overflow-y-auto">
@@ -479,6 +491,15 @@ function TagsClientInner() {
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                                      onClick={() => setAssigningTag(tag)}
+                                      title="Assign to Contacts"
+                                    >
+                                      <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
                                       onClick={() => openEdit(tag)}
                                     >
                                       <Edit className="h-4 w-4" />
@@ -565,7 +586,7 @@ function TagsClientInner() {
  <DialogTitle className="font-semibold tracking-tight">Create New Tag</DialogTitle>
             <DialogDescription>Add a new tag to organize your contacts.</DialogDescription>
           </DialogHeader>
-          <TagForm />
+          <TagForm formData={formData} setFormData={setFormData} />
           <DialogFooter>
  <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl font-bold">Cancel</Button>
  <Button onClick={handleCreate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
@@ -582,7 +603,7 @@ function TagsClientInner() {
  <DialogTitle className="font-semibold tracking-tight">Edit Tag</DialogTitle>
             <DialogDescription>Update tag properties.</DialogDescription>
           </DialogHeader>
-          <TagForm />
+          <TagForm formData={formData} setFormData={setFormData} />
           <DialogFooter>
  <Button variant="ghost" onClick={() => setEditingTag(null)} className="rounded-xl font-bold">Cancel</Button>
  <Button onClick={handleUpdate} disabled={isSubmitting || !formData.name.trim()} className="rounded-xl font-bold">
@@ -614,6 +635,13 @@ function TagsClientInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AssignContactsToTagDialog 
+        open={!!assigningTag} 
+        onOpenChange={(open) => !open && setAssigningTag(null)} 
+        tag={assigningTag} 
+        onComplete={() => invalidate()}
+      />
     </div>
   );
 }

@@ -57,6 +57,7 @@ const formSchema = z.object({
   thankYouTitle: z.string().optional(),
   thankYouDescription: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
+  logoMode: z.enum(['organization', 'custom', 'placeholder']).optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoThumbnailUrl: z.string().url().optional().or(z.literal('')),
@@ -190,6 +191,7 @@ export default function NewSurveyPage() {
             thankYouTitle: 'Thank You!',
             thankYouDescription: 'Your response has been recorded.',
             logoUrl: '',
+            logoMode: 'organization',
             bannerImageUrl: '',
             videoUrl: '',
             videoThumbnailUrl: '',
@@ -952,15 +954,6 @@ export default function NewSurveyPage() {
                             </div>
                         )}
  <AiChatEditor className="h-9" />
-                        <Button 
-                            type="submit" 
-                            disabled={isSaving} 
-                            onClick={form.handleSubmit(onSubmit)}
- className="rounded-xl font-semibold shadow-lg gap-2 px-6 h-10 text-[10px] active:scale-95 transition-all"
-                        >
- {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Initialize Blueprint
-                        </Button>
                     </div>
                 </header>
 

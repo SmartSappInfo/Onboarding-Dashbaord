@@ -257,7 +257,7 @@ export default function EntityDetailPage() {
                                 <span className="uppercase text-[10px] tracking-wider font-bold">{entityData.entityType}</span>
                             </div>
                             <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <TagSelector contactId={entityId} contactType="school" currentTagIds={weData.workspaceTags || []} />
+                                <TagSelector contactId={workspaceEntityId} contactType="workspace_entity" currentTagIds={weData.workspaceTags || []} />
                             </div>
                         </div>
                     </div>
