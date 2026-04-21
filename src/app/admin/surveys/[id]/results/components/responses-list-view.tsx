@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Survey, SurveyResponse, SurveyQuestion, ResolvedContact } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -143,13 +143,36 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     const [password, setPassword] = React.useState('');
     const [authError, setAuthError] = React.useState<string | null>(null);
     const [attributionFilter, setAttributionFilter] = React.useState<string>('all');
+    const [deepLinkFilterType, setDeepLinkFilterType] = React.useState<string | null>(null);
+
+    // Deep-link filter from Field Team tab
+    const searchParams = useSearchParams();
+    React.useEffect(() => {
+        const filterUser = searchParams.get('filterUser');
+        const filterType = searchParams.get('filterType');
+        if (filterUser) {
+            setAttributionFilter(filterUser);
+            setDeepLinkFilterType(filterType);
+        }
+    }, [searchParams]);
 
     const filteredResponses = React.useMemo(() => {
         if (!responses) return [];
-        if (attributionFilter === 'all') return responses;
-        if (attributionFilter === 'anonymous') return responses.filter(r => !r.assignedUserId);
-        return responses.filter(r => r.assignedUserId === attributionFilter);
-    }, [responses, attributionFilter]);
+        let result = responses;
+        // Attribution filter
+        if (attributionFilter !== 'all') {
+            if (attributionFilter === 'anonymous') {
+                result = result.filter(r => !r.assignedUserId);
+            } else {
+                result = result.filter(r => r.assignedUserId === attributionFilter);
+            }
+        }
+        // Deep-link type filter
+        if (deepLinkFilterType === 'leads') {
+            result = result.filter(r => r.entityId);
+        }
+        return result;
+    }, [responses, attributionFilter, deepLinkFilterType]);
 
     // Get unique assigned users for filtering
     const attributedUsers = React.useMemo(() => {
@@ -267,8 +290,30 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="text-[10px] font-bold text-muted-foreground italic">
-                    Showing {filteredResponses.length} of {responses?.length || 0} responses
+                <div className="flex items-center gap-3">
+                    {(attributionFilter !== 'all' || deepLinkFilterType) && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAttributionFilter('all');
+                                setDeepLinkFilterType(null);
+                                // Clear URL params
+                                router.replace(`/admin/surveys/${survey.id}/results?view=responses`, { scroll: false });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[10px] font-black hover:bg-primary/20 transition-colors"
+                        >
+                            <X className="h-3 w-3" />
+                            Clear Filter
+                            {deepLinkFilterType && (
+                                <Badge variant="outline" className="ml-1 text-[8px] px-1.5 py-0 border-primary/30">
+                                    {deepLinkFilterType}
+                                </Badge>
+                            )}
+                        </button>
+                    )}
+                    <div className="text-[10px] font-bold text-muted-foreground italic">
+                        Showing {filteredResponses.length} of {responses?.length || 0} responses
+                    </div>
                 </div>
             </div>
 

@@ -114,6 +114,7 @@ const formSchema = z.object({
   }).default({ email: false, sms: false }),
   autoTags: z.array(z.string()).default([]),
   autoAutomations: z.array(z.string()).default([]),
+  allowCrossVisibility: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -359,54 +360,6 @@ export default function EditSurveyPage() {
     return (
         <FormProvider {...form}>
  <div className="h-full flex flex-col">
- <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
- <div className="flex items-center gap-4 text-left">
- <div className="p-2 bg-primary/10 rounded-xl">
- <SmartSappIcon className="h-6 w-6 text-primary" />
-                        </div>
-                        <div>
- <h1 className="font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[200px]">
-                                {survey?.internalName || 'Survey Studio'}
-                            </h1>
- <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-[8px] h-4 font-semibold uppercase border-primary/20 text-primary bg-primary/5">Studio</Badge>
- <span className="text-[10px] text-muted-foreground font-medium italic">Drafting...</span>
-                            </div>
-                        </div>
-                    </div>
-
- <div className="flex items-center gap-3">
-                        {step === 2 && (
- <div className="flex items-center gap-1 mr-4 bg-muted/30 p-1 rounded-xl border">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleUndo} disabled={!canUndo}><Undo className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Undo</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleRedo} disabled={!canRedo}><Redo className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Redo</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
-                        )}
- <AiChatEditor className="h-9" />
-                        <Button 
-                            type="submit" 
-                            disabled={isSaving} 
-                            onClick={form.handleSubmit(onSubmit)}
- className="rounded-xl font-semibold shadow-lg gap-2 px-6 h-10 text-[10px] active:scale-95 transition-all"
-                        >
- {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Commit Changes
-                        </Button>
-                    </div>
-                </header>
-
  <div className="flex-1 overflow-y-auto ">
  <div className="">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />

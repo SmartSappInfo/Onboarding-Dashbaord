@@ -983,6 +983,7 @@ export interface Survey {
   };
   autoTags?: string[];
   autoAutomations?: string[];
+  allowCrossVisibility?: boolean; // When true, assigned users can see all submissions (default: false = own only)
 }
 
 export interface SurveyElement {
@@ -1110,6 +1111,8 @@ export interface SurveySession {
   maxStepReached: number;
   isSubmitted: boolean;
   updatedAt: string;
+  assignedUserId?: string; // The representative who shared the link (from ?ref= param)
+  startedAt?: string; // First visit timestamp for completion time calculation
 }
 
 export interface PdfSession {

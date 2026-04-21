@@ -5,7 +5,9 @@ import { useFormContext, Controller } from 'react-hook-form';
 import { 
     Settings, Asterisk, Zap, Trophy, ShieldCheck, 
     ChevronRight, Info, AlertCircle, Trash2, Copy, 
-    EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, Layers
+    EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, 
+    Layers, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine,
+    Bold, Italic, Underline
 } from 'lucide-react';
 import { 
     Card, CardContent, CardHeader, CardTitle, CardDescription 
@@ -19,6 +21,7 @@ import { cn } from '@/lib/utils';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface BlockSettingsSidebarProps {
@@ -60,7 +63,122 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                 <h3 className="font-black text-xl tracking-tight leading-tight">Block Settings</h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar pb-32">
+            <div className="flex-1 overflow-y-auto no-scrollbar">
+                <div className="p-6 space-y-8 pb-32">
+                    {/* 0. Quick Actions */}
+                    <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Quick Actions</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-9 gap-2 rounded-lg font-bold text-xs"
+                                onClick={() => {
+                                    const newElem = { ...element, id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
+                                    const newElements = [...elements];
+                                    newElements.splice(activeIndex + 1, 0, newElem);
+                                    setValue('elements', newElements, { shouldDirty: true });
+                                }}
+                            >
+                                <Copy className="h-3.5 w-3.5" /> Clone
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-9 gap-2 rounded-lg font-bold text-xs text-destructive hover:text-destructive"
+                                onClick={() => {
+                                    const newElements = elements.filter((_:any, i:number) => i !== activeIndex);
+                                    setValue('elements', newElements, { shouldDirty: true });
+                                }}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-9 w-full rounded-lg" disabled={activeIndex === 0} onClick={() => {
+                                            const newElements = [...elements];
+                                            const [moved] = newElements.splice(activeIndex, 1);
+                                            newElements.splice(activeIndex - 1, 0, moved);
+                                            setValue('elements', newElements, { shouldDirty: true });
+                                        }}>
+                                            <ArrowUp className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move Up</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-9 w-full rounded-lg" disabled={activeIndex === elements.length - 1} onClick={() => {
+                                            const newElements = [...elements];
+                                            const [moved] = newElements.splice(activeIndex, 1);
+                                            newElements.splice(activeIndex + 1, 0, moved);
+                                            setValue('elements', newElements, { shouldDirty: true });
+                                        }}>
+                                            <ArrowDown className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move Down</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-9 w-full rounded-lg" onClick={() => {
+                                            const newElements = [...elements];
+                                            const item = newElements[activeIndex];
+                                            newElements.splice(activeIndex, 1);
+                                            
+                                            if (item.type === 'section') {
+                                                newElements.unshift(item);
+                                            } else {
+                                                let targetIdx = 0;
+                                                for (let i = activeIndex - 1; i >= 0; i--) {
+                                                    if (newElements[i].type === 'section') {
+                                                        targetIdx = i + 1;
+                                                        break;
+                                                    }
+                                                }
+                                                newElements.splice(targetIdx, 0, item);
+                                            }
+                                            setValue('elements', newElements, { shouldDirty: true });
+                                        }}>
+                                            <ArrowUpToLine className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move to Top (Section)</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-9 w-full rounded-lg" onClick={() => {
+                                            const newElements = [...elements];
+                                            const item = newElements[activeIndex];
+                                            newElements.splice(activeIndex, 1);
+                                            
+                                            if (item.type === 'section') {
+                                                newElements.push(item);
+                                            } else {
+                                                let targetIdx = newElements.length;
+                                                for (let i = activeIndex; i < newElements.length; i++) {
+                                                    if (newElements[i].type === 'section') {
+                                                        targetIdx = i;
+                                                        break;
+                                                    }
+                                                }
+                                                newElements.splice(targetIdx, 0, item);
+                                            }
+                                            setValue('elements', newElements, { shouldDirty: true });
+                                        }}>
+                                            <ArrowDownToLine className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move to Bottom (Section)</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
+
+                    <Separator />
                 {/* 1. Core Visibility & Status */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between group">
@@ -243,53 +361,113 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                     </div>
                 )}
 
-                {/* 4. Common Styling */}
-                {(isQuestion(element) || (isLayout(element) && ['heading', 'description', 'image', 'video'].includes(element.type))) && (
+                {/* 4. Appearance & Formatting */}
+                <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Appearance</Label>
+                    
                     <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Text Alignment</Label>
-                        <Controller
-                            control={control}
-                            name={`elements.${activeIndex}.style.textAlign`}
-                            defaultValue="left"
-                            render={({ field }) => (
-                                <div className="flex p-1 bg-muted/20 rounded-xl border border-border/50">
-                                    <Button 
-                                        size="icon" 
-                                        variant={field.value === 'left' ? 'secondary' : 'ghost'} 
-                                        className="flex-1 rounded-lg"
-                                        onClick={() => field.onChange('left')}
-                                    >
-                                        <AlignLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant={field.value === 'center' ? 'secondary' : 'ghost'} 
-                                        className="flex-1 rounded-lg"
-                                        onClick={() => field.onChange('center')}
-                                    >
-                                        <AlignCenter className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant={field.value === 'right' ? 'secondary' : 'ghost'} 
-                                        className="flex-1 rounded-lg"
-                                        onClick={() => field.onChange('right')}
-                                    >
-                                        <AlignRight className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        size="icon" 
-                                        variant={field.value === 'justify' ? 'secondary' : 'ghost'} 
-                                        className="flex-1 rounded-lg"
-                                        onClick={() => field.onChange('justify')}
-                                    >
-                                        <AlignJustify className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            )}
-                        />
+                        <div className="flex flex-col gap-2">
+                             <span className="text-[10px] font-bold text-muted-foreground/60">Rich Text Formatting</span>
+                             <div className="flex p-1 bg-muted/20 rounded-xl border border-border/50 gap-1">
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="flex-1 h-8 rounded-lg"
+                                    onClick={() => document.execCommand('bold', false)}
+                                >
+                                    <Bold className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="flex-1 h-8 rounded-lg"
+                                    onClick={() => document.execCommand('italic', false)}
+                                >
+                                    <Italic className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="flex-1 h-8 rounded-lg"
+                                    onClick={() => document.execCommand('underline', false)}
+                                >
+                                    <Underline className="h-3.5 w-3.5" />
+                                </Button>
+                             </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <span className="text-[10px] font-bold text-muted-foreground/60">Text Alignment</span>
+                            <Controller
+                                control={control}
+                                name={`elements.${activeIndex}.style.textAlign`}
+                                defaultValue="left"
+                                render={({ field }) => (
+                                    <div className="flex p-1 bg-muted/20 rounded-xl border border-border/50 gap-1">
+                                        <Button 
+                                            size="icon" 
+                                            variant={field.value === 'left' ? 'secondary' : 'ghost'} 
+                                            className="flex-1 h-8 rounded-lg"
+                                            onClick={() => field.onChange('left')}
+                                        >
+                                            <AlignLeft className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                            size="icon" 
+                                            variant={field.value === 'center' ? 'secondary' : 'ghost'} 
+                                            className="flex-1 h-8 rounded-lg"
+                                            onClick={() => field.onChange('center')}
+                                        >
+                                            <AlignCenter className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                            size="icon" 
+                                            variant={field.value === 'right' ? 'secondary' : 'ghost'} 
+                                            className="flex-1 h-8 rounded-lg"
+                                            onClick={() => field.onChange('right')}
+                                        >
+                                            <AlignRight className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                            size="icon" 
+                                            variant={field.value === 'justify' ? 'secondary' : 'ghost'} 
+                                            className="flex-1 h-8 rounded-lg"
+                                            onClick={() => field.onChange('justify')}
+                                        >
+                                            <AlignJustify className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                )}
+                            />
+                        </div>
+
+                        {element.type === 'heading' && (
+                            <div className="flex flex-col gap-2">
+                                <span className="text-[10px] font-bold text-muted-foreground/60">Heading Size</span>
+                                <Controller
+                                    control={control}
+                                    name={`elements.${activeIndex}.variant`}
+                                    defaultValue="h2"
+                                    render={({ field }) => (
+                                        <div className="flex p-1 bg-muted/20 rounded-xl border border-border/50 gap-1">
+                                            {['h1', 'h2', 'h3'].map((h) => (
+                                                <Button 
+                                                    key={h}
+                                                    size="sm" 
+                                                    variant={field.value === h ? 'secondary' : 'ghost'} 
+                                                    className="flex-1 h-8 rounded-lg text-[10px] font-black"
+                                                    onClick={() => field.onChange(h)}
+                                                >
+                                                    {h.toUpperCase()}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
 
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="scoring" className="border-none">
@@ -396,5 +574,6 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                 </Accordion>
             </div>
         </div>
+    </div>
     );
 }

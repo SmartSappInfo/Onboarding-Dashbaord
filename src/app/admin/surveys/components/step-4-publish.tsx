@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,8 +55,50 @@ export default function Step4Publish() {
         return refId ? `${base}?ref=${refId}` : base;
     };
 
+    const selectedAutomations = watch('autoAutomations') || [];
+
+    const automationsQuery = useMemoFirebase(() => {
+        if (!firestore || selectedAutomations.length === 0) return null;
+        return query(collection(firestore, 'automations'), where('__name__', 'in', selectedAutomations));
+    }, [firestore, selectedAutomations.length]);
+    const { data: automations } = useCollection<any>(automationsQuery);
+
+    const draftAutomations = React.useMemo(() => {
+        return (automations || []).filter(a => a.status === 'draft' || !a.isActive);
+    }, [automations]);
+
     return (
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {draftAutomations.length > 0 && (
+                <div className="p-6 rounded-[2rem] bg-amber-500/10 border-2 border-dashed border-amber-500/20 flex flex-col md:flex-row items-center gap-6 text-left group">
+                    <div className="p-4 bg-amber-500 text-white rounded-2xl shadow-xl shadow-amber-500/20 group-hover:scale-110 transition-transform">
+                        <Zap className="h-6 w-6 animate-pulse" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                        <h4 className="text-sm font-black uppercase tracking-tight text-amber-700">Incomplete Workflows Detected</h4>
+                        <p className="text-[10px] font-bold text-amber-600/80 leading-relaxed italic">
+                            You've selected {draftAutomations.length} automation(s) that are still in "Draft" mode. 
+                            These will <span className="font-black underline italic uppercase">not execute</span> until you finalize their node logic.
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-3 text-[10px]">
+                            {draftAutomations.map(a => (
+                                <Badge key={a.id} variant="secondary" className="bg-amber-500/20 text-amber-700 font-bold border-none px-2 py-0.5">
+                                    {a.name}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                    <Button 
+                        variant="secondary" 
+                        className="rounded-2xl font-black text-[10px] uppercase tracking-widest bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 h-10 px-6 shrink-0"
+                        onClick={() => window.open('/admin/automations', '_blank')}
+                    >
+                        Complete Flow Builder
+                    </Button>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
  <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
  <CardHeader className="bg-muted/30 border-b pb-6 px-6">
  <div className="flex items-center gap-3">
@@ -215,6 +258,7 @@ export default function Step4Publish() {
                 )}
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
                 <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
+            </div>
             </div>
         </div>
     );

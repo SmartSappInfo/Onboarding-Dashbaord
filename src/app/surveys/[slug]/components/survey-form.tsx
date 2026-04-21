@@ -310,7 +310,7 @@ const ElementRenderer = ({
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
-        const isTextInput = ['text', 'long-text', 'email', 'phone', 'number', 'link'].includes(question.type);
+        const isTextInput = ['text', 'email', 'phone', 'number', 'link'].includes(question.type);
         
         const handleValueChange = (val: any, onChange: (v: any) => void) => {
             onChange(val);
@@ -323,7 +323,7 @@ const ElementRenderer = ({
         return (
             <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
                 <div className="space-y-2">
-                    <Label className="text-2xl font-black block leading-tight text-foreground tracking-tight">
+                    <Label className="text-xl font-bold block leading-tight text-foreground tracking-tight">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1.5">*</span>}
                     </Label>
@@ -371,17 +371,17 @@ const ElementRenderer = ({
                             render={({ field }) => (
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                        field.value === 'Yes' ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
-                                        errors[question.id] && "border-destructive bg-destructive/5"
+                                        "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                        field.value === 'Yes' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                        errors[question.id] && "bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                        field.value === 'No' ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
-                                        errors[question.id] && "border-destructive bg-destructive/5"
+                                        "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                        field.value === 'No' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                        errors[question.id] && "bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
                                         No
@@ -398,9 +398,9 @@ const ElementRenderer = ({
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                            field.value === opt ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
-                                            errors[question.id] && "border-destructive bg-destructive/5"
+                                            "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                            field.value === opt ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            errors[question.id] && "bg-destructive/5"
                                         )}>
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
                                             <span className="flex-1 leading-tight">{opt}</span>
@@ -421,9 +421,9 @@ const ElementRenderer = ({
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                                isChecked ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
-                                                errors[question.id] && "border-destructive bg-destructive/5"
+                                                "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                                isChecked ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                                errors[question.id] && "bg-destructive/5"
                                             )}>
                                                 <Checkbox
                                                     id={`${question.id}-${opt}`}
@@ -448,9 +448,9 @@ const ElementRenderer = ({
                                     })}
                                     {question.allowOther && (
                                         <div className={cn(
-                                            "flex items-center gap-4 rounded-xl border-2 py-2.5 px-4 transition-all active:scale-[0.98]",
-                                            (field.value?.other || '') ? "border-primary bg-primary/20 ring-1 ring-primary/20" : "border-slate-200 bg-white",
-                                            errors[question.id] && "border-destructive bg-destructive/5"
+                                            "flex items-center gap-4 rounded-xl py-2.5 px-4 transition-all active:scale-[0.98]",
+                                            (field.value?.other || '') ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            errors[question.id] && "bg-destructive/5"
                                         )}>
                                             <Checkbox
                                                 id={`${question.id}-other-checkbox`}
@@ -652,7 +652,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pag
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
-        <div className="w-full mb-1 pt-6 pb-1 no-scrollbar overflow-x-auto">
+        <div className="w-full mb-0 pt-2 pb-0 no-scrollbar overflow-x-auto">
             <div className="w-full flex items-start justify-center gap-1 sm:gap-4 px-2 min-w-fit">
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
@@ -785,7 +785,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                 surveyId: survey.id,
                 maxStepReached: stepIndex,
                 updatedAt: new Date().toISOString(),
-                isSubmitted: false
+                isSubmitted: false,
+                assignedUserId: assignedUserId || null,
+                startedAt: new Date().toISOString(),
             }, { merge: true }).catch(err => console.warn("Analytics pulse failed:", err));
         }
     }, [sessionId, firestore, survey.id, isPreview]);
@@ -1328,7 +1330,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                     ) : (
                         <>
                             {pageSection && (
-                                <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                                     {pageSection.description && (
                                         <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
@@ -1338,9 +1340,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
                             <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} />
                             
-                            <Card className="border-t-8 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
-                                <CardContent className="p-6 sm:p-10 space-y-10 sm:space-y-12 text-left">
-                                    <div className="space-y-10 sm:space-y-12">
+                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
+                                <CardContent className="p-6 sm:p-8 space-y-6 sm:space-y-8 text-left">
+                                    <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {
                                             if (el.id === pageSection?.id) return null;
                                             return (

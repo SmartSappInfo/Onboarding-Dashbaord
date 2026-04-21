@@ -116,9 +116,9 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
         return (
             <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
                  <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
-                 <main className="flex-grow flex items-center justify-center p-4 relative z-10">
-                    <div className="max-w-4xl w-full mx-auto text-center">
-                        <div className="flex justify-center mb-8">
+                 <main className="flex-grow flex items-center justify-center p-4 relative z-10 py-12">
+                    <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
+                        <div className="flex justify-center mb-6">
                           {displayLogoUrl ? (
                               <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                   <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
@@ -156,10 +156,10 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
     return (
         <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
-            <main className="flex-grow relative z-10">
-                <div className="max-w-4xl mx-auto py-5 sm:py-10 px-4">
+            <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
+                <div className="max-w-4xl w-full mx-auto px-4">
                     {/* Persistent Logo Header */}
-                    <div className="flex justify-center mb-6 sm:mb-8">
+                    <div className="flex justify-center mb-4 sm:mb-6">
                         {displayLogoUrl ? (
                             <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                 <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
@@ -185,8 +185,8 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
                                             />
                                         </div>
                                     )}
-                                    <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-6 text-foreground px-2 leading-tight">{survey.title}</h1>
-                                    <div className="text-lg sm:text-xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground px-2 leading-tight uppercase">{survey.title}</h1>
+                                    <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>

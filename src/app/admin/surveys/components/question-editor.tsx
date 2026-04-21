@@ -39,6 +39,12 @@ import { CSS } from '@dnd-kit/utilities';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+const stripHtml = (html: string) => {
+    if (typeof window === 'undefined') return html;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || "";
+};
+
 /**
  * A simple Rich Text Editor using contenteditable that integrates with react-hook-form.
  */
@@ -864,7 +870,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
 }) {
   const { watch, control, setValue, getValues, formState: { errors } } = useFormContext();
   const element = watch(`elements.${index}`);
-  const isActive = activeBlockId === id;
+  const isActive = activeBlockId === element?.id;
   const isCollapsed = isAccordion && !isActive;
   const hasErrors = !!(errors.elements as any)?.[index];
 
@@ -885,7 +891,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const ElementIcon = getElementIcon(element.type);
   
   return (
-    <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(id)}>
+    <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(element?.id)}>
         <div
             className={cn(
                 "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-slate-900 border border-slate-800 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-2xl",
@@ -899,102 +905,47 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         <Card 
             id={element.id}
             className={cn(
-                "border-2 transition-all duration-500 overflow-hidden rounded-[2.5rem]",
-                isActive ? "ring-4 ring-primary/10 shadow-2xl border-primary" : "border-slate-200/60 shadow-sm hover:border-slate-300",
+                "border transition-all duration-500 overflow-hidden rounded-[2rem]",
+                isActive ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-slate-200/60 shadow-sm hover:border-slate-300",
                 hasErrors ? "border-destructive shadow-lg" : "",
                 element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-white",
                 isCollapsed && "hover:translate-x-1"
             )}
         >
             <CardHeader className={cn(
-                "py-6 px-8 transition-colors border-b border-slate-50",
-                isActive ? "bg-primary/[0.02]" : "bg-transparent",
-                isCollapsed && "cursor-pointer py-4"
+                "py-3 px-6 transition-colors border-b border-slate-50",
+                isActive ? "bg-primary/[0.01]" : "bg-transparent",
+                isCollapsed && "cursor-pointer py-3"
             )}>
                 <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                         <div className={cn(
-                            "flex items-center justify-center rounded-[1.25rem] border shadow-sm transition-all duration-300",
-                            isActive ? "bg-primary text-white scale-110 shadow-primary/20" : "bg-slate-50 border-slate-100 text-slate-400",
-                            isCollapsed ? "h-10 w-10" : "h-14 w-14"
+                            "flex items-center justify-center rounded-xl border shadow-xs transition-all duration-300",
+                            isActive ? "bg-primary text-white" : "bg-slate-50 border-slate-100 text-slate-400",
+                            "h-8 w-8"
                         )}>
-                            <ElementIcon className={cn("shrink-0 transition-all", isCollapsed ? "h-5 w-5" : "h-7 w-7")} />
+                            <ElementIcon className={cn("shrink-0 transition-all h-4 w-4")} />
                         </div>
-                        <div className="flex flex-col gap-0.5">
-                            <span className={cn("text-[10px] font-black uppercase tracking-[0.2em] transition-colors", isActive ? "text-primary" : "text-slate-400")}>
+                        <div className="flex flex-col gap-0">
+                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isActive ? "text-primary" : "text-slate-400")}>
                                 {isElementQuestion ? `Question ${questionNumber}`
                                 : isElementSection ? `Section ${sectionNumber}`
                                 : isElementLayout ? `${element.type} Block`
                                 : 'Logic Node'}
                             </span>
-                            <div className="flex items-center gap-3">
-                                <span className={cn(
-                                    "font-black tracking-tight truncate transition-all duration-300",
-                                    isCollapsed ? "text-lg text-slate-600" : "text-xl text-slate-900",
-                                    isActive && "text-slate-950"
-                                )}>
-                                    {(element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block')}
-                                </span>
-                                {element.hidden && <Badge variant="secondary" className="h-4 text-[7px] font-black uppercase tracking-tighter px-1.5 opacity-60">Hidden</Badge>}
-                                {element.isRequired && <Asterisk className="h-3 w-3 text-destructive animate-pulse" />}
-                            </div>
+                            {isCollapsed && (
+                                <div className="flex items-center gap-2 max-w-md">
+                                    <span className={cn(
+                                        "font-bold tracking-tight truncate transition-all duration-300 text-sm text-slate-600",
+                                        isActive && "text-slate-800"
+                                    )}>
+                                        {stripHtml((element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block'))}
+                                    </span>
+                                    {element.hidden && <Badge variant="secondary" className="h-3 text-[6px] font-black uppercase tracking-tighter px-1 opacity-50">Hidden</Badge>}
+                                    {element.isRequired && <Asterisk className="h-2 w-2 text-destructive" />}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <div className={cn(
-                        "flex items-center gap-2 z-10 transition-all",
-                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}>
-                        <TooltipProvider>
-                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-inner">
-                                {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && !isCollapsed && (
-                                    <>
-                                        <FormattingToolbar 
-                                            fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
-                                            alignValue={element.style?.textAlign}
-                                            onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
-                                            minimal
-                                        />
-                                        {element.type === 'heading' && (
-                                            <>
-                                                <Separator orientation="vertical" className="h-4 bg-slate-200" />
-                                                <Select 
-                                                    value={element.variant || 'h2'} 
-                                                    onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
-                                                >
-                                                    <SelectTrigger className="w-10 h-8 text-[10px] font-black border-none bg-transparent hover:bg-slate-200/50 shadow-none p-0 flex justify-center">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-slate-200 shadow-xl font-black">
-                                                        <SelectItem value="h1">H1</SelectItem>
-                                                        <SelectItem value="h2">H2</SelectItem>
-                                                        <SelectItem value="h3">H3</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </>
-                                        )}
-                                        <Separator orientation="vertical" className="h-4 bg-slate-200" />
-                                    </>
-                                )}
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-400 hover:text-primary hover:bg-white hover:shadow-sm transition-all" onClick={(e) => { e.stopPropagation(); /* duplicateElement(index); */ }}>
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Duplicate</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-slate-400 hover:text-destructive hover:bg-white hover:shadow-sm transition-all" onClick={(e) => { e.stopPropagation(); remove(index); }}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Delete</TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </TooltipProvider>
                     </div>
                 </div>
             </CardHeader>
@@ -1002,7 +953,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                 "transition-all duration-500 ease-in-out origin-top",
                 isCollapsed ? "h-0 opacity-0 pointer-events-none scale-95" : "h-auto opacity-100 scale-100"
             )}>
-                <CardContent className="p-8 sm:p-12 space-y-10">
+                <CardContent className="p-6 sm:p-10 space-y-8">
                     {element.type !== 'logic' ? (
                         <div className="space-y-10">
                             {isElementQuestion && (
@@ -1017,7 +968,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="The name of your question..." 
                                                     textAlign={element.style?.textAlign}
-                                                    className="text-2xl sm:text-3xl font-black min-h-[1.2em] focus:ring-0 px-0 transition-all text-slate-900 selection:bg-primary/20"
+                                                    className="text-xl sm:text-2xl font-bold min-h-[1.2em] focus:ring-0 px-0 transition-all text-slate-900 selection:bg-primary/20"
                                                 />
                                             )} 
                                         />
@@ -1030,7 +981,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="Add a subtle instruction or hint here..." 
                                                     textAlign={element.style?.textAlign}
-                                                    className="text-base text-slate-400 font-medium min-h-[1em] whitespace-pre-wrap px-0 opacity-70"
+                                                    className="text-sm text-slate-400 font-medium min-h-[1em] whitespace-pre-wrap px-0 opacity-70"
                                                 />
                                             )} 
                                         />
@@ -1038,33 +989,33 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
 
                                     <div className="space-y-6 pt-4 border-t border-slate-50">
                                         {element.type === 'text' && (
-                                            <div className="h-14 bg-slate-50/80 border-2 border-slate-100 rounded-2xl flex items-center px-6 italic text-slate-400 font-medium">Short Text Response</div>
+                                            <div className="h-12 bg-slate-50/80 border border-slate-100 rounded-xl flex items-center px-6 italic text-slate-400 text-sm font-medium">Short Text Response</div>
                                         )}
                                         {element.type === 'long-text' && (
-                                            <div className="min-h-[120px] bg-slate-50/80 border-2 border-slate-100 rounded-2xl p-6 italic text-slate-400 font-medium">Paragraph Response</div>
+                                            <div className="min-h-[100px] bg-slate-50/80 border border-slate-100 rounded-xl p-6 italic text-slate-400 text-sm font-medium">Paragraph Response</div>
                                         )}
                                         {element.type === 'email' && (
-                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
-                                                <Mail className="h-5 w-5 text-primary/40" />
-                                                <span className="text-slate-500 font-bold italic">Email Address Validation Active</span>
+                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
+                                                <Mail className="h-4 w-4 text-primary/40" />
+                                                <span className="text-slate-500 text-sm font-bold italic">Email Address Validation Active</span>
                                             </div>
                                         )}
                                         {element.type === 'phone' && (
-                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
-                                                <Phone className="h-5 w-5 text-primary/40" />
-                                                <span className="text-slate-500 font-bold italic">Phone Number Validation Active</span>
+                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
+                                                <Phone className="h-4 w-4 text-primary/40" />
+                                                <span className="text-slate-500 text-sm font-bold italic">Phone Number Validation Active</span>
                                             </div>
                                         )}
                                         {element.type === 'number' && (
-                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
-                                                <Hash className="h-5 w-5 text-primary/40" />
-                                                <span className="text-slate-500 font-bold italic">Numeric Input Validation Active</span>
+                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
+                                                <Hash className="h-4 w-4 text-primary/40" />
+                                                <span className="text-slate-500 text-sm font-bold italic">Numeric Input Validation Active</span>
                                             </div>
                                         )}
                                         {element.type === 'link' && (
-                                            <div className="h-14 bg-primary/[0.03] border-2 border-primary/5 rounded-2xl flex items-center px-6 gap-3">
-                                                <LinkIcon className="h-5 w-5 text-primary/40" />
-                                                <span className="text-slate-500 font-bold italic">URL Link Validation Active</span>
+                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
+                                                <LinkIcon className="h-4 w-4 text-primary/40" />
+                                                <span className="text-slate-500 text-sm font-bold italic">URL Link Validation Active</span>
                                             </div>
                                         )}
                                         {(element.type === 'multiple-choice' || element.type === 'dropdown' || element.type === 'checkboxes') && (
@@ -1074,13 +1025,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         )}
                                         {element.type === 'yes-no' && (
                                             <div className="flex gap-4">
-                                                <div className="flex-1 h-20 bg-slate-50 border-2 border-slate-100 rounded-3xl flex items-center justify-center gap-3 opacity-40">
-                                                    <div className="h-5 w-5 rounded-full border-2 border-slate-300" />
-                                                    <span className="font-black text-slate-400">YES</span>
+                                                <div className="flex-1 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center gap-3 opacity-40">
+                                                    <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
+                                                    <span className="font-bold text-slate-400 text-xs">YES</span>
                                                 </div>
-                                                <div className="flex-1 h-20 bg-slate-50 border-2 border-slate-100 rounded-3xl flex items-center justify-center gap-3 opacity-40">
-                                                    <div className="h-5 w-5 rounded-full border-2 border-slate-300" />
-                                                    <span className="font-black text-slate-400">NO</span>
+                                                <div className="flex-1 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center gap-3 opacity-40">
+                                                    <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
+                                                    <span className="font-bold text-slate-400 text-xs">NO</span>
                                                 </div>
                                             </div>
                                         )}
@@ -1089,7 +1040,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                             
                             {element.type === 'section' && (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     <Controller
                                         name={`elements.${index}.title`}
                                         control={control}
@@ -1099,7 +1050,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 onChange={field.onChange} 
                                                 placeholder="Section Heading..." 
                                                 textAlign={element.style?.textAlign}
-                                                className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tighter leading-none" 
+                                                className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight" 
                                             />
                                         )}
                                     />
@@ -1112,7 +1063,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 onChange={field.onChange} 
                                                 placeholder="Brief overview of this section..." 
                                                 textAlign={element.style?.textAlign}
-                                                className="text-lg sm:text-xl text-slate-400 font-medium leading-relaxed opacity-80" 
+                                                className="text-base sm:text-lg text-slate-400 font-medium leading-relaxed opacity-80" 
                                             />
                                         )}
                                     />
@@ -1130,8 +1081,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             placeholder="Display Heading" 
                                             textAlign={element.style?.textAlign}
                                             className={cn(
-                                                "font-black leading-tight tracking-tight text-slate-900",
-                                                element.variant === 'h1' ? "text-4xl sm:text-5xl" : element.variant === 'h3' ? "text-xl sm:text-2xl" : "text-3xl sm:text-4xl"
+                                                "font-bold leading-tight tracking-tight text-slate-900",
+                                                element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
                                     )} 
@@ -1147,7 +1098,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             onChange={field.onChange} 
                                             placeholder="Informative text for your users..." 
                                             textAlign={element.style?.textAlign}
-                                            className="text-lg sm:text-xl leading-relaxed text-slate-500 font-medium min-h-[1.5em]" 
+                                            className="text-base sm:text-lg leading-relaxed text-slate-500 font-medium min-h-[1.5em]" 
                                         />
                                     )} 
                                 />

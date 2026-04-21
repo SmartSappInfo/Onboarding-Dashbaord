@@ -13,7 +13,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
-import SurveyPreviewButton from './survey-preview-button';
+import SurveyForm from '../../../surveys/[slug]/components/survey-form';
 import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -46,6 +46,7 @@ export default function SurveyFormBuilder() {
     const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
     const [isAccordion, setIsAccordion] = React.useState(true);
     const [activeBlockId, setActiveBlockId] = React.useState<string | null>(null);
+    const [isPreviewMode, setIsPreviewMode] = React.useState(false);
 
     const elements = watch('elements') || [];
     const sections = elements.filter((el: any) => el.type === 'section');
@@ -175,9 +176,9 @@ export default function SurveyFormBuilder() {
 
     return (
         <div className="relative h-full">
-            <div className="flex h-[calc(100vh-10rem)] gap-0 overflow-hidden bg-background">
-                {/* 1. Left Toolbar - Minimized & Dark/Premium */}
-                <div className="w-16 flex flex-col items-center py-6 border-r border-border/50 bg-slate-950 text-slate-400 shrink-0 select-none">
+            <div className="flex h-[calc(100vh-8rem)] gap-0 overflow-hidden bg-background">
+                {/* 1. Left Toolbar - Minimized & Premium */}
+                <div className="w-16 flex flex-col items-center py-6 border-r border-border bg-card text-muted-foreground shrink-0 select-none">
                     <TooltipProvider>
                         <div className="flex flex-col gap-6 items-center">
                             <Tooltip>
@@ -195,7 +196,7 @@ export default function SurveyFormBuilder() {
                                 <TooltipContent side="right">Cloud Sync Status</TooltipContent>
                             </Tooltip>
 
-                            <Separator className="w-8 bg-slate-800" />
+                            <Separator className="w-8" />
 
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -241,7 +242,7 @@ export default function SurveyFormBuilder() {
                                 <TooltipContent side="right">Strict Section Validation</TooltipContent>
                             </Tooltip>
 
-                            <Separator className="w-8 bg-slate-800/50" />
+                            <Separator className="w-8" />
 
                             <div className="flex flex-col gap-3">
                                 <Tooltip>
@@ -275,20 +276,46 @@ export default function SurveyFormBuilder() {
                                 </Tooltip>
                             </div>
 
-                            <Separator className="w-8 bg-slate-800/50" />
+                            <Separator className="w-8" />
 
-                            <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 text-primary hover:bg-primary/20 hover:text-primary rounded-xl">
+                            <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className={cn("h-10 w-10 rounded-xl transition-all", isPreviewMode ? "bg-primary text-white shadow-lg" : "text-primary hover:bg-primary/20 hover:text-primary")}
+                                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                            >
                                 <Eye className="h-5 w-5" />
-                            </SurveyPreviewButton>
+                            </Button>
                         </div>
                     </TooltipProvider>
                 </div>
 
-                {/* 2. Middle Canvas - The Question Editor */}
-                <div className="flex-1 relative overflow-hidden bg-slate-50/50 flex flex-col">
+                {/* 2. Middle Canvas - The Question Editor or Preview */}
+                <div className="flex-1 relative overflow-hidden bg-muted/20 flex flex-col">
                     <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth p-6 md:p-12 lg:p-20">
                         <div className="max-w-3xl mx-auto space-y-16 pb-96">
-                            {fields.length > 0 ? (
+                            {isPreviewMode ? (
+                                <div className="animate-in fade-in zoom-in duration-300">
+                                    <div className="bg-background rounded-[3rem] shadow-2xl p-8 sm:p-12 border-t-8 border-t-primary">
+                                        <SurveyForm 
+                                            survey={{
+                                                ...watchedForm,
+                                                id: surveyId,
+                                                slug: watchedForm.slug || 'preview',
+                                                elements: watchedForm.elements || [],
+                                                status: watchedForm.status || 'draft'
+                                            } as any} 
+                                            onSubmitted={() => setIsPreviewMode(false)}
+                                            isPreview 
+                                        />
+                                    </div>
+                                    <div className="mt-8 text-center">
+                                        <Button variant="ghost" onClick={() => setIsPreviewMode(false)} className="font-bold text-muted-foreground uppercase tracking-widest text-xs">
+                                            Return to Editor
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : fields.length > 0 ? (
                                 <QuestionEditor 
                                     fields={fields} 
                                     remove={remove} 
@@ -301,7 +328,7 @@ export default function SurveyFormBuilder() {
                                     isAccordion={isAccordion}
                                 />
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-40 bg-white border-2 border-dashed border-slate-200 rounded-[3rem] shadow-sm space-y-8">
+                                <div className="flex flex-col items-center justify-center py-40 bg-card border-2 border-dashed border-border rounded-[3rem] shadow-sm space-y-8 text-center">
                                     <div className="h-24 w-24 rounded-full bg-primary/5 flex items-center justify-center">
                                         <PlusCircle className="h-12 w-12 text-primary/30" />
                                     </div>
@@ -356,7 +383,7 @@ export default function SurveyFormBuilder() {
                 </div>
 
                 {/* 3. Right Sidebar - Contextual Settings */}
-                <div className="w-80 shrink-0 border-l border-border/50 bg-white hidden xl:block overflow-hidden">
+                <div className={cn("w-80 shrink-0 border-l border-border/50 bg-card hidden xl:block overflow-hidden transition-all duration-500", isPreviewMode && "opacity-0 translate-x-full pointer-events-none")}>
                     <BlockSettingsSidebar activeBlockId={activeBlockId} />
                 </div>
             </div>

@@ -4,29 +4,48 @@ import SurveyDisplay from './components/survey-display';
 import { notFound } from 'next/navigation';
 
 import { firestore } from '@/firebase/config';
-import { collection, query, where, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 
 const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
 
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     try {
         const surveysRef = collection(firestore, 'surveys');
+        
+        // 1. Try querying by slug field
+        // We use a single-field query to avoid potential composite index requirements
         const q = query(
             surveysRef, 
             where('slug', '==', slug), 
-            where('status', '==', 'published'), 
             limit(1)
         );
         const querySnapshot = await getDocs(q);
 
-        if (querySnapshot.empty) {
-            return null;
+        if (!querySnapshot.empty) {
+            const surveyDoc = querySnapshot.docs[0];
+            const data = surveyDoc.data();
+            // Ensure the survey is published
+            if (data.status === 'published') {
+                return { ...data, id: surveyDoc.id } as Survey;
+            }
+        }
+
+        // 2. Fallback: Try fetching directly by document ID
+        // This handles cases where unique links might use the document ID directly
+        const docRef = doc(firestore, 'surveys', slug);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            // Even via ID, we enforce the 'published' status requirement for public access
+            if (data.status === 'published') {
+                return { ...data, id: docSnap.id } as Survey;
+            }
         }
         
-        const surveyDoc = querySnapshot.docs[0];
-        return { ...surveyDoc.data(), id: surveyDoc.id } as Survey;
+        return null;
     } catch (error) {
-        console.error("Error fetching survey by slug:", error);
+        console.error("Error fetching survey by slug/id:", error);
         return null;
     }
 }

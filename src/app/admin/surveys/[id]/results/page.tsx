@@ -7,18 +7,24 @@ import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase
 import type { Survey, SurveyResponse, SurveyQuestion } from "@/lib/types";
 import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, Loader2, Download, BarChart3, FileText, Brain } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Download, BarChart3, FileText, Brain, Users } from "lucide-react";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import dynamic from 'next/dynamic';
 
 import ResponsesListView from "./components/responses-list-view";
 import AnalyticsView from "./components/analytics-view";
 import AISummariesView from "./components/ai-summaries-view";
 import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
+
+// Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
+const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
+    loading: () => <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>,
+});
 
 export default function SurveyResultsPage() {
     const params = useParams();
@@ -157,7 +163,12 @@ export default function SurveyResultsPage() {
                         </TabsTrigger>
  <TabsTrigger value="ai-summaries" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
  <Brain className="mr-2 h-4 w-4" /> AI Summaries
+                    </TabsTrigger>
+                    {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
+                        <TabsTrigger value="field-team" className="data-[state=active]:bg-card/40 data-[state=active]:shadow-lg">
+                            <Users className="mr-2 h-4 w-4" /> Field Team
                         </TabsTrigger>
+                    )}
                     </TabsList>
  <div className="flex shrink-0 items-center gap-2">
                         {activeTab === "responses" ? (
@@ -205,6 +216,12 @@ export default function SurveyResultsPage() {
                         )}
                     </div>
                 </TabsContent>
+
+                {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
+                    <TabsContent value="field-team" className="m-0">
+                        <FieldTeamView survey={survey} responses={responses || []} />
+                    </TabsContent>
+                )}
             </div>
         </Tabs>
     );
