@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Zap, Users, ShieldCheck, Database, Tags, Bell, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Mail, Smartphone, Search, Check, PlusCircle, Eye } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Zap, Users, ShieldCheck, Database, Tags, Bell, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Mail, Smartphone, Search, Check, PlusCircle, Eye, RotateCcw } from 'lucide-react';
+import { cn, toTitleCase, stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
@@ -33,7 +33,13 @@ export default function SubmissionBehaviorStep() {
     const { toast } = useToast();
 
     const elements = watch('elements') || [];
-    const questions: SurveyQuestion[] = elements.filter((el: SurveyElement): el is SurveyQuestion => 'isRequired' in el);
+    const questions = React.useMemo(() => {
+        const qList = elements.filter((el: SurveyElement): el is SurveyQuestion => 'isRequired' in el) as SurveyQuestion[];
+        return qList.map(q => ({
+            ...q,
+            title: stripHtml(q.title || '')
+        }));
+    }, [elements]);
 
     const { fields, append, remove } = useFieldArray({
         control,
@@ -103,12 +109,31 @@ export default function SubmissionBehaviorStep() {
     // Group fields by section for the mapping dropdown
     const dynamicTargetFields = React.useMemo(() => {
         if (!appFields) return [];
-        return appFields.filter(f => f.status === 'active').map(f => ({
-            label: `${f.label} (${f.section || 'Custom'})`,
-            value: f.variableName,
-            section: f.section
-        }));
+        return appFields.filter(f => f.status === 'active').map(f => {
+            // Determine logical persistence prefix based on section compatibility
+            // institution -> institutionData
+            // person/child/common -> personData
+            let prefix = 'personData.';
+            if (f.section === 'institution') prefix = 'institutionData.';
+            
+            return {
+                label: f.label,
+                value: `${prefix}${f.variableName}`,
+                section: f.section
+            };
+        });
     }, [appFields]);
+
+    const groupedTargetFields = React.useMemo(() => [
+        {
+            label: "Native Properties",
+            options: TARGET_FIELDS
+        },
+        {
+            label: "Custom Fields",
+            options: dynamicTargetFields
+        }
+    ], [dynamicTargetFields]);
 
     // 2. Dialog States
     const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
@@ -136,7 +161,8 @@ export default function SubmissionBehaviorStep() {
         renderOption = (opt: any) => opt?.label || "Select..."
     }: any) => {
         const [open, setOpen] = React.useState(false);
-        const selectedOpt = options.find((o: any) => o.value === value);
+        const allOptions = options[0]?.options ? options.flatMap((g: any) => g.options) : options;
+        const selectedOpt = allOptions.find((o: any) => o.value === value);
         
         return (
             <Popover open={open} onOpenChange={setOpen}>
@@ -156,22 +182,50 @@ export default function SubmissionBehaviorStep() {
                         <CommandInput placeholder={placeholder} className="h-10 border-none focus:ring-0 text-[11px] font-bold" autoFocus />
                         <CommandList className="max-h-[300px] overflow-y-auto no-scrollbar">
                             <CommandEmpty className="py-6 text-center text-[10px] font-bold text-muted-foreground/50 italic">No results found.</CommandEmpty>
-                            <CommandGroup>
-                                {options.map((opt: any) => (
-                                    <CommandItem
-                                        key={opt.value}
-                                        value={opt.label}
-                                        onSelect={() => {
-                                            onSelect(opt.value);
-                                            setOpen(false);
-                                        }}
-                                        className="text-[11px] font-bold py-2.5 px-4 cursor-pointer hover:bg-primary/5 aria-selected:bg-primary/10 transition-colors"
-                                    >
-                                        <Check className={cn("mr-2 h-3 w-3 text-primary", value === opt.value ? "opacity-100" : "opacity-0")} />
-                                        {opt.label}
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
+                            
+                            {options[0]?.options ? (
+                                options.map((group: any) => (
+                                    <React.Fragment key={group.label}>
+                                        <div className="px-4 py-2 text-[9px] uppercase tracking-widest font-black text-primary/40 bg-muted/5 select-none">
+                                            {group.label}
+                                        </div>
+                                        <CommandGroup>
+                                            {group.options.map((opt: any) => (
+                                                <CommandItem
+                                                    key={opt.value}
+                                                    value={opt.label}
+                                                    onSelect={() => {
+                                                        onSelect(opt.value);
+                                                        setOpen(false);
+                                                    }}
+                                                    className="text-[11px] font-bold py-2.5 px-4 cursor-pointer hover:bg-primary/5 aria-selected:bg-primary/10 transition-colors"
+                                                >
+                                                    <Check className={cn("mr-2 h-3 w-3 text-primary", value === opt.value ? "opacity-100" : "opacity-0")} />
+                                                    {opt.label}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                        <Separator className="opacity-50" />
+                                    </React.Fragment>
+                                ))
+                            ) : (
+                                <CommandGroup>
+                                    {options.map((opt: any) => (
+                                        <CommandItem
+                                            key={opt.value}
+                                            value={opt.label}
+                                            onSelect={() => {
+                                                onSelect(opt.value);
+                                                setOpen(false);
+                                            }}
+                                            className="text-[11px] font-bold py-2.5 px-4 cursor-pointer hover:bg-primary/5 aria-selected:bg-primary/10 transition-colors"
+                                        >
+                                            <Check className={cn("mr-2 h-3 w-3 text-primary", value === opt.value ? "opacity-100" : "opacity-0")} />
+                                            {opt.label}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            )}
                         </CommandList>
                     </Command>
                 </PopoverContent>
@@ -311,7 +365,7 @@ export default function SubmissionBehaviorStep() {
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
                                                 {questions.map(q => (
-                                                    <SelectItem key={q.id} value={q.id} className="font-medium text-[11px]">{q.title}</SelectItem>
+                                                    <SelectItem key={q.id} value={q.id} className="font-medium text-[11px]">{stripHtml(q.title || '')}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -332,7 +386,7 @@ export default function SubmissionBehaviorStep() {
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
                                                 {questions.map(q => (
-                                                    <SelectItem key={q.id} value={q.id} className="font-medium text-[11px]">{q.title}</SelectItem>
+                                                    <SelectItem key={q.id} value={q.id} className="font-medium text-[11px]">{stripHtml(q.title || '')}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -453,9 +507,9 @@ export default function SubmissionBehaviorStep() {
                                                     <SearchableSelect 
                                                         value={field.value}
                                                         onSelect={field.onChange}
-                                                        options={dynamicTargetFields}
-                                                        placeholder="Search all props..."
-                                                        triggerClassName="bg-background ring-1 ring-border/20"
+                                                        options={groupedTargetFields}
+                                                        placeholder="Select property..."
+                                                        triggerClassName="bg-background shadow-none ring-1 ring-border/20 h-11 rounded-xl"
                                                     />
                                                 )}
                                             />
@@ -715,6 +769,30 @@ export default function SubmissionBehaviorStep() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Resubmission Toggle Card */}
+            <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden bg-background">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/10 rounded-xl shadow-inner">
+                                <RotateCcw className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold tracking-tight">Allow Resubmission</p>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Show a &quot;Submit Another Response&quot; button on the thank you page.</p>
+                            </div>
+                        </div>
+                        <Controller
+                            name="allowResubmission"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                            )}
+                        />
                     </div>
                 </CardContent>
             </Card>

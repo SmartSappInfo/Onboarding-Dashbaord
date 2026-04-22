@@ -9,6 +9,8 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { Survey } from '@/lib/types';
 import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib/survey-actions';
 import { usePermissions } from '@/hooks/use-permissions';
+import { getAssigneeDetails, sendSurveyLinkToAssignee } from '@/app/actions/survey-assignee-actions';
+import { AssigneeLinksModal } from './components/AssigneeLinksModal';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -71,6 +73,10 @@ export default function SurveysClient() {
   const { activeWorkspaceId } = useWorkspace();
   const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
   const [cloningId, setCloningId] = useState<string | null>(null);
+  const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
+  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const [assigneeLinks, setAssigneeLinks] = useState<any[]>([]);
+  const [loadingAssignees, setLoadingAssignees] = useState(false);
   
   const { can } = usePermissions();
   const canCreate = can('studios', 'surveys', 'create');
@@ -168,6 +174,76 @@ export default function SurveysClient() {
     }
   };
 
+  const handleCopyLink = async (survey: Survey) => {
+    // Check if survey has multiple assignees
+    if (survey.assignedUsers && survey.assignedUsers.length > 1) {
+      // Show modal with all assignee links
+      setSelectedSurvey(survey);
+      setLoadingAssignees(true);
+      setAssigneeModalOpen(true);
+
+      try {
+        const result = await getAssigneeDetails(survey.assignedUsers);
+        if (result.success && result.assignees) {
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          const links = result.assignees.map((assignee) => ({
+            ...assignee,
+            link: `${baseUrl}/surveys/${survey.slug}?ref=${assignee.userId}`,
+          }));
+          setAssigneeLinks(links);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error || 'Failed to load assignee details',
+          });
+          setAssigneeModalOpen(false);
+        }
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load assignee details',
+        });
+        setAssigneeModalOpen(false);
+      } finally {
+        setLoadingAssignees(false);
+      }
+    } else {
+      // Single or no assignee - copy generic link
+      if (typeof window !== 'undefined') {
+        const url = survey.assignedUsers && survey.assignedUsers.length === 1
+          ? `${window.location.origin}/surveys/${survey.slug}?ref=${survey.assignedUsers[0]}`
+          : `${window.location.origin}/surveys/${survey.slug}`;
+        navigator.clipboard.writeText(url);
+        toast({
+          title: 'Link Copied',
+          description: 'Public survey URL copied to clipboard.',
+        });
+      }
+    }
+  };
+
+  const handleSendMessageToAssignee = async (userId: string, channel: 'email' | 'sms') => {
+    if (!selectedSurvey) return;
+
+    const assignee = assigneeLinks.find((a) => a.userId === userId);
+    if (!assignee) {
+      throw new Error('Assignee not found');
+    }
+
+    const result = await sendSurveyLinkToAssignee(
+      userId,
+      selectedSurvey.internalName || selectedSurvey.title,
+      assignee.link,
+      channel
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send message');
+    }
+  };
+
   const getStatusVariant = (status: Survey['status']) => {
     switch (status) {
       case 'published': return 'default';
@@ -186,16 +262,7 @@ export default function SurveysClient() {
             variant="ghost"
             size="icon"
  className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const url = `${window.location.origin}/surveys/${survey.slug}`;
-                navigator.clipboard.writeText(url);
-                toast({
-                  title: "Link Copied",
-                  description: "Public survey URL copied to clipboard.",
-                });
-              }
-            }}
+            onClick={() => handleCopyLink(survey)}
           >
  <Copy className="h-4 w-4" />
  <span className="sr-only">Copy link</span>
@@ -454,6 +521,15 @@ export default function SurveysClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AssigneeLinksModal
+        open={assigneeModalOpen}
+        onOpenChange={setAssigneeModalOpen}
+        surveyTitle={selectedSurvey?.internalName || selectedSurvey?.title || ''}
+        assigneeLinks={assigneeLinks}
+        onSendMessage={handleSendMessageToAssignee}
+        isLoading={loadingAssignees}
+      />
     </TooltipProvider>
   );
 }

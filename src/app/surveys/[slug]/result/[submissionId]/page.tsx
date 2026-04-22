@@ -2,7 +2,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Survey, SurveyResponse, SurveyResultPage } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import ResultRenderer from '../components/ResultRenderer';
-import { SmartSappLogo } from '@/components/icons';
+import { Building2 } from 'lucide-react';
+import Image from 'next/image';
 import type { Metadata, ResolvingMetadata } from 'next';
 
 const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
@@ -44,7 +45,19 @@ async function getResultData(slug: string, submissionId: string) {
             }
         }
 
-        return { survey, response, page: resolvedPage };
+        // 5. Resolve organization logo
+        let organizationLogoUrl: string | null = null;
+        if (survey.organizationId) {
+            const orgSnap = await adminDb.collection('organizations').doc(survey.organizationId).get();
+            if (orgSnap.exists) {
+                organizationLogoUrl = orgSnap.data()?.logoUrl || null;
+            }
+        }
+
+        // Logo resolution chain: survey logo → org logo → null
+        const logoUrl = survey.logoUrl || organizationLogoUrl || null;
+
+        return { survey, response, page: resolvedPage, logoUrl };
     } catch (error) {
         console.error("Error fetching result data:", error);
         return null;
@@ -93,16 +106,21 @@ export default async function SurveyResultPage({ params }: { params: Promise<{ s
                 <ResultRenderer 
                     survey={data.survey} 
                     response={data.response} 
-                    page={data.page} 
+                    page={data.page}
+                    logoUrl={data.logoUrl}
+                    allowResubmission={data.survey.allowResubmission}
                 />
             </main>
             <footer className="py-12 border-t bg-white/50 text-center">
                 <div className="flex flex-col items-center gap-4">
-                    <SmartSappLogo className="h-8 grayscale opacity-50" />
-                    <p className="text-sm text-muted-foreground font-medium italic">
-                        Child Security, Parents' Convenience, Smarter Schools
-                    </p>
-                    <p className="text-xs text-muted-foreground/60">&copy; {new Date().getFullYear()} SmartSapp Onboarding. All rights reserved.</p>
+                    {data.logoUrl ? (
+                        <div className="relative h-8 w-32 grayscale opacity-50">
+                            <Image src={data.logoUrl} alt="Logo" fill className="object-contain" />
+                        </div>
+                    ) : (
+                        <Building2 className="h-8 w-8 text-muted-foreground/30" />
+                    )}
+                    <p className="text-xs text-muted-foreground/60">&copy; {new Date().getFullYear()} Powered by SmartSapp</p>
                 </div>
             </footer>
         </div>

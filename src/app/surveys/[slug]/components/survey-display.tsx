@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import type { Survey } from '@/lib/types';
+import type { Survey, Organization } from '@/lib/types';
 import { useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
-import { SmartSappLogo } from '@/components/icons';
+import { Building2, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import SurveyLoader from '../../components/survey-loader';
@@ -99,8 +100,18 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
     }, [firestore, survey.entityId]);
     
     const { data: entity } = useDoc<any>(entityDocRef);
+
+    // Fetch organization for logo fallback
+    const orgDocRef = React.useMemo(() => {
+        if (!firestore || !survey.organizationId) return null;
+        return doc(firestore, 'organizations', survey.organizationId);
+    }, [firestore, survey.organizationId]);
+    const { data: organization } = useDoc<Organization>(orgDocRef);
     
-    const displayLogoUrl = survey.logoUrl || entity?.institutionData?.logoUrl || entity?.logoUrl;
+    // Logo resolution chain: survey logo → entity logo → org logo → null (generic avatar)
+    const displayLogoUrl = survey.showBranding === false 
+        ? 'none' 
+        : (survey.logoUrl || entity?.institutionData?.logoUrl || entity?.logoUrl || organization?.logoUrl || null);
 
     React.useEffect(() => {
         setIsMounted(true);
@@ -109,7 +120,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
     const bgColor = survey.backgroundColor || '#F1F5F9';
 
     if (!isMounted) {
-        return <SurveyLoader label="Customizing Your Survey..." />;
+        return <SurveyLoader label="Customizing Your Survey..." logoUrl={displayLogoUrl} />;
     }
 
     if (isSubmitted) {
@@ -119,13 +130,15 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
                  <main className="flex-grow flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
                         <div className="flex justify-center mb-6">
-                          {displayLogoUrl ? (
-                              <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                  <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
-                              </div>
-                          ) : (
-                              <SmartSappLogo className="h-10 sm:h-12" />
-                          )}
+                            {displayLogoUrl !== 'none' && (
+                                displayLogoUrl ? (
+                                    <div className="relative h-10 w-40 sm:h-12 sm:w-48">
+                                        <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
+                                    </div>
+                                ) : (
+                                    <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />
+                                )
+                            )}
                         </div>
                         {survey.bannerImageUrl && (
                             <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border border-border/50 bg-card">
@@ -140,6 +153,20 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
                         )}
                         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
                         <p className="text-muted-foreground text-lg sm:text-xl px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        
+                        {survey.allowResubmission && (
+                            <div className="mt-8">
+                                <Button 
+                                    variant="outline" 
+                                    size="lg" 
+                                    className="rounded-xl font-semibold gap-2"
+                                    onClick={() => setIsSubmitted(false)}
+                                >
+                                    <RotateCcw className="h-4 w-4" />
+                                    Submit Another Response
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </main>
                  <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
@@ -158,39 +185,9 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
                 <div className="max-w-4xl w-full mx-auto px-4">
-                    {/* Persistent Logo Header */}
-                    <div className="flex justify-center mb-4 sm:mb-6">
-                        {displayLogoUrl ? (
-                            <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
-                            </div>
-                        ) : (
-                            <SmartSappLogo className="h-10 sm:h-12" />
-                        )}
-                    </div>
+                    {/* Branding logo and Title are now handled natively inside SurveyForm to support both client-side and studio-preview consistency */}
 
-                    {!hasCoverPage && (
-                        <div className="text-center mb-3 sm:mb-4">
-                            {showHeader && (
-                                <>
-                                    {survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-2xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border border-border/50 bg-card">
-                                            <Image 
-                                                src={survey.bannerImageUrl} 
-                                                alt={survey.title || ''} 
-                                                width={1200}
-                                                height={400}
-                                                className="w-full h-auto block" 
-                                                priority 
-                                            />
-                                        </div>
-                                    )}
-                                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 text-foreground px-2 leading-tight uppercase">{survey.title}</h1>
-                                    <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
-                                </>
-                            )}
-                        </div>
-                    )}
+                    {/* Title rendering is handled natively inside SurveyForm to support Preview builders */}
 
                     <SurveyForm 
                         survey={survey} 

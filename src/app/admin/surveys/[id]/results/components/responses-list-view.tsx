@@ -31,11 +31,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useUser, useFirestore } from '@/firebase';
+import { getDoc, doc } from 'firebase/firestore';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { deleteSurveyResponses } from '@/lib/survey-actions';
 import { resolveContact } from '@/lib/contact-adapter';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 
 /**
  * Component to display entity information for a survey response
@@ -109,13 +110,15 @@ function SharedByInfo({ userId }: { userId?: string }) {
             return;
         }
         
-        const { getDoc, doc } = require('firebase/firestore');
         getDoc(doc(firestore, 'users', userId)).then((snap: any) => {
             if (snap.exists()) {
                 setName(snap.data().name || snap.data().email);
             }
             setIsLoading(false);
-        }).catch(() => setIsLoading(false));
+        }).catch((err) => {
+            console.error("SharedByInfo resolution failed:", err);
+            setIsLoading(false);
+        });
     }, [userId, firestore]);
 
     if (!userId) return <span className="text-[10px] text-muted-foreground/40 italic">Anonymous</span>;
@@ -333,7 +336,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
  <TableHead className="w-[100px] text-center text-[10px] font-bold py-4 text-primary">Score</TableHead>
                         )}
                         {questions.map(q => (
- <TableHead key={q.id} className="min-w-[200px] text-[10px] font-bold py-4">{q.title}</TableHead>
+                            <TableHead key={q.id} className="min-w-[200px] text-[10px] font-bold py-4">{stripHtml(q.title || '')}</TableHead>
                         ))}
  <TableHead className="w-[80px] text-right pr-6 text-[10px] font-bold py-4">Actions</TableHead>
                     </TableRow>

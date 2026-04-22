@@ -20,6 +20,7 @@ import ResponsesListView from "./components/responses-list-view";
 import AnalyticsView from "./components/analytics-view";
 import AISummariesView from "./components/ai-summaries-view";
 import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
+import { stripHtml } from "@/lib/utils";
 
 // Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
 const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
@@ -43,7 +44,7 @@ export default function SurveyResultsPage() {
     }, [firestore, surveyId]);
 
     const responsesColRef = useMemoFirebase(() => {
-        if (!firestore || !surveyId) return null;
+        if (!firestore || !surveyId || typeof surveyId !== 'string') return null;
         return query(collection(firestore, `surveys/${surveyId}/responses`), orderBy("submittedAt", "desc"));
     }, [firestore, surveyId]);
 
@@ -93,7 +94,7 @@ export default function SurveyResultsPage() {
         const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
         const questionIds = questions.map(q => q.id);
 
-        const headerRow = ["Submitted At", ...questionIds.map(id => `"${questionIdToTitleMap.get(id)?.replace(/"/g, '""') ?? id}"`)].join(',');
+        const headerRow = ["Submitted At", ...questionIds.map(id => `"${stripHtml(questionIdToTitleMap.get(id) || '').replace(/"/g, '""') ?? id}"`)].join(',');
 
         const rows = responses.map(response => {
             const answerMap = new Map(response.answers.map(a => [a.questionId, a.value]));

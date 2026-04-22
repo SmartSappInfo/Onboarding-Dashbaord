@@ -271,9 +271,9 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
 
     // 1. Fetch Sessions for Drop-off Analytics
     const sessionsQuery = useMemoFirebase(() => {
-        if (!firestore || !survey.id) return null;
+        if (!firestore || !survey?.id || typeof survey.id !== 'string') return null;
         return query(collection(firestore, 'survey_sessions'), where('surveyId', '==', survey.id));
-    }, [firestore, survey.id]);
+    }, [firestore, survey?.id]);
 
     const { data: sessions } = useCollection<SurveySession>(sessionsQuery);
 

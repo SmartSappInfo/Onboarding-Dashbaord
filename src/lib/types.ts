@@ -232,6 +232,8 @@ export interface Organization {
   defaultRoleId?: string; // Default role for new invites
   /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
   enabledFeatures?: FeatureToggleMap;
+  /** Global default values applied when entities are created via survey submissions */
+  surveyEntityDefaults?: SurveyEntityDefaults;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -293,6 +295,8 @@ export interface Workspace {
     description?: string;
   };
   scopeLocked?: boolean; // True once first entity is linked
+  /** Workspace-level default values applied when entities are created via survey submissions */
+  surveyEntityDefaults?: SurveyEntityDefaults;
   createdAt: string;
   updatedAt: string;
 }
@@ -915,6 +919,13 @@ export interface MediaAsset {
   previewImageUrl?: string;
 }
 
+export interface SurveyEntityDefaults {
+  currency?: string;
+  subscriptionPackageName?: string;
+  subscriptionRate?: number;
+  contactTypeKey?: string;
+}
+
 export interface SurveyEntityMapping {
   entityNameFieldId?: string;
   contactNameFieldId?: string;
@@ -950,7 +961,10 @@ export interface Survey {
   thankYouDescription?: string;
   startButtonText?: string;
   showCoverPage?: boolean;
+  showIntroAsPage?: boolean;
+  stepperVariant?: 'full' | 'simple';
   showSurveyTitles?: boolean;
+  showBranding?: boolean;
   backgroundColor?: string;
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;
@@ -984,6 +998,7 @@ export interface Survey {
   autoTags?: string[];
   autoAutomations?: string[];
   allowCrossVisibility?: boolean; // When true, assigned users can see all submissions (default: false = own only)
+  allowResubmission?: boolean; // When true, shows "Submit Another Response" button on thank you/result pages
 }
 
 export interface SurveyElement {
@@ -1024,6 +1039,7 @@ export interface SurveyLayoutBlock extends SurveyElement {
   validateBeforeNext?: boolean;
   stepperTitle?: string;
   description?: string; // For section descriptions
+  showSectionHeader?: boolean; // Controls visibility of section title/description on client (defaults to true)
 }
 
 export interface SurveyLogicBlock extends SurveyElement {

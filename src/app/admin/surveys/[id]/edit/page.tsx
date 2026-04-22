@@ -78,7 +78,10 @@ const formSchema = z.object({
   resultPages: z.array(z.any()).default([]),
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
+  showIntroAsPage: z.boolean().default(true),
+  stepperVariant: z.enum(['full', 'simple']).default('full'),
   showSurveyTitles: z.boolean().default(true),
+  showBranding: z.boolean().default(true),
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
   adminAlertNotifyManager: z.boolean().default(false),
@@ -115,6 +118,7 @@ const formSchema = z.object({
   autoTags: z.array(z.string()).default([]),
   autoAutomations: z.array(z.string()).default([]),
   allowCrossVisibility: z.boolean().default(false),
+  allowResubmission: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -243,6 +247,9 @@ export default function EditSurveyPage() {
                 resultRules: survey.resultRules || [],
                 workspaceIds: survey.workspaceIds || [activeWorkspaceId],
                 resultPages: [], 
+                showIntroAsPage: survey.showIntroAsPage ?? survey.showCoverPage ?? true,
+                stepperVariant: survey.stepperVariant || 'full',
+                showBranding: survey.showBranding ?? true,
             };
 
             reset(initialData as any);

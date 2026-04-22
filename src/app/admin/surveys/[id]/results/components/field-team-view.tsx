@@ -96,9 +96,9 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
 
     // Fetch sessions for this survey
     const sessionsQuery = useMemoFirebase(() => {
-        if (!firestore || !survey.id) return null;
+        if (!firestore || !survey?.id || typeof survey.id !== 'string') return null;
         return query(collection(firestore, 'survey_sessions'), where('surveyId', '==', survey.id));
-    }, [firestore, survey.id]);
+    }, [firestore, survey?.id]);
     const { data: sessions, isLoading: sessionsLoading } = useCollection<SurveySession>(sessionsQuery);
 
     // Fetch team users

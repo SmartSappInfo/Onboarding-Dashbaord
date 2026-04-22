@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Monitor, Smartphone, Layout, ArrowRight, Video } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import { SmartSappLogo } from '@/components/icons';
 import VideoHero from '@/components/video-hero';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -100,8 +100,8 @@ export default function LivePreviewPane() {
                                     <VideoHero 
                                         videoUrl={videoUrl} 
                                         thumbnailUrl={videoThumbnailUrl} 
-                                        title={title} 
-                                        videoCaption={videoCaption}
+                                        title={stripHtml(title || '')} 
+                                        videoCaption={stripHtml(videoCaption || '')}
                                     />
                                 </div>
                             ) : bannerImageUrl ? (
@@ -112,8 +112,8 @@ export default function LivePreviewPane() {
 
                             {/* Text Content */}
  <div className="space-y-4 max-w-2xl mx-auto">
- <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{title || 'Your Survey Title'}</h1>
- <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{description || 'Explain why this audit matters to your community.'}</p>
+ <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{stripHtml(title || 'Your Survey Title')}</h1>
+ <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{stripHtml(description || 'Explain why this audit matters to your community.')}</p>
                             </div>
 
                             {/* Call to Action */}

@@ -52,9 +52,9 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
     const [summaryToDelete, setSummaryToDelete] = React.useState<SurveySummary | null>(null);
 
     const summariesCol = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !survey?.id || typeof survey.id !== 'string') return null;
         return query(collection(firestore, `surveys/${survey.id}/summaries`), orderBy('createdAt', 'desc'));
-    }, [firestore, survey.id]);
+    }, [firestore, survey?.id]);
 
     const { data: summaries, isLoading } = useCollection<SurveySummary>(summariesCol);
 

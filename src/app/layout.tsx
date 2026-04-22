@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import '@/lib/suppress-warnings'; // Suppress known harmless warnings
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { GtmProvider } from '@/components/GtmProvider';

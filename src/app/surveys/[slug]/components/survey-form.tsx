@@ -138,7 +138,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-white rounded-xl text-base border-slate-200 shadow-sm hover:shadow-md transition-all", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full sm:w-[300px] justify-start text-left font-normal h-12 bg-background rounded-xl text-base border-border/50 shadow-sm hover:shadow-md transition-all", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -267,7 +267,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-14 px-8 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-base font-black uppercase tracking-widest border-slate-200 hover:border-primary/50 group">
+      <Button asChild variant="outline" disabled={disabled} className="h-14 px-8 rounded-xl border-2 border-dashed bg-background hover:bg-accent transition-all text-base font-black uppercase tracking-widest border-border/50 hover:border-primary/50 group">
         <div className="cursor-pointer">
             <Upload className="mr-3 h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
             <span>Upload Document</span>
@@ -349,7 +349,7 @@ const ElementRenderer = ({
                                     question.type === 'link' ? 'https://example.com' : 
                                     "Type your answer here..."
                                 )} 
-                                className={cn("text-lg h-14 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl shadow-none px-5 font-medium", errors[question.id] && "border-destructive ring-1 ring-destructive/20")} 
+                                className={cn("text-lg h-14 bg-background border-2 border-border/50 focus:border-primary focus-visible:ring-0 transition-all rounded-xl shadow-none px-5 font-medium", errors[question.id] && "border-destructive ring-1 ring-destructive/20")} 
                             />
                         )} />
                     )}
@@ -360,7 +360,7 @@ const ElementRenderer = ({
                                 value={field.value || ''} 
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Share your thoughts..."} 
-                                className={cn("text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-base min-h-[140px] bg-background border-2 border-border/50 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -483,7 +483,7 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                 <Select onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value}>
-                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-white border-2 border-slate-200 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-background border-2 border-border/50 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
@@ -515,7 +515,7 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-background border-2 border-border/50 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -644,12 +644,37 @@ const getRequiredMessage = (type: string) => {
     return 'This field is required.';
 };
 
-function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void }) {
+function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant = 'full' }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, variant?: 'full' | 'simple' }) {
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
     if (hasCover && currentIndex === 0) return null;
     const displayPages = hasCover ? pages.slice(1) : pages;
+
+    if (variant === 'simple') {
+        return (
+            <div className="w-full flex justify-center items-center gap-2 mb-8 bg-card shadow-sm py-3 px-4 rounded-full max-w-fit mx-auto border border-border/50">
+                {displayPages.map((page, index) => {
+                    const actualIdx = index + (hasCover ? 1 : 0);
+                    const isCompleted = actualIdx < currentIndex;
+                    const isActive = actualIdx === currentIndex;
+                    const isInvalid = !pageStatuses[actualIdx].isValid;
+                    return (
+                        <button key={index} type="button" onClick={() => onStepClick(actualIdx)} className="group focus:outline-none flex items-center justify-center p-1">
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    width: isActive ? 24 : 8,
+                                    backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#e2e8f0',
+                                }}
+                                className="h-2 rounded-full transition-all group-hover:scale-110"
+                            />
+                        </button>
+                    )
+                })}
+            </div>
+        );
+    }
 
     return (
         <div className="w-full mb-0 pt-2 pb-0 no-scrollbar overflow-x-auto">
@@ -817,7 +842,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
-        if (survey.showCoverPage && survey.showSurveyTitles !== false) p.push([]); 
+        const isIntroPage = survey.showIntroAsPage ?? survey.showCoverPage ?? true;
+        if (isIntroPage && survey.showSurveyTitles !== false) p.push([]); 
         survey.elements.forEach(element => {
             if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
                 p.push(currentPage);
@@ -1174,17 +1200,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
             await Promise.allSettled(automationPromises);
             
-            if (!survey.showDebugProcessingModal) {
-                if (survey.scoringEnabled) {
-                    router.push(`/surveys/${survey.slug}/result/${submissionId}`);
-                } else {
-                    onSubmitted();
-                    setIsSubmitting(false);
-                }
+            // Always route directly after submission — no intermediate modal
+            // Route to result page if scoring is enabled OR if there are result rules defined
+            if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+                router.push(`/surveys/${survey.slug}/result/${submissionId}`);
             } else {
-                setIsSubmitting(false); 
-                setIsStatusModalOpen(true);
+                onSubmitted();
             }
+            setIsSubmitting(false);
 
         } catch (error: any) {
             updateAutomationStatus('db', 'failed', error.message);
@@ -1295,9 +1318,26 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         <div className="pb-24">
             <AnimatePresence>
                 {isSubmitting && (
-                    <SurveyLoader label="We're Analysing Your Inputs..." />
+                    <SurveyLoader 
+                        label="We're Analysing Your Inputs..." 
+                        logoUrl={survey.showBranding !== false ? (survey.logoUrl || null) : 'none'} 
+                    />
                 )}
             </AnimatePresence>
+
+            {/* Top Branding Header */}
+            {survey.showBranding !== false && (
+                <div className="flex flex-col items-center justify-center pt-8 pb-4 animate-in fade-in duration-1000">
+                    {survey.logoUrl ? (
+                         <div className="h-12 w-32 relative">
+                             <img src={survey.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                         </div>
+                    ) : (
+                        <SmartSappLogo className="h-10 w-auto text-primary" />
+                    )}
+                    <div className="mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                </div>
+            )}
 
             <div className={cn("transition-all duration-500", isSubmitting && "opacity-0 pointer-events-none invisible h-0 overflow-hidden")}>
                 <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
@@ -1329,7 +1369,37 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                         </div>
                     ) : (
                         <>
-                            {pageSection && (
+                            {/* Main Title Hierarchy - Show above stepper/section if enabled */}
+                            {showTitles && !isCoverPage && (
+                                <div className="flex flex-col items-center text-center space-y-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground/90 leading-tight uppercase">{survey.title}</h1>
+                                </div>
+                            )}
+
+                            {currentPageIndex === 0 && !(survey.showIntroAsPage ?? survey.showCoverPage ?? true) && showTitles && (
+                                <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                                    {survey.videoUrl ? (
+                                        <VideoHero 
+                                            videoUrl={survey.videoUrl} 
+                                            thumbnailUrl={survey.videoThumbnailUrl} 
+                                            title={survey.title} 
+                                            videoCaption={survey.videoCaption}
+                                        />
+                                    ) : survey.bannerImageUrl && (
+                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-card">
+                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
+                                        </div>
+                                    )}
+                                    <div className="space-y-5 max-w-3xl mx-auto px-4">
+                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight uppercase">{survey.title}</h1>
+                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} />
+
+                            {pageSection && (pageSection.showSectionHeader ?? true) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                                     {pageSection.description && (
@@ -1337,10 +1407,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                     )}
                                 </div>
                             )}
-
-                            <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} />
                             
-                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
+                            
+                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-card text-foreground">
                                 <CardContent className="p-6 sm:p-8 space-y-6 sm:space-y-8 text-left">
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {

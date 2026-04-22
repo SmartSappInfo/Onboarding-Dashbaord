@@ -10,7 +10,7 @@ import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { autoSaveSurveyAction } from '@/lib/survey-actions';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -387,6 +388,22 @@ export default function SurveyFormBuilder() {
                     <BlockSettingsSidebar activeBlockId={activeBlockId} />
                 </div>
             </div>
+
+            {/* Mobile Block Settings Floating Action */}
+            {!isPreviewMode && activeBlockId && (
+                <div className="xl:hidden fixed bottom-6 right-6 z-50">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-2xl [&_svg]:size-6">
+                                <Settings className="text-white" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="h-[80vh] p-0 overflow-hidden sm:max-w-none w-full border-t-2 border-primary/20 rounded-t-3xl">
+                            <BlockSettingsSidebar activeBlockId={activeBlockId} />
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            )}
 
             <AddElementModal 
                 open={isAddElementModalOpen}

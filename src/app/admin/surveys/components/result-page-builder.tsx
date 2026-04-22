@@ -49,7 +49,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
         <Dialog open={open} onOpenChange={onOpenChange}>
  <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-background">
  <DialogHeader className="p-6 bg-card border-b shrink-0">
-                    <DialogTitle>Outcome Preview: {page.name}</DialogTitle>
+                    <DialogTitle>Outcome Preview: {stripHtml(page.name)}</DialogTitle>
                     <DialogDescription>This is how this specific result page will appear to users.</DialogDescription>
                 </DialogHeader>
  <div className="flex-grow overflow-hidden relative">

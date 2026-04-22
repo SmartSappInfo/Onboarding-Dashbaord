@@ -318,7 +318,29 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         
         // Get workspace scope
         const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
-        const contactScope = (wsSnap.data()?.contactScope || 'institution') as EntityType;
+        const wsData = wsSnap.data();
+        const contactScope = (wsData?.contactScope || 'institution') as EntityType;
+
+        // 3.0.1 Resolve entity defaults chain: workspace → org → system hardcoded
+        const systemDefaults = {
+          currency: 'GHS',
+          subscriptionPackageName: 'Standard',
+          subscriptionRate: 0,
+          contactTypeKey: 'primary',
+        };
+        
+        let orgDefaults: any = {};
+        if (organizationId && organizationId !== 'default') {
+          const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+          if (orgSnap.exists) {
+            orgDefaults = orgSnap.data()?.surveyEntityDefaults || {};
+          }
+        }
+        
+        const wsDefaults = wsData?.surveyEntityDefaults || {};
+        
+        // Merge: workspace overrides org, org overrides system
+        const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsDefaults };
 
         // 3.1 Advanced Property Mapping (Phase 5)
         const institutionData: any = {};
@@ -340,6 +362,14 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           });
         }
 
+        // Apply resolved defaults to institution data for unmapped fields
+        if (contactScope === 'institution') {
+          if (!institutionData.currency) institutionData.currency = resolvedDefaults.currency;
+          if (!institutionData.subscriptionPackageName) institutionData.subscriptionPackageName = resolvedDefaults.subscriptionPackageName;
+          if (institutionData.subscriptionRate === undefined) institutionData.subscriptionRate = resolvedDefaults.subscriptionRate;
+          if (institutionData.nominalRoll === undefined) institutionData.nominalRoll = 0;
+        }
+
         const entityPayload: any = {
           name: eName,
           contacts: [
@@ -348,7 +378,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
               email: cEmail,
               phone: cPhone,
               isPrimary: true,
-              typeKey: 'primary'
+              typeKey: resolvedDefaults.contactTypeKey
             }
           ],
           globalTags: surveyData.autoTags || [],

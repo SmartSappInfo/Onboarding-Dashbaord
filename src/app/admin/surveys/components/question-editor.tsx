@@ -256,9 +256,14 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
     const newSelection = Array.from(selectedValues).filter((v) => v !== val);
     onChange(newSelection);
   };
+  
+  // Strip HTML from labels for display
+  const cleanLabel = (label: string) => {
+    return stripHtml(label);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -266,19 +271,19 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           aria-expanded={open}
  className="w-full justify-between h-auto min-h-10 border-border"
         >
- <div className="flex gap-1 flex-wrap">
+ <div className="flex gap-1 flex-wrap flex-1 min-w-0">
             {selectedValues.size > 0 ? (
                 options.filter(opt => selectedValues.has(opt.value)).map(option => (
                     <Badge
                         variant="secondary"
                         key={option.value}
- className="mr-1 mb-1"
+ className="mr-1 mb-1 max-w-full"
                     >
-                        {option.label}
+                        <span className="truncate">{cleanLabel(option.label)}</span>
                          <div
                             role="button"
                             tabIndex={0}
-                            aria-label={`Remove ${option.label}`}
+                            aria-label={`Remove ${cleanLabel(option.label)}`}
  className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             onMouseDown={(e) => {
                                 e.preventDefault();
@@ -296,7 +301,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                                 }
                             }}
                         >
- <X className="h-3 w-3" />
+ <X className="h-3 w-3 shrink-0" />
                         </div>
                     </Badge>
                 ))
@@ -308,18 +313,21 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
         </Button>
       </PopoverTrigger>
       <PopoverContent 
- className="w-[--radix-popover-trigger-width] p-0"
+ className="w-[--radix-popover-trigger-width] max-w-[400px] p-0 z-[100]"
+        align="start"
+        side="bottom"
+        sideOffset={5}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
           <CommandInput placeholder="Search..." />
-          <CommandList>
+          <CommandList className="max-h-[300px] overflow-y-auto">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={cleanLabel(option.label)}
                   onSelect={() => {
                     const newSelection = new Set(value);
                     if (newSelection.has(option.value)) {
@@ -333,11 +341,11 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                 >
                   <Check
  className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       selectedValues.has(option.value) ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <span className="truncate">{cleanLabel(option.label)}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -586,7 +594,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
             .map(({ el, idx }) => {
                 const Icon = getElementIcon(el.type);
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : (el.type.charAt(0).toUpperCase() + el.type.slice(1));
-                const label = el.title ? `${prefix}: ${el.title}` : `${prefix}: untitled`;
+                const label = el.title ? `${prefix}: ${stripHtml(el.title)}` : `${prefix}: untitled`;
                 return { value: el.id, label, icon: Icon };
             });
     }
@@ -600,7 +608,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : 'Section';
                 return {
                     value: el.id,
-                    label: `${prefix}: ${el.title || 'untitled'}`
+                    label: `${prefix}: ${stripHtml(el.title || 'untitled')}`
                 }
             })
     }
@@ -613,42 +621,42 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
           const showValueInput = operator !== 'isEmpty' && operator !== 'isNotEmpty';
   
           return (
- <div key={field.id} className="p-4 border border-border/50 rounded-xl bg-background shadow-xs relative">
- <div className="absolute top-2 right-2">
- <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
- <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-              </div>
- <div className="flex items-start gap-4">
- <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+ <div key={field.id} className="p-4 border border-border/50 rounded-xl bg-card shadow-sm space-y-4">
+              {/* WHEN Section */}
+ <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+ <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground shrink-0">
  <Bot className="h-5 w-5" />
                       <span>When</span>
                   </div>
- <div className="flex-grow space-y-2">
+ <div className="flex-1 space-y-2 min-w-0">
                   <Controller
                       name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
                       control={control}
                       render={({ field }) => (
-                       <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Select a question..." /></SelectTrigger>
-                          <SelectContent>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                       <SelectTrigger className="bg-background border-border/50 ring-1 ring-border w-full">
+                         <SelectValue placeholder="Select a question..." />
+                       </SelectTrigger>
+                          <SelectContent className="max-w-[400px] max-h-[300px] overflow-y-auto z-[100]" position="popper" sideOffset={5}>
                           {potentialSourceQuestions.map((q) => (
                               <SelectItem key={q.id} value={q.id}>
-                              Q{allElements.filter(isQuestion).findIndex(el => el.id === q.id) + 1}: {q.title}
+                              Q{allElements.filter(isQuestion).findIndex(el => el.id === q.id) + 1}: {stripHtml(q.title || '')}
                               </SelectItem>
                           ))}
                           </SelectContent>
                       </Select>
                       )}
                   />
- <div className="flex items-center gap-2">
+ <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full">
                       <Controller
                       name={`elements.${elementIndex}.rules.${index}.operator`}
                       control={control}
                       render={({ field }) => (
                            <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="w-1/2 bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Operator..." /></SelectTrigger>
-                          <SelectContent>
+ <SelectTrigger className="w-full sm:flex-1 bg-background border-border/50 ring-1 ring-border">
+                             <SelectValue placeholder="Operator..." />
+                           </SelectTrigger>
+                          <SelectContent className="z-[100]" position="popper" sideOffset={5}>
                               <SelectItem value="isEqualTo">Is</SelectItem>
                               <SelectItem value="isNotEqualTo">Is not</SelectItem>
                               <SelectItem value="contains">Contains</SelectItem>
@@ -669,25 +677,38 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <Controller
                           name={`elements.${elementIndex}.rules.${index}.targetValue`}
                           control={control}
- render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-card border-border/50 ring-1 ring-border" />}
+                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1" />}
                           />
                       )}
                   </div>
                   </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 shrink-0 bg-destructive/10 hover:bg-destructive/20 text-destructive" 
+                    onClick={() => remove(index)}
+                  >
+                      <Trash2 className="h-4 w-4" />
+                  </Button>
               </div>
- <div className="flex items-start gap-4 mt-4">
- <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
- <span className="text-lg">↳</span>
+              
+              {/* THEN Section */}
+ <div className="flex flex-col sm:flex-row items-start gap-4">
+ <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground shrink-0 pt-1">
+ <span className="text-lg leading-none">↳</span>
                       <span>Then</span>
                   </div>
- <div className="flex-grow flex flex-col gap-2">
+ <div className="flex-1 flex flex-col gap-2 min-w-0">
                       <Controller
                           name={`elements.${elementIndex}.rules.${index}.action.type`}
                           control={control}
                           render={({ field }) => (
                                <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Action..." /></SelectTrigger>
-                                  <SelectContent>
+ <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border">
+                                 <SelectValue placeholder="Action..." />
+                               </SelectTrigger>
+                                  <SelectContent className="z-[100]" position="popper" sideOffset={5}>
                                       <SelectItem value="jump">Jump To...</SelectItem>
                                       <SelectItem value="show">Show Element(s)...</SelectItem>
                                       <SelectItem value="hide">Hide Element(s)...</SelectItem>
@@ -703,8 +724,10 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                               control={control}
                               render={({ field }) => (
                                    <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="bg-card border-border/50 ring-1 ring-border"><SelectValue placeholder="Target element..." /></SelectTrigger>
-                                      <SelectContent>
+ <SelectTrigger className="w-full bg-card border-border/50 ring-1 ring-border">
+                                     <SelectValue placeholder="Target element..." />
+                                   </SelectTrigger>
+                                      <SelectContent className="max-w-[400px] max-h-[300px] overflow-y-auto z-[100]" position="popper" sideOffset={5}>
                                       {getJumpTargets().map((el) => (
                                           <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
                                       ))}
@@ -894,40 +917,40 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(element?.id)}>
         <div
             className={cn(
-                "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-slate-900 border border-slate-800 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-2xl",
+                "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-foreground border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-2xl",
                 isDragging && "opacity-100"
             )}
             {...attributes}
             {...listeners}
         >
-            <GripVertical className="h-4 w-4 text-slate-400" />
+            <GripVertical className="h-4 w-4 text-background" />
         </div>
         <Card 
             id={element.id}
             className={cn(
                 "border transition-all duration-500 overflow-hidden rounded-[2rem]",
-                isActive ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-slate-200/60 shadow-sm hover:border-slate-300",
+                isActive ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-border/60 shadow-sm hover:border-foreground/20",
                 hasErrors ? "border-destructive shadow-lg" : "",
-                element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-white",
+                element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-card",
                 isCollapsed && "hover:translate-x-1"
             )}
         >
             <CardHeader className={cn(
-                "py-3 px-6 transition-colors border-b border-slate-50",
-                isActive ? "bg-primary/[0.01]" : "bg-transparent",
+                "py-3 px-6 transition-colors border-b border-border/20",
+                isActive ? "bg-primary/[0.02]" : "bg-transparent",
                 isCollapsed && "cursor-pointer py-3"
             )}>
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-4">
                         <div className={cn(
                             "flex items-center justify-center rounded-xl border shadow-xs transition-all duration-300",
-                            isActive ? "bg-primary text-white" : "bg-slate-50 border-slate-100 text-slate-400",
+                            isActive ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground",
                             "h-8 w-8"
                         )}>
                             <ElementIcon className={cn("shrink-0 transition-all h-4 w-4")} />
                         </div>
                         <div className="flex flex-col gap-0">
-                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isActive ? "text-primary" : "text-slate-400")}>
+                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
                                 {isElementQuestion ? `Question ${questionNumber}`
                                 : isElementSection ? `Section ${sectionNumber}`
                                 : isElementLayout ? `${element.type} Block`
@@ -936,17 +959,69 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             {isCollapsed && (
                                 <div className="flex items-center gap-2 max-w-md">
                                     <span className={cn(
-                                        "font-bold tracking-tight truncate transition-all duration-300 text-sm text-slate-600",
-                                        isActive && "text-slate-800"
+                                        "font-bold tracking-tight truncate transition-all duration-300 text-sm text-muted-foreground",
+                                        isActive && "text-foreground"
                                     )}>
                                         {stripHtml((element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block'))}
                                     </span>
                                     {element.hidden && <Badge variant="secondary" className="h-3 text-[6px] font-black uppercase tracking-tighter px-1 opacity-50">Hidden</Badge>}
-                                    {element.isRequired && <Asterisk className="h-2 w-2 text-destructive" />}
+                                    {element.isRequired && <div className="flex items-center gap-0.5"><Asterisk className="h-3 w-3 text-destructive" /><span className="text-[9px] uppercase font-black tracking-widest text-destructive">Required</span></div>}
                                 </div>
                             )}
                         </div>
                     </div>
+                    {isActive && (
+                        <div className="flex items-center gap-1.5 mt-2 sm:mt-0">
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-md hidden sm:flex bg-background"
+                                disabled={index === 0}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    swap(index, index - 1);
+                                }}
+                            >
+                                <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-md hidden sm:flex bg-background"
+                                disabled={index >= elements.length - 1}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    swap(index, index + 1);
+                                }}
+                            >
+                                <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-md hidden sm:flex bg-background hover:bg-primary/5 hover:text-primary hover:border-primary/20"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newElem = { ...element, id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
+                                    insert(index + 1, newElem);
+                                    setActiveBlockId(newElem.id);
+                                }}
+                            >
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-md hidden sm:flex text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20 bg-background"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    remove(index);
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </CardHeader>
             <div className={cn(
@@ -968,7 +1043,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="The name of your question..." 
                                                     textAlign={element.style?.textAlign}
-                                                    className="text-xl sm:text-2xl font-bold min-h-[1.2em] focus:ring-0 px-0 transition-all text-slate-900 selection:bg-primary/20"
+                                                    className="text-xl sm:text-2xl font-bold min-h-[1.2em] focus:ring-0 px-0 transition-all text-foreground selection:bg-primary/20"
                                                 />
                                             )} 
                                         />
@@ -981,42 +1056,108 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="Add a subtle instruction or hint here..." 
                                                     textAlign={element.style?.textAlign}
-                                                    className="text-sm text-slate-400 font-medium min-h-[1em] whitespace-pre-wrap px-0 opacity-70"
+                                                    className="text-sm text-muted-foreground font-medium min-h-[1em] whitespace-pre-wrap px-0 opacity-70"
                                                 />
                                             )} 
                                         />
                                     </div>
 
-                                    <div className="space-y-6 pt-4 border-t border-slate-50">
+                                    <div className="space-y-6 pt-4 border-t border-border/50">
                                         {element.type === 'text' && (
-                                            <div className="h-12 bg-slate-50/80 border border-slate-100 rounded-xl flex items-center px-6 italic text-slate-400 text-sm font-medium">Short Text Response</div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Input 
+                                                        {...field} 
+                                                        value={field.value || ''} 
+                                                        placeholder="Type your answer here..." 
+                                                        className="h-12 bg-muted/20 border-border/50 rounded-xl px-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                    />
+                                                )}
+                                            />
                                         )}
                                         {element.type === 'long-text' && (
-                                            <div className="min-h-[100px] bg-slate-50/80 border border-slate-100 rounded-xl p-6 italic text-slate-400 text-sm font-medium">Paragraph Response</div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Textarea 
+                                                        {...field} 
+                                                        value={field.value || ''} 
+                                                        placeholder="Share your thoughts..." 
+                                                        className="min-h-[100px] bg-muted/20 border-border/50 rounded-xl p-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 resize-none" 
+                                                    />
+                                                )}
+                                            />
                                         )}
                                         {element.type === 'email' && (
-                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
-                                                <Mail className="h-4 w-4 text-primary/40" />
-                                                <span className="text-slate-500 text-sm font-bold italic">Email Address Validation Active</span>
-                                            </div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <div className="relative flex items-center">
+                                                        <Mail className="absolute left-6 h-4 w-4 text-primary/60 pointer-events-none" />
+                                                        <Input 
+                                                            {...field} 
+                                                            value={field.value || ''} 
+                                                            placeholder="email@example.com" 
+                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
                                         )}
                                         {element.type === 'phone' && (
-                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
-                                                <Phone className="h-4 w-4 text-primary/40" />
-                                                <span className="text-slate-500 text-sm font-bold italic">Phone Number Validation Active</span>
-                                            </div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <div className="relative flex items-center">
+                                                        <Phone className="absolute left-6 h-4 w-4 text-primary/60 pointer-events-none" />
+                                                        <Input 
+                                                            {...field} 
+                                                            value={field.value || ''} 
+                                                            placeholder="+1 555-0123" 
+                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
                                         )}
                                         {element.type === 'number' && (
-                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
-                                                <Hash className="h-4 w-4 text-primary/40" />
-                                                <span className="text-slate-500 text-sm font-bold italic">Numeric Input Validation Active</span>
-                                            </div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <div className="relative flex items-center">
+                                                        <Hash className="absolute left-6 h-4 w-4 text-primary/60 pointer-events-none" />
+                                                        <Input 
+                                                            {...field} 
+                                                            value={field.value || ''} 
+                                                            placeholder="e.g. 42" 
+                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
                                         )}
                                         {element.type === 'link' && (
-                                            <div className="h-12 bg-primary/[0.03] border border-primary/5 rounded-xl flex items-center px-6 gap-3">
-                                                <LinkIcon className="h-4 w-4 text-primary/40" />
-                                                <span className="text-slate-500 text-sm font-bold italic">URL Link Validation Active</span>
-                                            </div>
+                                            <Controller
+                                                name={`elements.${index}.placeholder`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <div className="relative flex items-center">
+                                                        <LinkIcon className="absolute left-6 h-4 w-4 text-primary/60 pointer-events-none" />
+                                                        <Input 
+                                                            {...field} 
+                                                            value={field.value || ''} 
+                                                            placeholder="https://example.com" 
+                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                        />
+                                                    </div>
+                                                )}
+                                            />
                                         )}
                                         {(element.type === 'multiple-choice' || element.type === 'dropdown' || element.type === 'checkboxes') && (
                                             <div className="pt-2">
@@ -1025,13 +1166,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         )}
                                         {element.type === 'yes-no' && (
                                             <div className="flex gap-4">
-                                                <div className="flex-1 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center gap-3 opacity-40">
-                                                    <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
-                                                    <span className="font-bold text-slate-400 text-xs">YES</span>
+                                                <div className="flex-1 h-16 bg-muted/50 border border-border/50 rounded-2xl flex items-center justify-center gap-3 opacity-60">
+                                                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                                                    <span className="font-bold text-muted-foreground text-xs">YES</span>
                                                 </div>
-                                                <div className="flex-1 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center gap-3 opacity-40">
-                                                    <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
-                                                    <span className="font-bold text-slate-400 text-xs">NO</span>
+                                                <div className="flex-1 h-16 bg-muted/50 border border-border/50 rounded-2xl flex items-center justify-center gap-3 opacity-60">
+                                                    <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
+                                                    <span className="font-bold text-muted-foreground text-xs">NO</span>
                                                 </div>
                                             </div>
                                         )}
@@ -1050,7 +1191,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 onChange={field.onChange} 
                                                 placeholder="Section Heading..." 
                                                 textAlign={element.style?.textAlign}
-                                                className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight" 
+                                                className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight leading-tight" 
                                             />
                                         )}
                                     />
@@ -1063,7 +1204,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 onChange={field.onChange} 
                                                 placeholder="Brief overview of this section..." 
                                                 textAlign={element.style?.textAlign}
-                                                className="text-base sm:text-lg text-slate-400 font-medium leading-relaxed opacity-80" 
+                                                className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed opacity-80" 
                                             />
                                         )}
                                     />
@@ -1112,7 +1253,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         </Card>
         {!isCollapsed && (
             <div
-                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-3 bg-white border border-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-125 shadow-2xl"
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-3 bg-background border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-125 shadow-2xl"
                 onClick={(e) => {
                     e.stopPropagation();
                     requestAddElement(index);

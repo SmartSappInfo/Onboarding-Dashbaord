@@ -231,21 +231,25 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             )}
                         />
                         <Controller
-                            name="logoMode"
+                            name="showBranding"
                             control={control}
                             render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Branding Mode</Label>
-                                    <Select onValueChange={field.onChange} value={field.value || 'organization'}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
-                                            <SelectValue placeholder="Inheritance mode..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="organization">Inherit from Organization</SelectItem>
-                                            <SelectItem value="custom">Custom Brand (Manual Upload)</SelectItem>
-                                            <SelectItem value="placeholder">Generic Placeholder</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                <div className="space-y-4">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Survey Branding</Label>
+                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20">
+                                        <Switch 
+                                            checked={field.value} 
+                                            onCheckedChange={field.onChange} 
+                                        />
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm font-bold leading-none">{field.value ? 'Branding Enabled' : 'No Branding'}</p>
+                                            <p className="text-[10px] text-muted-foreground font-semibold">
+                                                {field.value 
+                                                    ? 'Survey will show company logo in headers and pre-loaders' 
+                                                    : 'Survey will be completely unbranded'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         />
@@ -336,33 +340,27 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 <Separator className="flex-1 border-dashed" />
                             </div>
                             <div className="grid grid-cols-1 gap-8">
-                                <Controller
-                                    name="logoUrl"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
-                                                Survey Brand Logo
-                                            </Label>
-                                            <MediaSelect 
-                                                {...field} 
-                                                filterType="image" 
-                                                className="rounded-xl" 
-                                                disabled={watch('logoMode') !== 'custom'}
-                                            />
-                                            {watch('logoMode') === 'organization' && (
+                                {watch('showBranding') && (
+                                    <Controller
+                                        name="logoUrl"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
+                                                    Custom Brand Logo (Optional Override)
+                                                </Label>
+                                                <MediaSelect 
+                                                    {...field} 
+                                                    filterType="image" 
+                                                    className="rounded-xl" 
+                                                />
                                                 <p className="text-[9px] font-bold text-primary tracking-tighter ml-1 italic">
-                                                    Branding is being managed by the associated entity.
+                                                    If left empty, the associated entity logo will be used automatically.
                                                 </p>
-                                            )}
-                                            {watch('logoMode') === 'placeholder' && (
-                                                <p className="text-[9px] font-bold text-muted-foreground tracking-tighter ml-1 italic">
-                                                    Using a generic system placeholder.
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                />
+                                            </div>
+                                        )}
+                                    />
+                                )}
                                 <Controller
                                     name="videoThumbnailUrl"
                                     control={control}
@@ -454,6 +452,42 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             </div>
                         )}
                     />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+                        <Controller
+                            name="showIntroAsPage"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Standalone Intro</Label>
+                                        <p className="text-[11px] font-medium text-muted-foreground">Show intro as a dedicated first page instead of a persistent top header.</p>
+                                    </div>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </div>
+                            )}
+                        />
+                        <Controller
+                            name="stepperVariant"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2 pt-1 md:pt-0">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Survey Stepper Style</Label>
+                                    <Select onValueChange={field.onChange} value={field.value || 'full'}>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                            <SelectValue placeholder="Select stepper style..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="full">Details (Full Text)</SelectItem>
+                                            <SelectItem value="simple">Minimal (Dots/Dashes)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        />
+                    </div>
                 </CardContent>
             </Card>
         </div>

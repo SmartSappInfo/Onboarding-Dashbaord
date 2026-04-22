@@ -5,19 +5,20 @@ import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultBlock } from
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRight, Quote, Trophy } from 'lucide-react';
+import { ArrowRight, Quote, Trophy, Building2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
-import { SmartSappLogo } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 
 interface ResultRendererProps {
     survey: Survey;
     response: SurveyResponse;
     page: SurveyResultPage | null;
+    logoUrl?: string | null;
+    allowResubmission?: boolean;
 }
 
 function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: any, displayMode?: 'points' | 'percentage' }) {
@@ -176,15 +177,47 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
     }
 }
 
-export default function ResultRenderer({ survey, response, page }: ResultRendererProps) {
+export default function ResultRenderer({ survey, response, page, logoUrl, allowResubmission }: ResultRendererProps) {
+    const LogoBanner = () => (
+        <div className="flex justify-center">
+            {logoUrl ? (
+                <div className="relative h-10 w-40 sm:h-12 sm:w-48">
+                    <Image src={logoUrl} alt="Logo" fill className="object-contain" />
+                </div>
+            ) : (
+                <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />
+            )}
+        </div>
+    );
+
+    const ResubmitButton = () => {
+        if (!allowResubmission) return null;
+        return (
+            <div className="mt-10 flex justify-center">
+                <Button 
+                    asChild
+                    variant="outline" 
+                    size="lg" 
+                    className="rounded-xl font-semibold gap-2"
+                >
+                    <a href={`/surveys/${survey.slug}`}>
+                        <RotateCcw className="h-4 w-4" />
+                        Submit Another Response
+                    </a>
+                </Button>
+            </div>
+        );
+    };
+
     if (!page) {
         return (
             <div className="text-center py-16 sm:py-20 bg-card rounded-2xl shadow-xl border border-border/50 p-6 sm:p-10">
-                <div className="flex justify-center">
-                    <SmartSappLogo className="h-10 sm:h-12 mb-8" />
+                <div className="mb-8">
+                    <LogoBanner />
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
                 <p className="text-lg sm:text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                <ResubmitButton />
             </div>
         );
     }
@@ -192,7 +225,7 @@ export default function ResultRenderer({ survey, response, page }: ResultRendere
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
             <div className="flex justify-center mb-8 sm:mb-12">
-                <SmartSappLogo className="h-8 sm:h-10 opacity-50 grayscale hover:opacity-100 transition-all cursor-pointer" />
+                <LogoBanner />
             </div>
             <div className="space-y-4 sm:space-y-5">
                 {page.blocks.map(block => (
@@ -205,6 +238,7 @@ export default function ResultRenderer({ survey, response, page }: ResultRendere
                     />
                 ))}
             </div>
+            <ResubmitButton />
         </div>
     );
 }

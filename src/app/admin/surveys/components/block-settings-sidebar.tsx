@@ -5,7 +5,7 @@ import { useFormContext, Controller } from 'react-hook-form';
 import { 
     Settings, Asterisk, Zap, Trophy, ShieldCheck, 
     ChevronRight, Info, AlertCircle, Trash2, Copy, 
-    EyeOff, AlignLeft, AlignCenter, AlignRight, AlignJustify, 
+    EyeOff, Eye, AlignLeft, AlignCenter, AlignRight, AlignJustify, 
     Layers, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine,
     Bold, Italic, Underline
 } from 'lucide-react';
@@ -354,6 +354,29 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                         className="h-10 bg-muted/30 border-none rounded-lg font-bold" 
                                         placeholder="e.g. Basic Info"
                                         {...field}
+                                    />
+                                )}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between group">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="section-header-visible" className="flex items-center gap-2 cursor-pointer">
+                                    <Eye className="h-4 w-4 text-primary" />
+                                    <span className="font-bold">Show Section Header</span>
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground font-semibold pl-6">
+                                    When off, section acts as a page break only
+                                </p>
+                            </div>
+                            <Controller
+                                control={control}
+                                name={`elements.${activeIndex}.showSectionHeader`}
+                                render={({ field }) => (
+                                    <Switch 
+                                        id="section-header-visible" 
+                                        checked={field.value ?? true} 
+                                        onCheckedChange={field.onChange} 
                                     />
                                 )}
                             />
