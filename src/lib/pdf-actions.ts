@@ -424,6 +424,17 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
     patternColor: '#3B5FFF',
   });
   
+  // Task 13.1: Register form field variables when form is created with fields
+  if (formData.fields && Array.isArray(formData.fields) && formData.fields.length > 0) {
+    try {
+      const { registerFormVariables } = await import('./template-variable-registry');
+      await registerFormVariables(docRef.id, formData.fields);
+    } catch (error) {
+      // Registration failures should not block form operations
+      console.error('Failed to register form variables:', error);
+    }
+  }
+  
   if (size !== undefined && mimeType !== undefined) {
     await adminDb.collection('media').add({
       name: formData.originalFileName || formData.name,
@@ -488,6 +499,18 @@ export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
         ...data,
         updatedAt: new Date().toISOString(),
     });
+    
+    // Task 13.1: Register form field variables when fields are updated
+    if (data.fields && Array.isArray(data.fields)) {
+        try {
+            const { registerFormVariables } = await import('./template-variable-registry');
+            await registerFormVariables(pdfId, data.fields);
+        } catch (error) {
+            // Registration failures should not block form operations
+            console.error('Failed to register form variables:', error);
+        }
+    }
+    
     revalidatePath(`/admin/pdfs/${pdfId}/edit`);
     revalidatePath('/admin/pdfs');
     return { success: true };

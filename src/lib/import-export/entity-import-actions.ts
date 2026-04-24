@@ -1,0 +1,491 @@
+'use server';
+
+/**
+ * @fileOverview Server Actions for the Advanced Entity Import Wizard.
+ *
+ * These actions handle validation, duplicate detection, batch execution,
+ * and session management. They delegate entity creation to the canonical
+ * `createEntityAction` to guarantee backward compatibility with existing
+ * entity + workspace_entity patterns (Requirement 14).
+ *
+ * Requirements: 1-20 (Advanced Entity Import with Mapping)
+ */
+
+import { adminDb } from '../firebase-admin';
+import { logActivity } from '../activity-logger';
+import { validateScopeMatch } from '../scope-guard';
+import { createEntityAction } from '../entity-actions';
+import type { EntityType, Workspace } from '../types';
+import type {
+  ColumnMapping,
+  ValidationSummary,
+  ExecutionSummary,
+} from '@/app/admin/contacts/import/types';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Applies a column-mapping configuration to a raw CSV row, producing a
+ * flat object keyed by target entity fields.
+ */
+function applyMappings(
+  row: Record<string, string>,
+  mappings: ColumnMapping[]
+): Record<string, string> {
+  const mapped: Record<string, string> = {};
+  for (const m of mappings) {
+    if (m.targetField && row[m.csvColumn] !== undefined) {
+      mapped[m.targetField] = row[m.csvColumn].trim();
+    }
+  }
+  return mapped;
+}
+
+/**
+ * Normalise a name for duplicate comparison – lowercase, trim, strip
+ * non-alphanumeric characters.
+ */
+function normaliseName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Basic email validation (RFC 5322 simplified).
+ */
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/**
+ * Basic phone validation – allow digits, spaces, dashes, parens, plus sign.
+ */
+function isValidPhone(phone: string): boolean {
+  return /^[+\d\s\-()]{7,20}$/.test(phone);
+}
+
+// ─── Validate Import Batch ────────────────────────────────────────────────────
+
+/**
+ * Runs schema checks, required-field checks, type validation, and duplicate
+ * detection on a preview batch of rows.
+ *
+ * This is called from the Validation step (step 3) of the wizard.
+ */
+export async function validateImportBatch(
+  rows: Record<string, string>[],
+  mappings: ColumnMapping[],
+  entityType: EntityType,
+  totalRowCount: number,
+  workspaceId?: string,
+  organizationId?: string
+): Promise<ValidationSummary> {
+  const errors: ValidationSummary['errors'] = [];
+  const duplicates: ValidationSummary['duplicates'] = [];
+  const previewRows: any[] = [];
+  let validRows = 0;
+
+  // 1. ScopeGuard – make sure workspace accepts this entity type
+  if (workspaceId) {
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (wsSnap.exists) {
+      const workspace = { id: wsSnap.id, ...wsSnap.data() } as Workspace;
+      if (workspace.contactScope) {
+        const scopeCheck = validateScopeMatch(entityType, workspace.contactScope);
+        if (!scopeCheck.valid) {
+          return {
+            totalRows: totalRowCount,
+            validRows: 0,
+            duplicateRows: 0,
+            errorRows: totalRowCount,
+            errors: [
+              {
+                rowNumber: 0,
+                reason: `Scope mismatch: workspace requires "${workspace.contactScope}" but you are importing "${entityType}".`,
+              },
+            ],
+            duplicates: [],
+            previewRows: [],
+          };
+        }
+      }
+    }
+  }
+
+  // 2. Build a Set of existing entity names for duplicate checking (batched)
+  const orgId = organizationId || 'smartsapp-hq';
+  const existingNames = new Map<string, string>(); // normalised name → entityId
+
+  const existingSnap = await adminDb
+    .collection('entities')
+    .where('organizationId', '==', orgId)
+    .where('entityType', '==', entityType)
+    .select('name')
+    .get();
+
+  for (const doc of existingSnap.docs) {
+    const name = doc.data()?.name;
+    if (name) {
+      existingNames.set(normaliseName(name), doc.id);
+    }
+  }
+
+  // 3. Walk each row
+  for (let i = 0; i < rows.length; i++) {
+    const mapped = applyMappings(rows[i], mappings);
+    const rowNum = i + 1;
+    let rowValid = true;
+
+    // 3a. Derive entity name & Contact Name Sync
+    let entityName = '';
+    let contactName = mapped.focalPerson_name || mapped.contactName || '';
+
+    if (entityType === 'person') {
+      entityName = `${mapped.firstName || ''} ${mapped.lastName || ''}`.trim();
+      if (!entityName && contactName) {
+        // Sync backwards
+        entityName = contactName;
+        mapped.firstName = contactName;
+      }
+      if (!entityName && (mapped.email || mapped.phone)) {
+        entityName = `[Placeholder] ${mapped.email || mapped.phone}`;
+      }
+    } else if (entityType === 'family') {
+      entityName =
+        mapped.familyName ||
+        mapped.guardian1_name ||
+        contactName ||
+        '';
+      if (!entityName && (mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone)) {
+        entityName = `[Placeholder] ${mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone}`;
+      }
+    } else {
+      entityName = mapped.name || contactName || '';
+      if (!entityName && (mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone)) {
+        entityName = `[Placeholder] ${mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone}`;
+      }
+    }
+
+    // 3b. Required field checks (Relaxed for MVE)
+    if (!entityName) {
+      errors.push({ rowNumber: rowNum, reason: 'Missing identifier (Name, Email, or Phone required)' });
+      rowValid = false;
+    }
+
+    // 3c. Type validation
+    if (mapped.email && !isValidEmail(mapped.email)) {
+      errors.push({ rowNumber: rowNum, reason: `Invalid email format: "${mapped.email}"` });
+      rowValid = false;
+    }
+    if (mapped.focalPerson_email && !isValidEmail(mapped.focalPerson_email)) {
+      errors.push({ rowNumber: rowNum, reason: `Invalid focal person email: "${mapped.focalPerson_email}"` });
+      rowValid = false;
+    }
+    if (mapped.guardian1_email && !isValidEmail(mapped.guardian1_email)) {
+      errors.push({ rowNumber: rowNum, reason: `Invalid guardian email: "${mapped.guardian1_email}"` });
+      rowValid = false;
+    }
+    if (mapped.phone && !isValidPhone(mapped.phone)) {
+      errors.push({ rowNumber: rowNum, reason: `Invalid phone format: "${mapped.phone}"` });
+      rowValid = false;
+    }
+    if (mapped.nominalRoll && isNaN(Number(mapped.nominalRoll))) {
+      errors.push({ rowNumber: rowNum, reason: `nominalRoll must be a number, got "${mapped.nominalRoll}"` });
+      rowValid = false;
+    }
+
+    // 3d. Duplicate detection (case-insensitive, normalised)
+    if (entityName) {
+      const normalised = normaliseName(entityName);
+      const existingId = existingNames.get(normalised);
+      if (existingId) {
+        duplicates.push({ rowNumber: rowNum, entityId: existingId, name: entityName });
+        rowValid = false; // Mark as not importable by default (skip)
+      }
+    }
+
+    if (rowValid) {
+      validRows++;
+      if (previewRows.length < 10) {
+        previewRows.push(mapped);
+      }
+    }
+  }
+
+  // Extrapolate counts for full file (we only validated the preview batch)
+  const ratio = totalRowCount / (rows.length || 1);
+
+  return {
+    totalRows: totalRowCount,
+    validRows: Math.round(validRows * ratio),
+    duplicateRows: Math.round(duplicates.length * ratio),
+    errorRows: Math.round(errors.length * ratio),
+    errors,
+    duplicates,
+    previewRows,
+  };
+}
+
+// ─── Execute Import Batch ─────────────────────────────────────────────────────
+
+/**
+ * Processes a batch of CSV rows, mapping them to entity creation payloads and
+ * delegating to `createEntityAction` for each row.
+ *
+ * Returns per-batch success/failure counts so the client can aggregate them.
+ */
+export async function executeImportBatch(
+  rows: Record<string, string>[],
+  mappings: ColumnMapping[],
+  entityType: EntityType,
+  workspaceId?: string,
+  organizationId?: string,
+  userId?: string,
+  pipelineId?: string,
+  stageId?: string,
+  configuration?: {
+    selectedTags?: string[];
+    selectedAutomations?: string[];
+    globalDefaults?: Record<string, string>;
+  }
+): Promise<ExecutionSummary & { createdIds?: string[] }> {
+  const uid = userId || 'system-import';
+  const wsId = workspaceId || '';
+  const orgId = organizationId || 'smartsapp-hq';
+
+  let successCount = 0;
+  let errorCount = 0;
+  let skippedCount = 0;
+  const failedRows: ExecutionSummary['failedRows'] = [];
+  const createdIds: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const mapped = applyMappings(rows[i], mappings);
+    
+    // Merge Defaults
+    if (configuration?.globalDefaults) {
+      for (const [key, val] of Object.entries(configuration.globalDefaults)) {
+        if (!mapped[key] && val) {
+          mapped[key] = val;
+        }
+      }
+    }
+
+    try {
+      // Build the entity payload based on type
+      const payload = buildEntityPayload(mapped, entityType, pipelineId, stageId);
+
+      if (!payload) {
+        skippedCount++;
+        continue;
+      }
+
+      // Delegate to canonical createEntityAction (Requirement 14 – backward compat)
+      const result = await createEntityAction(
+        payload,
+        uid,
+        wsId,
+        entityType,
+        orgId
+      );
+
+      if (result.success && result.id) {
+        successCount++;
+        createdIds.push(result.id);
+        
+        // Apply Tags if requested
+        if (configuration?.selectedTags && configuration.selectedTags.length > 0) {
+          try {
+            // Import dynamically to avoid circular dependencies if any
+            const { applyTagAction } = await import('../scoped-tag-actions');
+            await applyTagAction(result.id, configuration.selectedTags, wsId, uid);
+          } catch (tagErr) {
+            console.error('Failed to apply tags to entity', result.id, tagErr);
+          }
+        }
+      } else {
+        errorCount++;
+        failedRows.push({
+          rowNumber: i + 1,
+          reason: result.error || 'Unknown creation error',
+          originalData: rows[i],
+        });
+      }
+    } catch (err: any) {
+      errorCount++;
+      failedRows.push({
+        rowNumber: i + 1,
+        reason: err.message || 'Unexpected error',
+        originalData: rows[i],
+      });
+    }
+  }
+
+  // Log aggregate activity (Requirement 9)
+  if (wsId) {
+    try {
+      await logActivity({
+        organizationId: orgId,
+        workspaceId: wsId,
+        userId: uid,
+        type: 'contacts_imported',
+        source: 'user_action',
+        description: `Bulk import batch completed: ${successCount} created, ${errorCount} errors, ${skippedCount} skipped`,
+        metadata: {
+          entityType,
+          successCount,
+          errorCount,
+          skippedCount,
+          batchSize: rows.length,
+        },
+      });
+    } catch {
+      // Non-critical – don't fail the import for logging issues
+    }
+  }
+
+  return { successCount, errorCount, skippedCount, failedRows, createdIds };
+}
+
+// ─── Entity Payload Builder ───────────────────────────────────────────────────
+
+function buildEntityPayload(
+  mapped: Record<string, string>,
+  entityType: EntityType,
+  pipelineId?: string,
+  stageId?: string
+): any | null {
+  // Sync Contact Name <-> Entity Name generically
+  const contactName = mapped.focalPerson_name || mapped.contactName || '';
+
+  if (entityType === 'person') {
+    let fName = mapped.firstName;
+    let lName = mapped.lastName;
+    
+    if (!fName && !lName && contactName) {
+      fName = contactName;
+    }
+    
+    let displayName = `${fName || ''} ${lName || ''}`.trim();
+    if (!displayName && (mapped.email || mapped.phone)) {
+      displayName = `[Placeholder] ${mapped.email || mapped.phone}`;
+      fName = displayName; // Needed to ensure payload isn't completely empty
+    }
+
+    if (!displayName) return null;
+
+    const contacts: any[] = [];
+    if (mapped.email || mapped.phone || displayName) {
+      contacts.push({
+        name: displayName,
+        phone: mapped.phone || '',
+        email: mapped.email || '',
+        typeKey: 'primary',
+        typeLabel: 'Primary',
+        isPrimary: true,
+        isSignatory: true,
+      });
+    }
+
+    return {
+      name: displayName,
+      personData: {
+        firstName: fName || '',
+        lastName: lName || '',
+        company: mapped.company || '',
+        jobTitle: mapped.jobTitle || '',
+        leadSource: mapped.leadSource || '',
+      },
+      entityContacts: contacts,
+    };
+  }
+
+  if (entityType === 'family') {
+    let familyName = mapped.familyName || mapped.guardian1_name || contactName || '';
+    if (!familyName && (mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone)) {
+      familyName = `[Placeholder] ${mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone}`;
+    }
+    if (!familyName) return null;
+
+    const gName = mapped.guardian1_name || contactName || familyName;
+
+    const contacts: any[] = [];
+    if (gName || mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone) {
+      contacts.push({
+        name: gName,
+        phone: mapped.guardian1_phone || mapped.phone || '',
+        email: mapped.guardian1_email || mapped.email || '',
+        typeKey: 'guardian',
+        typeLabel: 'Guardian',
+        isPrimary: true,
+        isSignatory: true,
+      });
+    }
+
+    const guardians: any[] = [];
+    if (gName) {
+      guardians.push({
+        name: gName,
+        phone: mapped.guardian1_phone || mapped.phone || '',
+        email: mapped.guardian1_email || mapped.email || '',
+        relationship: mapped.guardian1_relationship || 'Guardian',
+        isPrimary: true,
+      });
+    }
+
+    const children: any[] = [];
+    if (mapped.child1_firstName && mapped.child1_lastName) {
+      children.push({
+        firstName: mapped.child1_firstName,
+        lastName: mapped.child1_lastName,
+        dateOfBirth: '',
+        gradeLevel: mapped.child1_gradeLevel || '',
+      });
+    }
+
+    return {
+      name: familyName,
+      familyData: { guardians, children },
+      entityContacts: contacts,
+    };
+  }
+
+  if (entityType === 'institution') {
+    let instName = mapped.name || contactName || '';
+    if (!instName && (mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone)) {
+      instName = `[Placeholder] ${mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone}`;
+    }
+    if (!instName) return null;
+
+    const fpName = mapped.focalPerson_name || contactName || 'Primary Contact';
+
+    const contacts: any[] = [];
+    if (fpName || mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone) {
+      contacts.push({
+        name: fpName,
+        phone: mapped.focalPerson_phone || mapped.phone || '',
+        email: mapped.focalPerson_email || mapped.email || '',
+        typeKey: mapped.focalPerson_type?.toLowerCase() || 'focal_person',
+        typeLabel: mapped.focalPerson_type || 'Focal Person',
+        isPrimary: true,
+        isSignatory: true,
+      });
+    }
+
+    return {
+      name: instName,
+      institutionData: {
+        nominalRoll: mapped.nominalRoll ? parseInt(mapped.nominalRoll, 10) : undefined,
+        billingAddress: mapped.billingAddress || '',
+        currency: mapped.currency || 'GHS',
+        subscriptionPackageId: mapped.subscriptionPackageId || '',
+      },
+      entityContacts: contacts,
+    };
+  }
+
+  return null;
+}

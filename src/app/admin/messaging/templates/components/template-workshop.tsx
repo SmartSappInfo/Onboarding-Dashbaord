@@ -161,7 +161,7 @@ export function TemplateWorkshop({
             v.category === 'general' || 
             v.category === category || 
             v.category === 'finance' ||
-            (category === 'contracts' && v.category === 'finance')
+            (category === 'agreements' && v.category === 'finance')
         ) && !v.hidden);
     }, [variables, category]);
 

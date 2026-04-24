@@ -10,6 +10,7 @@ import { MEETING_TYPES } from '@/lib/types';
 import { getEntityEmail } from '@/lib/entity-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
+import { cancelRemindersForMeeting } from '@/lib/reminder-actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -157,6 +158,12 @@ export default function MeetingsHubClient() {
     if (!firestore || !meetingToDelete) return;
 
     const docRef = doc(firestore, 'meetings', meetingToDelete.id);
+    
+    // Task 12.4: Cancel reminders before deleting the meeting
+    cancelRemindersForMeeting(meetingToDelete.id).catch(err => 
+      console.warn("Reminder cancellation deferred:", err.message)
+    );
+    
     deleteDoc(docRef)
       .then(() => {
         toast({
@@ -268,8 +275,8 @@ export default function MeetingsHubClient() {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <Link href={`/admin/messaging/composer?recipient=${entityEmail || ''}&var_school_name=${encodeURIComponent(meeting.entityName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
- <Send className="mr-2 h-4 w-4" />
+                <Link href={`/admin/messaging/composer?category=meetings&meetingId=${meeting.id}&recipient=${entityEmail || ''}&var_school_name=${encodeURIComponent(meeting.entityName || '')}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}${publicUrl}` : '')}&var__meetingId=${meeting.id}`}>
+                    <Send className="mr-2 h-4 w-4" />
                     <span>Send Invite/Reminder</span>
                 </Link>
             </DropdownMenuItem>

@@ -61,23 +61,72 @@ async function executeAction(db: Firestore, action: AutomationAction, context: T
 
     switch (action.type) {
         case 'SEND_MESSAGE':
-            if (!action.templateId) return;
+            // Task 15.1: Support both legacy templateId and new category/type approach
+            if (!action.templateId && (!action.templateCategory || !action.templateType)) return;
             
             const recipient = await resolveRecipient(action, school);
             if (!recipient) return;
 
-            await sendMessage({
-                templateId: action.templateId,
-                senderProfileId: action.senderProfileId || 'default',
-                recipient,
-                variables: { 
-                    school_name: school.name, 
-                    school_id: school.id,
-                    contact_name: getContactPerson(school) || ''
-                },
-                entityId: school.id,
-                workspaceId: school.workspaceIds?.[0] || 'onboarding' // Pass workspace context (Requirement 11)
-            });
+            const workspaceId = school.workspaceIds?.[0] || 'onboarding';
+            
+            // Task 15.1: Use resolveAndRender for new template system if category/type provided
+            if (action.templateCategory && action.templateType) {
+                // Get organizationId from workspace
+                const workspaceDoc = await getDoc(doc(db, 'workspaces', workspaceId));
+                if (!workspaceDoc.exists()) {
+                    console.error(`Workspace ${workspaceId} not found`);
+                    return;
+                }
+                const organizationId = workspaceDoc.data()!.organizationId;
+                
+                // Import resolveAndRender dynamically to avoid circular dependencies
+                const { resolveAndRender } = await import('./template-resolver');
+                const rendered: { subject?: string; body: string } = await resolveAndRender(
+                    action.templateCategory,
+                    action.templateType,
+                    organizationId,
+                    {
+                        entityId: school.id,
+                        workspaceId,
+                        extraVars: {
+                            school_name: school.name,
+                            school_id: school.id,
+                            contact_name: getContactPerson(school) || ''
+                        }
+                    }
+                );
+                
+                // Send message with rendered content
+                await sendMessage({
+                    templateId: action.templateId || 'automation-generated',
+                    senderProfileId: action.senderProfileId || 'default',
+                    recipient,
+                    variables: {
+                        school_name: school.name,
+                        school_id: school.id,
+                        contact_name: getContactPerson(school) || ''
+                    },
+                    entityId: school.id,
+                    workspaceId,
+                    // Override with rendered content
+                    ...(rendered.subject && { subject: rendered.subject }),
+                    body: rendered.body as string
+                });
+            } else {
+                // Legacy path: use templateId directly
+                await sendMessage({
+                    templateId: action.templateId || 'default-template',
+                    senderProfileId: action.senderProfileId || 'default',
+                    recipient,
+                    variables: { 
+                        school_name: school.name, 
+                        school_id: school.id,
+                        contact_name: getContactPerson(school) || ''
+                    },
+                    entityId: school.id,
+                    workspaceId
+                });
+            }
             break;
 
         case 'CREATE_TASK':

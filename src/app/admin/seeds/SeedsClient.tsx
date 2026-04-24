@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { migrateContractsToEntities, rollbackContractsMigration } from '@/lib/entity-migrations';
-import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert } from 'lucide-react';
+import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
 import { migrateAllPermissions } from '@/lib/permissions-migration';
 import { ShieldAlert } from 'lucide-react';
+import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -24,6 +25,7 @@ export default function SeedsClient() {
   const [migrationStatus, setMigrationStatus] = useState<SeedingState>('idle');
   const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
   const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
+  const [globalTemplatesStatus, setGlobalTemplatesStatus] = useState<SeedingState>('idle');
 
   const handleMigration = async () => {
     if (!firestore) return;
@@ -75,6 +77,34 @@ export default function SeedsClient() {
     }
   };
 
+  const handleSeedGlobalTemplates = async () => {
+    setGlobalTemplatesStatus('seeding');
+    try {
+      const result = await seedGlobalTemplatesAction();
+      if (result.failed > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Seed partially failed',
+          description: `Created ${result.created}, skipped ${result.skipped}, failed ${result.failed}.`,
+        });
+        setGlobalTemplatesStatus('error');
+      } else {
+        toast({
+          title: 'Global templates seeded!',
+          description: result.created === 0
+            ? `All ${result.skipped} templates already exist — nothing to do.`
+            : `Created ${result.created} template(s). Skipped ${result.skipped} existing.`,
+        });
+        setGlobalTemplatesStatus('success');
+      }
+    } catch (error: any) {
+      setGlobalTemplatesStatus('error');
+      toast({ variant: 'destructive', title: 'Seed Failed', description: error.message });
+    } finally {
+      setTimeout(() => setGlobalTemplatesStatus('idle'), 2500);
+    }
+  };
+
     return (
         <div className="h-full overflow-y-auto">
             <div className="max-w-5xl mx-auto space-y-12 pb-32">
@@ -111,6 +141,14 @@ export default function SeedsClient() {
                         status={permissionsStatus}
                         onSync={handlePermissionsMigration}
                         syncLabel="Migrate Permissions"
+                    />
+                    <SimpleMigrationCard
+                        title="Seed Global Message Templates"
+                        description="Creates the full set of global default message templates across all categories: Meetings, Meeting Reminders, Forms, Surveys, Agreements, and General. All templates are seeded as approved and active. Safe to re-run — existing templates are skipped."
+                        icon={MailCheck}
+                        status={globalTemplatesStatus}
+                        onSync={handleSeedGlobalTemplates}
+                        syncLabel="Seed Templates"
                     />
                 </div>
             </section>

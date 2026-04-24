@@ -7,7 +7,7 @@ import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
-import { cloneTemplate } from '@/lib/template-actions';
+// import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
 import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import {
   AlertDialog,
@@ -210,9 +210,11 @@ export default function MessageTemplatesPage() {
         if (!user) return;
         setCloningId(tmpl.id);
         try {
-            const result = await cloneTemplate(tmpl.id, user.uid);
-            if (result.success) toast({ title: 'Clone Successful' });
-            else throw new Error(result.error);
+            // TODO: Implement cloneTemplate function
+            toast({ variant: 'destructive', title: 'Clone Error', description: 'Clone feature not yet implemented' });
+            // const result = await cloneTemplate(tmpl.id, user.uid);
+            // if (result.success) toast({ title: 'Clone Successful' });
+            // else throw new Error(result.error);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Clone Error', description: e.message });
         } finally {

@@ -445,7 +445,10 @@ async function handleDelayNode(node: any, context: ExecutionContext) {
 // --- Specific Action Handlers ---
 
 async function handleSendMessage(config: any, context: ExecutionContext) {
-    if (!config.templateId) throw new Error("Message action missing templateId.");
+    // Task 15.1: Support both legacy templateId and new category/type approach
+    if (!config.templateId && (!config.templateCategory || !config.templateType)) {
+        throw new Error("Message action missing template configuration (templateId or category/type).");
+    }
     
     // Resolve contact using entityId (Requirement 14.3)
     const contactId = context.entityId;
@@ -463,14 +466,52 @@ async function handleSendMessage(config: any, context: ExecutionContext) {
         }
     }
     
-    await sendMessage({
-        templateId: config.templateId,
-        senderProfileId: config.senderProfileId || 'default',
-        recipient: resolvedRecipient, 
-        variables: { ...context.payload },
-        entityId: context.entityId,
-        workspaceId: context.workspaceId
-    });
+    // Task 15.1: Use new template resolution if category/type provided
+    // Otherwise fall back to legacy templateId approach for backward compatibility
+    if (config.templateCategory && config.templateType) {
+        // Get organizationId from workspace
+        const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+        if (!workspaceSnap.exists) {
+            throw new Error(`Workspace ${context.workspaceId} not found`);
+        }
+        const organizationId = workspaceSnap.data()!.organizationId;
+        
+        // Use resolveAndRender for new template system
+        const { resolveAndRender } = await import('./template-resolver');
+        const rendered = await resolveAndRender(
+            config.templateCategory,
+            config.templateType,
+            organizationId,
+            {
+                entityId: context.entityId,
+                workspaceId: context.workspaceId,
+                extraVars: context.payload
+            }
+        );
+        
+        // Send message with rendered content
+        await sendMessage({
+            templateId: config.templateId || 'automation-generated',
+            senderProfileId: config.senderProfileId || 'default',
+            recipient: resolvedRecipient,
+            variables: { ...context.payload },
+            entityId: context.entityId,
+            workspaceId: context.workspaceId,
+            // Override with rendered content
+            ...(rendered.subject && { subject: rendered.subject }),
+            body: rendered.body
+        });
+    } else {
+        // Legacy path: use templateId directly
+        await sendMessage({
+            templateId: config.templateId,
+            senderProfileId: config.senderProfileId || 'default',
+            recipient: resolvedRecipient, 
+            variables: { ...context.payload },
+            entityId: context.entityId,
+            workspaceId: context.workspaceId
+        });
+    }
 }
 
 async function handleCreateTask(config: any, context: ExecutionContext) {

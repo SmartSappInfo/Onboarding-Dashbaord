@@ -39,7 +39,7 @@ export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspe
     const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer', 'list'].includes(block.type);
     
     // Logic to identify if we are in a finance context to show the smart link suggestion
-    const isFinanceContext = templateCategory === 'finance' || templateCategory === 'contracts';
+    const isFinanceContext = templateCategory === 'agreements';
 
     return (
  <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">

@@ -162,7 +162,7 @@ export default function QuickTemplateDialog({
                 metricVars.push(v);
             } else if (isQuestionFromSurvey) {
                 surveyVars.push(v);
-            } else if (v.category === 'finance' || (category === 'contracts' && v.category === 'finance')) {
+            } else if (v.category === 'finance' || (category === 'agreements' && v.category === 'finance')) {
                 financeVars.push(v);
             } else if (v.category === category && v.source === 'survey' && !selectedSurveyId) {
                 surveyVars.push(v);

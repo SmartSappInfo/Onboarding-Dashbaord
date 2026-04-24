@@ -27,11 +27,12 @@ import {
     Type,
     Sparkles,
     Bell,
-    ClipboardCheck
+    ClipboardCheck,
+    Clock
 } from 'lucide-react';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField } from '@/lib/types';
-import { MEETING_TYPES } from '@/lib/types';
+import { MEETING_TYPES, REMINDER_OFFSETS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -64,6 +65,8 @@ import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { scheduleRemindersForMeeting, rescheduleRemindersForMeeting } from '@/lib/reminder-actions';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
   entity: z.custom<WorkspaceEntity>().refine(value => !!value, { message: "Entity is required." }),
@@ -101,6 +104,9 @@ const formSchema = z.object({
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  
+  // Reminders (Task 12.1)
+  enabledReminders: z.array(z.string()).default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -171,6 +177,7 @@ export default function EditMeetingPage() {
       adminAlertSpecificUserIds: [],
       adminAlertEmailTemplateId: '',
       adminAlertSmsTemplateId: '',
+      enabledReminders: [],
     },
   });
 
@@ -214,6 +221,7 @@ export default function EditMeetingPage() {
             adminAlertSpecificUserIds: meeting.adminAlertSpecificUserIds || [],
             adminAlertEmailTemplateId: meeting.adminAlertEmailTemplateId || '',
             adminAlertSmsTemplateId: meeting.adminAlertSmsTemplateId || '',
+            enabledReminders: meeting.enabledReminders || [],
           });
           setHasInitialized(true);
       }
@@ -272,6 +280,9 @@ export default function EditMeetingPage() {
             adminAlertSpecificUserIds: data.adminAlertSpecificUserIds || [],
             adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
             adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
+            
+            // Reminders (Task 12.1)
+            enabledReminders: data.enabledReminders || [],
         };
 
         const docRef = doc(firestore, 'meetings', meetingId);
@@ -308,6 +319,17 @@ export default function EditMeetingPage() {
                     event_type: 'Session Setup Configured'
                 }
             }).catch(err => console.warn("Notification deferred:", err.message));
+        }
+
+        // Task 12.3: Reschedule reminders if meeting time changed or reminders changed
+        const timeChanged = meeting?.meetingTime !== data.meetingTime.toISOString();
+        const remindersChanged = JSON.stringify(meeting?.enabledReminders || []) !== JSON.stringify(data.enabledReminders || []);
+        
+        if (timeChanged || remindersChanged) {
+            rescheduleRemindersForMeeting(
+                { id: meetingId, ...meetingData } as any,
+                activeOrganizationId
+            ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
         }
 
         router.push(`/admin/meetings/${meetingId}`);
@@ -885,6 +907,53 @@ export default function EditMeetingPage() {
                                                 <FormControl>
  <BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" />
                                                 </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+ <Separator className="bg-border/50" />
+
+                                {/* Reminder Configuration (Task 12.1) */}
+ <div className="space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="p-2 bg-blue-500/10 rounded-xl"><Clock className="h-5 w-5 text-blue-600" /></div>
+                                        <div>
+ <h3 className="text-sm font-semibold tracking-tight">Automated Reminders</h3>
+ <p className="text-xs text-muted-foreground">Send automatic reminders to attendees before the meeting</p>
+                                        </div>
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="enabledReminders"
+                                        render={({ field }) => (
+                                            <FormItem>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {[
+                                                        { id: 'meeting_reminder_15min', label: '15 minutes before', offset: REMINDER_OFFSETS.FIFTEEN_MINUTES },
+                                                        { id: 'meeting_reminder_1hour', label: '1 hour before', offset: REMINDER_OFFSETS.ONE_HOUR },
+                                                        { id: 'meeting_reminder_2hours', label: '2 hours before', offset: REMINDER_OFFSETS.TWO_HOURS },
+                                                        { id: 'meeting_reminder_1day', label: '1 day before', offset: REMINDER_OFFSETS.ONE_DAY },
+                                                        { id: 'meeting_time_up', label: 'At meeting time', offset: REMINDER_OFFSETS.TIME_UP },
+                                                    ].map((reminder) => (
+ <div key={reminder.id} className="flex items-center space-x-3 p-3 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors">
+                                                            <Checkbox
+                                                                id={reminder.id}
+                                                                checked={field.value?.includes(reminder.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    const updated = checked
+                                                                        ? [...(field.value || []), reminder.id]
+                                                                        : (field.value || []).filter((id) => id !== reminder.id);
+                                                                    field.onChange(updated);
+                                                                }}
+                                                            />
+ <label htmlFor={reminder.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                                {reminder.label}
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

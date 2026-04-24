@@ -867,6 +867,8 @@ export interface Meeting {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+  // Reminder configuration (Task 12)
+  enabledReminders?: string[]; // Array of reminder type IDs (e.g., ['meeting_reminder_15min', 'meeting_reminder_1hour'])
 }
 
 export interface MeetingRegistrationField {
@@ -1368,7 +1370,11 @@ export interface AutomationEventPayload {
 
 export interface AutomationAction {
   type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK';
+  // Legacy template ID (for backward compatibility)
   templateId?: string;
+  // New template resolution by category/type (Task 15.2)
+  templateCategory?: TemplateCategory;
+  templateType?: string;
   senderProfileId?: string;
   recipientType?: 'fixed' | 'manager' | 'focal_person';
   fixedRecipient?: string;
@@ -1442,21 +1448,130 @@ export interface VariableDefinition {
   constantValue?: string;
 }
 
-export interface MessageTemplate {
+export type TemplateCategory =
+  | 'forms'
+  | 'surveys'
+  | 'meetings'
+  | 'agreements'
+  | 'campaigns'
+  | 'reminders'
+  | 'general';
+
+export type VariableContext =
+  | 'meeting'
+  | 'form'
+  | 'survey'
+  | 'agreement'
+  | 'entity'
+  | 'campaign'
+  | 'common';
+
+export interface TemplateVariable {
   id: string;
   name: string;
-  category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance' | 'contracts';
+  label: string;
+  description: string;
+  dataType: 'string' | 'date' | 'number' | 'url' | 'html';
+  context: VariableContext;
+  exampleValue: string;
+  // Dynamic variables (from form/survey fields)
+  isDynamic: boolean;
+  sourceFormId?: string;
+  sourceFieldId?: string;
+  // Computed variables
+  isComputed: boolean;
+  computeExpression?: string;
+}
+
+export interface ReminderConfig {
+  triggerType: 'before_event' | 'after_event' | 'on_deadline';
+  /** Minutes before/after the event. 0 = at event time. */
+  offsetMinutes: number;
+  offsetLabel: string;
+  eventType: 'meeting' | 'form_deadline' | 'survey_deadline' | 'payment_due';
+}
+
+export interface ScheduledMessage {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  templateId: string;
+  channel: 'email' | 'sms';
+  recipientContact: string;   // email or phone
+  recipientEntityId?: string;
+  variables: Record<string, any>;
+  scheduledAt: string;        // ISO timestamp
+  status: 'pending' | 'sent' | 'failed' | 'cancelled';
+  reminderType?: string;      // e.g. 'meeting_1_hour'
+  sourceEventId?: string;     // meetingId, formId, etc.
+  sourceEventType?: string;
+  retryCount?: number;
+  sentAt?: string;
+  error?: string;
+  createdAt: string;
+}
+
+export interface ComposerContext {
+  category?: TemplateCategory;
+  meetingId?: string;
+  formId?: string;
+  surveyId?: string;
+  agreementId?: string;
+}
+
+export const REMINDER_OFFSETS = {
+  FIFTEEN_MINUTES: { offsetMinutes: 15,   offsetLabel: '15 minutes before' },
+  ONE_HOUR:        { offsetMinutes: 60,   offsetLabel: '1 hour before' },
+  TWO_HOURS:       { offsetMinutes: 120,  offsetLabel: '2 hours before' },
+  ONE_DAY:         { offsetMinutes: 1440, offsetLabel: '1 day before' },
+  TIME_UP:         { offsetMinutes: 0,    offsetLabel: 'At event time' },
+} as const;
+
+export interface MessageTemplate {
+  id: string;
+
+  // Two-tier scope
+  scope: 'global' | 'organization';
+  organizationId?: string;
+  globalTemplateId?: string;
+
+  // Categorization
+  category: TemplateCategory;
+  templateType: string;
+
+  // Content
+  name: string;
   channel: 'email' | 'sms';
   subject?: string;
   previewText?: string;
   body: string;
   blocks?: MessageBlock[];
-  variables: string[];
-  styleId?: string;
+  bodyBlocks?: MessageBlock[];
+
+  // Variables
+  variableContext: VariableContext;
+  declaredVariables: string[];
+  /** @deprecated use declaredVariables */
+  variables?: string[];
+
+  // Reminder config (reminders category only)
+  reminderConfig?: ReminderConfig;
+
+  // Status & lifecycle
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'archived';
   isActive: boolean;
-  workspaceIds: string[];
+  version: number;
+  previousVersionId?: string;
+
+  // Legacy / misc
+  styleId?: string;
+  workspaceIds?: string[];
+
+  // Metadata
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface MessageBlock {

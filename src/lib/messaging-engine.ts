@@ -22,6 +22,9 @@ interface SendMessageInput {
   entityType?: 'institution' | 'family' | 'person'; // Entity type
   workspaceId?: string; // Workspace context for message (Requirement 11)
   scheduledAt?: string; // ISO string
+  // Task 15.1: Allow overriding template content
+  subject?: string; // Override template subject
+  body?: string; // Override template body
 }
 
 /**

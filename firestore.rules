@@ -175,10 +175,113 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
 
+    // --- Message Templates (Two-Tier System) ---
+    // Task 16.1: Security rules for message_templates collection
+    // Global templates: read by all authenticated users, write only by super admins
+    // Org templates: read/write scoped to matching organizationId
     match /message_templates/{tId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      // Read access:
+      // - Global templates (scope == 'global'): all authenticated users
+      // - Org templates (scope == 'organization'): users in matching organization
+      allow get: if isAuthorized() && (
+        resource.data.scope == 'global' ||
+        (resource.data.scope == 'organization' && isOrgMatch(resource.data.organizationId))
+      );
+      
+      // List access: all authorized users can list templates
+      // (filtering by scope happens in application layer)
       allow list: if isAuthorized();
-      allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
+      
+      // Write access for global templates: super admins only
+      allow create: if isAuthorized() && (
+        (request.resource.data.scope == 'global' && isSystemAdmin()) ||
+        (request.resource.data.scope == 'organization' && 
+         hasPermission('studios_edit') && 
+         isOrgMatch(request.resource.data.organizationId))
+      );
+      
+      allow update: if isAuthorized() && (
+        (resource.data.scope == 'global' && isSystemAdmin()) ||
+        (resource.data.scope == 'organization' && 
+         hasPermission('studios_edit') && 
+         isOrgMatch(resource.data.organizationId) &&
+         // Prevent scope or organizationId changes
+         request.resource.data.scope == resource.data.scope &&
+         request.resource.data.organizationId == resource.data.organizationId)
+      );
+      
+      allow delete: if isAuthorized() && (
+        (resource.data.scope == 'global' && isSystemAdmin()) ||
+        (resource.data.scope == 'organization' && 
+         hasPermission('studios_edit') && 
+         isOrgMatch(resource.data.organizationId))
+      );
+    }
+
+    // --- Template Variables Registry ---
+    // Task 16.2: Security rules for template_variables collection
+    // Read: all authenticated users (needed for template editor and composer)
+    // Write: super admins and org admins (for dynamic form/survey variable registration)
+    match /template_variables/{varId} {
+      // Read access: all authenticated users can read variables
+      allow get, list: if isAuthorized();
+      
+      // Write access: super admins can write all variables
+      // Org admins can write variables scoped to their organization
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         (!request.resource.data.keys().hasAny(['organizationId']) || 
+          isOrgMatch(request.resource.data.organizationId)))
+      );
+      
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         (!resource.data.keys().hasAny(['organizationId']) || 
+          isOrgMatch(resource.data.organizationId)))
+      );
+      
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && 
+         (!resource.data.keys().hasAny(['organizationId']) || 
+          isOrgMatch(resource.data.organizationId)))
+      );
+    }
+
+    // --- Scheduled Messages (Reminder System) ---
+    // Task 16.3: Security rules for scheduled_messages collection
+    // Read/write scoped to organizationId
+    match /scheduled_messages/{msgId} {
+      // Read access: users in matching organization
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        isOrgMatch(resource.data.organizationId)
+      );
+      
+      // List access: all authorized users (filtering by org happens in queries)
+      allow list: if isAuthorized();
+      
+      // Create: users in matching organization with appropriate permissions
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        isOrgMatch(request.resource.data.organizationId)
+      );
+      
+      // Update: users in matching organization
+      // Prevent organizationId changes
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (isOrgMatch(resource.data.organizationId) &&
+         request.resource.data.organizationId == resource.data.organizationId)
+      );
+      
+      // Delete: super admins or users in matching organization
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        isOrgMatch(resource.data.organizationId)
+      );
     }
 
     match /sender_profiles/{pId} {

@@ -628,6 +628,17 @@ export async function autoSaveSurveyAction(
             await surveysCol.doc(surveyId).update(payload);
         }
 
+        // Task 13.2: Register survey element variables when elements are updated
+        if (data.elements && Array.isArray(data.elements) && data.elements.length > 0) {
+            try {
+                const { registerSurveyVariables } = await import('./template-variable-registry');
+                await registerSurveyVariables(targetId, data.elements);
+            } catch (error) {
+                // Registration failures should not block survey operations
+                console.error('Failed to register survey variables:', error);
+            }
+        }
+
         return { success: true, id: targetId };
     } catch (error: any) {
         console.error("AutoSave Survey Error:", error);

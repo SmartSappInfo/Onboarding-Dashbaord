@@ -6,13 +6,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, ResolvedContact } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, ResolvedContact, TemplateVariable } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
 import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData, resolveRecipientContacts } from '@/lib/messaging-actions';
+import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -44,6 +45,7 @@ import QuickTemplateDialog from '../../components/quick-template-dialog';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
+import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
@@ -163,7 +165,17 @@ const NavFooter = ({
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function ComposerWizard() {
+interface ComposerWizardProps {
+    composerContext?: {
+        category?: 'forms' | 'surveys' | 'meetings' | 'agreements' | 'campaigns' | 'reminders' | 'general';
+        meetingId?: string;
+        formId?: string;
+        surveyId?: string;
+        agreementId?: string;
+    };
+}
+
+export default function ComposerWizard({ composerContext }: ComposerWizardProps = {}) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { activeWorkspace, activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
@@ -188,6 +200,7 @@ export default function ComposerWizard() {
     const [sampleVariables, setSampleVariables] = React.useState<Record<string, any>>({});
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
+    const [availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -215,9 +228,20 @@ export default function ComposerWizard() {
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
 
     // ── Firestore queries ──────────────────────────────────────────────────────
-    const templatesQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('channel', '==', watchedChannel)) : null,
-    [firestore, watchedChannel]);
+    const templatesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        let q = query(
+            collection(firestore, 'message_templates'),
+            where('isActive', '==', true),
+            where('channel', '==', watchedChannel),
+            where('status', '==', 'approved')
+        );
+        // Filter by category if context is provided
+        if (composerContext?.category) {
+            q = query(q, where('category', '==', composerContext.category));
+        }
+        return q;
+    }, [firestore, watchedChannel, composerContext?.category]);
 
     const profilesQuery = useMemoFirebase(() =>
         firestore ? query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel)) : null,
@@ -385,6 +409,16 @@ export default function ComposerWizard() {
         });
     }, [step, watchedSelectedEntityIds, activeWorkspace?.id]);
 
+    // Load variables when template is selected
+    React.useEffect(() => {
+        if (!selectedTemplate) {
+            setAvailableVariables([]);
+            return;
+        }
+        const vars = getVariablesForContext(selectedTemplate.variableContext);
+        setAvailableVariables(vars);
+    }, [selectedTemplate]);
+
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -401,7 +435,8 @@ export default function ComposerWizard() {
             });
             setCsvHeaders(headers); setCsvData(data);
             const mapping: Record<string, string> = {};
-            selectedTemplate?.variables.forEach(v => {
+            const templateVars = selectedTemplate?.declaredVariables || selectedTemplate?.variables || [];
+            templateVars.forEach(v => {
                 const m = headers.find(h => h.toLowerCase() === v.toLowerCase());
                 if (m) mapping[v] = m;
             });
@@ -607,14 +642,31 @@ export default function ComposerWizard() {
                                                 <SelectContent className="rounded-xl">
                                                     {isLoadingTemplates ? (
                                                         <div className="p-4 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-                                                    ) : templates?.map(t => (
-                                                        <SelectItem key={t.id} value={t.id} className="rounded-lg my-0.5">
-                                                            <div className="flex items-center gap-3">
-                                                                <Badge variant="outline" className="text-[8px] font-bold uppercase h-4 px-1.5 border-primary/20 text-primary">{t.category}</Badge>
-                                                                <span className="font-semibold text-sm">{t.name}</span>
+                                                    ) : (() => {
+                                                        // Group templates by templateType
+                                                        const grouped = templates?.reduce((acc, t) => {
+                                                            const type = t.templateType || 'other';
+                                                            if (!acc[type]) acc[type] = [];
+                                                            acc[type].push(t);
+                                                            return acc;
+                                                        }, {} as Record<string, MessageTemplate[]>) || {};
+
+                                                        return Object.entries(grouped).map(([type, typeTemplates]) => (
+                                                            <div key={type}>
+                                                                <div className="px-2 py-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                                                    {type.replace(/_/g, ' ')}
+                                                                </div>
+                                                                {typeTemplates.map(t => (
+                                                                    <SelectItem key={t.id} value={t.id} className="rounded-lg my-0.5 pl-4">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Badge variant="outline" className="text-[8px] font-bold uppercase h-4 px-1.5 border-primary/20 text-primary">{t.category}</Badge>
+                                                                            <span className="font-semibold text-sm">{t.name}</span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
                                                             </div>
-                                                        </SelectItem>
-                                                    ))}
+                                                        ));
+                                                    })()}
                                                 </SelectContent>
                                             </Select>
                                         )} />
@@ -630,6 +682,18 @@ export default function ComposerWizard() {
                                                         <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Variables</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
+                                                        <VariablePicker
+                                                            variables={availableVariables}
+                                                            onVariableSelect={(varName) => {
+                                                                toast({ 
+                                                                    title: 'Variable Copied', 
+                                                                    description: `{{${varName}}} copied to clipboard` 
+                                                                });
+                                                                navigator.clipboard.writeText(`{{${varName}}}`);
+                                                            }}
+                                                            triggerLabel="Insert Variable"
+                                                            triggerClassName="h-7 text-[10px] font-semibold border-primary/20 hover:bg-primary/5 rounded-lg"
+                                                        />
                                                         <Select value={selectedTone} onValueChange={(v: any) => setSelectedTone(v)}>
                                                             <SelectTrigger className="h-7 w-28 text-[10px] font-semibold bg-card border-primary/20 rounded-lg">
                                                                 <SelectValue />
@@ -645,7 +709,7 @@ export default function ComposerWizard() {
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {selectedTemplate.variables.map(v => (
+                                                    {(selectedTemplate.declaredVariables || selectedTemplate.variables || []).map(v => (
                                                         <code key={v} className="bg-card px-3 py-1 rounded-lg border text-[10px] font-semibold text-primary shadow-sm">{`{{${v}}}`}</code>
                                                     ))}
                                                 </div>
@@ -888,7 +952,7 @@ export default function ComposerWizard() {
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {selectedTemplate?.variables.map(v => (
+                                                {(selectedTemplate?.declaredVariables || selectedTemplate?.variables || []).map(v => (
                                                     <div key={v} className="space-y-1">
                                                         <Label className="text-[10px] font-semibold text-muted-foreground">Map {`{{${v}}}`}</Label>
                                                         <Select value={columnMapping[v] || ''} onValueChange={(val) => setColumnMapping(p => ({ ...p, [v]: val }))}>

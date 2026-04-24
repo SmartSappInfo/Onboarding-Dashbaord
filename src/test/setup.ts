@@ -5,3 +5,10 @@ if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
   process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
   process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
 }
+
+// Mock ResizeObserver for Radix UI components (ScrollArea, etc.)
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
