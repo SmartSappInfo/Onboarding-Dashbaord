@@ -1244,3 +1244,1019 @@ milestones/
     - milestoneName, status, dueDate
 ```
 
+test
+## Migration Strategy
+
+### Migration Phases
+
+The migration follows a 4-phase approach to ensure zero downtime and full rollback capability.
+
+**Phase 1: Audit & Preparation**
+- Read all existing `schools` collection documents
+- Read all existing `entities` with `entityType: institution`
+- Identify SaaS-specific fields: `nominalRoll`, `subscriptionPackage`, `modules`, `implementationDate`, billing fields
+- Validate data integrity and flag anomalies
+- Create full Firestore backup before proceeding
+
+**Phase 2: Schema Extension**
+- Add `industry` field to `Workspace` interface (default: `'SaaS'`)
+- Add `industryData` polymorphic field to `Entity` interface
+- Create all industry-specific TypeScript interfaces
+- Deploy updated Firestore security rules
+- Create composite indexes for new query patterns
+
+**Phase 3: Data Transformation**
+- Update all existing `workspaces` with `industry: 'SaaS'`
+- Transform existing `InstitutionData` → `SaaSInstitutionData`:
+  - `nominalRoll` → `companySize`
+  - `subscriptionPackage` → `planType`
+  - `modules` → `features`
+  - `implementationDate` → `signupDate`
+- Set `accountStatus: 'active'` as default for existing accounts
+- Set `migrationStatus: 'dual-write'` on all transformed entities
+- Write to both `schools` (legacy) and `entities` (new) simultaneously
+
+**Phase 4: Validation & Cutover**
+- Validate all relationships post-migration
+- Run data integrity checks across all collections
+- Switch `migrationStatus` from `'dual-write'` to `'migrated'`
+- Create migration audit logs
+- Keep `schools` collection intact for 90-day rollback window
+
+### Dual-Read Adapter Pattern
+
+```typescript
+// src/lib/contact-adapter.ts (extended)
+export async function getEntity(
+  entityId: string,
+  workspaceId: string
+): Promise<Entity> {
+  const workspaceEntity = await getWorkspaceEntity(workspaceId, entityId);
+  
+  if (!workspaceEntity) throw new Error('Entity not found');
+  
+  const migrationStatus = workspaceEntity.migrationStatus ?? 'legacy';
+  
+  switch (migrationStatus) {
+    case 'legacy':
+      // Read from schools collection, map to Entity shape
+      return await readFromLegacySchools(workspaceEntity.legacySchoolId!);
+    case 'dual-write':
+      // Read from entities, fall back to schools on error
+      try {
+        return await readFromEntities(entityId);
+      } catch {
+        return await readFromLegacySchools(workspaceEntity.legacySchoolId!);
+      }
+    case 'migrated':
+      return await readFromEntities(entityId);
+  }
+}
+
+function mapSchoolToSaaSEntity(school: LegacySchool): Entity {
+  return {
+    id: school.id,
+    organizationId: school.organizationId,
+    entityType: 'institution',
+    industry: 'SaaS',
+    name: school.name,
+    email: school.email,
+    phone: school.phone,
+    status: school.status ?? 'active',
+    migrationStatus: 'legacy',
+    legacySchoolId: school.id,
+    industryData: {
+      industry: 'SaaS',
+      entityType: 'institution',
+      companySize: school.nominalRoll ?? 0,
+      planType: school.subscriptionPackage ?? '',
+      features: school.modules ?? [],
+      signupDate: school.implementationDate,
+      accountStatus: 'active',
+      billingAddress: school.billingAddress,
+      currency: school.currency,
+      subscriptionRate: school.subscriptionRate,
+    } as SaaSInstitutionData,
+    createdAt: school.createdAt,
+    updatedAt: school.updatedAt,
+  };
+}
+```
+
+### Rollback Strategy
+
+```typescript
+// Migration rollback: revert workspace industry lock
+async function rollbackMigration(workspaceId: string): Promise<void> {
+  const batch = db.batch();
+  
+  // Reset workspace migration state
+  const workspaceRef = db.collection('workspaces').doc(workspaceId);
+  batch.update(workspaceRef, {
+    industryScopeLocked: false,
+    industryScopeLockedAt: null,
+  });
+  
+  // Revert entity migration status to legacy
+  const entities = await db.collection('workspace_entities')
+    .where('workspaceId', '==', workspaceId)
+    .get();
+  
+  entities.docs.forEach(doc => {
+    batch.update(doc.ref, { migrationStatus: 'legacy' });
+  });
+  
+  await batch.commit();
+  
+  // Log rollback event
+  await logActivity({
+    type: 'migration_rolled_back',
+    workspaceId,
+    timestamp: Timestamp.now(),
+  });
+}
+```
+
+
+## API Design
+
+### Industry-Aware Server Actions
+
+```typescript
+// src/lib/entity-actions.ts (extended)
+
+export async function createEntity(
+  params: CreateEntityParams,
+  workspaceId: string
+): Promise<Entity> {
+  const workspace = await getWorkspace(workspaceId);
+  
+  // Validate industry data matches workspace industry
+  if (params.industryData) {
+    validateIndustryData(params.industryData, workspace.industry);
+  }
+  
+  // Inject industry from workspace
+  const entity: Omit<Entity, 'id'> = {
+    ...params,
+    industry: workspace.industry,
+    organizationId: workspace.organizationId,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+  
+  const ref = await db.collection('entities').add(entity);
+  
+  // Lock workspace scope after first entity
+  if (!workspace.industryScopeLocked) {
+    await lockWorkspaceScope(workspaceId);
+  }
+  
+  // Log activity with industry context
+  await logActivity({
+    type: 'entity_created',
+    entityId: ref.id,
+    workspaceId,
+    industry: workspace.industry,
+    timestamp: Timestamp.now(),
+  });
+  
+  return { id: ref.id, ...entity };
+}
+
+function validateIndustryData(
+  data: IndustryData,
+  workspaceIndustry: IndustryVertical
+): void {
+  if (data.industry !== workspaceIndustry) {
+    throw new Error(
+      `Industry data mismatch: expected ${workspaceIndustry}, got ${data.industry}`
+    );
+  }
+  
+  // Validate using Zod schema
+  const result = IndustryDataSchema.safeParse(data);
+  if (!result.success) {
+    throw new Error(`Invalid industry data: ${result.error.message}`);
+  }
+}
+```
+
+### Industry-Specific Collection Actions
+
+```typescript
+// src/lib/saas-actions.ts (NEW)
+
+export async function createTrial(
+  params: CreateTrialParams,
+  workspaceId: string
+): Promise<Trial> {
+  const workspace = await getWorkspace(workspaceId);
+  
+  // Validate workspace industry
+  if (workspace.industry !== 'SaaS') {
+    throw new Error('Trials are only available for SaaS workspaces');
+  }
+  
+  const trial: Omit<Trial, 'id'> = {
+    ...params,
+    organizationId: workspace.organizationId,
+    workspaceId,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+  
+  const ref = await db.collection('trials').add(trial);
+  
+  // Update entity with trial reference
+  await db.collection('entities').doc(params.entityId).update({
+    'industryData.trialIds': FieldValue.arrayUnion(ref.id),
+  });
+  
+  return { id: ref.id, ...trial };
+}
+
+export async function getTrialsForEntity(
+  entityId: string,
+  workspaceId: string
+): Promise<Trial[]> {
+  const snapshot = await db.collection('trials')
+    .where('workspaceId', '==', workspaceId)
+    .where('entityId', '==', entityId)
+    .orderBy('createdAt', 'desc')
+    .get();
+  
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Trial));
+}
+```
+
+### API Versioning
+
+```typescript
+// src/app/api/v2/entities/route.ts (NEW)
+
+export async function POST(request: Request) {
+  const { workspaceId, ...params } = await request.json();
+  
+  // V2 API includes industry context in response
+  const entity = await createEntity(params, workspaceId);
+  
+  return Response.json({
+    data: entity,
+    meta: {
+      industry: entity.industry,
+      version: 'v2',
+    },
+  });
+}
+
+// src/app/api/v1/schools/route.ts (LEGACY - maintained for backward compatibility)
+
+export async function POST(request: Request) {
+  const params = await request.json();
+  
+  // V1 API maintains legacy "schools" terminology
+  // Internally maps to SaaS entities
+  const entity = await createEntity(
+    {
+      ...params,
+      entityType: 'institution',
+      industryData: mapLegacySchoolToSaaSData(params),
+    },
+    params.workspaceId
+  );
+  
+  // Return in legacy format
+  return Response.json(mapEntityToLegacySchool(entity));
+}
+```
+
+## Security & Data Isolation
+
+### Firestore Security Rules
+
+```javascript
+// firestore.rules (extended)
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function belongsToOrganization(orgId) {
+      return isAuthenticated() && 
+             request.auth.token.organizationId == orgId;
+    }
+    
+    function hasWorkspaceAccess(workspaceId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/workspace_members/$(workspaceId + '_' + request.auth.uid));
+    }
+    
+    function workspaceIndustryMatches(workspaceId, industry) {
+      let workspace = get(/databases/$(database)/documents/workspaces/$(workspaceId));
+      return workspace.data.industry == industry;
+    }
+    
+    // Entities collection
+    match /entities/{entityId} {
+      allow read: if belongsToOrganization(resource.data.organizationId);
+      allow create: if belongsToOrganization(request.resource.data.organizationId);
+      allow update, delete: if belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // Workspace entities
+    match /workspace_entities/{workspaceEntityId} {
+      allow read: if hasWorkspaceAccess(resource.data.workspaceId);
+      allow create: if hasWorkspaceAccess(request.resource.data.workspaceId);
+      allow update, delete: if hasWorkspaceAccess(resource.data.workspaceId);
+    }
+    
+    // Industry-specific collections (SaaS)
+    match /trials/{trialId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'SaaS');
+    }
+    
+    match /subscriptions/{subscriptionId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'SaaS');
+    }
+    
+    // Industry-specific collections (School Enrollment)
+    match /applications/{applicationId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment');
+    }
+    
+    // Industry-specific collections (Law)
+    match /matters/{matterId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'Law');
+    }
+    
+    // Industry-specific collections (Marketing)
+    match /campaigns/{campaignId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'Marketing');
+    }
+    
+    // Industry-specific collections (Real Estate)
+    match /properties/{propertyId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate');
+    }
+    
+    // Industry-specific collections (Consultancy)
+    match /engagements/{engagementId} {
+      allow read, write: if hasWorkspaceAccess(resource.data.workspaceId) &&
+                            workspaceIndustryMatches(resource.data.workspaceId, 'Consultancy');
+    }
+  }
+}
+```
+
+### Permission System
+
+```typescript
+// src/lib/permissions.ts (extended)
+
+export type Permission =
+  // Generic permissions
+  | 'contacts_view'
+  | 'contacts_edit'
+  | 'contacts_create'
+  | 'contacts_delete'
+  | 'pipeline_view'
+  | 'pipeline_manage'
+  | 'finance_view'
+  | 'finance_manage'
+  // SaaS permissions
+  | 'saas_trials_manage'
+  | 'saas_usage_view'
+  | 'saas_health_view'
+  // School Enrollment permissions
+  | 'schoolenrollment_admissions_manage'
+  | 'schoolenrollment_enrollments_manage'
+  // Law permissions
+  | 'law_matters_manage'
+  | 'law_conflict_check'
+  | 'law_time_tracking'
+  // Marketing permissions
+  | 'marketing_campaigns_manage'
+  | 'marketing_reports_view'
+  // Real Estate permissions
+  | 'realestate_properties_manage'
+  | 'realestate_viewings_manage'
+  // Consultancy permissions
+  | 'consultancy_engagements_manage'
+  | 'consultancy_outcomes_view';
+
+export function getIndustryPermissions(industry: IndustryVertical): Permission[] {
+  const basePermissions: Permission[] = [
+    'contacts_view',
+    'contacts_edit',
+    'contacts_create',
+    'contacts_delete',
+    'pipeline_view',
+    'pipeline_manage',
+  ];
+  
+  const industryPermissions: Record<IndustryVertical, Permission[]> = {
+    SaaS: ['saas_trials_manage', 'saas_usage_view', 'saas_health_view'],
+    SchoolEnrollment: ['schoolenrollment_admissions_manage', 'schoolenrollment_enrollments_manage'],
+    Law: ['law_matters_manage', 'law_conflict_check', 'law_time_tracking'],
+    Marketing: ['marketing_campaigns_manage', 'marketing_reports_view'],
+    RealEstate: ['realestate_properties_manage', 'realestate_viewings_manage'],
+    Consultancy: ['consultancy_engagements_manage', 'consultancy_outcomes_view'],
+  };
+  
+  return [...basePermissions, ...industryPermissions[industry]];
+}
+
+export async function checkPermission(
+  userId: string,
+  workspaceId: string,
+  permission: Permission
+): Promise<boolean> {
+  const workspace = await getWorkspace(workspaceId);
+  const userRole = await getUserRole(userId, workspaceId);
+  
+  // Get industry-specific permissions for this workspace
+  const allowedPermissions = getIndustryPermissions(workspace.industry);
+  
+  // Check if permission is valid for this industry
+  if (!allowedPermissions.includes(permission)) {
+    return false;
+  }
+  
+  // Check role-based access
+  return roleHasPermission(userRole, permission);
+}
+```
+
+
+## Performance Optimization
+
+### Composite Indexes
+
+```json
+// firestore.indexes.json
+{
+  "indexes": [
+    {
+      "collectionGroup": "entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "industry", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "workspace_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "addedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "workspaces",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "industry", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trials",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "trialStatus", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "matters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "entityId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "DESCENDING" }
+      ]
+    }
+  ]
+}
+```
+
+### Caching Strategy
+
+```typescript
+// src/lib/industry-cache.ts
+
+const INDUSTRY_CONFIG_TTL = 5 * 60 * 1000; // 5 minutes
+const WORKSPACE_INDUSTRY_TTL = 10 * 60 * 1000; // 10 minutes
+
+// LRU cache for workspace industry lookups
+const workspaceIndustryCache = new Map<string, {
+  industry: IndustryVertical;
+  expiresAt: number;
+}>();
+
+export async function getWorkspaceIndustry(
+  workspaceId: string
+): Promise<IndustryVertical> {
+  const cached = workspaceIndustryCache.get(workspaceId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.industry;
+  }
+
+  const workspace = await getWorkspace(workspaceId);
+  workspaceIndustryCache.set(workspaceId, {
+    industry: workspace.industry,
+    expiresAt: Date.now() + WORKSPACE_INDUSTRY_TTL,
+  });
+
+  return workspace.industry;
+}
+
+// Invalidate cache when workspace is updated
+export function invalidateWorkspaceCache(workspaceId: string): void {
+  workspaceIndustryCache.delete(workspaceId);
+}
+```
+
+### Pagination for Industry Collections
+
+```typescript
+// src/lib/industry-actions.ts
+
+export async function getIndustryCollectionPage<T>(
+  collection: string,
+  workspaceId: string,
+  options: {
+    pageSize?: number;
+    cursor?: string;
+    orderBy?: string;
+    filters?: Record<string, unknown>;
+  } = {}
+): Promise<{ items: T[]; nextCursor: string | null }> {
+  const { pageSize = 100, cursor, orderBy = 'createdAt', filters = {} } = options;
+
+  let query = db.collection(collection)
+    .where('workspaceId', '==', workspaceId);
+
+  // Apply additional filters
+  for (const [field, value] of Object.entries(filters)) {
+    query = query.where(field, '==', value);
+  }
+
+  query = query.orderBy(orderBy, 'desc').limit(pageSize + 1);
+
+  if (cursor) {
+    const cursorDoc = await db.collection(collection).doc(cursor).get();
+    query = query.startAfter(cursorDoc);
+  }
+
+  const snapshot = await query.get();
+  const items = snapshot.docs.slice(0, pageSize).map(
+    doc => ({ id: doc.id, ...doc.data() } as T)
+  );
+  const nextCursor = snapshot.docs.length > pageSize
+    ? snapshot.docs[pageSize - 1].id
+    : null;
+
+  return { items, nextCursor };
+}
+```
+
+### Lazy Loading for Industry-Specific Data
+
+```typescript
+// Industry data is loaded on-demand, not with the entity list
+// Entity list returns core fields only; industryData fetched on detail view
+
+export async function getEntityList(
+  workspaceId: string,
+  options: PaginationOptions
+): Promise<EntitySummary[]> {
+  // Returns only core fields — no industryData
+  const snapshot = await db.collection('workspace_entities')
+    .where('workspaceId', '==', workspaceId)
+    .orderBy('addedAt', 'desc')
+    .limit(options.pageSize)
+    .get();
+
+  return snapshot.docs.map(doc => ({
+    id: doc.data().entityId,
+    name: doc.data().name,
+    status: doc.data().status,
+    pipelineStage: doc.data().pipelineStage,
+    // industryData NOT included here
+  }));
+}
+
+export async function getEntityDetail(entityId: string): Promise<Entity> {
+  // Full entity including industryData — only called on detail view
+  const doc = await db.collection('entities').doc(entityId).get();
+  return { id: doc.id, ...doc.data() } as Entity;
+}
+```
+
+## Testing Strategy
+
+### Property-Based Tests for Industry Data Validation
+
+```typescript
+// src/lib/__tests__/industry-validation.test.ts
+import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
+import { IndustryDataSchema, SaaSInstitutionDataSchema } from '@/lib/types';
+
+describe('Industry Data Validation - Property Tests', () => {
+  it('SaaSInstitutionData: companySize must always be positive', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          industry: fc.constant('SaaS'),
+          entityType: fc.constant('institution'),
+          companySize: fc.integer({ min: -1000, max: 0 }),
+          planType: fc.string({ minLength: 1 }),
+          features: fc.array(fc.string()),
+          signupDate: fc.constant(new Date()),
+          accountStatus: fc.constantFrom('lead', 'trial', 'active', 'suspended', 'churned'),
+        }),
+        (data) => {
+          const result = SaaSInstitutionDataSchema.safeParse(data);
+          expect(result.success).toBe(false);
+        }
+      )
+    );
+  });
+
+  it('Industry data industry field must match workspace industry', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom('SaaS', 'SchoolEnrollment', 'Law', 'Marketing', 'RealEstate', 'Consultancy'),
+        fc.constantFrom('SaaS', 'SchoolEnrollment', 'Law', 'Marketing', 'RealEstate', 'Consultancy'),
+        (dataIndustry, workspaceIndustry) => {
+          if (dataIndustry !== workspaceIndustry) {
+            expect(() =>
+              validateIndustryData({ industry: dataIndustry } as any, workspaceIndustry)
+            ).toThrow();
+          }
+        }
+      )
+    );
+  });
+
+  it('SchoolEnrollmentInstitutionData: gradeOfferings must be non-empty', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          industry: fc.constant('SchoolEnrollment'),
+          entityType: fc.constant('institution'),
+          gradeOfferings: fc.constant([]),
+          academicYear: fc.constant('2024-2025'),
+        }),
+        (data) => {
+          const result = IndustryDataSchema.safeParse(data);
+          expect(result.success).toBe(false);
+        }
+      )
+    );
+  });
+});
+```
+
+### Unit Tests for Industry Modules
+
+```typescript
+// src/lib/__tests__/industry-actions.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createEntity, validateIndustryData } from '@/lib/entity-actions';
+
+describe('createEntity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects industryData that does not match workspace industry', async () => {
+    const mockWorkspace = { industry: 'SaaS', industryScopeLocked: false };
+    vi.mocked(getWorkspace).mockResolvedValue(mockWorkspace);
+
+    await expect(
+      createEntity(
+        {
+          name: 'Test',
+          entityType: 'institution',
+          industryData: { industry: 'Law', entityType: 'institution' } as any,
+        },
+        'workspace-1'
+      )
+    ).rejects.toThrow('Industry data mismatch');
+  });
+
+  it('locks workspace scope after first entity creation', async () => {
+    const mockWorkspace = { industry: 'SaaS', industryScopeLocked: false };
+    vi.mocked(getWorkspace).mockResolvedValue(mockWorkspace);
+    const lockSpy = vi.mocked(lockWorkspaceScope);
+
+    await createEntity({ name: 'Test', entityType: 'institution' }, 'workspace-1');
+
+    expect(lockSpy).toHaveBeenCalledWith('workspace-1');
+  });
+
+  it('does not re-lock already locked workspace', async () => {
+    const mockWorkspace = { industry: 'SaaS', industryScopeLocked: true };
+    vi.mocked(getWorkspace).mockResolvedValue(mockWorkspace);
+    const lockSpy = vi.mocked(lockWorkspaceScope);
+
+    await createEntity({ name: 'Test', entityType: 'institution' }, 'workspace-1');
+
+    expect(lockSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('Terminology mapping', () => {
+  it('returns "Accounts" for SaaS industry', () => {
+    const config = INDUSTRY_CONFIG['SaaS'];
+    expect(config.terminology.entityPlural).toBe('Accounts');
+  });
+
+  it('returns "Schools" for SchoolEnrollment industry', () => {
+    const config = INDUSTRY_CONFIG['SchoolEnrollment'];
+    expect(config.terminology.entityPlural).toBe('Schools');
+  });
+
+  it('returns "Clients" for Law industry', () => {
+    const config = INDUSTRY_CONFIG['Law'];
+    expect(config.terminology.entityPlural).toBe('Clients');
+  });
+});
+```
+
+### Integration Tests
+
+```typescript
+// src/lib/__tests__/industry-integration.test.ts
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
+
+describe('Industry Data Isolation', () => {
+  let testEnv: RulesTestEnvironment;
+
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: 'test-project',
+      firestore: { rules: firestoreRules },
+    });
+  });
+
+  afterAll(async () => {
+    await testEnv.cleanup();
+  });
+
+  it('SaaS workspace cannot access Law matters collection', async () => {
+    const saasUser = testEnv.authenticatedContext('user-1', {
+      organizationId: 'org-1',
+    });
+
+    // Attempt to read matters from a Law workspace
+    await expect(
+      saasUser.firestore()
+        .collection('matters')
+        .where('workspaceId', '==', 'law-workspace-1')
+        .get()
+    ).rejects.toThrow();
+  });
+
+  it('Entity creation triggers workspace scope lock', async () => {
+    const workspace = await createWorkspace({ industry: 'Marketing' });
+    expect(workspace.industryScopeLocked).toBe(false);
+
+    await createEntity({ name: 'Client A', entityType: 'institution' }, workspace.id);
+
+    const updated = await getWorkspace(workspace.id);
+    expect(updated.industryScopeLocked).toBe(true);
+  });
+
+  it('Dual-read adapter falls back to legacy schools on entity read failure', async () => {
+    const legacySchool = await createLegacySchool({ name: 'Test School' });
+    const entity = await getEntity(legacySchool.id, 'workspace-1');
+
+    expect(entity.name).toBe('Test School');
+    expect(entity.industry).toBe('SaaS');
+    expect(entity.migrationStatus).toBe('legacy');
+  });
+});
+```
+
+### E2E Tests
+
+```typescript
+// src/e2e/industry-workspace.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Industry Workspace Creation', () => {
+  test('creates SaaS workspace and shows Accounts terminology', async ({ page }) => {
+    await page.goto('/backoffice/workspaces/new');
+
+    await page.selectOption('[data-testid="industry-select"]', 'SaaS');
+    await page.fill('[data-testid="workspace-name"]', 'My SaaS Workspace');
+    await page.click('[data-testid="create-workspace"]');
+
+    await expect(page.locator('h1')).toContainText('Accounts');
+    await expect(page.locator('[data-testid="sidebar-entities"]')).toContainText('Accounts');
+  });
+
+  test('creates SchoolEnrollment workspace and shows Schools terminology', async ({ page }) => {
+    await page.goto('/backoffice/workspaces/new');
+
+    await page.selectOption('[data-testid="industry-select"]', 'SchoolEnrollment');
+    await page.fill('[data-testid="workspace-name"]', 'Admissions Workspace');
+    await page.click('[data-testid="create-workspace"]');
+
+    await expect(page.locator('h1')).toContainText('Schools');
+    await expect(page.locator('[data-testid="sidebar-entities"]')).toContainText('Schools');
+  });
+
+  test('prevents industry change after first entity is linked', async ({ page }) => {
+    await page.goto('/workspace/saas-workspace-1/settings');
+
+    const industrySelect = page.locator('[data-testid="industry-select"]');
+    await expect(industrySelect).toBeDisabled();
+    await expect(page.locator('[data-testid="scope-lock-notice"]')).toBeVisible();
+  });
+});
+```
+
+## Deployment Strategy
+
+### Feature Flags
+
+```typescript
+// src/lib/feature-flags.ts
+
+export const INDUSTRY_FEATURE_FLAGS = {
+  INDUSTRY_EXPANSION_ENABLED: process.env.NEXT_PUBLIC_INDUSTRY_EXPANSION === 'true',
+  SAAS_INDUSTRY_ENABLED: true, // Always on (current system)
+  MARKETING_INDUSTRY_ENABLED: process.env.NEXT_PUBLIC_MARKETING_INDUSTRY === 'true',
+  SCHOOL_ENROLLMENT_INDUSTRY_ENABLED: process.env.NEXT_PUBLIC_SCHOOL_ENROLLMENT_INDUSTRY === 'true',
+  CONSULTANCY_INDUSTRY_ENABLED: process.env.NEXT_PUBLIC_CONSULTANCY_INDUSTRY === 'true',
+  REAL_ESTATE_INDUSTRY_ENABLED: process.env.NEXT_PUBLIC_REAL_ESTATE_INDUSTRY === 'true',
+  LAW_INDUSTRY_ENABLED: process.env.NEXT_PUBLIC_LAW_INDUSTRY === 'true',
+} as const;
+
+export function getEnabledIndustries(): IndustryVertical[] {
+  const enabled: IndustryVertical[] = ['SaaS']; // Always enabled
+
+  if (INDUSTRY_FEATURE_FLAGS.MARKETING_INDUSTRY_ENABLED) enabled.push('Marketing');
+  if (INDUSTRY_FEATURE_FLAGS.SCHOOL_ENROLLMENT_INDUSTRY_ENABLED) enabled.push('SchoolEnrollment');
+  if (INDUSTRY_FEATURE_FLAGS.CONSULTANCY_INDUSTRY_ENABLED) enabled.push('Consultancy');
+  if (INDUSTRY_FEATURE_FLAGS.REAL_ESTATE_INDUSTRY_ENABLED) enabled.push('RealEstate');
+  if (INDUSTRY_FEATURE_FLAGS.LAW_INDUSTRY_ENABLED) enabled.push('Law');
+
+  return enabled;
+}
+```
+
+### Phased Rollout Plan
+
+| Phase | Industry | Env Var | Timeline |
+|-------|----------|---------|----------|
+| 1 | SaaS (current) | Always on | Immediate |
+| 2 | Marketing | `NEXT_PUBLIC_MARKETING_INDUSTRY=true` | Sprint 2 |
+| 3 | School Enrollment | `NEXT_PUBLIC_SCHOOL_ENROLLMENT_INDUSTRY=true` | Sprint 4 |
+| 4 | Consultancy | `NEXT_PUBLIC_CONSULTANCY_INDUSTRY=true` | Sprint 6 |
+| 5 | Real Estate | `NEXT_PUBLIC_REAL_ESTATE_INDUSTRY=true` | Sprint 8 |
+| 6 | Law | `NEXT_PUBLIC_LAW_INDUSTRY=true` | Sprint 10 |
+
+### Monitoring & Observability
+
+```typescript
+// src/lib/industry-monitoring.ts
+
+// Sentry context enrichment for industry-specific errors
+export function setIndustryContext(
+  industry: IndustryVertical,
+  workspaceId: string
+): void {
+  Sentry.setContext('industry', {
+    vertical: industry,
+    workspaceId,
+  });
+
+  Sentry.setTag('industry', industry);
+}
+
+// Industry-specific error messages
+export function getIndustryErrorMessage(
+  errorCode: string,
+  industry: IndustryVertical
+): string {
+  const terminology = INDUSTRY_CONFIG[industry].terminology;
+
+  const messages: Record<string, Record<IndustryVertical, string>> = {
+    ENTITY_NOT_FOUND: {
+      SaaS: `Account not found`,
+      SchoolEnrollment: `School not found`,
+      Law: `Client not found`,
+      Marketing: `Client not found`,
+      RealEstate: `Client not found`,
+      Consultancy: `Client not found`,
+    },
+    ENTITY_CREATE_FAILED: {
+      SaaS: `Failed to create account`,
+      SchoolEnrollment: `Failed to create school`,
+      Law: `Failed to create client`,
+      Marketing: `Failed to create client`,
+      RealEstate: `Failed to create client`,
+      Consultancy: `Failed to create client`,
+    },
+  };
+
+  return messages[errorCode]?.[industry] ?? `An error occurred`;
+}
+
+// Activity logging with industry context
+export async function logIndustryActivity(params: {
+  type: string;
+  industry: IndustryVertical;
+  workspaceId: string;
+  entityId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await db.collection('activities').add({
+    ...params,
+    timestamp: Timestamp.now(),
+    source: 'system',
+  });
+}
+```
+
+## Correctness Properties
+
+The following properties must hold at all times and are validated via property-based tests:
+
+1. **Industry Immutability**: Once `industryScopeLocked` is `true` on a workspace, `workspace.industry` must never change.
+
+2. **Industry Data Consistency**: For any entity `e`, if `e.industryData` is present, then `e.industryData.industry === e.industry` must always be true.
+
+3. **Collection Access Isolation**: A user with access to workspace `W` of industry `I` must never be able to read documents from industry-specific collections belonging to a different industry `I'`.
+
+4. **Terminology Completeness**: For every `IndustryVertical` value, `INDUSTRY_CONFIG[industry].terminology` must define all required keys (`entitySingular`, `entityPlural`, `personSingular`, `personPlural`, `pipelineName`).
+
+5. **Migration Idempotency**: Running the migration script on an already-migrated entity must produce the same result as running it once — no data duplication or field corruption.
+
+6. **Backward Compatibility**: Any entity with `migrationStatus: 'legacy'` must be readable via the adapter layer and return a valid `Entity` shape with `industry: 'SaaS'`.
+
+7. **Scope Lock Trigger**: After the first entity is linked to a workspace, `industryScopeLocked` must be `true` on all subsequent reads of that workspace.
+
+8. **Feature Gate Enforcement**: For any workspace of industry `I`, features not listed in `INDUSTRY_CONFIG[I].features` must return `false` from the feature gate, regardless of user role.
+
+## Summary
+
+This design document specifies the complete technical architecture for the industry-scoped entity expansion. The key design decisions are:
+
+- **Polymorphic discriminated unions** for type-safe industry data with Zod validation
+- **Workspace-scoped industry lock** enforced after first entity link, preventing accidental industry changes
+- **Dual-read adapter** maintaining zero-downtime migration from legacy `schools` to `entities` model
+- **Industry configuration registry** (`INDUSTRY_CONFIG`) as the single source of truth for terminology, features, pipelines, and sidebar navigation per industry
+- **Feature flags** enabling phased rollout: SaaS → Marketing → School Enrollment → Consultancy → Real Estate → Law
+- **Firestore security rules** enforcing industry-based collection access at the database level
+- **Composite indexes** pre-defined for all industry-specific query patterns
+- **Property-based tests** validating correctness invariants across all industry data models
+
