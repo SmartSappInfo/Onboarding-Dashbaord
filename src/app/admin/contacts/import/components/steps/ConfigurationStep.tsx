@@ -16,10 +16,10 @@ interface Props {
 
 export function ConfigurationStep({ state, updateState, onNext, onBack }: Props) {
   const firestore = useFirestore();
-  const [availableTags, setAvailableTags] = useState<Array<{id: string, name: string}>>([]);
-  const [availableAutomations, setAvailableAutomations] = useState<Array<{id: string, name: string}>>([]);
+  const [availableTags, setAvailableTags] = useState<Array<{ id: string, name: string }>>([]);
+  const [availableAutomations, setAvailableAutomations] = useState<Array<{ id: string, name: string }>>([]);
   const [newTagName, setNewTagName] = useState('');
-  
+
   const config = state.configuration || {
     selectedTags: [],
     selectedAutomations: [],
@@ -48,16 +48,16 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
         console.error("Failed to load tags or automations:", err);
       }
     }
-    
+
     loadResources();
   }, [firestore, state.workspaceId, state.organizationId]);
 
   const toggleTag = (id: string) => {
     const current = config.selectedTags || [];
-    const next = current.includes(id) 
+    const next = current.includes(id)
       ? current.filter(t => t !== id)
       : [...current, id];
-    
+
     updateState({
       configuration: { ...config, selectedTags: next }
     });
@@ -102,7 +102,7 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-8">
-        
+
         {/* TAGS SECTION */}
         <section className="space-y-4">
           <h4 className="text-md font-medium flex items-center text-foreground">
@@ -116,11 +116,10 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
                   <button
                     key={tag.id}
                     onClick={() => toggleTag(tag.id)}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
-                      isSelected 
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm' 
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-all ${isSelected
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                         : 'bg-background hover:bg-muted text-muted-foreground'
-                    }`}
+                      }`}
                   >
                     {tag.name}
                   </button>
@@ -130,30 +129,30 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
                 <span className="text-sm text-muted-foreground italic">No existing tags found in this workspace.</span>
               )}
             </div>
-            
+
             <div className="pt-2 border-t flex items-center gap-3">
-               <Input 
-                 placeholder="Create a new tag..." 
-                 value={newTagName}
-                 onChange={e => setNewTagName(e.target.value)}
-                 className="max-w-[200px] h-9 text-sm"
-               />
-               <Button 
-                 variant="secondary" 
-                 size="sm"
-                 disabled={!newTagName.trim()}
-                 onClick={() => {
-                   // Optimistic local add. In a real scenario, we'd save this to DB immediately 
-                   // or pass it as a special "new" tag to the backend. 
-                   // For now, we simulate adding it to the list.
-                   const fakeId = `new_${Date.now()}`;
-                   setAvailableTags([...availableTags, { id: fakeId, name: newTagName }]);
-                   toggleTag(fakeId);
-                   setNewTagName('');
-                 }}
-               >
-                 Add
-               </Button>
+              <Input
+                placeholder="Create a new tag..."
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                className="max-w-[200px] h-9 text-sm"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!newTagName.trim()}
+                onClick={() => {
+                  // Optimistic local add. In a real scenario, we'd save this to DB immediately 
+                  // or pass it as a special "new" tag to the backend. 
+                  // For now, we simulate adding it to the list.
+                  const fakeId = `new_${Date.now()}`;
+                  setAvailableTags([...availableTags, { id: fakeId, name: newTagName }]);
+                  toggleTag(fakeId);
+                  setNewTagName('');
+                }}
+              >
+                Add
+              </Button>
             </div>
           </div>
         </section>
@@ -164,23 +163,23 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
             <Zap className="w-4 h-4 mr-2 text-amber-500" /> Enroll in Automations
           </h4>
           <div className="bg-card/50 border rounded-xl p-5 shadow-sm space-y-3">
-             {availableAutomations.map(auto => {
-               const isSelected = config.selectedAutomations.includes(auto.id);
-               return (
-                 <label key={auto.id} className="flex items-center space-x-3 p-3 rounded-lg border bg-background hover:bg-muted/50 cursor-pointer transition-colors">
-                   <input 
-                     type="checkbox" 
-                     className="w-4 h-4 text-primary rounded border-muted-foreground focus:ring-primary"
-                     checked={isSelected}
-                     onChange={() => toggleAutomation(auto.id)}
-                   />
-                   <span className="text-sm font-medium">{auto.name}</span>
-                 </label>
-               )
-             })}
-             {availableAutomations.length === 0 && (
-                <span className="text-sm text-muted-foreground italic">No active automations found for this workspace.</span>
-              )}
+            {availableAutomations.map(auto => {
+              const isSelected = config.selectedAutomations.includes(auto.id);
+              return (
+                <label key={auto.id} className="flex items-center space-x-3 p-3 rounded-lg border bg-background hover:bg-muted/50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 text-primary rounded border-muted-foreground focus:ring-primary"
+                    checked={isSelected}
+                    onChange={() => toggleAutomation(auto.id)}
+                  />
+                  <span className="text-sm font-medium">{auto.name}</span>
+                </label>
+              )
+            })}
+            {availableAutomations.length === 0 && (
+              <span className="text-sm text-muted-foreground italic">No active automations found for this workspace.</span>
+            )}
           </div>
         </section>
 
@@ -193,21 +192,21 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
             These values will be applied to EVERY entity if the corresponding field is not provided in the CSV.
           </p>
           <div className="bg-card/50 border rounded-xl p-5 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-            
+
             <div className="space-y-2">
               <Label className="text-xs">Default Lead Source</Label>
-              <Input 
-                placeholder="e.g., File Import, Event 2024..." 
+              <Input
+                placeholder="e.g., File Import, Event 2024..."
                 value={config.globalDefaults['leadSource'] || ''}
                 onChange={e => handleDefaultChange('leadSource', e.target.value)}
               />
             </div>
-            
+
             {state.entityType === 'person' && (
               <div className="space-y-2">
                 <Label className="text-xs">Default Job Title</Label>
-                <Input 
-                  placeholder="e.g., Prospect" 
+                <Input
+                  placeholder="e.g., Prospect"
                   value={config.globalDefaults['jobTitle'] || ''}
                   onChange={e => handleDefaultChange('jobTitle', e.target.value)}
                 />
@@ -217,8 +216,8 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
             {state.entityType === 'institution' && (
               <div className="space-y-2">
                 <Label className="text-xs">Default Currency</Label>
-                <Input 
-                  placeholder="e.g., USD, GHS" 
+                <Input
+                  placeholder="e.g., USD, GHS"
                   value={config.globalDefaults['currency'] || ''}
                   onChange={e => handleDefaultChange('currency', e.target.value)}
                 />
