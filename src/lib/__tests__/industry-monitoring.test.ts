@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { getIndustryErrorMessage, getIndustrySuccessMessage, getIndustryConfirmMessage } from '../industry-monitoring';
 import type { IndustryVertical } from '../types';

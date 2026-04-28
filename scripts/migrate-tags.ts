@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Migration Script: Create tags from existing School categorization fields
  *

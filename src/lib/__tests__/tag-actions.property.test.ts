@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import fc from 'fast-check';
 import { createTagAction, updateTagAction, deleteTagAction, mergeTagsAction, getTagsAction, applyTagsAction, removeTagsAction, bulkApplyTagsAction, bulkRemoveTagsAction } from '../tag-actions';

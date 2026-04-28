@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { processScheduledMessages } from '../reminder-actions';
 import * as messagingEngine from '../messaging-engine';

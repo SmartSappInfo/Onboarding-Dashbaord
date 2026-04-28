@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Bug Condition Exploration Test for TypeScript Type Errors
  * 

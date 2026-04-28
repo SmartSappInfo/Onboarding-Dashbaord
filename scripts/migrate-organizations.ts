@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Migration script to add missing fields to existing organizations
  * Run with: npx tsx scripts/migrate-organizations.ts

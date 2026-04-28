@@ -7,7 +7,8 @@ import { triggerInternalNotification, triggerExternalNotification } from './noti
 import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
 
-import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType } from './types';
+import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType, ContactIdentifierPolicy } from './types';
+import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
@@ -306,22 +307,35 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       const cEmail = getAnswerValue(mapping.contactEmailFieldId);
       const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
 
-      if (eName && cEmail) {
-        // 3.1 Resolution & Deduplication
-        const weRef = adminDb.collection('workspace_entities')
-          .where('workspaceId', '==', workspaceId)
-          .where('displayName', '==', eName)
-          .where('primaryEmail', '==', cEmail)
-          .limit(1);
-        
-        const weSnap = await weRef.get();
-        
-        // Get workspace scope
-        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
-        const wsData = wsSnap.data();
-        const contactScope = (wsData?.contactScope || 'institution') as EntityType;
+      // Get workspace scope and contact policy
+      const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+      const wsData = wsSnap.data();
+      const contactScope = (wsData?.contactScope || 'institution') as EntityType;
+      const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
 
-        // 3.0.1 Resolve entity defaults chain: workspace → org → system hardcoded
+      // Accept entity.name OR entity.contacts.name as the entity name source
+      const resolvedName = eName || cName || '';
+      const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+
+      // Validate contact identifiers per workspace policy
+      const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
+
+      if (finalEntityName && policyCheck.valid) {
+        // 3.1 Resolution and Deduplication
+        const dedupeQuery = adminDb.collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('displayName', '==', finalEntityName);
+        
+        let weSnap;
+        if (cEmail) {
+          weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
+        } else if (cPhone) {
+          weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
+        } else {
+          weSnap = await dedupeQuery.limit(1).get();
+        }
+
+        // 3.0.1 Resolve entity defaults chain: workspace entityDefaults -> surveyDefaults -> org -> system
         const systemDefaults = {
           currency: 'GHS',
           subscriptionPackageName: 'Standard',
@@ -337,10 +351,11 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           }
         }
         
-        const wsDefaults = wsData?.surveyEntityDefaults || {};
+        const wsSurveyDefaults = wsData?.surveyEntityDefaults || {};
+        const wsEntityDefaults = wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] || {};
         
-        // Merge: workspace overrides org, org overrides system
-        const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsDefaults };
+        // Merge: workspace entityDefaults + surveyDefaults override org, org overrides system
+        const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
 
         // 3.1 Advanced Property Mapping (Phase 5)
         const institutionData: any = {};
@@ -352,7 +367,6 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             if (val !== null && val !== undefined && val !== '') {
               if (m.targetField.startsWith('institutionData.')) {
                 const field = m.targetField.replace('institutionData.', '');
-                // Handle numeric casting for known number fields
                 institutionData[field] = field === 'nominalRoll' ? Number(val) : val;
               } else if (m.targetField.startsWith('personData.')) {
                 const field = m.targetField.replace('personData.', '');
@@ -371,12 +385,12 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         }
 
         const entityPayload: any = {
-          name: eName,
+          name: finalEntityName,
           contacts: [
             {
-              name: cName || eName,
-              email: cEmail,
-              phone: cPhone,
+              name: cName || finalEntityName,
+              email: cEmail || '',
+              phone: cPhone || '',
               isPrimary: true,
               typeKey: resolvedDefaults.contactTypeKey
             }

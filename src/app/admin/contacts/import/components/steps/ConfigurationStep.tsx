@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { ImportState } from '../../types';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Tag as TagIcon, Zap, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Tag as TagIcon, Zap, Settings2, Info, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { getContactPolicyLabel } from '@/lib/contact-policy';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import type { ContactIdentifierPolicy } from '@/lib/types';
 
 interface Props {
   state: ImportState;
@@ -14,11 +18,38 @@ interface Props {
   onBack: () => void;
 }
 
+// Scope-aware default field definitions
+const DEFAULT_FIELDS: Record<string, Array<{ key: string; label: string; placeholder: string }>> = {
+  person: [
+    { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., File Import, Event 2024...' },
+    { key: 'jobTitle', label: 'Default Job Title', placeholder: 'e.g., Prospect' },
+    { key: 'company', label: 'Default Company', placeholder: 'e.g., Unknown' },
+    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Onboarding' },
+  ],
+  family: [
+    { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., Open Day, Referral...' },
+    { key: 'guardian1_relationship', label: 'Default Guardian Relationship', placeholder: 'e.g., Parent' },
+    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Enquiry' },
+  ],
+  institution: [
+    { key: 'leadSource', label: 'Default Lead Source', placeholder: 'e.g., File Import, Partner Referral...' },
+    { key: 'currency', label: 'Default Currency', placeholder: 'e.g., USD, GHS' },
+    { key: 'lifecycleStatus', label: 'Default Lifecycle Status', placeholder: 'e.g., Onboarding' },
+  ],
+};
+
 export function ConfigurationStep({ state, updateState, onNext, onBack }: Props) {
   const firestore = useFirestore();
+  const { activeWorkspace } = useWorkspace();
   const [availableTags, setAvailableTags] = useState<Array<{ id: string, name: string }>>([]);
   const [availableAutomations, setAvailableAutomations] = useState<Array<{ id: string, name: string }>>([]);
   const [newTagName, setNewTagName] = useState('');
+
+  const contactPolicy: ContactIdentifierPolicy = activeWorkspace?.contactPolicy || 'phone_or_email';
+  const entityType = state.entityType || 'institution';
+  const scopeKey = (activeWorkspace?.contactScope || entityType) as 'institution' | 'family' | 'person';
+  const workspaceDefaults = activeWorkspace?.entityDefaults?.[scopeKey] || {};
+  const wsDefaultEntries = Object.entries(workspaceDefaults);
 
   const config = state.configuration || {
     selectedTags: [],
@@ -86,9 +117,7 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
     });
   };
 
-  // We are not calling the server action directly for new tags here to keep it simple,
-  // we will just store the new tag name and process it during execution if needed,
-  // or we can allow the user to type it in. For now, this step just collects user intent.
+  const defaultFields = DEFAULT_FIELDS[entityType] || DEFAULT_FIELDS.institution;
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -99,6 +128,38 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
             Apply tags, trigger automations, and set default values for all imported contacts.
           </p>
         </div>
+      </div>
+
+      {/* Workspace Context Banner */}
+      <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-primary" />
+          <span className="text-xs font-bold text-foreground">Workspace Import Context</span>
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5 ml-auto">{activeWorkspace?.industry || 'SaaS'}</Badge>
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5">{getContactPolicyLabel(contactPolicy)}</Badge>
+        </div>
+
+        {wsDefaultEntries.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[9px] font-bold text-muted-foreground flex items-center gap-1">
+              <Info className="w-3 h-3" /> Workspace defaults that will auto-apply to empty fields:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {wsDefaultEntries.map(([key, value]) => (
+                <span key={key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background border text-[9px] font-medium">
+                  <span className="text-primary font-bold">{key}</span>
+                  <span className="text-muted-foreground">= {value}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {wsDefaultEntries.length === 0 && (
+          <p className="text-[9px] font-medium text-muted-foreground italic">
+            No workspace-level defaults configured. Values set below will be applied as import defaults.
+          </p>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-8">
@@ -142,9 +203,6 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
                 size="sm"
                 disabled={!newTagName.trim()}
                 onClick={() => {
-                  // Optimistic local add. In a real scenario, we'd save this to DB immediately 
-                  // or pass it as a special "new" tag to the backend. 
-                  // For now, we simulate adding it to the list.
                   const fakeId = `new_${Date.now()}`;
                   setAvailableTags([...availableTags, { id: fakeId, name: newTagName }]);
                   toggleTag(fakeId);
@@ -183,47 +241,41 @@ export function ConfigurationStep({ state, updateState, onNext, onBack }: Props)
           </div>
         </section>
 
-        {/* DEFAULTS SECTION */}
+        {/* SCOPE-AWARE DEFAULTS SECTION */}
         <section className="space-y-4 pb-4">
           <h4 className="text-md font-medium flex items-center text-foreground">
-            <Settings2 className="w-4 h-4 mr-2 text-blue-500" /> Global Defaults
+            <Settings2 className="w-4 h-4 mr-2 text-blue-500" /> Import Defaults
+            <Badge variant="outline" className="text-[8px] ml-2 h-4 px-1.5">{entityType}</Badge>
           </h4>
           <p className="text-xs text-muted-foreground mb-2">
-            These values will be applied to EVERY entity if the corresponding field is not provided in the CSV.
+            These values override workspace defaults and apply to every entity where the field is empty in the CSV.
           </p>
           <div className="bg-card/50 border rounded-xl p-5 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div className="space-y-2">
-              <Label className="text-xs">Default Lead Source</Label>
-              <Input
-                placeholder="e.g., File Import, Event 2024..."
-                value={config.globalDefaults['leadSource'] || ''}
-                onChange={e => handleDefaultChange('leadSource', e.target.value)}
-              />
-            </div>
-
-            {state.entityType === 'person' && (
-              <div className="space-y-2">
-                <Label className="text-xs">Default Job Title</Label>
+            {defaultFields.map(field => (
+              <div key={field.key} className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  {field.label}
+                  {workspaceDefaults[field.key] && (
+                    <span className="text-[8px] text-muted-foreground font-normal">
+                      (ws default: {workspaceDefaults[field.key]})
+                    </span>
+                  )}
+                </Label>
                 <Input
-                  placeholder="e.g., Prospect"
-                  value={config.globalDefaults['jobTitle'] || ''}
-                  onChange={e => handleDefaultChange('jobTitle', e.target.value)}
+                  placeholder={field.placeholder}
+                  value={config.globalDefaults[field.key] || ''}
+                  onChange={e => handleDefaultChange(field.key, e.target.value)}
                 />
               </div>
-            )}
+            ))}
+          </div>
 
-            {state.entityType === 'institution' && (
-              <div className="space-y-2">
-                <Label className="text-xs">Default Currency</Label>
-                <Input
-                  placeholder="e.g., USD, GHS"
-                  value={config.globalDefaults['currency'] || ''}
-                  onChange={e => handleDefaultChange('currency', e.target.value)}
-                />
-              </div>
-            )}
-
+          {/* Priority explanation */}
+          <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 flex items-start gap-2">
+            <Info className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
+              <strong>Priority chain:</strong> CSV data (highest) → Import defaults (above) → Workspace defaults → System defaults (lowest).
+            </p>
           </div>
         </section>
 

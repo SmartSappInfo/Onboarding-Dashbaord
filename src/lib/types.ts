@@ -15,6 +15,12 @@ export type IndustryVertical =
   | 'RealEstate'
   | 'Consultancy';
 
+/**
+ * Determines which contact identifiers a workspace requires for entity creation.
+ * Applied uniformly across bulk import, new entity page, and survey submissions.
+ */
+export type ContactIdentifierPolicy = 'phone_only' | 'email_only' | 'phone_or_email';
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -321,6 +327,10 @@ export interface Workspace {
   industryScopeLockedAt?: string;
   /** Workspace-level default values applied when entities are created via survey submissions */
   surveyEntityDefaults?: SurveyEntityDefaults;
+  /** Contact identifier policy: which identifiers are required to save an entity */
+  contactPolicy?: ContactIdentifierPolicy;
+  /** Workspace-level default values applied across all entity creation flows */
+  entityDefaults?: EntityDefaults;
   createdAt: string;
   updatedAt: string;
 }
@@ -685,28 +695,74 @@ export interface PersonData {
  * - globalTags: Identity-level tags visible across all workspaces (e.g., "vip", "strategic-account")
  *   These tags represent fundamental attributes of the entity that transcend workspace boundaries.
  */
+/**
+ * Consolidated finance data for all entity types
+ * Replaces scattered billing fields across institutionData and industryData
+ */
+export interface FinanceData {
+  planType?: string;
+  subscriptionIds?: string[];
+  currency: string;
+  billingAddress?: string;
+  subscriptionRate?: number;
+  customerTier?: 'basic' | 'pro' | 'enterprise';
+  signupDate?: string;
+  renewalDate?: string;
+  paymentMethod?: 'card' | 'bank_transfer' | 'cash' | 'check';
+  lastPaymentDate?: string;
+  nextPaymentDue?: string;
+  invoiceIds?: string[];
+  paymentIds?: string[];
+}
+
 export interface Entity {
   id: string;
   organizationId: string;
   entityType: EntityType;
   name: string; // Display name (computed from firstName + lastName for person entities)
   slug?: string; // URL-safe identifier (for institution entities)
+  
+  // Institution-specific root fields (Moved from institutionData)
+  initials?: string;
+  logoUrl?: string;
+  referee?: string;
+  location?: {
+    locationString?: string;
+    zone?: {
+      id: string;
+      name: string;
+    };
+  };
+
   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
   contacts?: any[]; // @deprecated - legacy focal persons fallback
+  
+  // Finance Data (Consolidated)
+  financeData?: FinanceData;
+  
   globalTags: string[]; // Identity-level tags visible across all workspaces (Requirement 7)
+  
+  // Legacy modules/features migrated to root
+  interests?: string[]; // Array of feature/module/interest IDs or names
+
   status?: 'active' | 'archived'; // Soft delete status
   createdAt: string;
   updatedAt: string;
+  
   // Scope-specific data (only one will be populated based on entityType)
-  institutionData?: InstitutionData;
+  /** @deprecated Moved to root/financeData/industryData. Kept for migration. */
+  institutionData?: any;
   familyData?: FamilyData;
   personData?: PersonData;
+  
   // Industry-specific data (polymorphic, Requirement 3)
   industry?: IndustryVertical;
   industryData?: IndustryData;
+  
   // Migration fields (Requirement 12)
   migrationStatus?: 'legacy' | 'migrated' | 'dual-write';
   legacySchoolId?: string;
+  
   // Reserved for future cross-entity relationships
   relatedEntityIds?: string[];
 }
@@ -956,6 +1012,18 @@ export interface SurveyEntityDefaults {
   subscriptionPackageName?: string;
   subscriptionRate?: number;
   contactTypeKey?: string;
+}
+
+/**
+ * Workspace-level default values applied when creating entities via any flow
+ * (bulk import, new entity page, survey submissions).
+ * Keys are entity field paths, values are default strings.
+ * Scoped by entity type (institution/family/person).
+ */
+export interface EntityDefaults {
+  institution?: Record<string, string>;
+  family?: Record<string, string>;
+  person?: Record<string, string>;
 }
 
 export interface SurveyEntityMapping {
@@ -2143,27 +2211,24 @@ export type IndustryData =
 
 export interface SaaSInstitutionData {
   industry: 'SaaS';
-  entityType: 'institution';
-  companySize: number; // Maps from nominalRoll
-  planType: string; // Maps from subscriptionPackage
-  features: string[]; // Maps from modules
-  signupDate: string; // Maps from implementationDate (ISO string)
-  billingAddress?: string;
-  currency?: string;
-  subscriptionRate?: number;
+  capacity: number; // Renamed from companySize
+  activeUsers?: number;
   accountStatus: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
-  renewalDate?: string;
-  customerTier?: 'basic' | 'pro' | 'enterprise';
   trialIds?: string[];
   onboardingIds?: string[];
-  subscriptionIds?: string[];
   supportTicketIds?: string[];
   healthScoreIds?: string[];
+  
+  /** @deprecated fields kept for test compilation during migration */
+  entityType?: any;
+  companySize?: any;
+  planType?: any;
+  features?: any;
+  signupDate?: any;
 }
 
 export interface SaaSPersonData {
   industry: 'SaaS';
-  entityType: 'person';
   role: 'admin' | 'manager' | 'user';
   lastLoginDate?: string;
   activationStatus: 'pending' | 'active' | 'inactive';
@@ -2173,10 +2238,9 @@ export interface SaaSPersonData {
 
 export interface SchoolEnrollmentInstitutionData {
   industry: 'SchoolEnrollment';
-  entityType: 'institution';
   gradeOfferings: string[];
   academicYear: string;
-  enrollmentCapacity?: number;
+  capacity: number; // Renamed from enrollmentCapacity
   currentEnrollment?: number;
   applicationIds?: string[];
   enrollmentIds?: string[];
@@ -2187,10 +2251,10 @@ export interface SchoolEnrollmentInstitutionData {
 
 export interface LawInstitutionData {
   industry: 'Law';
-  entityType: 'institution';
   firmType: 'solo' | 'partnership' | 'corporate';
   practiceAreas: string[];
   barAssociations?: string[];
+  capacity?: number; // Number of attorneys/staff
   conflictCheckRequired: boolean;
   matterIds?: string[];
   intakeFormIds?: string[];
@@ -2199,7 +2263,6 @@ export interface LawInstitutionData {
 
 export interface LawPersonData {
   industry: 'Law';
-  entityType: 'person';
   clientType: 'individual' | 'company';
   legalIssueType?: string;
   urgency: 'low' | 'medium' | 'high' | 'critical';
@@ -2209,10 +2272,10 @@ export interface LawPersonData {
 
 export interface MarketingInstitutionData {
   industry: 'Marketing';
-  entityType: 'institution';
   clientIndustry: string;
-  businessSize: { employees?: number; revenue?: number };
   targetAudience?: string;
+  capacity?: number; // Number of employees
+  revenue?: number; // Annual revenue
   monthlyBudget?: number;
   campaignIds?: string[];
   proposalIds?: string[];
@@ -2221,7 +2284,6 @@ export interface MarketingInstitutionData {
 
 export interface MarketingPersonData {
   industry: 'Marketing';
-  entityType: 'person';
   role: string;
   influenceLevel: 'decision-maker' | 'influencer' | 'user';
   approvalAuthority: boolean;
@@ -2231,16 +2293,15 @@ export interface MarketingPersonData {
 
 export interface RealEstateInstitutionData {
   industry: 'RealEstate';
-  entityType: 'institution';
   propertyPortfolio?: string[];
   developerType: 'residential' | 'commercial' | 'mixed';
   investmentFocus?: string;
+  capacity?: number; // Number of properties managed
   propertyIds?: string[];
 }
 
 export interface RealEstatePersonData {
   industry: 'RealEstate';
-  entityType: 'person';
   clientType: 'buyer' | 'seller' | 'tenant' | 'landlord' | 'investor';
   budgetRange?: { min: number; max: number };
   preferredLocations?: string[];
@@ -2250,9 +2311,8 @@ export interface RealEstatePersonData {
 
 export interface ConsultancyInstitutionData {
   industry: 'Consultancy';
-  entityType: 'institution';
   clientIndustry: string;
-  companySize: { employees?: number; revenue?: number };
+  capacity?: number; // Number of consultants
   strategicPriorities?: string[];
   painPoints?: string[];
   discoveryIds?: string[];
@@ -2262,7 +2322,6 @@ export interface ConsultancyInstitutionData {
 
 export interface ConsultancyPersonData {
   industry: 'Consultancy';
-  entityType: 'person';
   role: string;
   department?: string;
   influenceLevel: 'decision-maker' | 'influencer' | 'user';

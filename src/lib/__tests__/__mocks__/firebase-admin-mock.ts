@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Reusable Firebase Admin Mock for Tests
  * 

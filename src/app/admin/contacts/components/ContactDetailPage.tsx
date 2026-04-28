@@ -157,7 +157,7 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
             <div>
  <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
  <div className="flex flex-wrap gap-2">
-                {institutionData.modules.map((module) => (
+                {institutionData.modules.map((module: { id: string; name: string; color: string; abbreviation?: string }) => (
                   <Badge 
                     key={module.id} 
                     style={{ backgroundColor: module.color }} 

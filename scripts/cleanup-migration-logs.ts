@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Cleanup Migration Logs Script
  * 

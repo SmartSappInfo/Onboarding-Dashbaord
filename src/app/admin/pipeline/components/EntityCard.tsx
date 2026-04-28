@@ -74,7 +74,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
     opacity: isDragging && !isOverlay ? 0 : 1,
   };
 
-  const signatory = getSignatoryContact(entity);
+  const signatory = getSignatoryContact(entity as any);
   const displayName = toTitleCase(entity.displayName);
 
   // Resolve status color from active workspace config

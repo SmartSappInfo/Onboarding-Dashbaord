@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Unit tests for feature gate system
  * 

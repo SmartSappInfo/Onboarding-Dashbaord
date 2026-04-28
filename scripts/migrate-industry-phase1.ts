@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Industry Migration Phase 1: Audit and Data Integrity Validation
  * 

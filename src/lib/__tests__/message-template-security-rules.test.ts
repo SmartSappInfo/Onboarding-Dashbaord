@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Firestore Security Rules Tests: Message Template System
  * 

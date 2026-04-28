@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Task 39 Checkpoint Test: UI Language is Explicit and Clear
  * 

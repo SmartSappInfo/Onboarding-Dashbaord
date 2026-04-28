@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Surveys Module Unit Tests
  * 

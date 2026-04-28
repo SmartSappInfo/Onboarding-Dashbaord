@@ -26,10 +26,10 @@ export function serializeInstitutionEntity(
 
   return {
     name: entity.name,
-    nominalRoll: entity.institutionData?.nominalRoll?.toString(),
-    billingAddress: entity.institutionData?.billingAddress,
-    currency: entity.institutionData?.currency,
-    subscriptionPackageId: entity.institutionData?.subscriptionPackageId,
+    nominalRoll: (entity.industryData as any)?.capacity?.toString() || (entity as any).institutionData?.nominalRoll?.toString(),
+    billingAddress: entity.financeData?.billingAddress || (entity as any).institutionData?.billingAddress,
+    currency: entity.financeData?.currency || (entity as any).institutionData?.currency,
+    subscriptionPackageId: entity.financeData?.planType || (entity as any).institutionData?.subscriptionPackageId,
     focalPerson_name: focalPerson?.name,
     focalPerson_phone: focalPerson?.phone,
     focalPerson_email: focalPerson?.email,
@@ -49,7 +49,7 @@ export function serializeFamilyEntity(
 
   return {
     familyName: entity.name,
-    guardian1_name: guardian?.name,
+    guardian1_name: guardian?.name || '',
     guardian1_phone: guardian?.phone,
     guardian1_email: guardian?.email,
     guardian1_relationship: guardian?.relationship,

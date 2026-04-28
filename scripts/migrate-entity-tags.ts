@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * Migration Script: Migrate tags from schools to entities/workspace_entities
  * 

@@ -20,37 +20,44 @@ import type { IndustryVertical, IndustryData, Entity } from '@/lib/types';
 const StringArraySchema = z.array(z.string());
 const OptionalStringArraySchema = z.array(z.string()).optional();
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Finance Data Schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const FinanceDataSchema = z.object({
+  planType: z.string().optional(),
+  subscriptionIds: OptionalStringArraySchema,
+  currency: z.string().min(1),
+  billingAddress: z.string().optional(),
+  subscriptionRate: z.number().nonnegative().optional(),
+  customerTier: z.enum(['basic', 'pro', 'enterprise']).optional(),
+  signupDate: z.string().optional(),
+  renewalDate: z.string().optional(),
+  paymentMethod: z.enum(['card', 'bank_transfer', 'cash', 'check']).optional(),
+  lastPaymentDate: z.string().optional(),
+  nextPaymentDue: z.string().optional(),
+  invoiceIds: OptionalStringArraySchema,
+  paymentIds: OptionalStringArraySchema,
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SaaS Industry Schemas (Requirement 8)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const SaaSInstitutionDataSchema = z.object({
   industry: z.literal('SaaS'),
-  entityType: z.literal('institution'),
-  // Mapped from legacy fields
-  companySize: z.number().int().nonnegative(),
-  planType: z.string().min(1),
-  features: StringArraySchema,
-  signupDate: z.string().min(1), // ISO date string
-  // Billing fields (existing)
-  billingAddress: z.string().optional(),
-  currency: z.string().optional(),
-  subscriptionRate: z.number().nonnegative().optional(),
-  // SaaS-specific fields
+  capacity: z.number().int().nonnegative(),
+  activeUsers: z.number().int().nonnegative().optional(),
   accountStatus: z.enum(['lead', 'trial', 'active', 'suspended', 'churned']),
-  renewalDate: z.string().optional(),
-  customerTier: z.enum(['basic', 'pro', 'enterprise']).optional(),
-  // Collection reference IDs
   trialIds: OptionalStringArraySchema,
   onboardingIds: OptionalStringArraySchema,
-  subscriptionIds: OptionalStringArraySchema,
   supportTicketIds: OptionalStringArraySchema,
   healthScoreIds: OptionalStringArraySchema,
 });
 
 export const SaaSPersonDataSchema = z.object({
   industry: z.literal('SaaS'),
-  entityType: z.literal('person'),
   role: z.enum(['admin', 'manager', 'user']),
   lastLoginDate: z.string().optional(),
   activationStatus: z.enum(['pending', 'active', 'inactive']),
@@ -62,12 +69,10 @@ export const SaaSPersonDataSchema = z.object({
 
 export const SchoolEnrollmentInstitutionDataSchema = z.object({
   industry: z.literal('SchoolEnrollment'),
-  entityType: z.literal('institution'),
   gradeOfferings: StringArraySchema,
   academicYear: z.string().min(1),
-  enrollmentCapacity: z.number().int().nonnegative().optional(),
+  capacity: z.number().int().nonnegative(),
   currentEnrollment: z.number().int().nonnegative().optional(),
-  // Collection reference IDs
   applicationIds: OptionalStringArraySchema,
   enrollmentIds: OptionalStringArraySchema,
   schoolVisitIds: OptionalStringArraySchema,
@@ -79,12 +84,11 @@ export const SchoolEnrollmentInstitutionDataSchema = z.object({
 
 export const LawInstitutionDataSchema = z.object({
   industry: z.literal('Law'),
-  entityType: z.literal('institution'),
   firmType: z.enum(['solo', 'partnership', 'corporate']),
   practiceAreas: StringArraySchema,
   barAssociations: OptionalStringArraySchema,
+  capacity: z.number().int().nonnegative().optional(),
   conflictCheckRequired: z.boolean(),
-  // Collection reference IDs
   matterIds: OptionalStringArraySchema,
   intakeFormIds: OptionalStringArraySchema,
   conflictCheckIds: OptionalStringArraySchema,
@@ -92,7 +96,6 @@ export const LawInstitutionDataSchema = z.object({
 
 export const LawPersonDataSchema = z.object({
   industry: z.literal('Law'),
-  entityType: z.literal('person'),
   clientType: z.enum(['individual', 'company']),
   legalIssueType: z.string().optional(),
   urgency: z.enum(['low', 'medium', 'high', 'critical']),
@@ -104,15 +107,11 @@ export const LawPersonDataSchema = z.object({
 
 export const MarketingInstitutionDataSchema = z.object({
   industry: z.literal('Marketing'),
-  entityType: z.literal('institution'),
   clientIndustry: z.string().min(1),
-  businessSize: z.object({
-    employees: z.number().int().nonnegative().optional(),
-    revenue: z.number().nonnegative().optional(),
-  }),
   targetAudience: z.string().optional(),
+  capacity: z.number().int().nonnegative().optional(),
+  revenue: z.number().nonnegative().optional(),
   monthlyBudget: z.number().nonnegative().optional(),
-  // Collection reference IDs
   campaignIds: OptionalStringArraySchema,
   proposalIds: OptionalStringArraySchema,
   deliverableIds: OptionalStringArraySchema,
@@ -120,7 +119,6 @@ export const MarketingInstitutionDataSchema = z.object({
 
 export const MarketingPersonDataSchema = z.object({
   industry: z.literal('Marketing'),
-  entityType: z.literal('person'),
   role: z.string().min(1),
   influenceLevel: z.enum(['decision-maker', 'influencer', 'user']),
   approvalAuthority: z.boolean(),
@@ -132,17 +130,15 @@ export const MarketingPersonDataSchema = z.object({
 
 export const RealEstateInstitutionDataSchema = z.object({
   industry: z.literal('RealEstate'),
-  entityType: z.literal('institution'),
   propertyPortfolio: OptionalStringArraySchema,
   developerType: z.enum(['residential', 'commercial', 'mixed']),
   investmentFocus: z.string().optional(),
-  // Collection reference IDs
+  capacity: z.number().int().nonnegative().optional(),
   propertyIds: OptionalStringArraySchema,
 });
 
 export const RealEstatePersonDataSchema = z.object({
   industry: z.literal('RealEstate'),
-  entityType: z.literal('person'),
   clientType: z.enum(['buyer', 'seller', 'tenant', 'landlord', 'investor']),
   budgetRange: z
     .object({
@@ -159,15 +155,10 @@ export const RealEstatePersonDataSchema = z.object({
 
 export const ConsultancyInstitutionDataSchema = z.object({
   industry: z.literal('Consultancy'),
-  entityType: z.literal('institution'),
   clientIndustry: z.string().min(1),
-  companySize: z.object({
-    employees: z.number().int().nonnegative().optional(),
-    revenue: z.number().nonnegative().optional(),
-  }),
+  capacity: z.number().int().nonnegative().optional(),
   strategicPriorities: OptionalStringArraySchema,
   painPoints: OptionalStringArraySchema,
-  // Collection reference IDs
   discoveryIds: OptionalStringArraySchema,
   proposalIds: OptionalStringArraySchema,
   engagementIds: OptionalStringArraySchema,
@@ -175,7 +166,6 @@ export const ConsultancyInstitutionDataSchema = z.object({
 
 export const ConsultancyPersonDataSchema = z.object({
   industry: z.literal('Consultancy'),
-  entityType: z.literal('person'),
   role: z.string().min(1),
   department: z.string().optional(),
   influenceLevel: z.enum(['decision-maker', 'influencer', 'user']),
@@ -237,6 +227,22 @@ export const EntitySchema = z.object({
   organizationId: z.string().min(1),
   entityType: z.enum(['institution', 'family', 'person']),
   name: z.string().min(1),
+  slug: z.string().optional(),
+  
+  initials: z.string().optional(),
+  logoUrl: z.string().optional(),
+  referee: z.string().optional(),
+  location: z.object({
+    locationString: z.string().optional(),
+    zone: z.object({
+      id: z.string(),
+      name: z.string(),
+    }).optional(),
+  }).optional(),
+  
+  financeData: FinanceDataSchema.optional(),
+  interests: OptionalStringArraySchema,
+  
   status: z.enum(['active', 'archived']).optional(),
   industry: IndustryVerticalSchema.optional(),
   industryData: IndustryDataSchema.optional(),

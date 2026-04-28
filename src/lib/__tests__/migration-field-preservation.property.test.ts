@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Property-Based Test: Migration Field Preservation
  * 

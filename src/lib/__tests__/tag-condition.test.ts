@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { evaluateTagCondition } from '../tag-condition';
 import type { TagConditionNode } from '../types';

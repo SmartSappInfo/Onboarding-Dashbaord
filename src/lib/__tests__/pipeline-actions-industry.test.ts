@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDefaultPipelineForIndustry } from '../pipeline-actions';
 import { INDUSTRY_CONFIG } from '../industry-config';

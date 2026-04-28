@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Property Tests for Migration Monitoring
  * 

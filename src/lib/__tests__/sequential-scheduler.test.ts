@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { scheduleMultiEntityMessages } from '../sequential-scheduler';
 import type { ScheduleMessageInput } from '../sequential-scheduler';

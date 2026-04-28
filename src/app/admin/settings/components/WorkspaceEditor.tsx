@@ -4,7 +4,7 @@ import * as React from 'react';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Workspace, WorkspaceStatus, IndustryVertical } from '@/lib/types';
+import type { Workspace, WorkspaceStatus, IndustryVertical, ContactIdentifierPolicy, EntityDefaults } from '@/lib/types';
 import { 
     Zap, 
     Plus, 
@@ -28,7 +28,12 @@ import {
     Home,
     Scale,
     Megaphone,
-    Filter
+    Filter,
+    Phone,
+    Mail,
+    Smartphone,
+    MailCheck,
+    Trash2 as TrashIcon
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,6 +93,10 @@ export default function WorkspaceEditor() {
     const [pluralTerm, setPluralTerm] = React.useState('');
     const [industry, setIndustry] = React.useState<IndustryVertical>('SaaS');
     const [industryFilter, setIndustryFilter] = React.useState<IndustryVertical | 'all'>('all');
+    const [contactPolicySetting, setContactPolicySetting] = React.useState<ContactIdentifierPolicy>('phone_or_email');
+    const [entityDefaults, setEntityDefaults] = React.useState<EntityDefaults>({});
+    const [newDefaultKey, setNewDefaultKey] = React.useState('');
+    const [newDefaultValue, setNewDefaultValue] = React.useState('');
 
     // Get enabled industries from feature flags
     const enabledIndustries = React.useMemo(() => getEnabledIndustries(), []);
@@ -175,6 +184,8 @@ export default function WorkspaceEditor() {
             setSingularTerm(w.terminology?.singular || '');
             setPluralTerm(w.terminology?.plural || '');
             setIndustry(w.industry || 'SaaS');
+            setContactPolicySetting(w.contactPolicy || 'phone_or_email');
+            setEntityDefaults(w.entityDefaults || {});
         } else {
             setActiveWorkspace(null);
             setName('');
@@ -189,6 +200,8 @@ export default function WorkspaceEditor() {
             setSingularTerm('');
             setPluralTerm('');
             setIndustry('SaaS');
+            setContactPolicySetting('phone_or_email');
+            setEntityDefaults({});
         }
         setIsEditing(true);
     };
@@ -242,6 +255,8 @@ export default function WorkspaceEditor() {
                 } : undefined,
                 industry: activeWorkspace ? undefined : industry, // Only set on creation
                 industryScopeLocked: false, // Will be locked after first entity link
+                contactPolicy: contactPolicySetting,
+                entityDefaults: entityDefaults,
             },
             user.uid
         );
@@ -880,6 +895,188 @@ export default function WorkspaceEditor() {
                                             </div>
                                         </>
                                     )}
+
+ <Separator className="opacity-50" />
+
+                                    {/* CONTACT IDENTIFIER POLICY */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Smartphone className="h-4 w-4 text-primary" />
+                                            <h4 className="text-xs font-semibold">Contact Identifier Policy</h4>
+                                        </div>
+
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                            Determines which identifiers are required to save an entity. Applied across bulk import, new entity page, and survey submissions.
+                                        </p>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            {([
+                                                { value: 'phone_only' as const, icon: Phone, label: 'Phone Only', desc: 'Only phone number required — SMS-first workflows' },
+                                                { value: 'email_only' as const, icon: Mail, label: 'Email Only', desc: 'Only email required — email-first campaigns' },
+                                                { value: 'phone_or_email' as const, icon: MailCheck, label: 'Phone or Email', desc: 'Either phone or email acceptable (default)' },
+                                            ]).map(({ value, icon: Icon, label, desc }) => (
+                                                <button
+                                                    key={value}
+                                                    type="button"
+                                                    onClick={() => setContactPolicySetting(value)}
+                                                    className={cn(
+                                                        "p-4 rounded-2xl border-2 transition-all text-left hover:shadow-md",
+                                                        contactPolicySetting === value
+                                                            ? "bg-primary/5 border-primary shadow-sm"
+                                                            : "bg-background border-border hover:border-primary/30"
+                                                    )}
+                                                >
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className={cn(
+                                                                "p-1.5 rounded-lg transition-colors",
+                                                                contactPolicySetting === value ? "bg-primary/10" : "bg-muted"
+                                                            )}>
+                                                                <Icon className={cn(
+                                                                    "h-4 w-4",
+                                                                    contactPolicySetting === value ? "text-primary" : "text-muted-foreground"
+                                                                )} />
+                                                            </div>
+                                                            {contactPolicySetting === value && (
+                                                                <Check className="h-4 w-4 text-primary" />
+                                                            )}
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <h5 className="text-xs font-semibold text-foreground">{label}</h5>
+                                                            <p className="text-[8px] font-medium text-muted-foreground leading-relaxed">{desc}</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+ <Separator className="opacity-50" />
+
+                                    {/* ENTITY DEFAULTS EDITOR */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Settings2 className="h-4 w-4 text-primary" />
+                                            <h4 className="text-xs font-semibold">Entity Defaults</h4>
+                                            <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 ml-auto">Per Workspace</Badge>
+                                        </div>
+
+                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+                                            Set default values applied when creating entities via import, new entity page, or survey submissions.
+                                        </p>
+
+                                        {(() => {
+                                            const scope = (activeWorkspace?.contactScope || contactScope || 'institution') as 'institution' | 'family' | 'person';
+                                            const currentDefaults = entityDefaults[scope] || {};
+                                            const entries = Object.entries(currentDefaults);
+
+                                            const updateDefault = (key: string, value: string) => {
+                                                setEntityDefaults(prev => ({
+                                                    ...prev,
+                                                    [scope]: { ...(prev[scope] || {}), [key]: value }
+                                                }));
+                                            };
+
+                                            const removeDefault = (key: string) => {
+                                                setEntityDefaults(prev => {
+                                                    const scopeDefaults = { ...(prev[scope] || {}) };
+                                                    delete scopeDefaults[key];
+                                                    return { ...prev, [scope]: scopeDefaults };
+                                                });
+                                            };
+
+                                            const addDefault = () => {
+                                                if (!newDefaultKey.trim() || newDefaultKey === '__custom') return;
+                                                updateDefault(newDefaultKey.trim(), newDefaultValue.trim());
+                                                setNewDefaultKey('');
+                                                setNewDefaultValue('');
+                                            };
+
+                                            const SUGGESTED_KEYS: Record<string, string[]> = {
+                                                institution: ['currency', 'lifecycleStatus', 'leadSource', 'billingAddress', 'subscriptionPackageName'],
+                                                family: ['lifecycleStatus', 'leadSource', 'relationship'],
+                                                person: ['jobTitle', 'leadSource', 'company', 'lifecycleStatus'],
+                                            };
+                                            const suggestedKeys = SUGGESTED_KEYS[scope] || [];
+                                            const unusedSuggestions = suggestedKeys.filter(k => !(k in currentDefaults));
+
+                                            return (
+                                                <div className="space-y-3">
+                                                    {entries.length > 0 && (
+                                                        <div className="space-y-2">
+                                                            {entries.map(([key, value]) => (
+                                                                <div key={key} className="flex items-center gap-2 p-3 rounded-xl bg-muted/30 border group">
+                                                                    <span className="text-[10px] font-bold text-primary min-w-[120px] truncate">{key}</span>
+                                                                    <Input
+                                                                        value={value}
+                                                                        onChange={e => updateDefault(key, e.target.value)}
+                                                                        className="h-8 rounded-lg bg-background border-none text-xs font-medium flex-1"
+                                                                    />
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => removeDefault(key)}
+                                                                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                                                                    >
+                                                                        <X size={14} />
+                                                                    </Button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {unusedSuggestions.length > 0 ? (
+                                                            <Select value={newDefaultKey} onValueChange={setNewDefaultKey}>
+                                                                <SelectTrigger className="h-8 rounded-lg text-xs font-medium w-[160px]">
+                                                                    <SelectValue placeholder="Select field..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {unusedSuggestions.map(k => (
+                                                                        <SelectItem key={k} value={k} className="text-xs font-medium">{k}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <Input
+                                                                value={newDefaultKey}
+                                                                onChange={e => setNewDefaultKey(e.target.value)}
+                                                                placeholder="Field name"
+                                                                className="h-8 rounded-lg text-xs font-medium w-[160px]"
+                                                            />
+                                                        )}
+                                                        <Input
+                                                            value={newDefaultValue}
+                                                            onChange={e => setNewDefaultValue(e.target.value)}
+                                                            placeholder="Default value"
+                                                            className="h-8 rounded-lg text-xs font-medium flex-1"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={addDefault}
+                                                            disabled={!newDefaultKey.trim() || newDefaultKey === '__custom'}
+                                                            className="h-8 rounded-lg text-[10px] font-bold"
+                                                        >
+                                                            <Plus className="h-3 w-3 mr-1" /> Add
+                                                        </Button>
+                                                    </div>
+                                                    {entries.length === 0 && (
+                                                        <p className="text-[9px] font-medium text-muted-foreground italic text-center py-3">
+                                                            No defaults configured. Add defaults above to auto-fill entity fields on creation.
+                                                        </p>
+                                                    )}
+                                                    <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-2">
+                                                        <Info className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-0.5" />
+                                                        <p className="text-[8px] font-medium text-blue-800/70 leading-relaxed">
+                                                            Priority: Entity data → Import step defaults → Workspace defaults → System defaults.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
 
  <Separator className="opacity-50" />
 

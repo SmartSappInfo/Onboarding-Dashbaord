@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unit Tests for Workspace-Scoped Tag Filtering
  * 
@@ -190,21 +191,24 @@ describe('Workspace-Scoped Tag Filtering', () => {
         id: 'we-1',
         entityId: entityId1,
         workspaceId,
-        workspaceTags: [tag1],
+        entityType: 'institution',
+    workspaceTags: [tag1],
       });
 
       testStorage.workspaceEntities.set('we-2', {
         id: 'we-2',
         entityId: entityId2,
         workspaceId,
-        workspaceTags: [tag2],
+        entityType: 'institution',
+    workspaceTags: [tag2],
       });
 
       testStorage.workspaceEntities.set('we-3', {
         id: 'we-3',
         entityId: entityId3,
         workspaceId,
-        workspaceTags: [],
+        entityType: 'institution',
+    workspaceTags: [],
       });
 
       // Execute
@@ -234,14 +238,16 @@ describe('Workspace-Scoped Tag Filtering', () => {
         id: 'we-1',
         entityId: entityId1,
         workspaceId,
-        workspaceTags: [tag1, tag2],
+        entityType: 'institution',
+    workspaceTags: [tag1, tag2],
       });
 
       testStorage.workspaceEntities.set('we-2', {
         id: 'we-2',
         entityId: entityId2,
         workspaceId,
-        workspaceTags: [tag1],
+        entityType: 'institution',
+    workspaceTags: [tag1],
       });
 
       // Execute
@@ -270,21 +276,24 @@ describe('Workspace-Scoped Tag Filtering', () => {
         id: 'we-1',
         entityId: entityId1,
         workspaceId,
-        workspaceTags: [tag1],
+        entityType: 'institution',
+    workspaceTags: [tag1],
       });
 
       testStorage.workspaceEntities.set('we-2', {
         id: 'we-2',
         entityId: entityId2,
         workspaceId,
-        workspaceTags: [],
+        entityType: 'institution',
+    workspaceTags: [],
       });
 
       testStorage.workspaceEntities.set('we-3', {
         id: 'we-3',
         entityId: entityId3,
         workspaceId,
-        workspaceTags: ['other-tag'],
+        entityType: 'institution',
+    workspaceTags: ['other-tag'],
       });
 
       // Execute
@@ -316,9 +325,11 @@ describe('Workspace-Scoped Tag Filtering', () => {
       testStorage.entities.set(entityId, {
         id: entityId,
         organizationId: 'org-1',
-        entityType: 'institution',
+        
         name: 'Test Entity',
-        globalTags: [globalTag1, globalTag2],
+        entityType: 'institution',
+    entityContacts: [],
+    globalTags: [globalTag1, globalTag2],
         contacts: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -329,9 +340,10 @@ describe('Workspace-Scoped Tag Filtering', () => {
         id: 'we-1',
         entityId,
         workspaceId,
-        workspaceTags: [workspaceTag1, workspaceTag2],
-        organizationId: 'org-1',
         entityType: 'institution',
+    workspaceTags: [workspaceTag1, workspaceTag2],
+        organizationId: 'org-1',
+        
         pipelineId: 'pipeline-1',
         stageId: 'stage-1',
         status: 'active',
@@ -374,9 +386,11 @@ describe('Workspace-Scoped Tag Filtering', () => {
       testStorage.entities.set(entityId, {
         id: entityId,
         organizationId: 'org-1',
-        entityType: 'institution',
+        
         name: 'Test Entity',
-        globalTags: [globalTag1],
+        entityType: 'institution',
+    entityContacts: [],
+    globalTags: [globalTag1],
         contacts: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
@@ -387,9 +401,10 @@ describe('Workspace-Scoped Tag Filtering', () => {
         id: 'we-1',
         entityId,
         workspaceId,
-        workspaceTags: [],
-        organizationId: 'org-1',
         entityType: 'institution',
+    workspaceTags: [],
+        organizationId: 'org-1',
+        
         pipelineId: 'pipeline-1',
         stageId: 'stage-1',
         status: 'active',

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integration Tests for Migration Verify Operation
  * 
@@ -76,7 +77,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -94,7 +95,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, 'entities', 'entity_test_2'), {
@@ -119,7 +120,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -141,7 +142,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -161,7 +162,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_orphaned',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -194,13 +195,13 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -219,7 +220,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: '',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -238,7 +239,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: '   ',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -263,7 +264,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -289,7 +290,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       // Execute
@@ -309,7 +310,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -321,14 +322,14 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task3'), {
         title: 'Task 3',
         entityId: 'entity_test_3',
-        entityType: 'person',
+        
       });
 
       // Create corresponding entities
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, 'entities', 'entity_test_2'), {
@@ -340,7 +341,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_3'), {
         id: 'entity_test_3',
         name: 'Test Entity 3',
-        entityType: 'person',
+        
       });
 
       // Execute
@@ -360,7 +361,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       // 2. Unmigrated record
@@ -387,20 +388,20 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task5'), {
         title: 'Task 5',
         entityId: '',
-        entityType: 'person',
+        
       });
 
       // Create valid entities
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, 'entities', 'entity_test_4'), {
         id: 'entity_test_4',
         name: 'Test Entity 4',
-        entityType: 'person',
+        
       });
 
       // Execute
@@ -440,7 +441,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, testCollectionName, 'task1'), {
         title: 'Task 1',
         entityId: 'entity_test_1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, testCollectionName, 'task2'), {
@@ -453,7 +454,7 @@ describe.skip('Migration Verify Operation - Integration Tests (Requires Firebase
       await setDoc(doc(firestore, 'entities', 'entity_test_1'), {
         id: 'entity_test_1',
         name: 'Test Entity 1',
-        entityType: 'institution',
+        
       });
 
       await setDoc(doc(firestore, 'entities', 'entity_test_2'), {

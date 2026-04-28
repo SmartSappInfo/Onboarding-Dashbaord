@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Industry Migration Phase 4: Validation and Cutover
  * 

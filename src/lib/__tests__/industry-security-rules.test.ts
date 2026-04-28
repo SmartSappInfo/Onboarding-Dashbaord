@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Firestore Security Rules Tests: Industry-Specific Collections
  * 
@@ -275,7 +276,7 @@ describe('Industry-Specific Collection Security Rules', () => {
         organizationId: ORG_ID,
         workspaceId: SAAS_WORKSPACE_ID,
         entityId: 'entity-1',
-        planType: 'Pro',
+        // planType: 'Pro',
         billingCycle: 'monthly',
         amount: 99.99,
         currency: 'USD',

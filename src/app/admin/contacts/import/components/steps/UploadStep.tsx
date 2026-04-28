@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ImportState } from '../../types';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, FileType, CheckCircle2, AlertCircle, Play } from 'lucide-react';
+import { UploadCloud, FileType, CheckCircle2, AlertCircle, Play, Info, Asterisk } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -11,9 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { INSTITUTION_TEMPLATE_HEADER, INSTITUTION_SAMPLE_ROW } from '@/lib/import-export/institution-template';
-import { PERSON_TEMPLATE_HEADER, PERSON_SAMPLE_ROW } from '@/lib/import-export/person-template';
-import { FAMILY_TEMPLATE_HEADER, FAMILY_SAMPLE_ROW } from '@/lib/import-export/family-template';
+import { INSTITUTION_TEMPLATE_HEADER, INSTITUTION_SAMPLE_ROW, INSTITUTION_FIELD_INSTRUCTIONS } from '@/lib/import-export/institution-template';
+import { PERSON_TEMPLATE_HEADER, PERSON_SAMPLE_ROW, PERSON_FIELD_INSTRUCTIONS } from '@/lib/import-export/person-template';
+import { FAMILY_TEMPLATE_HEADER, FAMILY_SAMPLE_ROW, FAMILY_FIELD_INSTRUCTIONS } from '@/lib/import-export/family-template';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { getContactPolicyLabel } from '@/lib/contact-policy';
+import { Badge } from '@/components/ui/badge';
 
 interface Props {
   state: ImportState;
@@ -24,6 +27,10 @@ interface Props {
 export function UploadStep({ state, updateState, onNext }: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const { activeWorkspace } = useWorkspace();
+
+  const contactPolicy = activeWorkspace?.contactPolicy || 'phone_or_email';
+  const contactScope = activeWorkspace?.contactScope || 'institution';
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -110,9 +117,29 @@ export function UploadStep({ state, updateState, onNext }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  // Get the right field instructions based on the selected or workspace entity type
+  const activeType = state.entityType || contactScope;
+  const fieldInstructions = activeType === 'person'
+    ? PERSON_FIELD_INSTRUCTIONS
+    : activeType === 'family'
+      ? FAMILY_FIELD_INSTRUCTIONS
+      : INSTITUTION_FIELD_INSTRUCTIONS;
+
+  // Determine which phone/email fields are policy-required based on type
+  const policyRequiredFields = (() => {
+    const phoneField = activeType === 'institution' ? 'focalPerson_phone' 
+      : activeType === 'family' ? 'guardian1_phone' : 'phone';
+    const emailField = activeType === 'institution' ? 'focalPerson_email'
+      : activeType === 'family' ? 'guardian1_email' : 'email';
+    
+    if (contactPolicy === 'phone_only') return [phoneField];
+    if (contactPolicy === 'email_only') return [emailField];
+    return []; // phone_or_email — either works, neither strictly required
+  })();
+
   return (
     <div className="flex flex-col h-full space-y-6">
-      <div className="flex gap-6 w-full max-w-4xl mx-auto items-stretch h-full">
+      <div className="flex gap-6 w-full max-w-5xl mx-auto items-stretch h-full">
         {/* Left column: File Dropper */}
         <div className="flex-1 flex flex-col space-y-4">
           <label className="text-sm font-medium text-foreground">Upload CSV File</label>
@@ -168,18 +195,18 @@ export function UploadStep({ state, updateState, onNext }: Props) {
 
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground flex items-center gap-2">
-              <FileType className="w-4 h-4" /> Recommended Templates:
+              <FileType className="w-4 h-4" /> Download Template:
             </span>
             <div className="space-x-2">
-              <Button variant="link" className="h-auto p-0 text-primary" onClick={() => handleDownloadTemplate('person')}>Person</Button>
-              <Button variant="link" className="h-auto p-0 text-primary" onClick={() => handleDownloadTemplate('family')}>Family</Button>
-              <Button variant="link" className="h-auto p-0 text-primary" onClick={() => handleDownloadTemplate('institution')}>Institution</Button>
+              <Button variant="link" className={`h-auto p-0 ${contactScope === 'person' ? 'text-primary font-bold' : 'text-muted-foreground'}`} onClick={() => handleDownloadTemplate('person')}>Person</Button>
+              <Button variant="link" className={`h-auto p-0 ${contactScope === 'family' ? 'text-primary font-bold' : 'text-muted-foreground'}`} onClick={() => handleDownloadTemplate('family')}>Family</Button>
+              <Button variant="link" className={`h-auto p-0 ${contactScope === 'institution' ? 'text-primary font-bold' : 'text-muted-foreground'}`} onClick={() => handleDownloadTemplate('institution')}>Institution</Button>
             </div>
           </div>
         </div>
 
-        {/* Right column: Target Selection */}
-        <div className="w-[300px] flex flex-col space-y-6">
+        {/* Right column: Target Selection + Field Guide */}
+        <div className="w-[340px] flex flex-col space-y-4">
           <div className="space-y-3">
             <label className="text-sm font-medium text-foreground">What are you importing?</label>
             <Select 
@@ -203,14 +230,63 @@ export function UploadStep({ state, updateState, onNext }: Props) {
             )}
           </div>
 
+          {/* Workspace Policy Badge */}
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Info className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-bold text-foreground">Workspace Policy</span>
+              <Badge variant="outline" className="text-[8px] font-bold ml-auto h-4 px-1.5">{getContactPolicyLabel(contactPolicy)}</Badge>
+            </div>
+            <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
+              {contactPolicy === 'phone_only' && 'Phone number is required for each contact. Email is optional.'}
+              {contactPolicy === 'email_only' && 'Email address is required for each contact. Phone is optional.'}
+              {contactPolicy === 'phone_or_email' && 'Either a phone number or email address must be provided.'}
+            </p>
+          </div>
+
+          {/* Field Guide */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <label className="text-[10px] font-bold text-muted-foreground mb-2 flex items-center gap-1.5">
+              <Asterisk className="w-3 h-3 text-red-500" /> Field Guide
+              <span className="text-[8px] font-medium text-muted-foreground/60 ml-auto">* = required</span>
+            </label>
+            <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+              {fieldInstructions.map((fi) => {
+                const isRequired = fi.field.endsWith('*');
+                const isPolicyRequired = policyRequiredFields.includes(fi.field);
+                return (
+                  <div 
+                    key={fi.field} 
+                    className={`flex items-start gap-2 p-2 rounded-lg text-[9px] ${
+                      isRequired ? 'bg-red-500/5 border border-red-500/15' 
+                      : isPolicyRequired ? 'bg-amber-500/5 border border-amber-500/15'
+                      : 'bg-muted/30'
+                    }`}
+                  >
+                    <span className={`font-mono font-bold min-w-[130px] shrink-0 ${
+                      isRequired ? 'text-red-600' : isPolicyRequired ? 'text-amber-600' : 'text-foreground'
+                    }`}>
+                      {fi.field}{isPolicyRequired && !isRequired ? '†' : ''}
+                    </span>
+                    <span className="text-muted-foreground font-medium leading-relaxed">{fi.description}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[8px] text-muted-foreground mt-1.5 pt-1.5 border-t">
+              <span className="text-red-500 font-bold">*</span> Always required &nbsp;
+              {policyRequiredFields.length > 0 && <><span className="text-amber-500 font-bold">†</span> Required by workspace policy</>}
+            </p>
+          </div>
+
           {state.error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm flex items-start mt-auto">
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm flex items-start">
                 <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
                 <span>{state.error}</span>
             </div>
           )}
 
-          <div className="mt-auto pt-6 flex justify-end">
+          <div className="pt-2 flex justify-end">
             <Button 
                 onClick={onNext} 
                 disabled={!state.file || !state.entityType || isParsing}

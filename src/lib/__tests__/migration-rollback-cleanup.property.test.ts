@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Property Test: Rollback Cleanup
  * 

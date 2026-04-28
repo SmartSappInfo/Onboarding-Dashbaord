@@ -15,7 +15,8 @@ import { adminDb } from '../firebase-admin';
 import { logActivity } from '../activity-logger';
 import { validateScopeMatch } from '../scope-guard';
 import { createEntityAction } from '../entity-actions';
-import type { EntityType, Workspace } from '../types';
+import { validateContactIdentifier } from '../contact-policy';
+import type { EntityType, Workspace, ContactIdentifierPolicy } from '../types';
 import type {
   ColumnMapping,
   ValidationSummary,
@@ -88,11 +89,13 @@ export async function validateImportBatch(
   const previewRows: any[] = [];
   let validRows = 0;
 
-  // 1. ScopeGuard – make sure workspace accepts this entity type
+  // 1. ScopeGuard – make sure workspace accepts this entity type & read contact policy
+  let contactPolicy: ContactIdentifierPolicy = 'phone_or_email';
   if (workspaceId) {
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (wsSnap.exists) {
       const workspace = { id: wsSnap.id, ...wsSnap.data() } as Workspace;
+      contactPolicy = workspace.contactPolicy || 'phone_or_email';
       if (workspace.contactScope) {
         const scopeCheck = validateScopeMatch(entityType, workspace.contactScope);
         if (!scopeCheck.valid) {
@@ -173,6 +176,17 @@ export async function validateImportBatch(
     if (!entityName) {
       errors.push({ rowNumber: rowNum, reason: 'Missing identifier (Name, Email, or Phone required)' });
       rowValid = false;
+    }
+
+    // 3b2. Contact policy check — enforce workspace identifier requirements
+    if (rowValid) {
+      const rowPhone = mapped.phone || mapped.focalPerson_phone || mapped.guardian1_phone || '';
+      const rowEmail = mapped.email || mapped.focalPerson_email || mapped.guardian1_email || '';
+      const policyResult = validateContactIdentifier(rowPhone, rowEmail, contactPolicy);
+      if (!policyResult.valid) {
+        errors.push({ rowNumber: rowNum, reason: policyResult.reason || 'Missing required identifier per workspace policy' });
+        rowValid = false;
+      }
     }
 
     // 3c. Type validation
@@ -262,10 +276,30 @@ export async function executeImportBatch(
   const failedRows: ExecutionSummary['failedRows'] = [];
   const createdIds: string[] = [];
 
+  // Fetch workspace entityDefaults for merging (lowest priority layer)
+  let workspaceDefaults: Record<string, string> = {};
+  if (wsId) {
+    try {
+      const wsSnap = await adminDb.collection('workspaces').doc(wsId).get();
+      if (wsSnap.exists) {
+        const wsData = wsSnap.data() as Workspace;
+        const scope = (wsData.contactScope || entityType) as 'institution' | 'family' | 'person';
+        workspaceDefaults = wsData.entityDefaults?.[scope] || {};
+      }
+    } catch {
+      // Non-critical — proceed without workspace defaults
+    }
+  }
+
   for (let i = 0; i < rows.length; i++) {
     const mapped = applyMappings(rows[i], mappings);
     
-    // Merge Defaults
+    // Merge defaults: Workspace defaults (lowest) then Config step defaults
+    for (const [key, val] of Object.entries(workspaceDefaults)) {
+      if (!mapped[key] && val) {
+        mapped[key] = val;
+      }
+    }
     if (configuration?.globalDefaults) {
       for (const [key, val] of Object.entries(configuration.globalDefaults)) {
         if (!mapped[key] && val) {

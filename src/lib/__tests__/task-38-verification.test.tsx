@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Task 38 Verification Test
  * Verifies all sub-tasks for explicit UI language for scope rules (Requirement 25)

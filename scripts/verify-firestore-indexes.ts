@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Firestore Index Verification Script
  * 

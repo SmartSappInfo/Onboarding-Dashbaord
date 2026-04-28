@@ -44,33 +44,31 @@ const formSchema = z.object({
   slogan: z.string().optional(),
   workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
   status: z.enum(['active', 'inactive', 'archived']),
-  lifecycleStatus: z.string().min(1, 'Status is required.'),
+  lifecycleStatus: z.string().optional().default('Onboarding'),
   logoUrl: z.string().url().optional().or(z.literal('')),
   heroImageUrl: z.string().url().optional().or(z.literal('')),
   zone: z.object({
-    id: z.string().min(1, 'Please select a zone.'),
+    id: z.string(),
     name: z.string(),
-  }, { required_error: 'Please assign a geographic zone.' }),
+  }).optional().nullable(),
   locationString: z.string().optional(),
   nominalRoll: z.coerce.number().optional(),
   entityContacts: z.array(z.object({
-    name: z.string().min(2, 'Name required.'),
-    email: z.string().email('Invalid email.').optional().or(z.literal('')),
-    phone: z.string().min(10, 'Invalid phone.').optional().or(z.literal('')),
-    typeKey: z.string().min(1, 'Role required.'),
-    typeLabel: z.string().min(1, 'Role label required.'),
+    name: z.string().min(1, 'Name required.'),
+    email: z.string().optional().or(z.literal('')),
+    phone: z.string().optional().or(z.literal('')),
+    typeKey: z.string().optional().default('primary'),
+    typeLabel: z.string().optional().default('Primary'),
     isSignatory: z.boolean().default(false),
     isPrimary: z.boolean().default(false),
-  })).min(1, 'At least one contact is required.')
-    .refine(people => people.filter(p => p.isSignatory).length === 1, { message: 'Exactly one signatory must be selected.' })
-    .refine(people => people.filter(p => p.isPrimary).length === 1, { message: 'Exactly one primary contact must be selected.' }),
+  })).optional().default([]),
   modules: z.array(z.object({
     id: z.string(),
     name: z.string(),
     abbreviation: z.string(),
     color: z.string(),
   })).optional(),
-  assignedToId: z.string().min(1, 'Please select an account manager.'),
+  assignedToId: z.string().optional().default('unassigned'),
   // Billing Fields
   billingAddress: z.string().optional(),
   currency: z.string().default('GHS'),
@@ -79,6 +77,12 @@ const formSchema = z.object({
   discountPercentage: z.coerce.number().min(0).max(100).default(0),
   arrearsBalance: z.coerce.number().default(0),
   creditBalance: z.coerce.number().default(0),
+  // Person fields
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  company: z.string().optional(),
+  jobTitle: z.string().optional(),
+  leadSource: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -170,6 +174,7 @@ export default function NewEntityPage() {
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user || !users) return;
 
+    const contactScope = activeWorkspace?.contactScope || 'institution';
     const selectedManager = users.find(u => u.id === data.assignedToId);
     const assignedTo = selectedManager 
         ? { userId: selectedManager.id, name: selectedManager.name, email: selectedManager.email }
@@ -177,43 +182,67 @@ export default function NewEntityPage() {
 
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    // Build Polymorphic Payload
-    const entityPayload = {
+    // Build Polymorphic Payload based on workspace scope
+    const entityPayload: any = {
         name: data.name,
-        entityContacts: data.entityContacts,
+        entityContacts: data.entityContacts || [],
         status: data.status,
-        lifecycleStatus: data.lifecycleStatus,
+        lifecycleStatus: data.lifecycleStatus || 'Onboarding',
         assignedTo,
-        primaryEmail: data.entityContacts.find(c => c.isPrimary)?.email || data.entityContacts.find(c => c.isSignatory)?.email || '',
-        primaryPhone: data.entityContacts.find(c => c.isPrimary)?.phone || data.entityContacts.find(c => c.isSignatory)?.phone || '',
-        institutionData: {
-            initials: data.initials,
-            slogan: data.slogan,
-            logoUrl: data.logoUrl,
-            heroImageUrl: data.heroImageUrl,
-            nominalRoll: data.nominalRoll,
-            modules: data.modules,
-            location: {
-                zone: data.zone,
-                locationString: data.locationString
-            },
-            billingAddress: data.billingAddress,
-            currency: data.currency,
-            subscriptionPackageId: data.subscriptionPackageId || null,
-            subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
-            subscriptionRate: data.subscriptionRate,
-            discountPercentage: data.discountPercentage,
-            arrearsBalance: data.arrearsBalance,
-            creditBalance: data.creditBalance
-        }
+        primaryEmail: (data.entityContacts || []).find(c => c.isPrimary)?.email || (data.entityContacts || []).find(c => c.isSignatory)?.email || '',
+        primaryPhone: (data.entityContacts || []).find(c => c.isPrimary)?.phone || (data.entityContacts || []).find(c => c.isSignatory)?.phone || '',
     };
+
+    if (contactScope === 'institution') {
+      entityPayload.institutionData = {
+        initials: data.initials,
+        slogan: data.slogan,
+        logoUrl: data.logoUrl,
+        heroImageUrl: data.heroImageUrl,
+        nominalRoll: data.nominalRoll,
+        modules: data.modules,
+        location: {
+          zone: data.zone || undefined,
+          locationString: data.locationString
+        },
+        billingAddress: data.billingAddress,
+        currency: data.currency,
+        subscriptionPackageId: data.subscriptionPackageId || null,
+        subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
+        subscriptionRate: data.subscriptionRate,
+        discountPercentage: data.discountPercentage,
+        arrearsBalance: data.arrearsBalance,
+        creditBalance: data.creditBalance
+      };
+    } else if (contactScope === 'person') {
+      entityPayload.personData = {
+        firstName: data.firstName || data.name.split(' ')[0] || '',
+        lastName: data.lastName || data.name.split(' ').slice(1).join(' ') || '',
+        company: data.company || '',
+        jobTitle: data.jobTitle || '',
+        leadSource: data.leadSource || '',
+      };
+    } else if (contactScope === 'family') {
+      // For family, derive guardian from contacts
+      const primaryContact = (data.entityContacts || []).find(c => c.isPrimary) || (data.entityContacts || [])[0];
+      entityPayload.familyData = {
+        guardians: primaryContact ? [{
+          name: primaryContact.name,
+          phone: primaryContact.phone || '',
+          email: primaryContact.email || '',
+          relationship: 'Guardian',
+          isPrimary: true,
+        }] : [],
+        children: [],
+      };
+    }
 
     try {
       const result = await createEntityAction(
           entityPayload, 
           user.uid, 
           activeWorkspaceId, 
-          'institution', 
+          contactScope as any, 
           activeOrganizationId || 'smartsapp-hq'
       );
       

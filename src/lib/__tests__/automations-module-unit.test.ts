@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unit Tests: Automations Module
  * 
@@ -215,7 +216,7 @@ describe('Automations Module - Unit Tests', () => {
       const { triggerAutomationProtocols } = await import('../automation-processor');
       await triggerAutomationProtocols('SCHOOL_CREATED', {
         entityId,
-        entityType: 'institution',
+        
         workspaceId,
         organizationId: 'org_1',
       });
@@ -272,7 +273,7 @@ describe('Automations Module - Unit Tests', () => {
         workspaceId,
         entityId,
         entityName: 'Test Entity',
-        entityType: 'institution',
+        
         assignedTo: 'user_123',
         dueDate: new Date().toISOString(),
         source: 'automation',

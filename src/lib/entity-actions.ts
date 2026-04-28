@@ -148,6 +148,17 @@ export async function createEntityAction(
     const { industry: workspaceIndustry, industryScopeLocked } =
       await getWorkspaceIndustry(workspaceId);
 
+    // Backward Compatibility: Clean industry data before validation
+    if (data.industryData) {
+       if ('nominalRoll' in data.industryData && !('capacity' in data.industryData)) data.industryData.capacity = data.industryData.nominalRoll;
+       if ('companySize' in data.industryData && !('capacity' in data.industryData)) data.industryData.capacity = data.industryData.companySize;
+       if (data.nominalRoll !== undefined && !('capacity' in data.industryData)) data.industryData.capacity = data.nominalRoll;
+       
+       delete data.industryData.nominalRoll;
+       delete data.industryData.companySize;
+       delete data.industryData.entityType;
+    }
+
     // 2. Validate industryData against workspace industry if provided (Requirement 3.9)
     if (data.industryData) {
       // Throws if industry mismatch or schema failure
@@ -241,16 +252,36 @@ export async function createEntityAction(
       entityContacts, // Canonical (FER-01)
       globalTags: data.globalTags || [],
       status: 'active',
-      // Inject workspace industry into entity (Requirement 1.4, 2.1)
       industry: workspaceIndustry,
+      
+      // Root fields from data (formerly institutionData)
+      initials: data.initials || undefined,
+      logoUrl: data.logoUrl || undefined,
+      referee: data.referee || undefined,
+      location: data.location || undefined,
+      interests: data.interests || (data.modules ? data.modules.map((m: any) => m.id || m.name || m) : []),
+
       createdAt: timestamp,
       updatedAt: timestamp,
     };
+    
+    // Build financeData
+    const financeData: any = {};
+    const financeFields = [
+      'planType', 'subscriptionIds', 'currency', 'billingAddress', 
+      'subscriptionRate', 'customerTier', 'signupDate', 'renewalDate', 
+      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds'
+    ];
+    for (const f of financeFields) {
+      if (data[f] !== undefined) financeData[f] = data[f];
+    }
+    if (Object.keys(financeData).length > 0) {
+      if (!financeData.currency) financeData.currency = 'GHS'; // default
+      entityData.financeData = financeData;
+    }
 
     // Append Polymorphic Data
-    if (entityType === 'institution' && data.institutionData) {
-        entityData.institutionData = data.institutionData;
-    } else if (entityType === 'family' && data.familyData) {
+    if (entityType === 'family' && data.familyData) {
         entityData.familyData = data.familyData;
     } else if (entityType === 'person' && data.personData) {
         entityData.personData = data.personData;
@@ -401,12 +432,57 @@ export async function updateEntityAction(
     if (data.globalTags) entityUpdate.globalTags = data.globalTags;
     if (data.status) entityUpdate.status = data.status.toLowerCase();
 
-    if (entityType === 'institution' && data.institutionData) {
-        entityUpdate.institutionData = data.institutionData;
-    } else if (entityType === 'family' && data.familyData) {
+    // Root fields update
+    if (data.initials !== undefined) entityUpdate.initials = data.initials;
+    if (data.logoUrl !== undefined) entityUpdate.logoUrl = data.logoUrl;
+    if (data.referee !== undefined) entityUpdate.referee = data.referee;
+    if (data.location !== undefined) entityUpdate.location = data.location;
+    if (data.interests !== undefined) entityUpdate.interests = data.interests;
+    else if (data.modules !== undefined) entityUpdate.interests = data.modules.map((m: any) => m.id || m.name || m);
+
+    // Build financeData update
+    const financeData: any = {};
+    const financeFields = [
+      'planType', 'subscriptionIds', 'currency', 'billingAddress', 
+      'subscriptionRate', 'customerTier', 'signupDate', 'renewalDate', 
+      'paymentMethod', 'lastPaymentDate', 'nextPaymentDue', 'invoiceIds', 'paymentIds'
+    ];
+    for (const f of financeFields) {
+      if (data[f] !== undefined) financeData[f] = data[f];
+    }
+    
+    if (Object.keys(financeData).length > 0) {
+      // In a full replacement, we'd overwrite. Here we merge via dot notation if entity Snap doesn't have it?
+      // Since it's a new schema, let's just create/merge it.
+      if (!entitySnap.data()?.financeData) {
+         entityUpdate.financeData = financeData;
+         if (!entityUpdate.financeData.currency) entityUpdate.financeData.currency = 'GHS';
+      } else {
+         for (const key of Object.keys(financeData)) {
+           entityUpdate[`financeData.${key}`] = financeData[key];
+         }
+      }
+    }
+
+    // Append Polymorphic Data
+    if (entityType === 'family' && data.familyData) {
         entityUpdate.familyData = data.familyData;
     } else if (entityType === 'person' && data.personData) {
         entityUpdate.personData = data.personData;
+    }
+
+    // Industry data
+    if (data.industryData) {
+      const indData = { ...data.industryData };
+      if ('nominalRoll' in indData && !('capacity' in indData)) indData.capacity = indData.nominalRoll;
+      if ('companySize' in indData && !('capacity' in indData)) indData.capacity = indData.companySize;
+      if (data.nominalRoll !== undefined && !('capacity' in indData)) indData.capacity = data.nominalRoll;
+      
+      delete indData.nominalRoll;
+      delete indData.companySize;
+      delete indData.entityType;
+      
+      entityUpdate.industryData = indData;
     }
 
     // 3. Update Universal Identity Collection

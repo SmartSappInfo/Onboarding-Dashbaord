@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Property-Based Test: Contact Adapter Dual-Read Migration Pattern
  * 

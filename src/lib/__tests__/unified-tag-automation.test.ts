@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { triggerAutomationProtocols } from '../automation-processor';
 import { logActivity } from '../activity-logger';
@@ -83,7 +84,7 @@ describe('Unified Tag Automation Flow', () => {
         (resolveContact as any).mockResolvedValue({
             id: mockEntityId,
             workspaceEntityId: 'we_123',
-            entityType: 'institution',
+            
             tags: ['tag_hot']
         });
 

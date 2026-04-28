@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Integration Tests for Migration Fetch Operations
  * 

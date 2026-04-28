@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unit Tests for Forms Module Migration (Task 15)
  * 

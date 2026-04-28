@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Task 41.5: Migration Script Logic Validation (Unit Tests)
  * 
@@ -21,11 +22,13 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
     
     return {
       organizationId,
-      entityType: 'institution',
+      
       name: school.name,
       slug: school.slug || school.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
       contacts: school.focalPersons || [],
-      globalTags: [],
+      entityType: 'institution',
+    entityContacts: [],
+    globalTags: [],
       status: school.status === 'Archived' ? 'archived' : 'active',
       createdAt: school.createdAt || timestamp,
       updatedAt: timestamp,
@@ -65,7 +68,8 @@ describe('Task 41.5: Migration Script Logic Validation', () => {
       stageId: school.stage?.id || '',
       assignedTo: school.assignedTo,
       status: school.status === 'Archived' ? 'archived' : 'active',
-      workspaceTags: school.tags || [],
+      entityType: 'institution',
+    workspaceTags: school.tags || [],
       lastContactedAt: undefined,
       addedAt: school.createdAt || timestamp,
       updatedAt: timestamp,

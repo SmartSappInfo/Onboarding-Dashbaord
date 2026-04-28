@@ -200,17 +200,16 @@ export function parseInstitutionRow(row: InstitutionImportRow, organizationId: s
     contacts,
     globalTags: [],
     status: 'active',
-    institutionData: {
-      nominalRoll: row.nominalRoll ? parseInt(row.nominalRoll, 10) : undefined,
-      billingAddress: row.billingAddress,
-      currency: row.currency,
-      subscriptionPackageId: row.subscriptionPackageId,
-      subscriptionRate: undefined,
-      modules: [],
-      implementationDate: undefined,
-      referee: undefined,
+    // Map to fields expected by createEntityAction (or directly as Entity fields)
+    industryData: {
+      capacity: row.nominalRoll ? parseInt(row.nominalRoll, 10) : undefined,
     },
-  };
+    // Finance fields mapped to the root for createEntityAction to pick up
+    billingAddress: row.billingAddress,
+    currency: row.currency,
+    planType: row.subscriptionPackageId,
+    subscriptionRate: undefined,
+  } as any;
 }
 
 /**
@@ -284,7 +283,7 @@ export function parsePersonRow(row: PersonImportRow, organizationId: string): Pa
     status: 'active',
     personData: {
       firstName: row.firstName,
-      lastName: row.lastName,
+      lastName: row.lastName || '',
       company: row.company,
       jobTitle: row.jobTitle,
       leadSource: row.leadSource,

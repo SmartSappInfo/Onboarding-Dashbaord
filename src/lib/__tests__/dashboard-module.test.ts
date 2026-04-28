@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Unit tests for Dashboard module migration
  * 

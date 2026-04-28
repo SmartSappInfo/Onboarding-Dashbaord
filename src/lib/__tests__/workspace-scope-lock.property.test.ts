@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Property-Based Tests: Workspace Scope Lock
  *

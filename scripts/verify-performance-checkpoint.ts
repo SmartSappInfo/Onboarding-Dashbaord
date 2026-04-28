@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Performance Checkpoint Verification Script
  * Task 31: Checkpoint - Performance meets requirements

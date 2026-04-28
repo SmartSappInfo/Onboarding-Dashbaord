@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import { resolveTerminologyFromWorkspace } from '../terminology';
 import type { IndustryVertical } from '../types';

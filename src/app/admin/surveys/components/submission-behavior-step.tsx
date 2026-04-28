@@ -28,9 +28,11 @@ import { saveAutomationAction } from '@/lib/automation-actions';
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
     const firestore = useFirestore();
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId, activeWorkspace } = useWorkspace();
     const { user } = useUser();
     const { toast } = useToast();
+
+    const entityTerminology = activeWorkspace?.terminology?.singular || 'Contact';
 
     const elements = watch('elements') || [];
     const questions = React.useMemo(() => {
@@ -109,19 +111,30 @@ export default function SubmissionBehaviorStep() {
     // Group fields by section for the mapping dropdown
     const dynamicTargetFields = React.useMemo(() => {
         if (!appFields) return [];
-        return appFields.filter(f => f.status === 'active').map(f => {
-            // Determine logical persistence prefix based on section compatibility
-            // institution -> institutionData
-            // person/child/common -> personData
-            let prefix = 'personData.';
-            if (f.section === 'institution') prefix = 'institutionData.';
-            
-            return {
-                label: f.label,
-                value: `${prefix}${f.variableName}`,
-                section: f.section
-            };
-        });
+        
+        // Define entity-compatible scopes
+        const entityScopes = ['common', 'institution', 'family', 'person'];
+
+        return appFields
+            .filter(f => {
+                const isActive = f.status === 'active';
+                // Only load fields that are compatible with entities (exclude submission-only/internal-only)
+                const isEntityCompatible = !f.compatibilityScope || f.compatibilityScope.some(s => entityScopes.includes(s));
+                return isActive && isEntityCompatible;
+            })
+            .map(f => {
+                // Determine logical persistence prefix based on section compatibility
+                // institution -> institutionData
+                // person/child/common -> personData
+                let prefix = 'personData.';
+                if (f.section === 'institution') prefix = 'institutionData.';
+                
+                return {
+                    label: f.label,
+                    value: `${prefix}${f.variableName}`,
+                    section: f.section
+                };
+            });
     }, [appFields]);
 
     const groupedTargetFields = React.useMemo(() => [
@@ -323,7 +336,7 @@ export default function SubmissionBehaviorStep() {
                                 <Database className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                                <CardTitle className="text-sm font-semibold tracking-tight">Sync & Field Evolution</CardTitle>
+                                <CardTitle className="text-sm font-semibold tracking-tight">Save Survey Contact as {entityTerminology}</CardTitle>
                                 <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Map response data to your workspace custom properties.</CardDescription>
                             </div>
                         </div>

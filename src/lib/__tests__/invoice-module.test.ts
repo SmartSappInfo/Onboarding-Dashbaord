@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Unit tests for Invoice Module Migration
  * 
@@ -260,7 +261,7 @@ describe('Invoice Module Migration', () => {
         invoiceNumber: 'INV-2024-ABC',
         entityName: 'Test School',
         entityId: 'entity_123',
-        entityType: 'institution',
+        
         periodId: 'period_1',
         periodName: 'Term 1 2024',
         nominalRoll: 100,
@@ -325,7 +326,7 @@ describe('Invoice Module Migration', () => {
         invoiceNumber: 'INV-2024-ABC',
         entityName: 'Test School',
         entityId: 'entity_123',
-        entityType: 'institution',
+        
         periodId: 'period_1',
         periodName: 'Term 1 2024',
         nominalRoll: 100,

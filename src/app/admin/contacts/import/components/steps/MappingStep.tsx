@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ImportState, ColumnMapping } from '../../types';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Wand2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Wand2, Shield, Info } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,6 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { getContactPolicyLabel } from '@/lib/contact-policy';
+import type { ContactIdentifierPolicy, IndustryVertical } from '@/lib/types';
 
 interface Props {
   state: ImportState;
@@ -17,40 +21,100 @@ interface Props {
   onBack: () => void;
 }
 
-const PERSON_FIELDS = [
+interface FieldDef {
+  value: string;
+  label: string;
+  required?: boolean;
+  policyRequired?: boolean;
+  industries?: IndustryVertical[]; // If set, only show for these industries
+}
+
+// ─── Industry-aware field definitions ────────────────────────────────────────
+
+const PERSON_FIELDS: FieldDef[] = [
   { value: 'firstName', label: 'First Name', required: true },
-  { value: 'lastName', label: 'Last Name', required: true },
-  { value: 'email', label: 'Email Address' },
+  { value: 'lastName', label: 'Last Name' },
   { value: 'phone', label: 'Phone Number' },
+  { value: 'email', label: 'Email Address' },
+  { value: 'contactName', label: 'Contact Name' },
   { value: 'company', label: 'Company Name' },
   { value: 'jobTitle', label: 'Job Title' },
+  { value: 'leadSource', label: 'Lead Source' },
+  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
 ];
 
-const FAMILY_FIELDS = [
+const FAMILY_FIELDS: FieldDef[] = [
   { value: 'familyName', label: 'Family Name', required: true },
-  { value: 'guardian1_name', label: 'Guardian 1 Name' },
-  { value: 'guardian1_phone', label: 'Guardian 1 Phone' },
-  { value: 'guardian1_email', label: 'Guardian 1 Email' },
-  { value: 'child1_firstName', label: 'Child 1 First Name' },
-  { value: 'child1_lastName', label: 'Child 1 Last Name' },
+  { value: 'guardian1_name', label: 'Guardian Name', required: true },
+  { value: 'guardian1_phone', label: 'Guardian Phone' },
+  { value: 'guardian1_email', label: 'Guardian Email' },
+  { value: 'guardian1_relationship', label: 'Guardian Relationship' },
+  { value: 'child1_firstName', label: 'Child First Name', industries: ['SchoolEnrollment'] },
+  { value: 'child1_lastName', label: 'Child Last Name', industries: ['SchoolEnrollment'] },
+  { value: 'child1_gradeLevel', label: 'Child Grade Level', industries: ['SchoolEnrollment'] },
+  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
+  { value: 'leadSource', label: 'Lead Source' },
 ];
 
-const INSTITUTION_FIELDS = [
+const INSTITUTION_FIELDS: FieldDef[] = [
   { value: 'name', label: 'Institution Name', required: true },
-  { value: 'nominalRoll', label: 'Nominal Roll' },
-  { value: 'focalPerson_name', label: 'Focal Person Name' },
-  { value: 'focalPerson_email', label: 'Focal Person Email' },
+  { value: 'focalPerson_name', label: 'Focal Person Name', required: true },
   { value: 'focalPerson_phone', label: 'Focal Person Phone' },
+  { value: 'focalPerson_email', label: 'Focal Person Email' },
+  { value: 'focalPerson_type', label: 'Focal Person Role' },
+  { value: 'nominalRoll', label: 'Nominal Roll', industries: ['SchoolEnrollment'] },
+  { value: 'billingAddress', label: 'Billing Address' },
+  { value: 'currency', label: 'Currency' },
+  { value: 'subscriptionPackageId', label: 'Package ID', industries: ['SaaS', 'SchoolEnrollment'] },
+  { value: 'locationString', label: 'Location' },
+  { value: 'lifecycleStatus', label: 'Lifecycle Status' },
+  { value: 'leadSource', label: 'Lead Source' },
 ];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Determine which phone/email field keys are policy-required */
+function getPolicyRequiredFields(entityType: string, policy: ContactIdentifierPolicy): string[] {
+  const phoneField = entityType === 'institution' ? 'focalPerson_phone'
+    : entityType === 'family' ? 'guardian1_phone' : 'phone';
+  const emailField = entityType === 'institution' ? 'focalPerson_email'
+    : entityType === 'family' ? 'guardian1_email' : 'email';
+
+  if (policy === 'phone_only') return [phoneField];
+  if (policy === 'email_only') return [emailField];
+  return []; // phone_or_email — either works
+}
+
+/** Filter fields by industry (if industry-gated) */
+function filterByIndustry(fields: FieldDef[], industry: IndustryVertical): FieldDef[] {
+  return fields.filter(f => !f.industries || f.industries.includes(industry));
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function MappingStep({ state, updateState, onNext, onBack }: Props) {
   const [localMappings, setLocalMappings] = useState<ColumnMapping[]>([]);
+  const { activeWorkspace } = useWorkspace();
 
-  const targetFields = state.entityType === 'person' 
-    ? PERSON_FIELDS 
-    : state.entityType === 'family' 
-      ? FAMILY_FIELDS 
-      : INSTITUTION_FIELDS;
+  const contactPolicy: ContactIdentifierPolicy = activeWorkspace?.contactPolicy || 'phone_or_email';
+  const industry: IndustryVertical = activeWorkspace?.industry || 'SaaS';
+
+  // Build policy-aware, industry-filtered target fields
+  const targetFields = useMemo(() => {
+    const baseFields = state.entityType === 'person'
+      ? PERSON_FIELDS
+      : state.entityType === 'family'
+        ? FAMILY_FIELDS
+        : INSTITUTION_FIELDS;
+
+    const policyRequired = getPolicyRequiredFields(state.entityType || 'institution', contactPolicy);
+
+    // Filter by industry and apply policy-required markers
+    return filterByIndustry(baseFields, industry).map(f => ({
+      ...f,
+      policyRequired: policyRequired.includes(f.value),
+    }));
+  }, [state.entityType, contactPolicy, industry]);
 
   useEffect(() => {
     if (state.mappings.length > 0) {
@@ -60,6 +124,7 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
 
     // Auto mapping logic
     const defaults: ColumnMapping[] = state.headers.map(header => {
+      // Strip * and whitespace for matching
       const lowerHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
       let matchedField = null;
 
@@ -97,9 +162,14 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
     onNext();
   };
 
+  // Count mapped required/policy fields
+  const mappedFieldValues = new Set(localMappings.filter(m => m.targetField).map(m => m.targetField));
+  const unmappedRequired = targetFields.filter(f => f.required && !mappedFieldValues.has(f.value));
+  const unmappedPolicy = targetFields.filter(f => f.policyRequired && !mappedFieldValues.has(f.value));
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-6 border-b pb-4">
+      <div className="flex items-center justify-between mb-4 border-b pb-4">
          <div>
             <h3 className="text-lg font-semibold flex items-center">
               Field Mapping
@@ -107,16 +177,43 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
                 <Wand2 className="w-3 h-3 mr-1" /> Auto-matched
               </span>
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">Match your CSV columns to the appropriate {state.entityType} fields.</p>
+            <p className="text-sm text-muted-foreground mt-1">Match your CSV columns to {state.entityType} fields.</p>
          </div>
+      </div>
+
+      {/* Policy & Industry context banner */}
+      <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-muted/30 border">
+        <Shield className="w-4 h-4 text-primary shrink-0" />
+        <div className="flex-1 flex items-center gap-2 flex-wrap text-[10px] font-medium text-muted-foreground">
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5">{industry}</Badge>
+          <span>•</span>
+          <Badge variant="outline" className="text-[8px] h-4 px-1.5">{getContactPolicyLabel(contactPolicy)}</Badge>
+          <span className="hidden sm:inline">•</span>
+          <span className="hidden sm:inline">
+            <span className="text-red-500 font-bold">*</span> required &nbsp;
+            <span className="text-amber-500 font-bold">†</span> policy-required
+          </span>
+        </div>
+        {(unmappedRequired.length > 0 || unmappedPolicy.length > 0) && (
+          <div className="flex items-center gap-1.5 text-[9px] font-bold text-amber-600">
+            <Info className="w-3 h-3" />
+            {unmappedRequired.length > 0 && <span>{unmappedRequired.length} required unmapped</span>}
+            {unmappedPolicy.length > 0 && <span>{unmappedPolicy.length} policy unmapped</span>}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto mb-6 pr-4 space-y-3">
         {localMappings.map((mapping, idx) => {
           const sampleData = state.csvData.slice(0, 3).map(row => row[mapping.csvColumn]).filter(Boolean).slice(0, 2).join(', ');
+          const matchedDef = targetFields.find(f => f.value === mapping.targetField);
           
           return (
-            <div key={idx} className="flex items-center gap-4 p-4 rounded-xl border bg-card/50 shadow-sm transition-colors hover:bg-card/80">
+            <div key={idx} className={`flex items-center gap-4 p-4 rounded-xl border transition-colors hover:bg-card/80 ${
+              matchedDef?.required ? 'bg-red-500/3 border-red-500/20' 
+              : matchedDef?.policyRequired ? 'bg-amber-500/3 border-amber-500/20'
+              : 'bg-card/50 shadow-sm'
+            }`}>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-sm truncate">{mapping.csvColumn}</div>
                 <div className="text-xs text-muted-foreground truncate mt-1">
@@ -140,7 +237,9 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
                     <SelectItem value="none" className="italic text-muted-foreground">Skip this column</SelectItem>
                     {targetFields.map(f => (
                       <SelectItem key={f.value} value={f.value}>
-                        {f.label} {f.required && <span className="text-red-500 ml-1">*</span>}
+                        {f.label}
+                        {f.required && <span className="text-red-500 ml-1">*</span>}
+                        {f.policyRequired && !f.required && <span className="text-amber-500 ml-1">†</span>}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -156,7 +255,7 @@ export function MappingStep({ state, updateState, onNext, onBack }: Props) {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
         <Button onClick={handleContinue} className="shadow-md">
-          Validate Data <ArrowRight className="w-4 h-4 ml-2" />
+          Continue to Configuration <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>

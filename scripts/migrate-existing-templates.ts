@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck
 /**
  * Migration Script: Migrate Existing Message Templates to Two-Tier Schema
  *

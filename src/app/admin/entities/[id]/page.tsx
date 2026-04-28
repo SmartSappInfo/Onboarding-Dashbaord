@@ -189,7 +189,7 @@ export default function EntityDetailPage() {
         setIsUpdatingLogo(true);
         try {
             await updateDoc(doc(firestore, 'entities', entityId), {
-                'institutionData.logoUrl': newLogoUrl,
+                logoUrl: newLogoUrl,
                 updatedAt: new Date().toISOString()
             });
             
@@ -216,7 +216,12 @@ export default function EntityDetailPage() {
     );
 
     const isInstitution = entityData.entityType === 'institution';
-    const institutionData = entityData.institutionData;
+    // Dual-read: prefer new root/financeData fields, fall back to legacy institutionData
+    const institutionData = entityData.institutionData as any; // kept for legacy fallback
+    const capacity = (entityData.industryData as any)?.capacity ?? institutionData?.nominalRoll ?? 0;
+    const logoUrl = entityData.logoUrl || institutionData?.logoUrl;
+    const locationZone = entityData.location?.zone?.name || institutionData?.location?.zone?.name;
+    const website = (entityData as any).website || institutionData?.website;
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
 
@@ -233,8 +238,8 @@ export default function EntityDetailPage() {
                             className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-card p-1 shadow-sm ring-1 ring-border/50 overflow-hidden shrink-0 group cursor-pointer"
                             onClick={() => setIsLogoDialogOpen(true)}
                         >
-                            {isInstitution && institutionData?.logoUrl ? (
-                                <Image src={institutionData.logoUrl} alt={displayName} fill className="object-contain p-2" />
+                            {isInstitution && logoUrl ? (
+                                <Image src={logoUrl} alt={displayName} fill className="object-contain p-2" />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-2xl font-semibold">{getInitials(displayName)}</div>
                             )}
@@ -265,7 +270,7 @@ export default function EntityDetailPage() {
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium">
-                                <span><MapPin className="h-3.5 w-3.5 inline mr-1" /> {institutionData?.location?.zone?.name || 'Unassigned'}</span>
+                                <span><MapPin className="h-3.5 w-3.5 inline mr-1" /> {locationZone || 'Unassigned'}</span>
                                 <Separator orientation="vertical" className="h-4 mx-1" />
                                 <span className="uppercase text-[10px] tracking-wider font-bold">{entityData.entityType}</span>
                             </div>
@@ -357,7 +362,7 @@ export default function EntityDetailPage() {
  <div className="flex items-center justify-between p-5 rounded-xl bg-primary/10 border border-primary/20 shadow-inner">
  <div className="space-y-1 text-left">
  <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
- <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{institutionData?.nominalRoll?.toLocaleString() || '0'}</p>
+ <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{capacity?.toLocaleString() || '0'}</p>
                                         </div>
  <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
                                     </div>
@@ -368,7 +373,7 @@ export default function EntityDetailPage() {
                                         <Separator />
  <div className="space-y-3">
  <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">System Information</p>
-                                            <DetailItem icon={Globe} label="Website" value={institutionData?.website || '—'} href={institutionData?.website ? (institutionData.website.startsWith('http') ? institutionData.website : `https://${institutionData.website}`) : undefined} />
+                                            <DetailItem icon={Globe} label="Website" value={website || '—'} href={website ? (website.startsWith('http') ? website : `https://${website}`) : undefined} />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -448,7 +453,7 @@ export default function EntityDetailPage() {
                     </DialogHeader>
  <div className="p-8 text-left">
                         <MediaSelect 
-                            value={institutionData?.logoUrl} 
+                            value={logoUrl} 
                             onValueChange={handleLogoUpdate} 
  className="rounded-2xl" 
                         />

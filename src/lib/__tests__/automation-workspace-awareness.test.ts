@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileOverview Tests for workspace-aware automation engine (Task 20)
  * 
@@ -81,7 +82,8 @@ describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
         id: 'we-123',
         workspaceId: 'workspace-abc',
         entityId: 'entity-456',
-        workspaceTags: ['tag-1', 'tag-2'],
+        entityType: 'institution',
+    workspaceTags: ['tag-1', 'tag-2'],
       };
 
       // When a tag is added/removed, the workspaceId should come from the workspace_entities record

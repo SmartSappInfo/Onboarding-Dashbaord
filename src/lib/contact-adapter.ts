@@ -200,14 +200,16 @@ async function resolveFromEntity(
     // Construct virtual school data if this is an institution
     let virtualSchoolData: School | undefined;
     if (entity.entityType === 'institution') {
-      const inst = entity.institutionData;
+      const fin: any = entity.financeData || {};
+      const ind: any = entity.industryData || {};
+      
       virtualSchoolData = {
         id: entity.id,
         organizationId: entity.organizationId,
         name: entity.name,
         displayName: entity.name, // Compatibility alias
         slug: entity.slug || '',
-        logoUrl: entity.institutionData?.logoUrl || '', 
+        logoUrl: entity.logoUrl || (entity as any).institutionData?.logoUrl || '', 
         workspaceIds: [workspaceId],
         status: (workspaceEntity?.status || 'active') as any,
         schoolStatus: workspaceEntity?.lifecycleStatus || 'Lead',
@@ -219,14 +221,14 @@ async function resolveFromEntity(
           order: 0
         },
         focalPersons: legacyContacts, // Derived from entityContacts (FER-01)
-        nominalRoll: inst?.nominalRoll || 0,
-        subscriptionPackageId: inst?.subscriptionPackageId,
-        subscriptionRate: inst?.subscriptionRate,
-        billingAddress: inst?.billingAddress,
-        currency: inst?.currency || 'GHS',
-        modules: inst?.modules || [],
-        implementationDate: inst?.implementationDate,
-        referee: inst?.referee,
+        nominalRoll: ind.capacity || (entity as any).institutionData?.nominalRoll || 0,
+        subscriptionPackageId: fin.planType || (entity as any).institutionData?.subscriptionPackageId,
+        subscriptionRate: fin.subscriptionRate || (entity as any).institutionData?.subscriptionRate,
+        billingAddress: fin.billingAddress || (entity as any).institutionData?.billingAddress,
+        currency: fin.currency || (entity as any).institutionData?.currency || 'GHS',
+        modules: entity.interests?.map((i: string) => ({ id: i, name: i, abbreviation: i, color: '#ccc' })) || (entity as any).institutionData?.modules || [],
+        implementationDate: fin.signupDate || (entity as any).institutionData?.implementationDate,
+        referee: entity.referee || (entity as any).institutionData?.referee,
         assignedTo: workspaceEntity?.assignedTo,
         migrationStatus: 'migrated',
         entityId: entity.id,
@@ -239,7 +241,7 @@ async function resolveFromEntity(
       id: entity.id,
       name: entity.name,
       slug: entity.slug,
-      logoUrl: entity.institutionData?.logoUrl || (entity as any).logoUrl,
+      logoUrl: entity.logoUrl || (entity as any).institutionData?.logoUrl,
       contacts: legacyContacts, // Legacy backward compat
       entityContacts, // Canonical (FER-01)
       pipelineId: workspaceEntity?.pipelineId,
@@ -316,26 +318,21 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
 
   const saasIndustryData: import('./types').SaaSInstitutionData = {
     industry: 'SaaS',
-    entityType: 'institution',
-    // Mapped from legacy fields (Requirement 11.4)
-    companySize: school.nominalRoll || 0,
-    planType: school.subscriptionPackageName || school.subscriptionPackageId || 'unknown',
-    features: (school.modules || []).map(m => m.name || m.abbreviation || m.id),
-    signupDate: school.implementationDate || school.createdAt,
-    // Existing billing fields
-    billingAddress: school.billingAddress,
-    currency: school.currency || 'GHS',
-    subscriptionRate: school.subscriptionRate,
-    // SaaS-specific fields (inferred from legacy data)
+    capacity: school.nominalRoll || 0,
     accountStatus: inferAccountStatus(school),
-    renewalDate: undefined, // Not available in legacy data
-    customerTier: inferCustomerTier(school),
-    // Collection references (empty for legacy data)
     trialIds: [],
     onboardingIds: [],
-    subscriptionIds: [],
     supportTicketIds: [],
     healthScoreIds: [],
+  };
+
+  const financeData: import('./types').FinanceData = {
+    planType: school.subscriptionPackageName || school.subscriptionPackageId || 'unknown',
+    currency: school.currency || 'GHS',
+    billingAddress: school.billingAddress,
+    subscriptionRate: school.subscriptionRate,
+    signupDate: school.implementationDate || school.createdAt,
+    customerTier: inferCustomerTier(school),
   };
 
   const entity: Entity = {
@@ -344,6 +341,14 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
     entityType: 'institution',
     name: school.name,
     slug: school.slug,
+    initials: school.initials,
+    logoUrl: school.logoUrl,
+    referee: school.referee,
+    location: school.zone ? {
+      zone: school.zone,
+      locationString: school.location,
+    } : undefined,
+    interests: (school.modules || []).map((m: any) => m.name || m.abbreviation || m.id),
     entityContacts,
     globalTags: [], // Legacy schools don't have global tags
     status: school.status === 'archived' ? 'archived' : 'active',
@@ -352,28 +357,7 @@ export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
     // Industry-specific data
     industry: 'SaaS',
     industryData: saasIndustryData,
-    // Institution-specific data (for backward compatibility)
-    institutionData: {
-      nominalRoll: school.nominalRoll,
-      subscriptionPackageId: school.subscriptionPackageId,
-      subscriptionRate: school.subscriptionRate,
-      billingAddress: school.billingAddress,
-      currency: school.currency,
-      modules: school.modules,
-      implementationDate: school.implementationDate,
-      referee: school.referee,
-      logoUrl: school.logoUrl,
-      heroImageUrl: school.heroImageUrl,
-      initials: school.initials,
-      slogan: school.slogan,
-      discountPercentage: school.discountPercentage,
-      arrearsBalance: school.arrearsBalance,
-      creditBalance: school.creditBalance,
-      location: school.zone ? {
-        zone: school.zone,
-        locationString: school.location,
-      } : undefined,
-    },
+    financeData,
     // Migration tracking
     migrationStatus: school.migrationStatus || 'legacy',
     legacySchoolId: school.id,

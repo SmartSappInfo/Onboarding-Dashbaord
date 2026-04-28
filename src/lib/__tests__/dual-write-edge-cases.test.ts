@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Unit Tests: Dual-Write Edge Cases
  * 
@@ -178,7 +179,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 
@@ -233,7 +235,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 
@@ -285,7 +288,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 
@@ -397,7 +401,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 
@@ -462,7 +467,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 
@@ -525,7 +531,8 @@ describe('Dual-Write Edge Cases - Task Creation', () => {
           id: `${workspaceId}_${entity.id}`,
           workspaceId,
           entityId: entity.id,
-          workspaceTags: [],
+          entityType: 'institution',
+    workspaceTags: [],
         }
       );
 

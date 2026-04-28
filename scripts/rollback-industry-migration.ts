@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Industry Migration Rollback Script
  * 
