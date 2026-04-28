@@ -120,7 +120,7 @@ export default function MeetingsHubClient() {
 
   const entityLogoMap = useMemo(() => {
     if (!globalEntities) return new Map<string, string | undefined>();
-    return new Map(globalEntities.map(s => [s.id, s.institutionData?.logoUrl]));
+    return new Map(globalEntities.map(s => [s.id, s.logoUrl]));
   }, [globalEntities]);
 
   const entityEmailMap = useMemo(() => {

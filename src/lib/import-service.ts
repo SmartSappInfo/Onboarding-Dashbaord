@@ -275,10 +275,21 @@ async function createEntityFromRow(
 
   // Add scope-specific data
   switch (entityType) {
-    case 'institution':
-      entityData.institutionData = buildInstitutionData(row as unknown as InstitutionImportRow);
-      entityData.contacts = buildInstitutionContacts(row as unknown as InstitutionImportRow);
+    case 'institution': {
+      const row_ = row as unknown as InstitutionImportRow;
+      const financeData: Record<string, any> = {};
+      if (row_.billingAddress) financeData.billingAddress = row_.billingAddress;
+      if (row_.currency) financeData.currency = row_.currency;
+      if (row_.subscriptionPackageId) financeData.subscriptionPackageId = row_.subscriptionPackageId;
+      if (Object.keys(financeData).length > 0) (entityData as any).financeData = financeData;
+      // nominalRoll → industryData.capacity
+      if (row_.nominalRoll) {
+        const capacity = parseInt(row_.nominalRoll, 10);
+        if (!isNaN(capacity)) (entityData as any).industryData = { capacity };
+      }
+      entityData.contacts = buildInstitutionContacts(row_);
       break;
+    }
 
     case 'family':
       entityData.familyData = buildFamilyData(row as unknown as FamilyImportRow);

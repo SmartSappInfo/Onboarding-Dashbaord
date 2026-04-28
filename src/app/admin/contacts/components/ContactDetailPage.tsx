@@ -116,7 +116,9 @@ export function ContactDetailPage({
  * Shows: profile, entity contacts, pipeline stage, tags, billing, contracts
  */
 function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; workspaceEntity: WorkspaceEntity }) {
-  const institutionData = entity.institutionData;
+  const financeData = (entity.financeData as any) || {};
+  const industryData = (entity.industryData as any) || {};
+  const interests = (entity.interests as any[]) || [];
 
   return (
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -129,12 +131,12 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
           </div>
         </CardHeader>
  <CardContent className="space-y-4">
-          <DetailItem icon={Users} label="Nominal Roll" value={institutionData?.nominalRoll?.toLocaleString()} />
-          <DetailItem icon={MapPin} label="Billing Address" value={institutionData?.billingAddress} />
+          <DetailItem icon={Users} label="Nominal Roll" value={industryData.capacity?.toLocaleString()} />
+          <DetailItem icon={MapPin} label="Billing Address" value={financeData.billingAddress} />
           <DetailItem icon={Calendar} label="Implementation Date">
-            {institutionData?.implementationDate && format(new Date(institutionData.implementationDate), 'PPP')}
+            {financeData.implementationDate && format(new Date(financeData.implementationDate), 'PPP')}
           </DetailItem>
-          <DetailItem icon={User} label="Referee" value={institutionData?.referee} />
+          <DetailItem icon={User} label="Referee" value={entity.referee} />
         </CardContent>
       </Card>
 
@@ -150,14 +152,14 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
           <DetailItem 
             icon={Banknote} 
             label="Subscription Rate" 
-            value={`${institutionData?.currency || 'GHS'} ${institutionData?.subscriptionRate?.toFixed(2) || '0.00'}`} 
+            value={`${financeData.currency || 'GHS'} ${financeData.subscriptionRate?.toFixed(2) || '0.00'}`} 
           />
-          <DetailItem label="Subscription Package" value={institutionData?.subscriptionPackageId} />
-          {institutionData?.modules && institutionData.modules.length > 0 && (
+          <DetailItem label="Subscription Package" value={financeData.subscriptionPackageId} />
+          {interests && interests.length > 0 && (
             <div>
  <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
  <div className="flex flex-wrap gap-2">
-                {institutionData.modules.map((module: { id: string; name: string; color: string; abbreviation?: string }) => (
+                {interests.map((module: { id: string; name: string; color: string; abbreviation?: string }) => (
                   <Badge 
                     key={module.id} 
                     style={{ backgroundColor: module.color }} 

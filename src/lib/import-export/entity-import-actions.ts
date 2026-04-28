@@ -313,7 +313,13 @@ export async function executeImportBatch(
       const payload = buildEntityPayload(mapped, entityType, pipelineId, stageId);
 
       if (!payload) {
+        console.error(`[IMPORT] Row ${i + 1} skipped — buildEntityPayload returned null. Mapped keys: ${Object.keys(mapped).join(', ')}. Mapped values:`, JSON.stringify(mapped));
         skippedCount++;
+        failedRows.push({
+          rowNumber: i + 1,
+          reason: `Skipped: could not derive entity name from mapped data. Mapped fields: ${Object.entries(mapped).map(([k,v]) => `${k}="${v}"`).join(', ')}`,
+          originalData: rows[i],
+        });
         continue;
       }
 
@@ -333,7 +339,6 @@ export async function executeImportBatch(
         // Apply Tags if requested
         if (configuration?.selectedTags && configuration.selectedTags.length > 0) {
           try {
-            // Import dynamically to avoid circular dependencies if any
             const { applyTagAction } = await import('../scoped-tag-actions');
             await applyTagAction(result.id, configuration.selectedTags, wsId, uid);
           } catch (tagErr) {
@@ -341,6 +346,7 @@ export async function executeImportBatch(
           }
         }
       } else {
+        console.error(`[IMPORT] Row ${i + 1} creation failed:`, result.error, 'Payload name:', payload.name);
         errorCount++;
         failedRows.push({
           rowNumber: i + 1,
@@ -349,6 +355,7 @@ export async function executeImportBatch(
         });
       }
     } catch (err: any) {
+      console.error(`[IMPORT] Row ${i + 1} exception:`, err.message, err.stack);
       errorCount++;
       failedRows.push({
         rowNumber: i + 1,
@@ -406,7 +413,7 @@ function buildEntityPayload(
     let displayName = `${fName || ''} ${lName || ''}`.trim();
     if (!displayName && (mapped.email || mapped.phone)) {
       displayName = `[Placeholder] ${mapped.email || mapped.phone}`;
-      fName = displayName; // Needed to ensure payload isn't completely empty
+      fName = displayName;
     }
 
     if (!displayName) return null;
@@ -414,7 +421,7 @@ function buildEntityPayload(
     const contacts: any[] = [];
     if (mapped.email || mapped.phone || displayName) {
       contacts.push({
-        name: displayName,
+        name: mapped.contactName || displayName,
         phone: mapped.phone || '',
         email: mapped.email || '',
         typeKey: 'primary',
@@ -426,6 +433,8 @@ function buildEntityPayload(
 
     return {
       name: displayName,
+      status: 'active',
+      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       personData: {
         firstName: fName || '',
         lastName: lName || '',
@@ -471,10 +480,10 @@ function buildEntityPayload(
     }
 
     const children: any[] = [];
-    if (mapped.child1_firstName && mapped.child1_lastName) {
+    if (mapped.child1_firstName) {
       children.push({
         firstName: mapped.child1_firstName,
-        lastName: mapped.child1_lastName,
+        lastName: mapped.child1_lastName || '',
         dateOfBirth: '',
         gradeLevel: mapped.child1_gradeLevel || '',
       });
@@ -482,6 +491,8 @@ function buildEntityPayload(
 
     return {
       name: familyName,
+      status: 'active',
+      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       familyData: { guardians, children },
       entityContacts: contacts,
     };
@@ -511,11 +522,14 @@ function buildEntityPayload(
 
     return {
       name: instName,
+      status: 'active',
+      lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
       institutionData: {
         nominalRoll: mapped.nominalRoll ? parseInt(mapped.nominalRoll, 10) : undefined,
         billingAddress: mapped.billingAddress || '',
         currency: mapped.currency || 'GHS',
         subscriptionPackageId: mapped.subscriptionPackageId || '',
+        locationString: mapped.locationString || '',
       },
       entityContacts: contacts,
     };

@@ -52,8 +52,10 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
 
     const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
 
-    const institutionData = entity.institutionData;
-    const subscriptionPackageId = institutionData?.subscriptionPackageId;
+    // New schema — read directly from financeData and industryData
+    const financeData = (entity.financeData as any) || {};
+    const industryData = (entity.industryData as any) || {};
+    const subscriptionPackageId = financeData.subscriptionPackageId;
 
     // 2. Fetch Subscription Package Details
     const pkgRef = useMemoFirebase(() => {
@@ -63,10 +65,10 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
 
     const { data: pkg, isLoading: isLoadingPkg } = useDoc<SubscriptionPackage>(pkgRef);
 
-    const currency = institutionData?.currency || 'USD';
-    const arrearsBalance = institutionData?.arrearsBalance || 0;
-    const creditBalance = institutionData?.creditBalance || 0;
-    const nominalRoll = institutionData?.nominalRoll || 0;
+    const currency = financeData.currency || 'USD';
+    const arrearsBalance = financeData.arrearsBalance ?? 0;
+    const creditBalance = financeData.creditBalance ?? 0;
+    const nominalRoll = industryData.capacity ?? 0;
     const totalOutstanding = arrearsBalance - creditBalance;
 
     return (

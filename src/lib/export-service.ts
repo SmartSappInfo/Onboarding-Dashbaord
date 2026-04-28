@@ -128,27 +128,28 @@ function extractFieldValue(entity: Entity, column: string, entityType: EntityTyp
  * Extracts institution field value
  */
 function extractInstitutionField(entity: Entity, column: string): string {
-  const data = entity.institutionData || {};
+  const financeData = (entity.financeData as any) || {};
+  const industryData = (entity.industryData as any) || {};
 
   switch (column) {
     case 'name':
       return entity.name || '';
     case 'nominalRoll':
-      return data.nominalRoll?.toString() || '';
+      return industryData.capacity?.toString() || '';
     case 'billingAddress':
-      return data.billingAddress || '';
+      return financeData.billingAddress || '';
     case 'currency':
-      return data.currency || '';
+      return financeData.currency || '';
     case 'subscriptionPackageId':
-      return data.subscriptionPackageId || '';
+      return financeData.subscriptionPackageId || '';
     case 'focalPerson_name':
-      return entity.contacts?.[0]?.name || '';
+      return entity.entityContacts?.[0]?.name || entity.contacts?.[0]?.name || '';
     case 'focalPerson_phone':
-      return entity.contacts?.[0]?.phone || '';
+      return entity.entityContacts?.[0]?.phone || entity.contacts?.[0]?.phone || '';
     case 'focalPerson_email':
-      return entity.contacts?.[0]?.email || '';
+      return entity.entityContacts?.[0]?.email || entity.contacts?.[0]?.email || '';
     case 'focalPerson_type':
-      return entity.contacts?.[0]?.type || '';
+      return entity.entityContacts?.[0]?.typeLabel || entity.contacts?.[0]?.type || '';
     default:
       return '';
   }

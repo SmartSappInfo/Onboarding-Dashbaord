@@ -54,16 +54,17 @@ const institutionEntityArbitrary = fc.record({
   status: fc.option(fc.constantFrom('active' as const, 'archived' as const), { nil: undefined }),
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()),
   updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()),
-  institutionData: fc.record({
-    nominalRoll: fc.option(fc.integer({ min: 1, max: 10000 }), { nil: undefined }),
+  // New schema fields
+  industryData: fc.option(fc.record({
+    capacity: fc.option(fc.integer({ min: 1, max: 10000 }), { nil: undefined }),
+  }), { nil: undefined }),
+  financeData: fc.option(fc.record({
     billingAddress: fc.option(fc.string({ maxLength: 200 }), { nil: undefined }),
     currency: fc.option(fc.constantFrom('USD', 'EUR', 'GBP'), { nil: undefined }),
     subscriptionPackageId: fc.option(fc.string({ maxLength: 50 }), { nil: undefined }),
     subscriptionRate: fc.option(fc.double({ min: 0, max: 1000 }), { nil: undefined }),
-    modules: fc.option(fc.array(moduleArbitrary, { maxLength: 5 }), { nil: undefined }),
-    implementationDate: fc.option(fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') }).map((d) => d.toISOString()), { nil: undefined }),
-    referee: fc.option(fc.string({ maxLength: 100 }), { nil: undefined }),
-  }),
+  }), { nil: undefined }),
+  interests: fc.option(fc.array(fc.uuid(), { maxLength: 5 }), { nil: undefined }),
 });
 
 const guardianArbitrary = fc.record({
@@ -125,7 +126,7 @@ describe('Property 6: Import Round-Trip Property', () => {
     'institution entity survives export-import round-trip',
     (entity) => {
       // Export to CSV row
-      const csvRow = serializeInstitutionEntity(entity);
+      const csvRow = serializeInstitutionEntity(entity as any);
 
       // Import back from CSV row
       const imported = parseInstitutionRow(csvRow, entity.organizationId);
@@ -133,11 +134,11 @@ describe('Property 6: Import Round-Trip Property', () => {
       // Assert structural equivalence of key fields
       expect(imported.name).toBe(entity.name);
       expect(imported.entityType).toBe('institution');
-      expect(imported.institutionData?.nominalRoll).toBe(entity.institutionData?.nominalRoll);
-      expect(imported.institutionData?.billingAddress).toBe(entity.institutionData?.billingAddress);
-      expect(imported.institutionData?.currency).toBe(entity.institutionData?.currency);
-      expect(imported.institutionData?.subscriptionPackageId).toBe(
-        entity.institutionData?.subscriptionPackageId
+      expect((imported as any).industryData?.capacity).toBe((entity as any).industryData?.capacity);
+      expect((imported as any).financeData?.billingAddress).toBe((entity as any).financeData?.billingAddress);
+      expect((imported as any).financeData?.currency).toBe((entity as any).financeData?.currency);
+      expect((imported as any).financeData?.subscriptionPackageId).toBe(
+        (entity as any).financeData?.subscriptionPackageId
       );
 
       // Verify focal person if present
@@ -235,16 +236,14 @@ describe('Property 6: Import Round-Trip Property', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         entityContacts: [],
-        institutionData: {
-          nominalRoll: 500,
+        industryData: {
+          capacity: 500,
+        } as any,
+        financeData: {
           billingAddress: '123 Main St',
           currency: 'USD',
           subscriptionPackageId: 'premium',
-          subscriptionRate: undefined,
-          modules: [],
-          implementationDate: undefined,
-          referee: undefined,
-        },
+        } as any,
       },
     ];
 

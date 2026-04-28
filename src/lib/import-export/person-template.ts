@@ -2,7 +2,7 @@
  * Person Import/Export Template
  * 
  * Defines CSV schema for importing and exporting person entities.
- * Required fields are listed first and marked with * in the header.
+ * Required fields are listed first.
  * Requirements: 20, 27
  */
 
@@ -18,13 +18,12 @@ export interface PersonImportRow {
   contactName?: string;
 }
 
-/** Required columns come first, marked with * */
-export const PERSON_REQUIRED_COLUMNS = [
-  'firstName*',
-] as const;
+/** Required field keys (for UI indicators) */
+export const PERSON_REQUIRED_FIELDS = ['firstName'];
 
-/** Optional columns follow required ones */
-export const PERSON_OPTIONAL_COLUMNS = [
+/** All CSV columns — required first, then optional */
+export const PERSON_CSV_COLUMNS = [
+  'firstName',
   'lastName',
   'phone',
   'email',
@@ -33,12 +32,6 @@ export const PERSON_OPTIONAL_COLUMNS = [
   'jobTitle',
   'leadSource',
   'lifecycleStatus',
-] as const;
-
-/** All columns (required first, then optional) */
-export const PERSON_CSV_COLUMNS = [
-  ...PERSON_REQUIRED_COLUMNS,
-  ...PERSON_OPTIONAL_COLUMNS,
 ] as const;
 
 export const PERSON_TEMPLATE_HEADER = PERSON_CSV_COLUMNS.join(',');
@@ -57,7 +50,7 @@ export const PERSON_SAMPLE_ROW = [
 
 /** Field-level instructions for the import instructions panel */
 export const PERSON_FIELD_INSTRUCTIONS = [
-  { field: 'firstName*', description: 'First name of the person (required)' },
+  { field: 'firstName', description: 'First name of the person (required)', required: true },
   { field: 'lastName', description: 'Last name / surname' },
   { field: 'phone', description: 'Phone number (required per policy)' },
   { field: 'email', description: 'Email address (required per policy)' },

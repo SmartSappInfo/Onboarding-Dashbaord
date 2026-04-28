@@ -216,12 +216,11 @@ export default function EntityDetailPage() {
     );
 
     const isInstitution = entityData.entityType === 'institution';
-    // Dual-read: prefer new root/financeData fields, fall back to legacy institutionData
-    const institutionData = entityData.institutionData as any; // kept for legacy fallback
-    const capacity = (entityData.industryData as any)?.capacity ?? institutionData?.nominalRoll ?? 0;
-    const logoUrl = entityData.logoUrl || institutionData?.logoUrl;
-    const locationZone = entityData.location?.zone?.name || institutionData?.location?.zone?.name;
-    const website = (entityData as any).website || institutionData?.website;
+    // New schema — read directly from root fields and industryData
+    const capacity = (entityData.industryData as any)?.capacity ?? 0;
+    const logoUrl = entityData.logoUrl;
+    const locationZone = entityData.location?.zone?.name;
+    const website = (entityData as any).website;
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
 

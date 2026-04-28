@@ -53,7 +53,7 @@ function InstitutionColumns({ contacts }: { contacts: ContactListItem[] }) {
             </div>
             <div>
  <p className="font-bold text-sm">{contact.displayName}</p>
- <p className="text-xs text-muted-foreground">{contact.entity?.institutionData?.billingAddress}</p>
+ <p className="text-xs text-muted-foreground">{(contact.entity?.financeData as any)?.billingAddress}</p>
             </div>
           </div>
 
@@ -61,14 +61,14 @@ function InstitutionColumns({ contacts }: { contacts: ContactListItem[] }) {
  <div className="flex items-center gap-2">
  <Users className="h-4 w-4 text-muted-foreground" />
  <span className="text-sm font-medium">
-              {contact.entity?.institutionData?.nominalRoll?.toLocaleString() || 'N/A'}
+              {(contact.entity?.industryData as any)?.capacity?.toLocaleString() || 'N/A'}
             </span>
           </div>
 
           {/* Subscription Rate */}
  <div className="flex items-center">
  <span className="text-sm font-bold text-primary">
-              {contact.entity?.institutionData?.currency || 'GHS'} {contact.entity?.institutionData?.subscriptionRate?.toFixed(2) || '0.00'}
+              {(contact.entity?.financeData as any)?.currency || 'GHS'} {(contact.entity?.financeData as any)?.subscriptionRate?.toFixed(2) || '0.00'}
             </span>
           </div>
 

@@ -439,7 +439,7 @@ export default function AgreementsClient() {
                                                         </div>
  <div className="flex flex-col">
  <span className="font-semibold text-sm tracking-tight text-foreground">{item.displayName}</span>
- <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.identity?.institutionData?.location?.zone?.name || 'Unassigned Zone'}</span>
+ <span className="text-[9px] font-bold text-muted-foreground opacity-60 italic">{item.identity?.location?.zone?.name || 'Unassigned Zone'}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>

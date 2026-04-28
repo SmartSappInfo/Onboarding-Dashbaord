@@ -88,7 +88,14 @@ export async function getWorkspaceIndustry(
   const data = snap.data() as Record<string, unknown>;
 
   if (!data.industry) {
-    throw new Error(`Workspace "${workspaceId}" has no industry field`);
+    // Default to SaaS if workspace hasn't been configured with an industry yet
+    const fallbackEntry: WorkspaceIndustryCacheEntry = {
+      industry: 'SaaS',
+      industryScopeLocked: false,
+      cachedAt: Date.now(),
+    };
+    setEntry(workspaceId, fallbackEntry);
+    return { industry: fallbackEntry.industry, industryScopeLocked: fallbackEntry.industryScopeLocked };
   }
 
   const entry: WorkspaceIndustryCacheEntry = {

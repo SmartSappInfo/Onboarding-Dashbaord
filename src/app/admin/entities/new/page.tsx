@@ -194,17 +194,17 @@ export default function NewEntityPage() {
     };
 
     if (contactScope === 'institution') {
-      entityPayload.institutionData = {
-        initials: data.initials,
-        slogan: data.slogan,
-        logoUrl: data.logoUrl,
-        heroImageUrl: data.heroImageUrl,
-        nominalRoll: data.nominalRoll,
-        modules: data.modules,
-        location: {
-          zone: data.zone || undefined,
-          locationString: data.locationString
-        },
+      // New schema: write to root fields + financeData + interests
+      entityPayload.initials = data.initials;
+      entityPayload.slogan = data.slogan;
+      entityPayload.logoUrl = data.logoUrl;
+      entityPayload.heroImageUrl = data.heroImageUrl;
+      entityPayload.location = {
+        zone: data.zone || undefined,
+        locationString: data.locationString,
+      };
+      entityPayload.interests = data.modules;
+      entityPayload.financeData = {
         billingAddress: data.billingAddress,
         currency: data.currency,
         subscriptionPackageId: data.subscriptionPackageId || null,
@@ -212,7 +212,7 @@ export default function NewEntityPage() {
         subscriptionRate: data.subscriptionRate,
         discountPercentage: data.discountPercentage,
         arrearsBalance: data.arrearsBalance,
-        creditBalance: data.creditBalance
+        creditBalance: data.creditBalance,
       };
     } else if (contactScope === 'person') {
       entityPayload.personData = {

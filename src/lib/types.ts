@@ -702,7 +702,7 @@ export interface PersonData {
 export interface FinanceData {
   planType?: string;
   subscriptionIds?: string[];
-  currency: string;
+  currency?: string;
   billingAddress?: string;
   subscriptionRate?: number;
   customerTier?: 'basic' | 'pro' | 'enterprise';
@@ -750,8 +750,6 @@ export interface Entity {
   updatedAt: string;
   
   // Scope-specific data (only one will be populated based on entityType)
-  /** @deprecated Moved to root/financeData/industryData. Kept for migration. */
-  institutionData?: any;
   familyData?: FamilyData;
   personData?: PersonData;
   
@@ -2218,13 +2216,6 @@ export interface SaaSInstitutionData {
   onboardingIds?: string[];
   supportTicketIds?: string[];
   healthScoreIds?: string[];
-  
-  /** @deprecated fields kept for test compilation during migration */
-  entityType?: any;
-  companySize?: any;
-  planType?: any;
-  features?: any;
-  signupDate?: any;
 }
 
 export interface SaaSPersonData {

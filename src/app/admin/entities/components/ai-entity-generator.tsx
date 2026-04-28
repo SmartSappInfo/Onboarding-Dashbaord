@@ -113,24 +113,22 @@ export default function AiEntityGenerator() {
             return match ? { id: match.id, name: match.name, abbreviation: match.abbreviation, color: match.color } : null;
         }).filter(Boolean);
 
-        // 3. Construct Global Identity Payload
+        // 3. Construct Global Identity Payload (new schema)
         const entityId = doc(collection(firestore, 'entities')).id;
         const globalEntityData = {
             id: entityId,
             name: result.name,
             entityType: 'institution' as const,
-            institutionData: {
-                name: result.name,
-                initials: result.initials || result.name.substring(0, 3).toUpperCase(),
-                slug,
-                slogan: result.slogan || '',
-                location: {
-                    address: result.location || '',
-                    zone: zones?.[0]?.name || 'Unassigned'
-                },
-                nominalRoll: result.nominalRoll || 0,
-                logoUrl: null
+            // Root identity fields (new schema)
+            initials: result.initials || result.name.substring(0, 3).toUpperCase(),
+            slug,
+            slogan: result.slogan || '',
+            logoUrl: null as string | null,
+            location: {
+                locationString: result.location || '',
+                zone: zones?.[0] ? { id: zones[0].id, name: zones[0].name } : undefined,
             },
+            interests: mappedModules,
             entityContacts: (result.focalPersons || []).map((p: any, index: number) => {
                 const typeLabel = p.role || 'Contact';
                 const typeKey = typeLabel.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');

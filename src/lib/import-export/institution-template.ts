@@ -2,7 +2,7 @@
  * Institution Import/Export Template
  * 
  * Defines CSV schema for importing and exporting institution entities.
- * Required fields are listed first and marked with * in the header.
+ * Required fields are listed first.
  * Requirements: 20, 27
  */
 
@@ -21,14 +21,13 @@ export interface InstitutionImportRow {
   leadSource?: string;
 }
 
-/** Required columns come first, marked with * */
-export const INSTITUTION_REQUIRED_COLUMNS = [
-  'name*',
-  'focalPerson_name*',
-] as const;
+/** Required field keys (for UI indicators) */
+export const INSTITUTION_REQUIRED_FIELDS = ['name', 'focalPerson_name'];
 
-/** Optional columns follow required ones */
-export const INSTITUTION_OPTIONAL_COLUMNS = [
+/** All CSV columns — required first, then optional */
+export const INSTITUTION_CSV_COLUMNS = [
+  'name',
+  'focalPerson_name',
   'focalPerson_phone',
   'focalPerson_email',
   'focalPerson_type',
@@ -41,12 +40,6 @@ export const INSTITUTION_OPTIONAL_COLUMNS = [
   'leadSource',
 ] as const;
 
-/** All columns (required first, then optional) */
-export const INSTITUTION_CSV_COLUMNS = [
-  ...INSTITUTION_REQUIRED_COLUMNS,
-  ...INSTITUTION_OPTIONAL_COLUMNS,
-] as const;
-
 export const INSTITUTION_TEMPLATE_HEADER = INSTITUTION_CSV_COLUMNS.join(',');
 
 export const INSTITUTION_SAMPLE_ROW = [
@@ -56,18 +49,18 @@ export const INSTITUTION_SAMPLE_ROW = [
   'john@example.com',
   'Principal',
   '500',
-  '123 Main St, City, Country',
+  '123 Main St',
   'USD',
   'premium',
-  '',
+  'Accra Ghana',
   'Onboarding',
   'Website',
 ].join(',');
 
 /** Field-level instructions for the import instructions panel */
 export const INSTITUTION_FIELD_INSTRUCTIONS = [
-  { field: 'name*', description: 'Institution/School name (required)' },
-  { field: 'focalPerson_name*', description: 'Primary contact person name (required)' },
+  { field: 'name', description: 'Institution/School name (required)', required: true },
+  { field: 'focalPerson_name', description: 'Primary contact person name (required)', required: true },
   { field: 'focalPerson_phone', description: 'Contact phone number (required per policy)' },
   { field: 'focalPerson_email', description: 'Contact email address (required per policy)' },
   { field: 'focalPerson_type', description: 'Contact role, e.g. Principal, Admin' },

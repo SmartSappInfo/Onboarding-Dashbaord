@@ -60,14 +60,13 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        institutionData: {
-          nominalRoll: 500,
+        financeData: {
           subscriptionRate: 25.5,
           billingAddress: '123 School St',
           currency: 'GHS',
-          implementationDate: '2024-01-15',
-          referee: 'Jane Smith',
-        },
+        } as any,
+        industryData: { capacity: 500 } as any,
+        referee: 'Jane Smith',
       };
 
       const mockOnSubmit = vi.fn();
@@ -273,8 +272,8 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
             globalTags: [],
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
-            institutionData: {
-              nominalRoll: 500,
+            financeData: {
+              nominalRoll_replaced: 500,
               subscriptionRate: 25.5,
               billingAddress: '123 School St',
               currency: 'GHS',
@@ -433,14 +432,13 @@ describe('Task 19: Checkpoint - UI Adapts to Workspace Scope', () => {
         globalTags: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
-        institutionData: {
-          nominalRoll: 500,
+        financeData: {
           subscriptionRate: 25.5,
           billingAddress: '123 School St',
           currency: 'GHS',
-          implementationDate: '2024-01-15',
-          referee: 'Jane Smith',
-        },
+        } as any,
+        industryData: { capacity: 500 } as any,
+        referee: 'Jane Smith',
       };
 
       const mockWorkspaceEntity: WorkspaceEntity = {

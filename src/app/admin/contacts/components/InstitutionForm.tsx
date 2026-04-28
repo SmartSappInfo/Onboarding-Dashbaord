@@ -5,7 +5,7 @@ import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Building, Banknote, Users, MapPin, Calendar } from 'lucide-react';
-import type { Entity, InstitutionData, FocalPerson } from '@/lib/types';
+import type { Entity, FocalPerson } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -56,16 +56,15 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
     resolver: zodResolver(institutionFormSchema),
     defaultValues: {
       name: entity?.name || '',
-      nominalRoll: entity?.institutionData?.nominalRoll || 0,
-      billingAddress: entity?.institutionData?.billingAddress || '',
-      currency: entity?.institutionData?.currency || 'GHS',
-      subscriptionPackageId: entity?.institutionData?.subscriptionPackageId || '',
-      subscriptionRate: entity?.institutionData?.subscriptionRate || 0,
-      implementationDate: entity?.institutionData?.implementationDate 
-        ? new Date(entity.institutionData.implementationDate) 
+      nominalRoll: (entity?.industryData as any)?.capacity ?? 0,
+      billingAddress: (entity?.financeData as any)?.billingAddress || '',
+      currency: (entity?.financeData as any)?.currency || 'GHS',
+      subscriptionPackageId: (entity?.financeData as any)?.subscriptionPackageId || '',
+      subscriptionRate: (entity?.financeData as any)?.subscriptionRate ?? 0,
+      implementationDate: (entity?.financeData as any)?.implementationDate
+        ? new Date((entity!.financeData as any).implementationDate)
         : null,
-      referee: entity?.institutionData?.referee || '',
-      // Load entityContacts if available, fallback to legacy contacts map
+      referee: entity?.referee || '',
       entityContacts: entity?.entityContacts || entity?.contacts?.map((c: any, i: number) => ({
         name: c.name || '',
         email: c.email || '',
@@ -73,7 +72,7 @@ export function InstitutionForm({ entity, onSubmit, isSubmitting }: InstitutionF
         typeKey: c.type?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'other',
         typeLabel: c.type || 'Other',
         isSignatory: !!c.isSignatory,
-        isPrimary: i === 0, // Fallback logic
+        isPrimary: i === 0,
       })) || [],
     }
   });

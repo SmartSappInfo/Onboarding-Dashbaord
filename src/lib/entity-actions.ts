@@ -139,9 +139,12 @@ export async function createEntityAction(
 ) {
   try {
     // 0. Permission Check (Requirement: Permissions Expansion Layer 2)
-    const permission = await canUser(userId, 'operations', 'campuses', 'create', workspaceId);
-    if (!permission.granted) {
-      return { success: false, error: permission.reason };
+    // System-level callers (bulk import, survey submission) bypass permission checks
+    if (!userId.startsWith('system-')) {
+      const permission = await canUser(userId, 'operations', 'campuses', 'create', workspaceId);
+      if (!permission.granted) {
+        return { success: false, error: permission.reason };
+      }
     }
 
     // 1. Resolve workspace industry and scope-lock status (Requirements 2.1, 1.4)

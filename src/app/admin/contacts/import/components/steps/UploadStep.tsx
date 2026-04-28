@@ -251,8 +251,8 @@ export function UploadStep({ state, updateState, onNext }: Props) {
               <span className="text-[8px] font-medium text-muted-foreground/60 ml-auto">* = required</span>
             </label>
             <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-              {fieldInstructions.map((fi) => {
-                const isRequired = fi.field.endsWith('*');
+              {fieldInstructions.map((fi: any) => {
+                const isRequired = !!fi.required;
                 const isPolicyRequired = policyRequiredFields.includes(fi.field);
                 return (
                   <div 
@@ -266,7 +266,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
                     <span className={`font-mono font-bold min-w-[130px] shrink-0 ${
                       isRequired ? 'text-red-600' : isPolicyRequired ? 'text-amber-600' : 'text-foreground'
                     }`}>
-                      {fi.field}{isPolicyRequired && !isRequired ? '†' : ''}
+                      {fi.field}{isRequired ? '*' : ''}{isPolicyRequired && !isRequired ? '†' : ''}
                     </span>
                     <span className="text-muted-foreground font-medium leading-relaxed">{fi.description}</span>
                   </div>

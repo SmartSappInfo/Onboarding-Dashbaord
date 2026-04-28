@@ -70,10 +70,16 @@ export async function GET(
       entityType: entity.entityType,
       name: entity.name,
       slug: entity.slug,
+      initials: entity.initials,
+      logoUrl: entity.logoUrl,
+      location: entity.location,
+      interests: entity.interests,
+      financeData: entity.financeData,
+      industryData: entity.industryData,
       contacts: entity.contacts,
+      entityContacts: entity.entityContacts,
       globalTags: entity.globalTags,
       status: entity.status,
-      institutionData: entity.institutionData,
       familyData: entity.familyData,
       personData: entity.personData,
       workspaceData,
@@ -106,7 +112,11 @@ export async function PATCH(
       name,
       contacts,
       globalTags,
-      institutionData,
+      financeData,
+      industryData,
+      logoUrl,
+      location,
+      interests,
       familyData,
       personData,
       // Operational fields (go to workspace_entities collection)
@@ -125,11 +135,11 @@ export async function PATCH(
     }
 
     // Update entity if identity fields provided (Requirement 11.4)
-    const hasIdentityUpdates = name || contacts || globalTags || institutionData || familyData || personData;
+    const hasIdentityUpdates = name || contacts || globalTags || financeData || industryData || logoUrl || location || interests || familyData || personData;
     if (hasIdentityUpdates) {
       const entityResult = await updateEntityAction(
         entityId,
-        { name, contacts, institutionData, familyData, personData },
+        { name, contacts, financeData, industryData, logoUrl, location, interests, familyData, personData },
         'api-user',
         workspaceId,
         'default' // organizationId fallback

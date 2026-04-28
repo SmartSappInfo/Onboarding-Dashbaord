@@ -145,16 +145,16 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
  ) : <p className="text-base text-foreground font-bold text-left">N/A</p>}
                         </DetailItem>
                         <DetailItem icon={Layout} label="Territory" value={entity.zone?.name || 'Global'} />
-                        <DetailItem icon={PenSquare} label="Provisioned Modules">
+                        <DetailItem icon={PenSquare} label="Provisioned Interests">
  <div className="flex flex-wrap gap-2 pt-1">
-                                {entity.modules && entity.modules.length > 0 ? (
-                                    entity.modules.map((module) => (
-                                        <Badge key={module.id} style={{ backgroundColor: module.color, color: 'white' }} className="border-transparent text-[8px] font-semibold uppercase">
-                                            {module.name}
+                                {entity.interests && entity.interests.length > 0 ? (
+                                    entity.interests.map((module: any) => (
+                                        <Badge key={module.id || module} style={{ backgroundColor: module.color, color: 'white' }} className="border-transparent text-[8px] font-semibold uppercase">
+                                            {module.name || module}
                                         </Badge>
                                     ))
                                 ) : (
- <p className="text-sm text-muted-foreground italic font-medium">No provisioned modules.</p>
+ <p className="text-sm text-muted-foreground italic font-medium">No provisioned interests.</p>
                                 )}
                             </div>
                           </DetailItem>

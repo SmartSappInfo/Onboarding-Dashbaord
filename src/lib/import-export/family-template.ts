@@ -2,7 +2,7 @@
  * Family Import/Export Template
  * 
  * Defines CSV schema for importing and exporting family entities.
- * Required fields are listed first and marked with * in the header.
+ * Required fields are listed first.
  * Requirements: 20, 27
  */
 
@@ -19,14 +19,13 @@ export interface FamilyImportRow {
   leadSource?: string;
 }
 
-/** Required columns come first, marked with * */
-export const FAMILY_REQUIRED_COLUMNS = [
-  'familyName*',
-  'guardian1_name*',
-] as const;
+/** Required field keys (for UI indicators) */
+export const FAMILY_REQUIRED_FIELDS = ['familyName', 'guardian1_name'];
 
-/** Optional columns follow required ones */
-export const FAMILY_OPTIONAL_COLUMNS = [
+/** All CSV columns — required first, then optional */
+export const FAMILY_CSV_COLUMNS = [
+  'familyName',
+  'guardian1_name',
   'guardian1_phone',
   'guardian1_email',
   'guardian1_relationship',
@@ -35,12 +34,6 @@ export const FAMILY_OPTIONAL_COLUMNS = [
   'child1_gradeLevel',
   'lifecycleStatus',
   'leadSource',
-] as const;
-
-/** All columns (required first, then optional) */
-export const FAMILY_CSV_COLUMNS = [
-  ...FAMILY_REQUIRED_COLUMNS,
-  ...FAMILY_OPTIONAL_COLUMNS,
 ] as const;
 
 export const FAMILY_TEMPLATE_HEADER = FAMILY_CSV_COLUMNS.join(',');
@@ -60,8 +53,8 @@ export const FAMILY_SAMPLE_ROW = [
 
 /** Field-level instructions for the import instructions panel */
 export const FAMILY_FIELD_INSTRUCTIONS = [
-  { field: 'familyName*', description: 'Family/household name (required)' },
-  { field: 'guardian1_name*', description: 'Primary guardian full name (required)' },
+  { field: 'familyName', description: 'Family/household name (required)', required: true },
+  { field: 'guardian1_name', description: 'Primary guardian full name (required)', required: true },
   { field: 'guardian1_phone', description: 'Guardian phone number (required per policy)' },
   { field: 'guardian1_email', description: 'Guardian email address (required per policy)' },
   { field: 'guardian1_relationship', description: 'Relationship, e.g. Mother, Father' },

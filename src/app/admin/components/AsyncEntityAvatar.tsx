@@ -40,7 +40,7 @@ export function AsyncEntityAvatar({
 
     const { data: entityDoc } = useDoc<Entity>(entityRef);
 
-    const finalSrc = src || entityDoc?.institutionData?.logoUrl || (entityDoc as any)?.logoUrl;
+    const finalSrc = src || entityDoc?.logoUrl;
     // We update name to entity's real name if we found it, else fallback
     const finalName = entityDoc?.name || name;
 

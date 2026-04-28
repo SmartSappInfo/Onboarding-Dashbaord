@@ -154,37 +154,41 @@ function EditEntityForm({ entityId }: EditFormProps) {
 
   React.useEffect(() => {
     if (entityData && weData && !hasInitialized) {
-      const institutionData = entityData.institutionData;
-      
+      // New schema — read directly from root fields / financeData / industryData
+      const financeData = (entityData.financeData as any) || {};
+      const industryData = (entityData.industryData as any) || {};
+
       methods.reset({
         name: entityData.name || weData.displayName || '',
-        initials: institutionData?.initials || '',
-        slogan: institutionData?.slogan || '',
+        initials: entityData.initials || '',
+        slogan: (entityData as any).slogan || '',
         status: (weData.status as any) || 'active',
         lifecycleStatus: weData.lifecycleStatus || 'Onboarding',
-        logoUrl: institutionData?.logoUrl || '',
-        heroImageUrl: institutionData?.heroImageUrl || '',
-        zone: institutionData?.location?.zone || undefined,
-        locationString: institutionData?.location?.locationString || '',
-        nominalRoll: institutionData?.nominalRoll || 0,
-        entityContacts: (entityData.entityContacts && entityData.entityContacts.length > 0) ? entityData.entityContacts : (entityData.contacts?.map((c: any, i: number) => ({
-          name: c.name || '',
-          email: c.email || '',
-          phone: c.phone || '',
-          typeKey: c.type?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'other',
-          typeLabel: c.type || 'Other',
-          isSignatory: !!c.isSignatory,
-          isPrimary: i === 0,
-        })) || []),
-        modules: weData.interests || institutionData?.modules || [],
+        logoUrl: entityData.logoUrl || '',
+        heroImageUrl: (entityData as any).heroImageUrl || '',
+        zone: entityData.location?.zone || undefined,
+        locationString: entityData.location?.locationString || '',
+        nominalRoll: industryData.capacity ?? 0,
+        entityContacts: (entityData.entityContacts && entityData.entityContacts.length > 0)
+          ? entityData.entityContacts
+          : (entityData.contacts?.map((c: any, i: number) => ({
+              name: c.name || '',
+              email: c.email || '',
+              phone: c.phone || '',
+              typeKey: c.type?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'other',
+              typeLabel: c.type || 'Other',
+              isSignatory: !!c.isSignatory,
+              isPrimary: i === 0,
+            })) || []),
+        modules: weData.interests || [],
         assignedToId: weData.assignedTo?.userId || 'unassigned',
-        billingAddress: institutionData?.billingAddress || '',
-        currency: institutionData?.currency || 'GHS',
-        subscriptionPackageId: institutionData?.subscriptionPackageId || 'none',
-        subscriptionRate: institutionData?.subscriptionRate || 0,
-        discountPercentage: institutionData?.discountPercentage || 0,
-        arrearsBalance: institutionData?.arrearsBalance || 0,
-        creditBalance: institutionData?.creditBalance || 0,
+        billingAddress: financeData.billingAddress || '',
+        currency: financeData.currency || 'GHS',
+        subscriptionPackageId: financeData.subscriptionPackageId || 'none',
+        subscriptionRate: financeData.subscriptionRate ?? 0,
+        discountPercentage: financeData.discountPercentage ?? 0,
+        arrearsBalance: financeData.arrearsBalance ?? 0,
+        creditBalance: financeData.creditBalance ?? 0,
       });
       setHasInitialized(true);
     }
@@ -214,33 +218,37 @@ function EditEntityForm({ entityId }: EditFormProps) {
 
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    // Structural Mapping for new architecture
+    // New schema: write to root fields + financeData + interests
     const updatePayload = {
         name: data.name,
         status: data.status,
         lifecycleStatus: data.lifecycleStatus,
         entityContacts: data.entityContacts,
         assignedTo,
-        institutionData: {
-            initials: data.initials,
-            slogan: data.slogan,
-            logoUrl: data.logoUrl,
-            heroImageUrl: data.heroImageUrl,
-            nominalRoll: data.nominalRoll,
-            modules: data.modules,
-            location: {
-                zone: data.zone,
-                locationString: data.locationString
-            },
+        // Root identity fields
+        initials: data.initials,
+        slogan: data.slogan,
+        logoUrl: data.logoUrl,
+        heroImageUrl: data.heroImageUrl,
+        location: {
+            zone: data.zone,
+            locationString: data.locationString,
+        },
+        // Interests (renamed from modules)
+        interests: data.modules,
+        // Finance data (consolidated)
+        financeData: {
             billingAddress: data.billingAddress,
             currency: data.currency,
             subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
-            subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
+            subscriptionPackageName: selectedPackage
+                ? selectedPackage.name
+                : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
             subscriptionRate: data.subscriptionRate,
             discountPercentage: data.discountPercentage,
             arrearsBalance: data.arrearsBalance,
-            creditBalance: data.creditBalance
-        }
+            creditBalance: data.creditBalance,
+        },
     };
 
     try {
