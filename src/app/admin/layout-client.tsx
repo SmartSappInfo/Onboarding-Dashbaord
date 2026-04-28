@@ -48,7 +48,8 @@ import {
     Database,
     ShieldEllipsis,
     Mail,
-    Cog
+    Cog,
+    QrCode
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -218,6 +219,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isVisible(can('studios', 'messaging', 'view'), 'messaging') },
     { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isVisible(can('studios', 'forms', 'view'), 'forms') },
     { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isVisible(can('studios', 'tags', 'view'), 'tags') },
+    { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isVisible(can('studios', 'qrStudio', 'view'), 'qr_studio') },
   ];
 
   const financeNavItems = [

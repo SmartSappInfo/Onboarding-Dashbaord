@@ -19,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info, Building2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -48,6 +48,7 @@ interface SurveyFormProps {
     isPreview?: boolean;
     sourcePageId?: string;
     assignedUserId?: string;
+    resolvedLogoUrl?: string | null;
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -748,7 +749,7 @@ type AutomationStatus = {
     icon: React.ElementType;
 };
 
-export default function SurveyForm({ survey, onSubmitted, isPreview = false, sourcePageId, assignedUserId }: SurveyFormProps) {
+export default function SurveyForm({ survey, onSubmitted, isPreview = false, sourcePageId, assignedUserId, resolvedLogoUrl }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
@@ -852,7 +853,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         });
         if (currentPage.length > 0) p.push(currentPage);
         return p.length > 0 ? p : [[]];
-    }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles]);
+    }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles, survey.showIntroAsPage]);
 
     const pageStatuses = React.useMemo(() => {
         return pages.map((pageElements) => {
@@ -1320,7 +1321,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                 {isSubmitting && (
                     <SurveyLoader 
                         label="We're Analysing Your Inputs..." 
-                        logoUrl={survey.showBranding !== false ? (survey.logoUrl || null) : 'none'} 
+                        logoUrl={survey.showBranding !== false ? (resolvedLogoUrl ?? survey.logoUrl ?? null) : 'none'} 
                     />
                 )}
             </AnimatePresence>
@@ -1328,12 +1329,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             {/* Top Branding Header */}
             {survey.showBranding !== false && (
                 <div className="flex flex-col items-center justify-center pt-8 pb-4 animate-in fade-in duration-1000">
-                    {survey.logoUrl ? (
+                    {(resolvedLogoUrl ?? survey.logoUrl) ? (
                          <div className="h-12 w-32 relative">
-                             <img src={survey.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                             <img src={(resolvedLogoUrl ?? survey.logoUrl)!} alt="Logo" className="w-full h-full object-contain" />
                          </div>
                     ) : (
-                        <SmartSappLogo className="h-10 w-auto text-primary" />
+                        <Building2 className="h-10 w-10 text-primary/30" />
                     )}
                     <div className="mt-4 h-px w-24 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
                 </div>
@@ -1370,7 +1371,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                     ) : (
                         <>
                             {/* Main Title Hierarchy - Show above stepper/section if enabled */}
-                            {showTitles && !isCoverPage && (
+                            {/* Guard: don't double-render title on page 0 when inline intro is active */}
+                            {showTitles && !isCoverPage && !(currentPageIndex === 0 && !(survey.showIntroAsPage ?? survey.showCoverPage ?? true)) && (
                                 <div className="flex flex-col items-center text-center space-y-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground/90 leading-tight uppercase">{survey.title}</h1>
                                 </div>

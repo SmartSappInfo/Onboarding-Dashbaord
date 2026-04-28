@@ -176,6 +176,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   messaging: { section: 'studios', feature: 'messaging' },
   tags: { section: 'studios', feature: 'tags' },
   forms: { section: 'studios', feature: 'forms' },
+  qr_studio: { section: 'studios', feature: 'qrStudio' },
   agreements: { section: 'finance', feature: 'agreements' },
   invoices: { section: 'finance', feature: 'invoices' },
   packages: { section: 'finance', feature: 'packages' },

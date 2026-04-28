@@ -194,6 +194,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId }: 
                         onSubmitted={() => setIsSubmitted(true)} 
                         sourcePageId={sourcePageId}
                         assignedUserId={assignedUserId}
+                        resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
                     />
                 </div>
             </main>

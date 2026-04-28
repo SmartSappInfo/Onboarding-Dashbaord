@@ -10,7 +10,7 @@ import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
@@ -297,6 +297,18 @@ export default function SurveyFormBuilder() {
                         <div className="max-w-3xl mx-auto space-y-16 pb-96">
                             {isPreviewMode ? (
                                 <div className="animate-in fade-in zoom-in duration-300">
+                                    {/* Intro Disabled Banner — visual indicator that the toggle is working */}
+                                    {!(watchedForm.showIntroAsPage ?? true) && (
+                                        <div className="mb-6 flex items-center gap-3 px-5 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                                            <div className="p-1.5 bg-amber-500/20 rounded-lg">
+                                                <LayoutDashboard className="h-4 w-4 text-amber-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-black text-amber-700 uppercase tracking-wider">Survey Intro Disabled</p>
+                                                <p className="text-[9px] font-semibold text-amber-600/70">Intro content will appear inline above the first question page instead of as a dedicated page.</p>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="bg-background rounded-[3rem] shadow-2xl p-8 sm:p-12 border-t-8 border-t-primary">
                                         <SurveyForm 
                                             survey={{
@@ -307,7 +319,8 @@ export default function SurveyFormBuilder() {
                                                 status: watchedForm.status || 'draft'
                                             } as any} 
                                             onSubmitted={() => setIsPreviewMode(false)}
-                                            isPreview 
+                                            isPreview
+                                            resolvedLogoUrl={watchedForm.logoUrl || null}
                                         />
                                     </div>
                                     <div className="mt-8 text-center">

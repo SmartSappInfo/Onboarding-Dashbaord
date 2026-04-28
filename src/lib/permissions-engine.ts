@@ -103,6 +103,7 @@ export function getFullAdminPermissions(): PermissionsSchema {
         messaging: { view: true, create: true, edit: true, delete: true },
         forms: { view: true, create: true, edit: true, delete: true },
         tags: { view: true, create: true, edit: true, delete: true },
+        qrStudio: { view: true, create: true, edit: true, delete: true },
       },
     },
     management: {
@@ -151,6 +152,7 @@ export function getMarketingPermissions(): PermissionsSchema {
       forms: { view: true, create: true, edit: true, delete: false },
       tags: { view: true, create: true, edit: true, delete: false },
       docSigning: { view: false },
+      qrStudio: { view: true, create: true, edit: true, delete: false },
     },
   };
   return blank;
@@ -192,6 +194,7 @@ export const featureToCoordinates: Record<AppFeatureId, { section: keyof Permiss
   messaging: { section: 'studios', feature: 'messaging' },
   tags: { section: 'studios', feature: 'tags' },
   forms: { section: 'studios', feature: 'forms' },
+  qr_studio: { section: 'studios', feature: 'qrStudio' },
   agreements: { section: 'finance', feature: 'agreements' },
   invoices: { section: 'finance', feature: 'invoices' },
   packages: { section: 'finance', feature: 'packages' },

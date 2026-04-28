@@ -1006,10 +1006,44 @@ export interface MediaAsset {
 }
 
 export interface SurveyEntityDefaults {
+  // Finance / contact
   currency?: string;
   subscriptionPackageName?: string;
   subscriptionRate?: number;
   contactTypeKey?: string;
+
+  // SchoolEnrollment institution
+  gradeOfferings?: string[];
+  academicYear?: string;
+  capacity?: number;
+  currentEnrollment?: number;
+
+  // SaaS institution
+  accountStatus?: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
+  activeUsers?: number;
+
+  // SaaS / Consultancy / Marketing person
+  role?: string;
+  activationStatus?: 'pending' | 'active' | 'inactive';
+  influenceLevel?: 'decision-maker' | 'influencer' | 'user';
+  approvalAuthority?: boolean;
+  department?: string;
+  decisionMakingStyle?: 'fast' | 'consensus' | 'hierarchical';
+
+  // Law institution
+  firmType?: 'solo' | 'partnership' | 'corporate';
+  practiceAreas?: string[];
+  conflictCheckRequired?: boolean;
+
+  // Law person
+  clientType?: 'individual' | 'company' | 'buyer' | 'seller' | 'tenant' | 'landlord' | 'investor';
+  urgency?: 'low' | 'medium' | 'high' | 'critical';
+
+  // Marketing / Consultancy institution
+  clientIndustry?: string;
+
+  // RealEstate person
+  preferredLocations?: string[];
 }
 
 /**
@@ -1882,6 +1916,7 @@ export const APP_FEATURES = [
   { id: 'messaging', label: 'Messaging', category: 'Studios', icon: 'MessageSquareText', defaultEnabled: true },
   { id: 'tags', label: 'Tags', category: 'Studios', icon: 'Tags', defaultEnabled: true },
   { id: 'forms', label: 'Forms', category: 'Studios', icon: 'ClipboardSignature', defaultEnabled: true },
+  { id: 'qr_studio', label: 'QR Studio', category: 'Studios', icon: 'QrCode', defaultEnabled: true },
   // Finance
   { id: 'agreements', label: 'Agreements', category: 'Finance', icon: 'FileCheck', defaultEnabled: true },
   { id: 'invoices', label: 'Invoices', category: 'Finance', icon: 'Receipt', defaultEnabled: true },
@@ -2181,6 +2216,125 @@ export interface FormSubmission {
   ipAddress?: string;
   userAgent?: string;
   submittedAt: string;
+}
+
+// ─────────────────────────────────────────────────
+// QR Studio Types
+// ─────────────────────────────────────────────────
+
+export type QRCodeMode = 'static' | 'dynamic';
+
+export type QRCodeType =
+  | 'url' | 'survey' | 'form' | 'landing_page' | 'public_portal'
+  | 'doc_signing' | 'meeting' | 'invoice' | 'vcard' | 'wifi'
+  | 'email' | 'sms' | 'whatsapp' | 'text' | 'file';
+
+export type QRDotStyle = 'square' | 'rounded' | 'dots' | 'classy' | 'classy-rounded' | 'extra-rounded';
+export type QRCornerSquareStyle = 'square' | 'dot' | 'extra-rounded';
+export type QRCornerDotStyle = 'square' | 'dot';
+export type QRErrorCorrection = 'L' | 'M' | 'Q' | 'H';
+export type QRStatus = 'active' | 'paused' | 'archived';
+
+export interface QRGradient {
+  enabled: boolean;
+  type: 'linear' | 'radial';
+  rotation?: number;
+  colorStops: { offset: number; color: string }[];
+}
+
+export interface QRDesign {
+  foregroundColor: string;
+  backgroundColor: string;
+  gradient?: QRGradient;
+  dotStyle: QRDotStyle;
+  cornerSquareStyle: QRCornerSquareStyle;
+  cornerSquareColor?: string;
+  cornerDotStyle: QRCornerDotStyle;
+  cornerDotColor?: string;
+  logoUrl?: string;
+  logoSize?: number;        // percentage 10-30
+  logoMargin?: number;      // px around logo
+  frameStyle?: 'none' | 'banner-bottom' | 'banner-top' | 'rounded-bottom' | 'pill';
+  frameText?: string;
+  frameColor?: string;
+  quietZone?: number;       // px
+  errorCorrection: QRErrorCorrection;
+  size?: number;            // px, default 300
+}
+
+export interface QRDestination {
+  url?: string;
+  resourceType?: string;
+  resourceId?: string;
+  resourceName?: string;
+  fallbackUrl?: string;
+}
+
+export interface QRTracking {
+  enabled: boolean;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  campaignName?: string;
+  sourceLabel?: string;
+}
+
+export interface QRCode {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  mode: QRCodeMode;
+  type: QRCodeType;
+  destination: QRDestination;
+  shortPath?: string;
+  redirectUrl?: string;
+  design: QRDesign;
+  tracking: QRTracking;
+  status: QRStatus;
+  stats: {
+    totalScans: number;
+    uniqueScans?: number;
+    lastScannedAt?: string;
+  };
+  createdBy: { userId: string; name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QRCodeTemplate {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  scope: 'workspace';
+  name: string;
+  category: string;
+  design: QRDesign;
+  previewImageUrl?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QRScanEvent {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  qrCodeId: string;
+  scannedAt: string;
+  sessionId?: string;
+  deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+  browser?: string;
+  os?: string;
+  ipHash?: string;
+  country?: string;
+  city?: string;
+  destinationUrl: string;
+  resourceType?: string;
+  resourceId?: string;
+  queryParams?: Record<string, string>;
 }
 
 // ─────────────────────────────────────────────────

@@ -2,19 +2,26 @@
 
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
-import type { School, UserProfile, SubscriptionPackage, Zone, Module, OnboardingStage, EntityContact } from './types';
+import type { OnboardingStage, EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
-import { normalizeContactType, entityContactToFocalPerson } from './entity-contact-helpers';
+import { normalizeContactType } from './entity-contact-helpers';
 
 /**
- * @fileOverview Logic-based Institutional Ingestion Engine.
- * Processes spreadsheet rows using direct mapping logic without AI.
+ * @fileOverview Entity-aware Batch Ingestion Engine.
+ * Optimized for bulk operations — fetches resolution context ONCE per batch.
+ * Supports institution, person, and family entity types.
  */
 
-/**
- * Fetches relevant system context for name-to-ID resolution.
- */
-async function getResolutionContext() {
+// ─── Resolution Context ──────────────────────────────────────────────────────
+
+interface ResolutionContext {
+    zones: { id: string; name: string }[];
+    users: { id: string; name: string; email: string }[];
+    packages: { id: string; [key: string]: any }[];
+    modules: { id: string; [key: string]: any }[];
+}
+
+async function getResolutionContext(): Promise<ResolutionContext> {
     const [zonesSnap, usersSnap, packagesSnap, modulesSnap] = await Promise.all([
         adminDb.collection('zones').orderBy('name').get(),
         adminDb.collection('users').where('isAuthorized', '==', true).get(),
@@ -30,171 +37,397 @@ async function getResolutionContext() {
     };
 }
 
+// ─── Name Utilities ──────────────────────────────────────────────────────────
+
 /**
- * Deterministically ingests a single school record from raw data.
+ * Splits a full name into firstName and lastName using smart logic.
+ * Handles prefixes (Dr., Mr., Mrs.), multi-word last names, etc.
  */
-export async function ingestSchoolRowAction(
-    rawData: any, 
-    mapping: Record<string, string>, 
-    userId: string,
-    filename: string
-) {
-    try {
-        const context = await getResolutionContext();
-        
-        // 1. Resolve Values using the Provided Mapping
-        const getValue = (key: string) => {
-            const header = mapping[key];
-            if (!header || header === 'none') return undefined;
-            return rawData[header];
+function splitPersonName(fullName: string): { firstName: string; lastName: string } {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length <= 1) return { firstName: parts[0] || '', lastName: '' };
+    if (parts.length === 2) return { firstName: parts[0], lastName: parts[1] };
+
+    // If first part looks like a title, include it with the first name
+    const titles = ['dr', 'dr.', 'mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.', 'prof', 'prof.', 'rev', 'rev.'];
+    if (titles.includes(parts[0].toLowerCase())) {
+        return {
+            firstName: parts.slice(0, 2).join(' '),
+            lastName: parts.slice(2).join(' '),
         };
+    }
 
-        const rawName = getValue('name');
-        if (!rawName || typeof rawName !== 'string') {
-            throw new Error("Mandatory field 'School Name' is missing or invalid in this row.");
+    // Default: last word is lastName, everything else is firstName
+    return {
+        firstName: parts.slice(0, -1).join(' '),
+        lastName: parts[parts.length - 1],
+    };
+}
+
+function normaliseName(name: string): string {
+    return name.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+}
+
+// ─── Fuzzy Matchers ──────────────────────────────────────────────────────────
+
+function fuzzyMatch<T extends { name: string }>(items: T[], query: string): T | null {
+    if (!query) return null;
+    const q = query.toLowerCase().trim();
+    return items.find(item => item.name.toLowerCase().includes(q)) || null;
+}
+
+// ─── Batch Ingestion (Optimized) ─────────────────────────────────────────────
+
+export interface BatchResult {
+    successCount: number;
+    errorCount: number;
+    results: { row: number; status: 'success' | 'error'; entityName?: string; error?: string }[];
+}
+
+/**
+ * Processes an entire batch of rows with a SINGLE context fetch.
+ * This replaces the per-row `ingestSchoolRowAction` for better performance.
+ */
+export async function ingestBatchAction(
+    rows: any[],
+    mapping: Record<string, string>,
+    userId: string,
+    filename: string,
+    workspaceId: string,
+    organizationId: string,
+    entityType: string
+): Promise<BatchResult> {
+    // 1. Fetch resolution context ONCE for the entire batch
+    const context = await getResolutionContext();
+
+    // 2. Fetch workspace industry ONCE
+    let workspaceIndustry = 'SaaS';
+    try {
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (wsSnap.exists) {
+            workspaceIndustry = (wsSnap.data() as any)?.industry || 'SaaS';
         }
+    } catch { /* Non-critical */ }
 
-        const name = rawName.trim();
-        const initials = getValue('initials') || name.split(' ').map(w => w[0]).join('').toUpperCase();
-        const slogan = getValue('slogan') || '';
-        const location = getValue('location') || '';
-        const nominalRoll = Number(getValue('nominalRoll')) || 0;
-        const currency = getValue('currency') || 'GHS';
-        const billingAddress = getValue('billingAddress') || location;
-        
-        // 2. Fuzzy Match Zone
-        const rawZone = getValue('zone');
-        const selectedZone = rawZone ? context.zones.find(z => z.name.toLowerCase().includes(String(rawZone).toLowerCase())) : null;
+    // 3. Fetch pipeline/stage ONCE
+    let defaultStage: any = { id: 'welcome', name: 'Welcome', order: 1, color: '#3B5FFF' };
+    let pipelineId = '';
 
-        // 3. Fuzzy Match Manager
-        const rawManager = getValue('assignedTo');
-        const selectedUser = rawManager ? context.users.find(u => u.name.toLowerCase().includes(String(rawManager).toLowerCase())) : null;
+    const pipelinesSnap = await adminDb.collection('pipelines')
+        .where('workspaceId', '==', workspaceId)
+        .limit(1)
+        .get();
 
-        // 4. Fuzzy Match Package
-        const rawPkg = getValue('package');
-        const selectedPackage = rawPkg ? context.packages.find(p => (p as any).name.toLowerCase().includes(String(rawPkg).toLowerCase())) as any : null;
+    if (!pipelinesSnap.empty) {
+        pipelineId = pipelinesSnap.docs[0].id;
+        const stagesSnap = await adminDb.collection('onboardingStages')
+            .where('pipelineId', '==', pipelineId)
+            .orderBy('order')
+            .limit(1)
+            .get();
+        if (!stagesSnap.empty) {
+            defaultStage = { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage;
+        }
+    }
 
-        // 5. Fuzzy Match Modules (Comma separated)
-        const rawModulesStr = getValue('modules');
-        const selectedModules = rawModulesStr ? String(rawModulesStr).split(',').map(m => {
-            const match = context.modules.find(mod => 
-                (mod as any).name.toLowerCase().includes(m.trim().toLowerCase()) || 
-                (mod as any).abbreviation.toLowerCase() === m.trim().toLowerCase()
+    // 4. Build a set of existing entity names for duplicate detection
+    const existingNames = new Set<string>();
+    try {
+        const existingSnap = await adminDb.collection('workspace_entities')
+            .where('workspaceId', '==', workspaceId)
+            .select('displayName')
+            .get();
+        for (const doc of existingSnap.docs) {
+            const n = doc.data()?.displayName;
+            if (n) existingNames.add(normaliseName(n));
+        }
+    } catch {
+        console.warn('[BULK] Could not fetch existing entities for duplicate check');
+    }
+
+    // Track names added in THIS batch to catch intra-batch duplicates
+    const batchNames = new Set<string>();
+
+    // 5. Process each row
+    const results: BatchResult['results'] = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    const getValue = (row: any, key: string) => {
+        const header = mapping[key];
+        if (!header || header === 'none') return undefined;
+        return row[header];
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+        try {
+            const row = rows[i];
+            const rawName = getValue(row, 'name');
+
+            if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
+                throw new Error("Missing required 'Entity Name' field");
+            }
+
+            const name = rawName.trim();
+            const normalised = normaliseName(name);
+
+            // Duplicate check
+            if (existingNames.has(normalised) || batchNames.has(normalised)) {
+                throw new Error(`Duplicate: "${name}" already exists in this workspace`);
+            }
+
+            // Process the row
+            const result = await processRow(
+                row, mapping, name, entityType, context,
+                workspaceIndustry, workspaceId, organizationId, userId,
+                pipelineId, defaultStage, filename
             );
-            return match;
-        }).filter(Boolean) as any[] : [];
 
-        // 6. Resolve Focal Person → EntityContact (FER-01)
+            batchNames.add(normalised);
+            existingNames.add(normalised);
+            successCount++;
+            results.push({ row: i, status: 'success', entityName: result.entityName });
+        } catch (err: any) {
+            errorCount++;
+            results.push({ row: i, status: 'error', error: err.message });
+        }
+    }
+
+    // 6. Log aggregate activity
+    await logActivity({
+        organizationId,
+        workspaceId,
+        userId,
+        type: 'contacts_imported',
+        source: 'system',
+        description: `Bulk import: ${successCount} created, ${errorCount} errors from "${filename}"`,
+        metadata: { entityType, successCount, errorCount, batchSize: rows.length },
+    });
+
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/pipeline');
+
+    return { successCount, errorCount, results };
+}
+
+// ─── Per-Row Processing (Internal) ───────────────────────────────────────────
+
+async function processRow(
+    row: any,
+    mapping: Record<string, string>,
+    name: string,
+    entityType: string,
+    context: ResolutionContext,
+    workspaceIndustry: string,
+    workspaceId: string,
+    organizationId: string,
+    userId: string,
+    pipelineId: string,
+    defaultStage: any,
+    filename: string
+): Promise<{ entityName: string }> {
+    const getValue = (key: string) => {
+        const header = mapping[key];
+        if (!header || header === 'none') return undefined;
+        return row[header];
+    };
+
+    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const initials = getValue('initials') || name.split(' ').map(w => w[0]).join('').toUpperCase();
+    const location = getValue('location') || '';
+    const lifecycleStatus = getValue('lifecycleStatus') || 'Onboarding';
+
+    // Fuzzy matching
+    const selectedZone = fuzzyMatch(context.zones, String(getValue('zone') || ''));
+    const selectedUser = fuzzyMatch(context.users, String(getValue('assignedTo') || ''));
+    const selectedPackage = fuzzyMatch(context.packages as any, String(getValue('package') || '')) as any;
+
+    const rawModulesStr = getValue('modules');
+    const selectedModules = rawModulesStr ? String(rawModulesStr).split(',').map(m => {
+        return context.modules.find(mod =>
+            (mod as any).name?.toLowerCase().includes(m.trim().toLowerCase()) ||
+            (mod as any).abbreviation?.toLowerCase() === m.trim().toLowerCase()
+        );
+    }).filter(Boolean) as any[] : [];
+
+    // Build EntityContacts
+    const entityContacts: EntityContact[] = [];
+
+    if (entityType === 'person') {
+        const email = getValue('contactEmail') || '';
+        const phone = getValue('contactPhone') || '';
+        entityContacts.push({
+            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+            name,
+            typeKey: 'primary',
+            typeLabel: 'Primary',
+            isPrimary: true,
+            isSignatory: true,
+            order: 0,
+            createdAt: new Date().toISOString(),
+            ...(email && { email: String(email) }),
+            ...(phone && { phone: String(phone) }),
+        } as EntityContact);
+    } else if (entityType === 'family') {
+        const guardianName = getValue('contactName') || name;
+        const guardianEmail = getValue('contactEmail') || '';
+        const guardianPhone = getValue('contactPhone') || '';
+        entityContacts.push({
+            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+            name: String(guardianName),
+            typeKey: 'guardian',
+            typeLabel: 'Guardian',
+            isPrimary: true,
+            isSignatory: true,
+            order: 0,
+            createdAt: new Date().toISOString(),
+            ...(guardianEmail && { email: String(guardianEmail) }),
+            ...(guardianPhone && { phone: String(guardianPhone) }),
+        } as EntityContact);
+    } else {
         const contactName = getValue('contactName');
-        const contactEmail = getValue('contactEmail');
-        const contactPhone = getValue('contactPhone');
         const contactRole = getValue('contactRole');
         const isSignatoryRaw = getValue('isSignatory');
-        const isSignatory = String(isSignatoryRaw).toLowerCase() === 'yes' || isSignatoryRaw === 'true' || isSignatoryRaw === true;
+        const isSignatory = String(isSignatoryRaw).toLowerCase() === 'yes' || isSignatoryRaw === 'true';
 
-        const entityContacts: EntityContact[] = [];
         if (contactName) {
             const typeLabel = String(contactRole || 'Administrator');
-            const contactEmail = String(getValue('contactEmail') || '');
-            const contactPhoneVal = String(getValue('contactPhone') || '');
-            
             const ec: any = {
-                id: `ec_bulk_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+                id: `ec_${crypto.randomUUID().substring(0, 8)}`,
                 name: String(contactName),
                 typeKey: normalizeContactType(typeLabel),
                 typeLabel,
                 isPrimary: true,
-                isSignatory: isSignatory,
+                isSignatory,
                 order: 0,
                 createdAt: new Date().toISOString(),
             };
-            if (contactEmail) ec.email = contactEmail;
-            if (contactPhoneVal) ec.phone = contactPhoneVal;
-            
+            const email = getValue('contactEmail');
+            const phone = getValue('contactPhone');
+            if (email) ec.email = String(email);
+            if (phone) ec.phone = String(phone);
             entityContacts.push(ec as EntityContact);
         }
-
-        // 7. Pipeline Initialization
-        const stagesSnap = await adminDb.collection('onboardingStages').orderBy('order').limit(1).get();
-        const defaultStage = !stagesSnap.empty 
-            ? { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage
-            : { id: 'welcome', name: 'Welcome', order: 1, color: '#3B5FFF' };
-
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        
-        // 8. Construct Entity Data
-        const entityId = `entity_bulk_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`;
-        const timestamp = new Date().toISOString();
-        const organizationId = 'smartsapp-hq';
-        const workspaceId = 'onboarding';
-
-        // 8a. Save to Universal Identity Collection
-        await adminDb.collection('entities').doc(entityId).set({
-            id: entityId,
-            organizationId,
-            entityType: 'institution',
-            name,
-            slug,
-            entityContacts, // Canonical (FER-01)
-            globalTags: [],
-            status: 'active',
-            institutionData: {
-                nominalRoll,
-                billingAddress,
-                currency,
-                subscriptionPackageId: selectedPackage?.id || null,
-                subscriptionRate: Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0,
-            },
-            createdAt: timestamp,
-            updatedAt: timestamp,
-        });
-
-        const primaryContact = entityContacts.find(c => c.isPrimary);
-
-        // 8b. Save to Operational Workspace Collection
-        const workspaceEntityId = `${workspaceId}_${entityId}`;
-        await adminDb.collection('workspace_entities').doc(workspaceEntityId).set({
-            id: workspaceEntityId,
-            organizationId,
-            workspaceId,
-            entityId,
-            entityType: 'institution',
-            pipelineId: '',
-            stageId: defaultStage.id,
-            currentStageName: defaultStage.name,
-            status: 'active',
-            assignedTo: selectedUser ? selectedUser.id : null,
-            workspaceTags: [],
-            addedAt: timestamp,
-            updatedAt: timestamp,
-            displayName: name,
-            primaryContactName: primaryContact?.name || '',
-            primaryEmail: primaryContact?.email || '',
-            primaryPhone: primaryContact?.phone || '',
-            entityContacts, // Denormalized for list performance
-            interests: selectedModules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
-        });
-
-        await logActivity({
-            entityId: entityId,
-            entityType: 'institution',
-            displayName: name,
-            entitySlug: slug,
-            organizationId,
-            userId,
-            workspaceId,
-            type: 'entity_created',
-            source: 'system',
-            description: `Ingested entity record from "${filename}"`
-        });
-
-        revalidatePath('/admin/entities');
-        revalidatePath('/admin/pipeline');
-        
-        return { success: true, id: entityId, entityName: name };
-
-    } catch (error: any) {
-        console.error(">>> [BULK:INGEST] Logical Error:", error.message);
-        return { success: false, error: error.message };
     }
+
+    // Build entity document
+    const entityId = `entity_${crypto.randomUUID()}`;
+    const timestamp = new Date().toISOString();
+
+    const entityDoc: any = {
+        id: entityId,
+        organizationId,
+        entityType,
+        name,
+        slug,
+        entityContacts,
+        globalTags: [],
+        status: 'active',
+        industry: workspaceIndustry,
+        initials,
+        location,
+        lifecycleStatus,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    };
+
+    // Polymorphic data
+    if (entityType === 'institution') {
+        const nominalRoll = Number(getValue('nominalRoll')) || 0;
+        const currency = getValue('currency') || 'GHS';
+        const billingAddress = getValue('billingAddress') || location;
+        const subscriptionRate = Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0;
+
+        entityDoc.financeData = { currency, billingAddress, subscriptionRate };
+        if (selectedPackage?.id) entityDoc.financeData.subscriptionIds = [selectedPackage.id];
+        entityDoc.industryData = { capacity: nominalRoll };
+        entityDoc.interests = selectedModules.map((m: any) => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color }));
+    } else if (entityType === 'person') {
+        const { firstName, lastName } = splitPersonName(name);
+        entityDoc.personData = {
+            firstName,
+            lastName,
+            company: getValue('company') || '',
+            jobTitle: getValue('jobTitle') || '',
+            leadSource: getValue('leadSource') || '',
+        };
+    } else if (entityType === 'family') {
+        const guardians: any[] = [];
+        const guardianName = getValue('contactName') || name;
+        if (guardianName) {
+            guardians.push({
+                name: String(guardianName),
+                phone: String(getValue('contactPhone') || ''),
+                email: String(getValue('contactEmail') || ''),
+                relationship: getValue('relationship') || 'Guardian',
+                isPrimary: true,
+            });
+        }
+        const children: any[] = [];
+        const childFirst = getValue('childFirstName');
+        if (childFirst) {
+            children.push({
+                firstName: String(childFirst),
+                lastName: getValue('childLastName') || '',
+                gradeLevel: getValue('childGradeLevel') || '',
+            });
+        }
+        entityDoc.familyData = { guardians, children };
+    }
+
+    // Save entity
+    await adminDb.collection('entities').doc(entityId).set(entityDoc);
+
+    // Save workspace entity
+    const primaryContact = entityContacts.find(c => c.isPrimary);
+    const workspaceEntityId = `${workspaceId}_${entityId}`;
+    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set({
+        id: workspaceEntityId,
+        organizationId,
+        workspaceId,
+        entityId,
+        entityType,
+        pipelineId,
+        stageId: defaultStage.id,
+        currentStageName: defaultStage.name,
+        status: 'active',
+        assignedTo: selectedUser?.id || null,
+        workspaceTags: [],
+        addedAt: timestamp,
+        updatedAt: timestamp,
+        displayName: name,
+        primaryContactName: primaryContact?.name || '',
+        primaryEmail: primaryContact?.email || '',
+        primaryPhone: primaryContact?.phone || '',
+        entityContacts,
+        interests: entityDoc.interests || [],
+    });
+
+    return { entityName: name };
+}
+
+// ─── Legacy Compat: Single-Row Action ────────────────────────────────────────
+
+/**
+ * @deprecated Use `ingestBatchAction` for better performance.
+ * Kept for backward compatibility with existing callers.
+ */
+export async function ingestSchoolRowAction(
+    rawData: any,
+    mapping: Record<string, string>,
+    userId: string,
+    filename: string,
+    workspaceId: string = 'onboarding',
+    organizationId: string = 'smartsapp-hq',
+    entityType: string = 'institution'
+) {
+    const result = await ingestBatchAction(
+        [rawData], mapping, userId, filename,
+        workspaceId, organizationId, entityType
+    );
+    const row = result.results[0];
+    if (row?.status === 'success') {
+        return { success: true, entityName: row.entityName };
+    }
+    return { success: false, error: row?.error || 'Unknown error' };
 }

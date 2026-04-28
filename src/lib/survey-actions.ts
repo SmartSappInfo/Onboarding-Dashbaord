@@ -7,11 +7,12 @@ import { triggerInternalNotification, triggerExternalNotification } from './noti
 import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
 
-import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType, ContactIdentifierPolicy } from './types';
+import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType, ContactIdentifierPolicy, IndustryVertical } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
+import { getWorkspaceIndustry } from './industry-cache';
 
 /**
  * Get surveys for a specific contact (by entityId or entityId)
@@ -280,178 +281,208 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     // 2. Fetch survey context for organization/workspace
     const surveySnap = await surveyRef.get();
     let organizationId = 'default';
-    let workspaceId = 'default';
+    let workspaceId = '';
     let surveyData: Survey | null = null;
 
     if (surveySnap.exists) {
       surveyData = surveySnap.data() as Survey;
       organizationId = surveyData.organizationId || 'default';
-      workspaceId = surveyData.workspaceIds[0] || 'default';
+      // FIX 1: Guard workspaceId — never fall back to 'default' for entity writes
+      workspaceId = surveyData.workspaceIds?.[0] || '';
     }
 
     // 3. Transform to Entity/Lead if enabled (Task 12)
     let finalEntityId = responseData.entityId || null;
 
     if (surveyData && surveyData.createEntity && surveyData.entityMapping) {
-      const mapping = surveyData.entityMapping;
-      const answers = responseData.answers || [];
+      // FIX 1: Skip entity creation entirely if no workspace is resolved
+      if (!workspaceId) {
+        console.error(`[survey-actions] Survey ${surveyId} has no workspaceId — entity creation skipped`);
+      } else {
+        const mapping = surveyData.entityMapping;
+        const answers = responseData.answers || [];
 
-      const getAnswerValue = (qId?: string) => {
-        if (!qId) return null;
-        const ans = answers.find((a: any) => a.questionId === qId);
-        return ans ? ans.value : null;
-      };
-
-      const eName = getAnswerValue(mapping.entityNameFieldId);
-      const cName = getAnswerValue(mapping.contactNameFieldId);
-      const cEmail = getAnswerValue(mapping.contactEmailFieldId);
-      const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
-
-      // Get workspace scope and contact policy
-      const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
-      const wsData = wsSnap.data();
-      const contactScope = (wsData?.contactScope || 'institution') as EntityType;
-      const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
-
-      // Accept entity.name OR entity.contacts.name as the entity name source
-      const resolvedName = eName || cName || '';
-      const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
-
-      // Validate contact identifiers per workspace policy
-      const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
-
-      if (finalEntityName && policyCheck.valid) {
-        // 3.1 Resolution and Deduplication
-        const dedupeQuery = adminDb.collection('workspace_entities')
-          .where('workspaceId', '==', workspaceId)
-          .where('displayName', '==', finalEntityName);
-        
-        let weSnap;
-        if (cEmail) {
-          weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
-        } else if (cPhone) {
-          weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
-        } else {
-          weSnap = await dedupeQuery.limit(1).get();
-        }
-
-        // 3.0.1 Resolve entity defaults chain: workspace entityDefaults -> surveyDefaults -> org -> system
-        const systemDefaults = {
-          currency: 'GHS',
-          subscriptionPackageName: 'Standard',
-          subscriptionRate: 0,
-          contactTypeKey: 'primary',
-        };
-        
-        let orgDefaults: any = {};
-        if (organizationId && organizationId !== 'default') {
-          const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-          if (orgSnap.exists) {
-            orgDefaults = orgSnap.data()?.surveyEntityDefaults || {};
-          }
-        }
-        
-        const wsSurveyDefaults = wsData?.surveyEntityDefaults || {};
-        const wsEntityDefaults = wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] || {};
-        
-        // Merge: workspace entityDefaults + surveyDefaults override org, org overrides system
-        const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
-
-        // 3.1 Advanced Property Mapping (Phase 5)
-        const institutionData: any = {};
-        const personData: any = {};
-
-        if (mapping.additionalMappings?.length) {
-          mapping.additionalMappings.forEach((m: any) => {
-            const val = getAnswerValue(m.questionId);
-            if (val !== null && val !== undefined && val !== '') {
-              if (m.targetField.startsWith('institutionData.')) {
-                const field = m.targetField.replace('institutionData.', '');
-                institutionData[field] = field === 'nominalRoll' ? Number(val) : val;
-              } else if (m.targetField.startsWith('personData.')) {
-                const field = m.targetField.replace('personData.', '');
-                personData[field] = val;
-              }
-            }
-          });
-        }
-
-        // Apply resolved defaults to institution data for unmapped fields
-        if (contactScope === 'institution') {
-          if (!institutionData.currency) institutionData.currency = resolvedDefaults.currency;
-          if (!institutionData.subscriptionPackageName) institutionData.subscriptionPackageName = resolvedDefaults.subscriptionPackageName;
-          if (institutionData.subscriptionRate === undefined) institutionData.subscriptionRate = resolvedDefaults.subscriptionRate;
-          if (institutionData.nominalRoll === undefined) institutionData.nominalRoll = 0;
-        }
-
-        const entityPayload: any = {
-          name: finalEntityName,
-          contacts: [
-            {
-              name: cName || finalEntityName,
-              email: cEmail || '',
-              phone: cPhone || '',
-              isPrimary: true,
-              typeKey: resolvedDefaults.contactTypeKey
-            }
-          ],
-          globalTags: surveyData.autoTags || [],
-          workspaceTags: surveyData.autoTags || [],
+        const getAnswerValue = (qId?: string) => {
+          if (!qId) return null;
+          const ans = answers.find((a: any) => a.questionId === qId);
+          return ans ? ans.value : null;
         };
 
-        if (Object.keys(institutionData).length > 0) entityPayload.institutionData = institutionData;
-        if (Object.keys(personData).length > 0) entityPayload.personData = personData;
+        const eName = getAnswerValue(mapping.entityNameFieldId);
+        const cName = getAnswerValue(mapping.contactNameFieldId);
+        const cEmail = getAnswerValue(mapping.contactEmailFieldId);
+        const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
 
-        if (!weSnap.empty) {
-          // Match found -> Update existing
-          const existingWE = weSnap.docs[0].data();
-          finalEntityId = existingWE.entityId;
-          await updateEntityAction(
-            finalEntityId,
-            entityPayload,
-            'system_survey',
-            workspaceId,
-            organizationId
-          );
-        } else {
-          // No match -> Create new
-          const createRes = await createEntityAction(
-            entityPayload,
-            'system_survey',
-            workspaceId,
-            contactScope,
-            organizationId
-          );
-          if (createRes.success) {
-            finalEntityId = createRes.id;
-          }
-        }
+        // Get workspace scope, contact policy, and industry
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        const wsData = wsSnap.data();
+        const contactScope = (wsData?.contactScope || 'institution') as EntityType;
+        const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
 
-        // Link the response to the entity
-        if (finalEntityId) {
-          await docRef.update({ 
-            entityId: finalEntityId,
-            assignedUserId: responseData.assignedUserId || null 
-          });
+        // FIX 4: Resolve workspace industry for industryData payload
+        const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
+
+        // Accept entity.name OR contact.name as the entity name source
+        const resolvedName = eName || cName || '';
+        const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+
+        // Validate contact identifiers per workspace policy
+        const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
+
+        if (finalEntityName && policyCheck.valid) {
+          // 3.1 Deduplication — search within this workspace only
+          const dedupeQuery = adminDb.collection('workspace_entities')
+            .where('workspaceId', '==', workspaceId)
+            .where('displayName', '==', finalEntityName);
           
-          // Trigger automations via the Logic Processor (Phase 1 completion)
-          if (surveyData.autoAutomations?.length) {
-            const automationPayload = {
-              entityId: finalEntityId,
-              entityName: eName,
-              workspaceId,
-              organizationId,
-              surveyId,
-              surveyTitle: surveyData.title,
-              submissionId: docRef.id,
-              assignedUserId: responseData.assignedUserId || null,
-              score: responseData.score || null,
-              autoTags: surveyData.autoTags || [],
-              source: 'survey_submission',
-            };
+          let weSnap;
+          if (cEmail) {
+            weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
+          } else if (cPhone) {
+            weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
+          } else {
+            weSnap = await dedupeQuery.limit(1).get();
+          }
 
-            // Fire SURVEY_SUBMITTED trigger for each matching automation
-            await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload);
+          // 3.2 Resolve entity defaults chain: system → org → workspace survey defaults → workspace entity defaults
+          const systemDefaults = {
+            currency: 'GHS',
+            subscriptionPackageName: 'Standard',
+            subscriptionRate: 0,
+            contactTypeKey: 'primary',
+          };
+          
+          let orgDefaults: any = {};
+          if (organizationId && organizationId !== 'default') {
+            const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+            if (orgSnap.exists) {
+              orgDefaults = orgSnap.data()?.surveyEntityDefaults || {};
+            }
+          }
+          
+          const wsSurveyDefaults = wsData?.surveyEntityDefaults || {};
+          const wsEntityDefaults = wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] || {};
+          
+          // Merge: system < org < workspace survey defaults < workspace entity defaults
+          const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
+
+          // 3.3 Extract survey-mapped fields
+          const mappedInstitutionData: any = {};
+          const mappedPersonData: any = {};
+
+          if (mapping.additionalMappings?.length) {
+            mapping.additionalMappings.forEach((m: any) => {
+              const val = getAnswerValue(m.questionId);
+              if (val !== null && val !== undefined && val !== '') {
+                if (m.targetField.startsWith('institutionData.')) {
+                  const field = m.targetField.replace('institutionData.', '');
+                  mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
+                } else if (m.targetField.startsWith('personData.')) {
+                  const field = m.targetField.replace('personData.', '');
+                  mappedPersonData[field] = val;
+                }
+              }
+            });
+          }
+
+          // FIX 7: contactScope alignment guard
+          if (contactScope === 'person' && Object.keys(mappedInstitutionData).length > 0) {
+            console.warn(`[survey-actions] institutionData mappings ignored — workspace contactScope is "person"`);
+          }
+          if (contactScope === 'institution' && Object.keys(mappedPersonData).length > 0 && Object.keys(mappedInstitutionData).length === 0) {
+            console.warn(`[survey-actions] personData mappings on institution workspace — will be passed as personData`);
+          }
+
+          // FIX 5+6: Build industryData using defaults + survey-mapped fields
+          let industryDataPayload: any | undefined;
+          if (workspaceIndustry) {
+            const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
+            const surveyMapped = contactScope === 'institution' ? mappedInstitutionData : mappedPersonData;
+
+            industryDataPayload = {
+              industry: workspaceIndustry,
+              ...industryDefaults,
+              ...surveyMapped, // Survey answers override defaults
+            };
+          }
+
+          const entityPayload: any = {
+            name: finalEntityName,
+            contacts: [
+              {
+                name: cName || finalEntityName,
+                email: cEmail || '',
+                phone: cPhone || '',
+                isPrimary: true,
+                typeKey: resolvedDefaults.contactTypeKey
+              }
+            ],
+            globalTags: surveyData.autoTags || [],
+            workspaceTags: surveyData.autoTags || [],
+          };
+
+          // Attach polymorphic data to the correct slot
+          if (industryDataPayload) {
+            entityPayload.industryData = industryDataPayload;
+          }
+          // Pass personData for person entities (non-industry fields like custom CRM props)
+          if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
+            entityPayload.personData = mappedPersonData;
+          }
+
+          if (!weSnap.empty) {
+            // Match found → Update existing
+            const existingWE = weSnap.docs[0].data();
+            finalEntityId = existingWE.entityId;
+            await updateEntityAction(
+              finalEntityId,
+              entityPayload,
+              'system-survey', // FIX 2: hyphen prefix for system exemption
+              workspaceId,
+              organizationId
+            );
+          } else {
+            // No match → Create new
+            const createRes = await createEntityAction(
+              entityPayload,
+              'system-survey', // FIX 2: hyphen prefix for system exemption
+              workspaceId,
+              contactScope,
+              organizationId
+            );
+            if (createRes.success) {
+              finalEntityId = createRes.id;
+            } else {
+              console.error(`[survey-actions] Entity creation failed: ${createRes.error}`);
+            }
+          }
+
+          // Link the response to the entity
+          if (finalEntityId) {
+            await docRef.update({ 
+              entityId: finalEntityId,
+              assignedUserId: responseData.assignedUserId || null 
+            });
+            
+            // Trigger automations via the Logic Processor (Phase 1 completion)
+            if (surveyData.autoAutomations?.length) {
+              const automationPayload = {
+                entityId: finalEntityId,
+                entityName: eName,
+                workspaceId,
+                organizationId,
+                surveyId,
+                surveyTitle: surveyData.title,
+                submissionId: docRef.id,
+                assignedUserId: responseData.assignedUserId || null,
+                score: responseData.score || null,
+                autoTags: surveyData.autoTags || [],
+                source: 'survey_submission',
+              };
+
+              // Fire SURVEY_SUBMITTED trigger for each matching automation
+              await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload);
+            }
           }
         }
       }
@@ -660,3 +691,118 @@ export async function autoSaveSurveyAction(
     }
 }
 
+/**
+ * Builds safe industry-specific defaults for entity creation via survey submission.
+ * Bridges the generic SurveyEntityDefaults config and the strict Zod industry schemas.
+ * Every required field in each IndustryDataSchema variant is covered here.
+ *
+ * Priority: resolvedDefaults (admin-configured) > hardcoded fallbacks
+ */
+function buildIndustryDefaults(
+  industry: IndustryVertical,
+  entityType: EntityType,
+  resolvedDefaults: Record<string, any>
+): Record<string, any> {
+  const d = resolvedDefaults;
+
+  switch (industry) {
+    case 'SchoolEnrollment':
+      // SchoolEnrollmentInstitutionDataSchema requires: gradeOfferings, academicYear, capacity
+      return {
+        gradeOfferings: d.gradeOfferings ?? [],
+        academicYear: d.academicYear ?? new Date().getFullYear().toString(),
+        capacity: d.capacity ?? 0,
+        ...(d.currentEnrollment !== undefined && { currentEnrollment: d.currentEnrollment }),
+      };
+
+    case 'SaaS':
+      if (entityType === 'institution') {
+        // SaaSInstitutionDataSchema requires: capacity, accountStatus
+        return {
+          capacity: d.capacity ?? 0,
+          accountStatus: d.accountStatus ?? 'lead',
+          ...(d.activeUsers !== undefined && { activeUsers: d.activeUsers }),
+        };
+      } else {
+        // SaaSPersonDataSchema requires: role, activationStatus
+        return {
+          role: d.role ?? 'user',
+          activationStatus: d.activationStatus ?? 'pending',
+        };
+      }
+
+    case 'Law':
+      if (entityType === 'institution') {
+        // LawInstitutionDataSchema requires: firmType, practiceAreas, conflictCheckRequired
+        return {
+          firmType: d.firmType ?? 'solo',
+          practiceAreas: d.practiceAreas ?? [],
+          conflictCheckRequired: d.conflictCheckRequired ?? false,
+          ...(d.capacity !== undefined && { capacity: d.capacity }),
+        };
+      } else {
+        // LawPersonDataSchema requires: clientType, urgency
+        return {
+          clientType: d.clientType ?? 'individual',
+          urgency: d.urgency ?? 'low',
+          ...(d.legalIssueType !== undefined && { legalIssueType: d.legalIssueType }),
+        };
+      }
+
+    case 'Marketing':
+      if (entityType === 'institution') {
+        // MarketingInstitutionDataSchema requires: clientIndustry
+        return {
+          clientIndustry: d.clientIndustry ?? 'General',
+          ...(d.targetAudience !== undefined && { targetAudience: d.targetAudience }),
+          ...(d.capacity !== undefined && { capacity: d.capacity }),
+          ...(d.monthlyBudget !== undefined && { monthlyBudget: d.monthlyBudget }),
+        };
+      } else {
+        // MarketingPersonDataSchema requires: role, influenceLevel, approvalAuthority
+        return {
+          role: d.role ?? 'user',
+          influenceLevel: d.influenceLevel ?? 'user',
+          approvalAuthority: d.approvalAuthority ?? false,
+        };
+      }
+
+    case 'RealEstate':
+      if (entityType === 'institution') {
+        // RealEstateInstitutionDataSchema requires: developerType
+        return {
+          developerType: d.developerType ?? 'residential',
+          ...(d.capacity !== undefined && { capacity: d.capacity }),
+          ...(d.investmentFocus !== undefined && { investmentFocus: d.investmentFocus }),
+        };
+      } else {
+        // RealEstatePersonDataSchema requires: clientType
+        return {
+          clientType: d.clientType ?? 'buyer',
+          ...(d.preferredLocations !== undefined && { preferredLocations: d.preferredLocations }),
+        };
+      }
+
+    case 'Consultancy':
+      if (entityType === 'institution') {
+        // ConsultancyInstitutionDataSchema requires: clientIndustry
+        return {
+          clientIndustry: d.clientIndustry ?? 'General',
+          ...(d.capacity !== undefined && { capacity: d.capacity }),
+          ...(d.strategicPriorities !== undefined && { strategicPriorities: d.strategicPriorities }),
+          ...(d.painPoints !== undefined && { painPoints: d.painPoints }),
+        };
+      } else {
+        // ConsultancyPersonDataSchema requires: role, influenceLevel
+        return {
+          role: d.role ?? 'user',
+          influenceLevel: d.influenceLevel ?? 'user',
+          ...(d.department !== undefined && { department: d.department }),
+          ...(d.decisionMakingStyle !== undefined && { decisionMakingStyle: d.decisionMakingStyle }),
+        };
+      }
+
+    default:
+      return {};
+  }
+}

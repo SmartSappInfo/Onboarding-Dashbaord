@@ -369,10 +369,12 @@ export async function updateEntityAction(
     organizationId: string
 ) {
   try {
-    // 0. Permission Check (Requirement: Permissions Expansion Layer 2)
-    const permission = await canUser(userId, 'operations', 'campuses', 'edit', workspaceId);
-    if (!permission.granted) {
-      return { success: false, error: permission.reason };
+    // 0. Permission Check — system callers (bulk import, survey submission) bypass permission checks
+    if (!userId.startsWith('system-')) {
+      const permission = await canUser(userId, 'operations', 'campuses', 'edit', workspaceId);
+      if (!permission.granted) {
+        return { success: false, error: permission.reason };
+      }
     }
 
     const timestamp = new Date().toISOString();

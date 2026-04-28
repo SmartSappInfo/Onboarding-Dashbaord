@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check } from 'lucide-react';
+import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -20,12 +20,17 @@ import ExternalNotificationConfig from './external-notification-config';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import AttributionQRSheet from './attribution-qr-sheet';
+import { useUser } from '@/firebase';
 
 export default function Step4Publish() {
     const { allowedWorkspaces } = useWorkspace();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { user } = useUser();
     const { watch, control } = useFormContext();
+
+    const [qrSheetUser, setQrSheetUser] = React.useState<{ id: string; name: string } | null>(null);
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -33,6 +38,9 @@ export default function Step4Publish() {
     const assignedUserIds = watch('assignedUsers') || [];
     const assignmentEnabled = watch('assignmentEnabled');
     const slug = watch('slug');
+    const surveyTitle = watch('title') || watch('internalName') || 'Survey';
+    const organizationId = watch('organizationId') || '';
+    const workspaceIds = watch('workspaceIds') || [];
 
     const usersQuery = useMemoFirebase(() => {
         if (!firestore || assignedUserIds.length === 0) return null;
@@ -248,6 +256,13 @@ export default function Step4Publish() {
                                                 >
                                                     <Copy className="h-3 w-3" />
                                                 </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setQrSheetUser({ id: user.id, name: user.name || user.email || 'User' })}
+                                                    className="p-1.5 rounded-lg bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all"
+                                                >
+                                                    <QrCode className="h-3 w-3" />
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -260,6 +275,24 @@ export default function Step4Publish() {
                 <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
             </div>
             </div>
+
+            {/* Attribution QR Sheet */}
+            {qrSheetUser && (
+                <AttributionQRSheet
+                    open={!!qrSheetUser}
+                    onOpenChange={(open) => !open && setQrSheetUser(null)}
+                    url={getFullUrl(qrSheetUser.id)}
+                    userName={qrSheetUser.name}
+                    surveyTitle={surveyTitle}
+                    workspaceId={workspaceIds[0] || ''}
+                    organizationId={organizationId}
+                    currentUser={{
+                        userId: user?.uid || '',
+                        name: user?.displayName || '',
+                        email: user?.email || '',
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { suggestBulkMapping } from '@/ai/flows/bulk-mapping-flow';
-import { ingestSchoolRowAction } from '@/lib/bulk-upload-actions';
+import { ingestBatchAction, type BatchResult } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -52,7 +52,7 @@ import {
 import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
-type Step = 'UPLOAD' | 'MAPPING' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
+type Step = 'UPLOAD' | 'MAPPING' | 'PREVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
 
 // ─── Entity-aware field definitions ──────────────────────────────────────────
 
@@ -161,7 +161,8 @@ export default function BulkUploadClient() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `SmartSapp_${terms.singular}_Import_Template.csv`);
+        const wsName = (activeWorkspace?.name || 'SmartSapp').replace(/\s+/g, '_');
+        link.setAttribute("download", `${wsName}_${terms.singular}_Import_Template.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -229,38 +230,35 @@ export default function BulkUploadClient() {
     };
 
     const startExecution = async (indicesToProcess?: number[]) => {
-        if (!user) return;
-        const rowsToProcess = indicesToProcess || Array.from({ length: rawData.length }, (_, i) => i);
+        if (!user || !activeWorkspace?.id) return;
+        const rowsToProcess = indicesToProcess 
+            ? indicesToProcess.map(i => rawData[i])
+            : rawData;
         
         setCurrentStep('EXECUTING');
         setExecutionResults([]);
-        const freshFailedIndices: number[] = [];
 
-        for (let i = 0; i < rowsToProcess.length; i++) {
-            const actualIdx = rowsToProcess[i];
-            setCurrentRowIdx(i);
-            try {
-                const sanitizedRow = JSON.parse(JSON.stringify(rawData[actualIdx]));
-                const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
+        try {
+            const sanitizedRows = JSON.parse(JSON.stringify(rowsToProcess));
+            const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
 
-                const res = await ingestSchoolRowAction(
-                    sanitizedRow, 
-                    sanitizedMapping, 
-                    user.uid, 
-                    fileName
-                );
-                if (res.success) {
-                    setExecutionResults(p => [...p, { row: actualIdx, status: 'success', entityName: res.entityName }]);
-                } else {
-                    freshFailedIndices.push(actualIdx);
-                    setExecutionResults(p => [...p, { row: actualIdx, status: 'error', error: res.error }]);
-                }
-            } catch (e: any) {
-                freshFailedIndices.push(actualIdx);
-                setExecutionResults(p => [...p, { row: actualIdx, status: 'error', error: e.message }]);
-            }
+            const batch = await ingestBatchAction(
+                sanitizedRows,
+                sanitizedMapping,
+                user.uid,
+                fileName,
+                activeWorkspace.id,
+                activeWorkspace.organizationId || 'smartsapp-hq',
+                contactScope
+            );
+
+            setExecutionResults(batch.results);
+            setFailedRowIndices(batch.results.filter(r => r.status === 'error').map(r => r.row));
+        } catch (e: any) {
+            setExecutionResults([{ row: 0, status: 'error', error: e.message }]);
+            setFailedRowIndices([0]);
         }
-        setFailedRowIndices(freshFailedIndices);
+
         setCurrentStep('COMPLETE');
     };
 
@@ -359,16 +357,81 @@ export default function BulkUploadClient() {
                                     ))}
                                 </CardContent>
                                 <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
-                                    <div className="p-6 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 flex items-start gap-5 shadow-inner">
-                                        <div className="p-3 bg-card rounded-2xl text-blue-500 shadow-sm border border-blue-500/20">
-                                            <Zap size={24} />
+                                    {/* Workspace Context Banner */}
+                                    <div className="w-full p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-4">
+                                        <div className="p-2 bg-primary/10 rounded-xl"><Database size={18} className="text-primary" /></div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Target Workspace</p>
+                                            <p className="text-sm font-semibold">{activeWorkspace?.name || 'Unknown'} · <span className="text-muted-foreground capitalize">{contactScope}</span></p>
                                         </div>
-                                        <p className="text-[10px] text-blue-700 font-bold opacity-80 leading-relaxed">
-                                            Systematic logic will resolve your Regional Zones and Managers using deterministic matching during import.
-                                        </p>
                                     </div>
-                                    <Button onClick={() => startExecution()} disabled={!mapping['name']} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3">
-                                        <Zap size={24} /> Launch {terms.singular} Import
+                                    {rawData.length > 500 && (
+                                        <div className="w-full p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-4">
+                                            <AlertCircle size={18} className="text-amber-600 shrink-0" />
+                                            <p className="text-[10px] text-amber-700 font-bold">Large dataset detected ({rawData.length} rows). Import may take a few minutes.</p>
+                                        </div>
+                                    )}
+                                    {contactScope === 'institution' && (
+                                        <div className="w-full p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">
+                                            <Zap size={18} className="text-blue-500 mt-0.5 shrink-0" />
+                                            <p className="text-[10px] text-blue-700 font-bold opacity-80 leading-relaxed">
+                                                Zones, Managers, and Packages will be fuzzy-matched from your data during import.
+                                            </p>
+                                        </div>
+                                    )}
+                                    <Button onClick={() => setCurrentStep('PREVIEW')} disabled={!mapping['name'] || !activeWorkspace?.id} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3">
+                                        <ArrowRight size={24} /> Preview & Confirm
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
+                    )}
+
+                    {/* ─── PREVIEW STEP ─── */}
+                    {currentStep === 'PREVIEW' && (
+                        <motion.div key="preview" {...stepTransition}>
+                            <div className="flex items-center justify-between mb-8">
+                                <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="font-bold gap-2">
+                                    <ArrowLeft size={16} /> Adjust Mapping
+                                </Button>
+                                <Badge variant="outline" className="px-4 h-8 font-semibold">{rawData.length} rows ready</Badge>
+                            </div>
+                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
+                                <CardHeader className="bg-card/20 border-b p-8">
+                                    <CardTitle className="text-2xl font-semibold">Data Preview</CardTitle>
+                                    <CardDescription className="text-xs font-bold opacity-60">
+                                        Showing first {Math.min(rawData.length, 5)} of {rawData.length} rows. Verify mapped values before importing.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <ScrollArea className="h-[400px]">
+                                        <Table>
+                                            <TableHeader className="bg-muted/30 sticky top-0 z-10">
+                                                <TableRow>
+                                                    <TableHead className="pl-6 py-3 text-[10px] font-bold w-12">#</TableHead>
+                                                    {TARGET_FIELDS.filter(f => mapping[f.key] && mapping[f.key] !== 'none').map(f => (
+                                                        <TableHead key={f.key} className="py-3 text-[10px] font-bold">{f.label}</TableHead>
+                                                    ))}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {rawData.slice(0, 5).map((row, i) => (
+                                                    <TableRow key={i} className="hover:bg-primary/5 transition-colors">
+                                                        <TableCell className="pl-6 font-semibold text-xs text-muted-foreground">{i + 1}</TableCell>
+                                                        {TARGET_FIELDS.filter(f => mapping[f.key] && mapping[f.key] !== 'none').map(f => (
+                                                            <TableCell key={f.key} className="text-xs font-medium max-w-[200px] truncate">
+                                                                {String(row[mapping[f.key]] || '—')}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </CardContent>
+                                <CardFooter className="p-8 border-t bg-primary/5 flex flex-col gap-4">
+                                    <Button onClick={() => startExecution()} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3">
+                                        <Zap size={24} /> Import {rawData.length} {terms.plural}
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -376,47 +439,74 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'EXECUTING' && (
-                        <motion.div key="executing" className="text-center py-20">
-                            <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" />
-                            <h2 className="text-4xl font-semibold">Task Execution</h2>
-                            <p className="mt-4 text-muted-foreground font-bold">
-                                {currentRowIdx + 1} of {rawData.length} {terms.plural} Synchronized
-                            </p>
-                            <div className="max-w-2xl mx-auto mt-8">
-                                <Progress value={progress} className="h-2" />
+                        <motion.div key="executing" className="flex flex-col items-center justify-center py-20 gap-8">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                                <Loader2 className="h-20 w-20 animate-spin text-primary relative" />
+                            </div>
+                            <div className="text-center">
+                                <h2 className="text-3xl font-semibold">Processing Import</h2>
+                                <p className="mt-3 text-muted-foreground font-bold">
+                                    Importing {rawData.length} {terms.plural.toLowerCase()} into {activeWorkspace?.name || 'workspace'}…
+                                </p>
                             </div>
                         </motion.div>
                     )}
 
                     {currentStep === 'COMPLETE' && (
                         <motion.div key="complete" className="space-y-8">
-                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card text-center">
-                                <CardHeader className={cn("py-16", failedRowIndices.length === 0 ? "bg-emerald-500/10" : "bg-orange-500/10")}>
-                                    <div className="mx-auto bg-card/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl">
-                                        <Check size={48} className={failedRowIndices.length === 0 ? "text-emerald-500" : "text-orange-500"} />
+                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
+                                <CardHeader className={cn("py-12 text-center", failedRowIndices.length === 0 ? "bg-emerald-500/10" : "bg-orange-500/10")}>
+                                    <div className="mx-auto w-20 h-20 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl bg-card">
+                                        {failedRowIndices.length === 0
+                                            ? <CheckCircle2 size={40} className="text-emerald-500" />
+                                            : <AlertCircle size={40} className="text-orange-500" />
+                                        }
                                     </div>
-                                    <CardTitle className="text-4xl font-semibold">Import Report</CardTitle>
-                                    <p className="text-base font-bold mt-4">
-                                        {executionResults.filter(r => r.status === 'success').length} {terms.plural} Synchronized
-                                    </p>
+                                    <CardTitle className="text-3xl font-semibold">Import Complete</CardTitle>
                                 </CardHeader>
-                                <CardContent className="p-12">
-                                    <div className="flex justify-between max-w-3xl mx-auto border-b pb-8 mb-8 text-left">
-                                        <div>
-                                            <p className="text-sm font-semibold text-muted-foreground mb-1">Success Rate</p>
-                                            <p className="text-4xl font-semibold text-emerald-600">
-                                                {rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%
-                                            </p>
+                                <CardContent className="p-10">
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-3 gap-6 mb-10">
+                                        <div className="text-center p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                                            <p className="text-3xl font-bold text-emerald-600">{executionResults.filter(r => r.status === 'success').length}</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase">Created</p>
                                         </div>
+                                        <div className="text-center p-6 rounded-2xl bg-rose-500/5 border border-rose-500/10">
+                                            <p className="text-3xl font-bold text-rose-600">{failedRowIndices.length}</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase">Failed</p>
+                                        </div>
+                                        <div className="text-center p-6 rounded-2xl bg-primary/5 border border-primary/10">
+                                            <p className="text-3xl font-bold text-primary">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase">Success Rate</p>
+                                        </div>
+                                    </div>
+                                    {/* Error Detail List */}
+                                    {failedRowIndices.length > 0 && (
+                                        <div className="mb-8 rounded-2xl border border-rose-200/50 overflow-hidden">
+                                            <div className="px-6 py-3 bg-rose-500/10 border-b border-rose-200/50">
+                                                <p className="text-xs font-bold text-rose-700">Failed Rows — {failedRowIndices.length} issue{failedRowIndices.length > 1 ? 's' : ''}</p>
+                                            </div>
+                                            <ScrollArea className="max-h-[200px]">
+                                                {executionResults.filter(r => r.status === 'error').map(r => (
+                                                    <div key={r.row} className="px-6 py-3 border-b border-rose-100 last:border-0 flex items-center gap-3">
+                                                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-none text-[9px] shrink-0">Row {r.row + 1}</Badge>
+                                                        <p className="text-xs text-rose-700 truncate">{r.error}</p>
+                                                    </div>
+                                                ))}
+                                            </ScrollArea>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-4">
                                         {failedRowIndices.length > 0 && (
-                                            <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="h-14 px-8 rounded-xl font-semibold text-xs gap-2 border-orange-200 text-orange-600 hover:bg-orange-50">
-                                                <AlertCircle size={16} /> Manage {failedRowIndices.length} Failures
+                                            <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="flex-1 h-14 rounded-xl font-semibold gap-2 border-orange-200 text-orange-600 hover:bg-orange-50">
+                                                <Pencil size={16} /> Fix & Retry
                                             </Button>
                                         )}
+                                        <Button onClick={() => router.push('/admin/entities')} className="flex-1 h-14 rounded-xl font-semibold shadow-xl gap-2">
+                                            Open Directory <ArrowRight size={16} />
+                                        </Button>
                                     </div>
-                                    <Button onClick={() => router.push('/admin/entities')} className="h-16 px-16 rounded-[1.5rem] font-semibold shadow-xl">
-                                        Open Directory <ArrowRight className="ml-2" />
-                                    </Button>
                                 </CardContent>
                             </Card>
                         </motion.div>
