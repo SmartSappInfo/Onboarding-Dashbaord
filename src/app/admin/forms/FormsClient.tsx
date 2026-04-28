@@ -69,6 +69,7 @@ import {
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { EntityAvatar } from '../components/EntityAvatar';
+import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -232,6 +233,18 @@ export default function FormsClient() {
             </Button>
           </TooltipTrigger>
           <TooltipContent><p>Preview Public Form</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <CreateQRButton
+              resourceType="form"
+              resourceId={form.id}
+              resourceName={form.internalName || form.title}
+              destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/f/${form.slug}` : `/p/f/${form.slug}`}
+              variant="icon"
+            />
+          </TooltipTrigger>
+          <TooltipContent><p>Generate QR Code</p></TooltipContent>
         </Tooltip>
         {canEdit && (
           <Tooltip>

@@ -19,12 +19,14 @@ import InternalNotificationConfig from '@/app/admin/components/internal-notifica
 import ExternalNotificationConfig from './external-notification-config';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import AttributionQRSheet from './attribution-qr-sheet';
 import { useUser } from '@/firebase';
 
 export default function Step4Publish() {
     const { allowedWorkspaces } = useWorkspace();
+    const { activeOrganizationId, activeWorkspaceId } = useTenant();
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
@@ -284,8 +286,8 @@ export default function Step4Publish() {
                     url={getFullUrl(qrSheetUser.id)}
                     userName={qrSheetUser.name}
                     surveyTitle={surveyTitle}
-                    workspaceId={workspaceIds[0] || ''}
-                    organizationId={organizationId}
+                    workspaceId={workspaceIds[0] || activeWorkspaceId || ''}
+                    organizationId={organizationId || activeOrganizationId || ''}
                     currentUser={{
                         userId: user?.uid || '',
                         name: user?.displayName || '',

@@ -75,6 +75,7 @@ import { cn } from '@/lib/utils';
 import type { CampaignPage, CampaignPageVersion, CampaignPageStructure, PageSection, PageTrigger, PageTriggerAction, PageBlock, PageBlockType } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 // Simple Builder Component Shell
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
@@ -594,6 +595,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             </a>
                         </Button>
                     )}
+                    <CreateQRButton
+                        resourceType="landing_page"
+                        resourceId={id}
+                        resourceName={page.name}
+                        destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}` : `/p/${page.slug}`}
+                        variant="icon"
+                    />
                     <Button 
                         variant="outline" 
                         disabled={saving}

@@ -49,6 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 export default function PdfsClient() {
   const firestore = useFirestore();
@@ -175,6 +176,18 @@ export default function PdfsClient() {
             </Button>
           </TooltipTrigger>
           <TooltipContent>View Public Page</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <CreateQRButton
+              resourceType="doc_signing"
+              resourceId={pdf.id}
+              resourceName={pdf.name}
+              destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/forms/${pdf.slug || pdf.id}` : `/forms/${pdf.slug || pdf.id}`}
+              variant="icon"
+            />
+          </TooltipTrigger>
+          <TooltipContent>Generate QR Code</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>

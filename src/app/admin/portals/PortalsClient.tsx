@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useTenant } from '@/context/TenantContext';
 import { SmartSappIcon } from '@/components/icons';
+import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 export default function PortalsClient() {
     const firestore = useFirestore();
@@ -135,6 +136,18 @@ export default function PortalsClient() {
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Copy URL</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <CreateQRButton
+                                        resourceType="public_portal"
+                                        resourceId={title.replace(/\s+/g, '-').toLowerCase()}
+                                        resourceName={title}
+                                        destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}${path}` : path}
+                                        variant="icon"
+                                    />
+                                </TooltipTrigger>
+                                <TooltipContent>Generate QR</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     </div>

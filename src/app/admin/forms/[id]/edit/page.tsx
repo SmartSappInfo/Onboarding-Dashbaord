@@ -8,6 +8,7 @@ import { useTenant } from '@/context/TenantContext';
 import type { Form, FormFieldInstance, AppField, FormThemeConfig, FormSubmissionActions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -811,6 +812,15 @@ export default function EditFormPage() {
                             <ExternalLink className="h-4 w-4" /> Preview
                           </a>
                         </Button>
+                        {typeof window !== 'undefined' && (
+                          <CreateQRButton
+                            resourceType="form"
+                            resourceId={formId}
+                            resourceName={formData.internalName || formData.title || 'Form'}
+                            destinationUrl={`${window.location.origin}/p/f/${formData.slug}`}
+                            variant="icon"
+                          />
+                        )}
                       </div>
                     </div>
 
