@@ -56,8 +56,9 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-
 import { useTerminology } from '@/hooks/use-terminology';
+import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
+import { useIndustry } from '@/context/IndustryContext';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -82,6 +83,7 @@ export default function EntitiesClient() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
+  const { industry } = useIndustry();
   const { 
     singular, 
     plural, 
@@ -251,9 +253,12 @@ export default function EntitiesClient() {
     if (!firestore || !entityToDelete) return;
     const docRef = doc(firestore, 'workspace_entities', entityToDelete.id);
     updateDoc(docRef, { status: 'archived', updatedAt: new Date().toISOString() }).then(() => {
-        toast({ title: `${singular} Archived`, description: `${entityToDelete.displayName} has been removed from this workspace.` });
+        const successMessage = getIndustrySuccessMessage('archive', industry, entityToDelete.displayName);
+        toast({ title: successMessage, description: `${entityToDelete.displayName} has been removed from this workspace.` });
         setEntityToDelete(null);
     }).catch((error) => {
+        const errorMessage = getIndustryErrorMessage('entity_delete_failed', industry, { entityName: entityToDelete.displayName, details: error.message });
+        toast({ variant: 'destructive', title: 'Archive Failed', description: errorMessage });
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update' }));
         setEntityToDelete(null);
     });

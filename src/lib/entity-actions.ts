@@ -13,6 +13,8 @@ import {
   normalizeContactType,
 } from './entity-contact-helpers';
 import { canUser } from './workspace-permissions';
+import { getWorkspaceIndustry, invalidateWorkspaceCache } from './industry-cache';
+import { validateIndustryData } from './industry-schemas';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -88,6 +90,43 @@ export async function convertToOnboardingAction(
 }
 
 /**
+ * Locks the industry scope on a workspace after the first entity is linked.
+ *
+ * Sets `industryScopeLocked: true` and `industryScopeLockedAt` on the workspace
+ * document, invalidates the industry cache, and logs a `workspace_scope_locked`
+ * activity.
+ *
+ * Requirements: 1.4, 2.2, 2.3, 2.6
+ */
+export async function lockWorkspaceScope(
+  workspaceId: string,
+  organizationId: string,
+  userId: string
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  await adminDb.collection('workspaces').doc(workspaceId).update({
+    industryScopeLocked: true,
+    industryScopeLockedAt: now,
+    updatedAt: now,
+  });
+
+  // Invalidate cache so subsequent reads reflect the locked state
+  invalidateWorkspaceCache(workspaceId);
+
+  // Log the scope-lock event (Requirement 2.6)
+  await logActivity({
+    organizationId,
+    workspaceId,
+    userId,
+    type: 'workspace_scope_locked',
+    source: 'system',
+    description: `Industry scope locked for workspace "${workspaceId}"`,
+    metadata: { lockedAt: now },
+  });
+}
+
+/**
  * Creates a new Entity record across 'entities' and 'workspace_entities'.
  * Uses server-side Firebase Admin SDK to bypass client-side security rules.
  */
@@ -103,6 +142,16 @@ export async function createEntityAction(
     const permission = await canUser(userId, 'operations', 'campuses', 'create', workspaceId);
     if (!permission.granted) {
       return { success: false, error: permission.reason };
+    }
+
+    // 1. Resolve workspace industry and scope-lock status (Requirements 2.1, 1.4)
+    const { industry: workspaceIndustry, industryScopeLocked } =
+      await getWorkspaceIndustry(workspaceId);
+
+    // 2. Validate industryData against workspace industry if provided (Requirement 3.9)
+    if (data.industryData) {
+      // Throws if industry mismatch or schema failure
+      validateIndustryData(data.industryData, workspaceIndustry);
     }
 
     const timestamp = new Date().toISOString();
@@ -192,6 +241,8 @@ export async function createEntityAction(
       entityContacts, // Canonical (FER-01)
       globalTags: data.globalTags || [],
       status: 'active',
+      // Inject workspace industry into entity (Requirement 1.4, 2.1)
+      industry: workspaceIndustry,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -203,6 +254,11 @@ export async function createEntityAction(
         entityData.familyData = data.familyData;
     } else if (entityType === 'person' && data.personData) {
         entityData.personData = data.personData;
+    }
+
+    // Append validated industry-specific data if provided (Requirement 3.1–3.9)
+    if (data.industryData) {
+      entityData.industryData = data.industryData;
     }
 
     // Save to Universal Identity Collection
@@ -248,7 +304,14 @@ export async function createEntityAction(
       type: 'entity_created',
       source: 'user_action',
       description: `registered new ${entityType}: "${displayName}" in workspace`,
+      // Include industry context (Requirements 2.1, 2.4)
+      metadata: { industry: workspaceIndustry },
     });
+
+    // Lock workspace industry scope after first entity link (Requirements 2.2, 2.6, 1.4)
+    if (!industryScopeLocked) {
+      await lockWorkspaceScope(workspaceId, organizationId, userId);
+    }
 
     revalidatePath('/admin/entities');
     revalidatePath('/admin/pipeline');

@@ -1,32 +1,86 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   AudioWaveform,
+  BarChart,
   BookOpen,
   Bot,
+  Briefcase,
+  Building2,
+  Calendar,
+  Clock,
   Command,
+  CreditCard,
+  Eye,
+  FileText,
   Frame,
   GalleryVerticalEnd,
+  GitBranch,
+  Handshake,
+  Heart,
+  Home,
+  LifeBuoy,
   Map,
+  Megaphone,
   PieChart,
+  Scale,
+  School,
   Settings2,
   SquareTerminal,
+  Target,
+  TestTube,
+  TrendingUp,
+  UserCheck,
+  Users,
+  type LucideIcon,
 } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useIndustry } from "@/context/IndustryContext"
+import type { SidebarItem } from "@/lib/industry-config"
 
-// This is sample data.
+// Icon mapping for industry sidebar items
+const ICON_MAP: Record<string, LucideIcon> = {
+  Building2,
+  Users,
+  TestTube,
+  CreditCard,
+  Heart,
+  LifeBuoy,
+  School,
+  GitBranch,
+  FileText,
+  UserCheck,
+  Scale,
+  Briefcase,
+  Calendar,
+  Clock,
+  Megaphone,
+  Target,
+  BarChart,
+  Home,
+  Eye,
+  Handshake,
+  TrendingUp,
+}
+
+// This is sample data for teams and user
 const data = {
   user: {
     name: "shadcn",
@@ -50,121 +104,62 @@ const data = {
       plan: "Free",
     },
   ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
 }
 
+/**
+ * Industry-aware navigation component
+ * Renders sidebar items based on workspace industry configuration
+ */
+function IndustryNav({ items }: { items: SidebarItem[] }) {
+  const pathname = usePathname()
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+      <SidebarMenu>
+        {items.map((item) => {
+          const Icon = ICON_MAP[item.icon] || Building2
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+
+          return (
+            <SidebarMenuItem key={item.key}>
+              <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                <Link href={item.href}>
+                  <Icon />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
+
+/**
+ * AppSidebar component with industry-specific navigation
+ * 
+ * Requirements:
+ * - 17.1-17.10: Display industry-specific sidebar items based on workspace industry
+ * - 2.4: Display industry-specific terminology in Workspace UI
+ * 
+ * Features:
+ * - Dynamically renders sidebar items from industry configuration
+ * - Highlights active route based on current pathname
+ * - Supports collapsible icon mode
+ * - Integrates with IndustryContext for workspace-scoped configuration
+ */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { sidebarItems, isLoading } = useIndustry()
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {!isLoading && <IndustryNav items={sidebarItems} />}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

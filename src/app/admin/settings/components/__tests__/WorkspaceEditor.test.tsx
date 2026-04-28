@@ -29,6 +29,8 @@ describe('WorkspaceEditor - Scope Display', () => {
       tasks: true
     },
     scopeLocked: true,
+    industry: 'SaaS',
+    industryScopeLocked: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
   };
@@ -53,6 +55,8 @@ describe('WorkspaceEditor - Scope Display', () => {
       tasks: true
     },
     scopeLocked: false,
+    industry: 'SaaS',
+    industryScopeLocked: false,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
   };

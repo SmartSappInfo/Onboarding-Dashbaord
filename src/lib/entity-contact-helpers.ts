@@ -260,8 +260,16 @@ export function focalPersonToEntityContact(
   const typeLabel = fp.type || 'Other';
   const typeKey = normalizeContactType(typeLabel);
 
+  // Generate deterministic ID based on contact data for idempotency
+  // Use a simple hash of name + email + phone to ensure same input = same ID
+  const idSeed = `${fp.name || ''}_${fp.email || ''}_${fp.phone || ''}_${index}`;
+  const idHash = idSeed.split('').reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+  }, 0);
+  const deterministicId = Math.abs(idHash).toString(36);
+
   const contact: EntityContact = {
-    id: `ec_migrated_${index}_${Date.now().toString(36)}`,
+    id: `ec_migrated_${index}_${deterministicId}`,
     name: fp.name || '',
     typeKey,
     typeLabel,

@@ -19,57 +19,48 @@ import {
 } from '../migration-monitoring';
 
 // Mock Firebase Admin
-vi.mock('../firebase-admin', () => ({
-  adminDb: {
-    collection: vi.fn(() => ({
-      doc: vi.fn(() => ({
-        id: 'test-log-id',
-        set: vi.fn(),
-        get: vi.fn(() => ({
-          exists: true,
-          data: () => ({
-            id: 'test-log-id',
-            operationType: 'fetch',
-            collection: 'tasks',
-            startedAt: new Date().toISOString(),
-            status: 'started',
-          }),
+vi.mock('../firebase-admin', () => {
+  // Create a chainable query mock
+  const createQueryMock = (): any => {
+    const queryMock: any = {
+      where: vi.fn(() => queryMock),
+      orderBy: vi.fn(() => queryMock),
+      limit: vi.fn(() => queryMock),
+      get: vi.fn(() => Promise.resolve({ docs: [] })),
+    };
+    return queryMock;
+  };
+
+  return {
+    adminDb: {
+      collection: vi.fn(() => ({
+        doc: vi.fn((id?: string) => ({
+          id: id || 'test-log-id',
+          set: vi.fn(() => Promise.resolve()),
+          get: vi.fn(() => Promise.resolve({
+            exists: true,
+            data: () => ({
+              id: 'test-log-id',
+              operationType: 'fetch',
+              collection: 'tasks',
+              startedAt: new Date().toISOString(),
+              status: 'started',
+            }),
+          })),
+          update: vi.fn(() => Promise.resolve()),
         })),
-        update: vi.fn(),
+        where: vi.fn(() => createQueryMock()),
+        orderBy: vi.fn(() => createQueryMock()),
+        limit: vi.fn(() => createQueryMock()),
+        get: vi.fn(() => Promise.resolve({ docs: [] })),
       })),
-      where: vi.fn(() => ({
-        where: vi.fn(() => ({
-          orderBy: vi.fn(() => ({
-            limit: vi.fn(() => ({
-              get: vi.fn(() => ({
-                docs: [],
-              })),
-            })),
-            get: vi.fn(() => ({
-              docs: [],
-            })),
-          })),
-          get: vi.fn(() => ({
-            docs: [],
-          })),
-        })),
-        orderBy: vi.fn(() => ({
-          limit: vi.fn(() => ({
-            get: vi.fn(() => ({
-              docs: [],
-            })),
-          })),
-          get: vi.fn(() => ({
-            docs: [],
-          })),
-        })),
-        get: vi.fn(() => ({
-          docs: [],
-        })),
+      batch: vi.fn(() => ({
+        delete: vi.fn(),
+        commit: vi.fn(() => Promise.resolve()),
       })),
-    })),
-  },
-}));
+    },
+  };
+});
 
 describe('Migration Monitoring', () => {
   describe('logMigrationOperationStart', () => {

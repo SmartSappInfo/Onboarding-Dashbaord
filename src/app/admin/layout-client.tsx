@@ -71,6 +71,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NavigationProvider } from '@/context/NavigationContext';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
+import { IndustryProvider } from '@/context/IndustryContext';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -393,7 +394,9 @@ export default function AdminLayoutClient({ children }: { children: ReactNode })
       <NavigationProvider>
         <GlobalFilterProvider>
           <TenantProvider>
-            <AdminLayoutContent>{children}</AdminLayoutContent>
+            <IndustryProvider>
+              <AdminLayoutContent>{children}</AdminLayoutContent>
+            </IndustryProvider>
           </TenantProvider>
         </GlobalFilterProvider>
       </NavigationProvider>

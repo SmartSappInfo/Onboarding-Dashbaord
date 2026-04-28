@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { Workspace } from './types';
 import { resolveTerminologyFromWorkspace } from './terminology';
+import { createDefaultPipelineForIndustry } from './pipeline-actions';
 
 /**
  * @fileOverview Server-side actions for Workspace Management.
@@ -91,6 +92,15 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
                 scopeLocked: false,
                 createdAt: timestamp
             });
+
+            // Create default pipeline for the workspace's industry (Requirement 14)
+            if (data.industry) {
+                const pipelineResult = await createDefaultPipelineForIndustry(newId, data.industry);
+                if (!pipelineResult.success) {
+                    console.warn(`[WORKSPACE:CREATE] Failed to create default pipeline for ${data.industry}:`, pipelineResult.error);
+                    // Don't fail workspace creation if pipeline creation fails
+                }
+            }
 
             // Check if organization has a default workspace. If not, set this one as default.
             if (data.organizationId) {

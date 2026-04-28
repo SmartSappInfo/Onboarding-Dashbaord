@@ -68,6 +68,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import PipelineAutomationsTab from '../components/PipelineAutomationsTab';
+import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
+import { useIndustry } from '@/context/IndustryContext';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -95,6 +97,7 @@ export default function EntityDetailPage() {
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
     const { activeWorkspaceId } = useWorkspace();
+    const { industry } = useIndustry();
     const { 
         singular, 
         plural, 
@@ -164,7 +167,15 @@ export default function EntityDetailPage() {
     useSetBreadcrumb(entityData?.name || weData?.displayName);
 
  if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
- if (!entityData || !weData) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">{singular} Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button></div>;
+ if (!entityData || !weData) {
+    const errorMessage = getIndustryErrorMessage('entity_not_found', industry);
+    return (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+            <h2 className="text-xl font-bold">{errorMessage}</h2>
+            <Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button>
+        </div>
+    );
+ }
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {
@@ -182,10 +193,12 @@ export default function EntityDetailPage() {
                 updatedAt: new Date().toISOString()
             });
             
-            toast({ title: 'Branding Synchronized', description: 'Institutional logo updated across the platform.' });
+            const successMessage = getIndustrySuccessMessage('update', industry, displayName);
+            toast({ title: 'Branding Synchronized', description: successMessage });
             setIsLogoDialogOpen(false);
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+            const errorMessage = getIndustryErrorMessage('entity_update_failed', industry, { entityName: displayName, details: e.message });
+            toast({ variant: 'destructive', title: 'Update Failed', description: errorMessage });
         } finally {
             setIsUpdatingLogo(false);
         }

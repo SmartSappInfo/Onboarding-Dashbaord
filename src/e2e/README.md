@@ -99,6 +99,22 @@ Tests the two-tier template management system:
 - **Test 17.5**: Meeting reminder is scheduled and appears in scheduled messages list
 - Category filtering in organization template list
 
+### `workspace-creation-industry.spec.ts`
+Tests workspace creation with industry selection:
+- **Test 30.1.1**: Creating a SaaS workspace shows "Accounts" terminology in sidebar and page title
+- **Test 30.1.2**: Creating a SchoolEnrollment workspace shows "Schools" terminology
+- **Test 30.1.3**: Industry select is disabled after first entity is linked (scope lock UI)
+- **Test 30.1.4**: Workspace filter by industry functionality
+
+### `industry-feature-visibility.spec.ts`
+Tests industry-specific feature visibility:
+- **Test 30.2.1**: SaaS workspace shows Trials, Subscriptions, Health sidebar items
+- **Test 30.2.2**: SaaS workspace does NOT show School Enrollment-specific items
+- **Test 30.2.3**: School Enrollment workspace shows Admissions, Enrollments sidebar items
+- **Test 30.2.4**: School Enrollment workspace does NOT show SaaS-specific items (Trials, Subscriptions)
+- **Test 30.2.5**: Law workspace shows Matters, Intake, Time Tracking sidebar items
+- **Test 30.2.6**: Feature-gated panels are hidden for wrong industry
+
 ## Test Data Management
 
 ### Creating Test Accounts

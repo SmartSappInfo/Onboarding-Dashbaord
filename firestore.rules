@@ -46,6 +46,21 @@ service cloud.firestore {
              (data != null && data.get('isAuthorized', false) == true && userWorkspaces.hasAny(targetWorkspaceIds));
     }
 
+    // Industry-specific helper function
+    // Requirement 10.9: Validate collection access based on Workspace Industry_Vertical
+    // Requirement 16.8: Gate read/write on hasWorkspaceAccess AND workspaceIndustryMatches
+    function workspaceIndustryMatches(workspaceId, requiredIndustry) {
+      let workspacePath = /databases/$(database)/documents/workspaces/$(workspaceId);
+      return exists(workspacePath) && get(workspacePath).data.industry == requiredIndustry;
+    }
+
+    function hasWorkspaceAccess(workspaceId) {
+      let data = getUserData();
+      let userWorkspaces = data != null ? data.get('workspaceIds', []) : [];
+      return isSystemAdmin() ||
+             (data != null && data.get('isAuthorized', false) == true && workspaceId in userWorkspaces);
+    }
+
     // --- Base Deny-All ---
     match /{document=**} {
       allow read, write: if false;
@@ -624,6 +639,416 @@ service cloud.firestore {
         (hasPermission('schools_edit') &&
          resource.data.workspaceId in getUserData().workspaceIds)
       );
+    }
+
+    // --- Industry-Specific Collections ---
+    // Requirement 10.9: Validate collection access based on Workspace Industry_Vertical
+    // Requirement 16.8: Gate read/write on hasWorkspaceAccess AND workspaceIndustryMatches
+    
+    // SaaS Industry Collections
+    match /trials/{trialId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('saas_trials_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SaaS'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('saas_trials_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /onboarding/{onboardingId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SaaS'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('finance_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SaaS'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('finance_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /supportTickets/{ticketId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SaaS'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /healthScores/{scoreId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SaaS'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SaaS') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // School Enrollment Industry Collections
+    match /applications/{applicationId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /schoolVisits/{visitId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'SchoolEnrollment'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('schoolenrollment_admissions_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'SchoolEnrollment') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // Law Industry Collections
+    match /matters/{matterId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('law_matters_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Law'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('law_matters_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /conflictChecks/{checkId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('law_conflict_check') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Law'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('law_conflict_check') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /timeTracking/{entryId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Law'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Law') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // Marketing Industry Collections
+    match /campaigns/{campaignId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Marketing'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('marketing_campaigns_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Marketing'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('marketing_campaigns_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Marketing') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /deliverables/{deliverableId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Marketing'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Marketing'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Marketing') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // Real Estate Industry Collections
+    match /properties/{propertyId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('realestate_properties_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'RealEstate'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('realestate_properties_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /viewings/{viewingId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('realestate_viewings_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'RealEstate'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('realestate_viewings_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /offers/{offerId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'RealEstate'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'RealEstate') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // Consultancy Industry Collections
+    match /engagements/{engagementId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Consultancy'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('consultancy_engagements_manage') &&
+         hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Consultancy'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('consultancy_engagements_manage') &&
+         hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Consultancy') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /milestones/{milestoneId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         workspaceIndustryMatches(resource.data.workspaceId, 'Consultancy'))
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         workspaceIndustryMatches(request.resource.data.workspaceId, 'Consultancy'))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         workspaceIndustryMatches(resource.data.workspaceId, 'Consultancy') &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && isSystemAdmin();
     }
   }
 }

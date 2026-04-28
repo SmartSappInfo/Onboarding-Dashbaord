@@ -1,4 +1,20 @@
 
+// ─────────────────────────────────────────────────
+// Industry Vertical Types (Requirement 1)
+// ─────────────────────────────────────────────────
+
+/**
+ * Supported industry verticals for workspace scoping.
+ * Each workspace is scoped to exactly one industry vertical.
+ */
+export type IndustryVertical =
+  | 'SaaS'
+  | 'SchoolEnrollment'
+  | 'Law'
+  | 'Marketing'
+  | 'RealEstate'
+  | 'Consultancy';
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -230,6 +246,8 @@ export interface Organization {
   claudeApiKey?: string; // Optional if using OpenRouter directly
   defaultWorkspaceId?: string;
   defaultRoleId?: string; // Default role for new invites
+  /** Optional default industry for new workspaces (Requirement 18) */
+  industry?: IndustryVertical;
   /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
   enabledFeatures?: FeatureToggleMap;
   /** Global default values applied when entities are created via survey submissions */
@@ -295,6 +313,12 @@ export interface Workspace {
     description?: string;
   };
   scopeLocked?: boolean; // True once first entity is linked
+  /** Industry vertical this workspace is scoped to (Requirement 2) */
+  industry: IndustryVertical;
+  /** True after first entity is linked — prevents industry changes (Requirement 2) */
+  industryScopeLocked: boolean;
+  /** Timestamp when industry scope was locked (Requirement 2) */
+  industryScopeLockedAt?: string;
   /** Workspace-level default values applied when entities are created via survey submissions */
   surveyEntityDefaults?: SurveyEntityDefaults;
   createdAt: string;
@@ -677,6 +701,12 @@ export interface Entity {
   institutionData?: InstitutionData;
   familyData?: FamilyData;
   personData?: PersonData;
+  // Industry-specific data (polymorphic, Requirement 3)
+  industry?: IndustryVertical;
+  industryData?: IndustryData;
+  // Migration fields (Requirement 12)
+  migrationStatus?: 'legacy' | 'migrated' | 'dual-write';
+  legacySchoolId?: string;
   // Reserved for future cross-entity relationships
   relatedEntityIds?: string[];
 }
@@ -2085,4 +2115,712 @@ export interface FormSubmission {
   ipAddress?: string;
   userAgent?: string;
   submittedAt: string;
+}
+
+// ─────────────────────────────────────────────────
+// Industry-Specific Data Types (Requirement 3)
+// Polymorphic discriminated unions for industry data
+// ─────────────────────────────────────────────────
+
+/**
+ * Polymorphic union of all industry-specific data structures.
+ * Discriminated by `industry` + `entityType` fields.
+ */
+export type IndustryData =
+  | SaaSInstitutionData
+  | SaaSPersonData
+  | SchoolEnrollmentInstitutionData
+  | LawInstitutionData
+  | LawPersonData
+  | MarketingInstitutionData
+  | MarketingPersonData
+  | RealEstateInstitutionData
+  | RealEstatePersonData
+  | ConsultancyInstitutionData
+  | ConsultancyPersonData;
+
+// ── SaaS Industry (Requirement 8 — Current System) ──
+
+export interface SaaSInstitutionData {
+  industry: 'SaaS';
+  entityType: 'institution';
+  companySize: number; // Maps from nominalRoll
+  planType: string; // Maps from subscriptionPackage
+  features: string[]; // Maps from modules
+  signupDate: string; // Maps from implementationDate (ISO string)
+  billingAddress?: string;
+  currency?: string;
+  subscriptionRate?: number;
+  accountStatus: 'lead' | 'trial' | 'active' | 'suspended' | 'churned';
+  renewalDate?: string;
+  customerTier?: 'basic' | 'pro' | 'enterprise';
+  trialIds?: string[];
+  onboardingIds?: string[];
+  subscriptionIds?: string[];
+  supportTicketIds?: string[];
+  healthScoreIds?: string[];
+}
+
+export interface SaaSPersonData {
+  industry: 'SaaS';
+  entityType: 'person';
+  role: 'admin' | 'manager' | 'user';
+  lastLoginDate?: string;
+  activationStatus: 'pending' | 'active' | 'inactive';
+}
+
+// ── School Enrollment Industry (Requirement 4) ──
+
+export interface SchoolEnrollmentInstitutionData {
+  industry: 'SchoolEnrollment';
+  entityType: 'institution';
+  gradeOfferings: string[];
+  academicYear: string;
+  enrollmentCapacity?: number;
+  currentEnrollment?: number;
+  applicationIds?: string[];
+  enrollmentIds?: string[];
+  schoolVisitIds?: string[];
+}
+
+// ── Law Industry (Requirement 5) ──
+
+export interface LawInstitutionData {
+  industry: 'Law';
+  entityType: 'institution';
+  firmType: 'solo' | 'partnership' | 'corporate';
+  practiceAreas: string[];
+  barAssociations?: string[];
+  conflictCheckRequired: boolean;
+  matterIds?: string[];
+  intakeFormIds?: string[];
+  conflictCheckIds?: string[];
+}
+
+export interface LawPersonData {
+  industry: 'Law';
+  entityType: 'person';
+  clientType: 'individual' | 'company';
+  legalIssueType?: string;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+}
+
+// ── Marketing Industry (Requirement 6) ──
+
+export interface MarketingInstitutionData {
+  industry: 'Marketing';
+  entityType: 'institution';
+  clientIndustry: string;
+  businessSize: { employees?: number; revenue?: number };
+  targetAudience?: string;
+  monthlyBudget?: number;
+  campaignIds?: string[];
+  proposalIds?: string[];
+  deliverableIds?: string[];
+}
+
+export interface MarketingPersonData {
+  industry: 'Marketing';
+  entityType: 'person';
+  role: string;
+  influenceLevel: 'decision-maker' | 'influencer' | 'user';
+  approvalAuthority: boolean;
+}
+
+// ── Real Estate Industry (Requirement 7) ──
+
+export interface RealEstateInstitutionData {
+  industry: 'RealEstate';
+  entityType: 'institution';
+  propertyPortfolio?: string[];
+  developerType: 'residential' | 'commercial' | 'mixed';
+  investmentFocus?: string;
+  propertyIds?: string[];
+}
+
+export interface RealEstatePersonData {
+  industry: 'RealEstate';
+  entityType: 'person';
+  clientType: 'buyer' | 'seller' | 'tenant' | 'landlord' | 'investor';
+  budgetRange?: { min: number; max: number };
+  preferredLocations?: string[];
+}
+
+// ── Consultancy Industry (Requirement 9) ──
+
+export interface ConsultancyInstitutionData {
+  industry: 'Consultancy';
+  entityType: 'institution';
+  clientIndustry: string;
+  companySize: { employees?: number; revenue?: number };
+  strategicPriorities?: string[];
+  painPoints?: string[];
+  discoveryIds?: string[];
+  proposalIds?: string[];
+  engagementIds?: string[];
+}
+
+export interface ConsultancyPersonData {
+  industry: 'Consultancy';
+  entityType: 'person';
+  role: string;
+  department?: string;
+  influenceLevel: 'decision-maker' | 'influencer' | 'user';
+  decisionMakingStyle?: 'fast' | 'consensus' | 'hierarchical';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Industry-Specific Collection Interfaces
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── SaaS Collections (Requirements 8.17–8.23) ──
+
+/** Trial management record for a SaaS account entity. */
+export interface Trial {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  trialStartDate: string; // ISO date string
+  trialEndDate: string; // ISO date string
+  trialStatus: 'active' | 'expired' | 'converted' | 'cancelled';
+  conversionDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Onboarding tracking record for a SaaS account entity. */
+export interface Onboarding {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  onboardingStatus: 'not_started' | 'in_progress' | 'completed' | 'stalled';
+  activationMilestones: {
+    name: string;
+    completed: boolean;
+    completedAt?: string;
+  }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Subscription billing record for a SaaS account entity. */
+export interface IndustrySubscription {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  planType: string;
+  billingCycle: 'monthly' | 'quarterly' | 'annual';
+  amount: number;
+  currency: string;
+  status: 'active' | 'past_due' | 'cancelled' | 'expired';
+  startDate: string;
+  renewalDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Support ticket record for a SaaS account entity. */
+export interface SupportTicket {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  issueType: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  resolutionTime?: number; // hours
+  satisfactionRating?: number; // 1–5
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+}
+
+/** Account health score snapshot for a SaaS entity. */
+export interface HealthScore {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  overallScore: number; // 0–100
+  usageScore: number;
+  supportScore: number;
+  engagementScore: number;
+  churnRisk: 'low' | 'medium' | 'high';
+  calculatedAt: string;
+  createdAt: string;
+}
+
+/** Product usage event record for a SaaS entity. */
+export interface ProductUsage {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  featureUsed: string;
+  frequency: number;
+  sessionDuration?: number; // seconds
+  engagementScore?: number;
+  recordedAt: string;
+  createdAt: string;
+}
+
+/** Feature adoption record tracking depth of usage for a SaaS entity. */
+export interface FeatureAdoption {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  featureName: string;
+  featureUsageStatus: 'not_used' | 'tried' | 'adopted' | 'champion';
+  adoptionDate?: string;
+  depthOfUsage?: 'shallow' | 'moderate' | 'deep';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── School Enrollment Collections (Requirements 4.7–4.10) ──
+
+/** Admission application record for a School Enrollment entity. */
+export interface Application {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // School entity
+  familyId?: string;
+  studentName: string;
+  gradeApplying: string;
+  applicationStatus: 'submitted' | 'under_review' | 'accepted' | 'rejected' | 'waitlisted';
+  submittedAt: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Student enrollment record for a School Enrollment entity. */
+export interface Enrollment {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // School entity
+  familyId?: string;
+  studentName: string;
+  grade: string;
+  academicYear: string;
+  enrollmentStatus: 'enrolled' | 'withdrawn' | 'graduated';
+  enrollmentDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** School visit / tour scheduling record. */
+export interface SchoolVisit {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // School entity
+  familyId?: string;
+  visitDate: string;
+  visitType: 'tour' | 'open_house' | 'shadow_day' | 'meeting';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  attendees?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Law Collections (Requirements 5.8–5.15) ──
+
+/** Legal matter / case record for a Law entity. */
+export interface Matter {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // Client entity
+  matterNumber: string;
+  matterType: string;
+  practiceArea: string;
+  status: 'intake' | 'active' | 'on_hold' | 'closed';
+  openedDate: string;
+  closedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Client intake form record for a Law entity. */
+export interface IntakeForm {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  matterId?: string;
+  formData: Record<string, unknown>;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Conflict-of-interest check record for a Law entity. */
+export interface ConflictCheck {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  checkStatus: 'pending' | 'clear' | 'conflict_found';
+  conflictDetails?: string;
+  checkedBy: string;
+  checkedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Consultation / meeting record for a Law entity. */
+export interface Consultation {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  matterId?: string;
+  consultationDate: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Related party (witness, opposing counsel, etc.) for a matter. */
+export interface RelatedParty {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  matterId: string;
+  name: string;
+  role: string; // e.g. 'witness', 'opposing_counsel', 'expert'
+  contactInfo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Legal document record associated with a matter. */
+export interface LegalDocument {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  matterId?: string;
+  documentName: string;
+  documentType: string;
+  storageUrl: string;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Billable time entry for a matter. */
+export interface TimeTracking {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // Client entity
+  matterId: string;
+  userId: string; // Attorney / staff
+  hours: number;
+  billableRate: number;
+  description: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Court date / deadline record for a matter. */
+export interface CourtDate {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  matterId: string;
+  entityId: string;
+  courtName?: string;
+  hearingType: string;
+  scheduledDate: string;
+  status: 'upcoming' | 'completed' | 'adjourned' | 'cancelled';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Marketing Collections (Requirements 6.8–6.13) ──
+
+/** Marketing campaign record for a Marketing entity. */
+export interface Campaign {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // Client entity
+  campaignName: string;
+  campaignType: string;
+  status: 'planning' | 'active' | 'paused' | 'completed';
+  budget: number;
+  startDate: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Proposal record for a Marketing entity. */
+export interface Proposal {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  proposalName: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  value?: number;
+  sentAt?: string;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Deliverable record for a campaign or engagement. */
+export interface Deliverable {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  campaignId?: string;
+  engagementId?: string;
+  deliverableName: string;
+  deliverableType: string;
+  status: 'pending' | 'in_progress' | 'review' | 'approved' | 'delivered';
+  dueDate: string;
+  completedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Performance metric snapshot for a campaign. */
+export interface PerformanceMetric {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  campaignId?: string;
+  metricName: string;
+  metricValue: number;
+  unit?: string;
+  recordedAt: string;
+  createdAt: string;
+}
+
+/** Client report record for a Marketing entity. */
+export interface ClientReport {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  campaignId?: string;
+  reportName: string;
+  reportPeriod: string;
+  storageUrl?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Strategy document record for a Marketing entity. */
+export interface StrategyDoc {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  docName: string;
+  docType: string;
+  storageUrl?: string;
+  version?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Real Estate Collections (Requirements 7.7–7.13) ──
+
+/** Property listing record for a Real Estate entity. */
+export interface Property {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // Owner / developer entity
+  propertyType: 'residential' | 'commercial' | 'land' | 'mixed';
+  address: string;
+  price: number;
+  status: 'available' | 'under_contract' | 'sold' | 'off_market';
+  listedDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Buyer / tenant property preference record. */
+export interface PropertyPreference {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string; // Buyer / tenant entity
+  propertyType?: 'residential' | 'commercial' | 'land' | 'mixed';
+  budgetRange?: { min: number; max: number };
+  preferredLocations?: string[];
+  bedrooms?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Property viewing / site visit record. */
+export interface Viewing {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  propertyId: string;
+  clientEntityId: string; // Buyer / tenant entity
+  viewingDate: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  feedback?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Offer record for a property. */
+export interface Offer {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  propertyId: string;
+  buyerEntityId: string;
+  offerAmount: number;
+  status: 'submitted' | 'under_review' | 'accepted' | 'rejected' | 'countered';
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Negotiation record between buyer and seller. */
+export interface Negotiation {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  propertyId: string;
+  offerId: string;
+  buyerEntityId: string;
+  sellerEntityId?: string;
+  status: 'in_progress' | 'agreed' | 'failed';
+  agreedPrice?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Closed deal / transaction record for a property. */
+export interface Deal {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  propertyId: string;
+  buyerEntityId: string;
+  sellerEntityId?: string;
+  dealValue: number;
+  closingDate: string;
+  status: 'pending' | 'closed' | 'fallen_through';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Property-related document record. */
+export interface PropertyDocument {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  propertyId: string;
+  entityId?: string;
+  documentName: string;
+  documentType: string;
+  storageUrl: string;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Consultancy Collections (Requirements 9.9–9.15) ──
+
+/** Discovery / needs-assessment session record for a Consultancy entity. */
+export interface Discovery {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  discoveryType: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  findings?: string;
+  completedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Consulting engagement / project record. */
+export interface Engagement {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  engagementName: string;
+  engagementType: string;
+  status: 'proposal' | 'active' | 'on_hold' | 'completed';
+  startDate: string;
+  endDate?: string;
+  value: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Milestone within a consulting engagement. */
+export interface Milestone {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  engagementId: string;
+  milestoneName: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed';
+  dueDate: string;
+  completedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Outcome / impact measurement record for a consulting engagement. */
+export interface Outcome {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  engagementId: string;
+  entityId: string;
+  outcomeDescription: string;
+  measuredValue?: number;
+  unit?: string;
+  measuredAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Retainer agreement record for a Consultancy entity. */
+export interface Retainer {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  retainerName: string;
+  monthlyValue: number;
+  currency: string;
+  status: 'active' | 'paused' | 'cancelled' | 'expired';
+  startDate: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }

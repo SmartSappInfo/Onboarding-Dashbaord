@@ -3,8 +3,9 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
-import type { Pipeline } from './types';
+import type { Pipeline, IndustryVertical } from './types';
 import { canUser } from './workspace-permissions';
+import { INDUSTRY_CONFIG } from './industry-config';
 
 /**
  * @fileOverview Server-side actions for Pipeline management.
@@ -103,4 +104,92 @@ export async function deletePipelineAction(id: string, userId: string) {
     } catch (e: any) {
         return { success: false, error: e.message };
     }
+}
+
+/**
+ * Creates a default pipeline for a workspace based on its industry vertical.
+ * Uses the pipeline template from INDUSTRY_CONFIG for the specified industry.
+ * 
+ * This function is automatically called when a new workspace is created.
+ * 
+ * @param workspaceId - The workspace ID to create the pipeline for
+ * @param industry - The industry vertical (SaaS, SchoolEnrollment, Law, Marketing, RealEstate, Consultancy)
+ * @returns Promise with success status and pipeline ID
+ * 
+ * Requirements: 14.1–14.10
+ */
+export async function createDefaultPipelineForIndustry(
+    workspaceId: string,
+    industry: IndustryVertical
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        const db = adminDb;
+        const timestamp = new Date().toISOString();
+
+        // Get the pipeline template for this industry
+        const industryContext = INDUSTRY_CONFIG[industry];
+        if (!industryContext) {
+            throw new Error(`Invalid industry vertical: ${industry}`);
+        }
+
+        const template = industryContext.pipelineTemplate;
+
+        // Create stage documents first
+        const stageIds: string[] = [];
+        const stagePromises = template.stages.map(async (stageName, index) => {
+            const stageRef = db.collection('stages').doc();
+            const stageId = stageRef.id;
+            stageIds.push(stageId);
+
+            await stageRef.set({
+                id: stageId,
+                name: stageName,
+                order: index + 1,
+                color: getStageColor(index),
+                createdAt: timestamp,
+                updatedAt: timestamp
+            });
+
+            return stageId;
+        });
+
+        await Promise.all(stagePromises);
+
+        // Create the pipeline document
+        const pipelineRef = db.collection('pipelines').doc();
+        const pipelineId = pipelineRef.id;
+
+        await pipelineRef.set({
+            id: pipelineId,
+            name: template.name,
+            description: `Default ${industry} pipeline`,
+            workspaceIds: [workspaceId],
+            stageIds,
+            accessRoles: [],
+            isDefault: true,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+
+        return { success: true, id: pipelineId };
+    } catch (e: any) {
+        console.error(`>>> [PIPELINE:CREATE_DEFAULT] Failed for industry ${industry}:`, e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Helper function to assign colors to pipeline stages based on their order.
+ * Provides a consistent color scheme across all industry pipelines.
+ */
+function getStageColor(index: number): string {
+    const colors = [
+        '#6B7280', // gray - initial stages (Lead, Enquiry, Intake)
+        '#3B82F6', // blue - qualification stages (Trial, Application, Conflict Check)
+        '#F59E0B', // amber - in-progress stages (Onboarding, Review, Planning)
+        '#10B981', // green - active/success stages (Active, Accepted, Execution)
+        '#8B5CF6', // purple - advanced stages (Renewal, Enrolled, Delivery)
+        '#EF4444', // red - terminal stages (Churned, Closed, Outcome)
+    ];
+    return colors[index % colors.length];
 }

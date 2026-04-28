@@ -98,6 +98,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         scopeLocked: false,
         status: 'active',
         statuses: [],
+        industry: 'SaaS',
+        industryScopeLocked: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -312,6 +314,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         scopeLocked: false,
         status: 'active',
         statuses: [],
+        industry: 'SaaS',
+        industryScopeLocked: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -588,6 +592,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         scopeLocked: false,
         status: 'active',
         statuses: [],
+        industry: 'SaaS',
+        industryScopeLocked: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -775,6 +781,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         scopeLocked: false,
         status: 'active',
         statuses: [],
+        industry: 'SaaS',
+        industryScopeLocked: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
@@ -874,6 +882,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
         scopeLocked: false,
         status: 'active',
         statuses: [],
+        industry: 'SaaS',
+        industryScopeLocked: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };

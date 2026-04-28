@@ -290,3 +290,242 @@ async function resolveFromSchool(
 
   return resolved;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dual-Read Migration Pattern Helpers (Requirement 11.8–11.10, 22.3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Maps a legacy School document to a SaaS Entity.
+ * 
+ * This transformation is used during migration to convert legacy schools
+ * (which are SaaS B2B accounts) into the new unified entity model.
+ * 
+ * Field Mappings (Requirement 11.4):
+ * - nominalRoll → companySize
+ * - subscriptionPackage → planType
+ * - modules → features
+ * - implementationDate → signupDate
+ * 
+ * @param school - Legacy school document from the schools collection
+ * @returns Entity with SaaSInstitutionData
+ */
+export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
+  const entityContacts = school.entityContacts || 
+    (school.focalPersons || []).map(focalPersonToEntityContact);
+
+  const saasIndustryData: import('./types').SaaSInstitutionData = {
+    industry: 'SaaS',
+    entityType: 'institution',
+    // Mapped from legacy fields (Requirement 11.4)
+    companySize: school.nominalRoll || 0,
+    planType: school.subscriptionPackageName || school.subscriptionPackageId || 'unknown',
+    features: (school.modules || []).map(m => m.name || m.abbreviation || m.id),
+    signupDate: school.implementationDate || school.createdAt,
+    // Existing billing fields
+    billingAddress: school.billingAddress,
+    currency: school.currency || 'GHS',
+    subscriptionRate: school.subscriptionRate,
+    // SaaS-specific fields (inferred from legacy data)
+    accountStatus: inferAccountStatus(school),
+    renewalDate: undefined, // Not available in legacy data
+    customerTier: inferCustomerTier(school),
+    // Collection references (empty for legacy data)
+    trialIds: [],
+    onboardingIds: [],
+    subscriptionIds: [],
+    supportTicketIds: [],
+    healthScoreIds: [],
+  };
+
+  const entity: Entity = {
+    id: school.id,
+    organizationId: school.organizationId || '',
+    entityType: 'institution',
+    name: school.name,
+    slug: school.slug,
+    entityContacts,
+    globalTags: [], // Legacy schools don't have global tags
+    status: school.status === 'archived' ? 'archived' : 'active',
+    createdAt: school.createdAt,
+    updatedAt: school.updatedAt || school.createdAt,
+    // Industry-specific data
+    industry: 'SaaS',
+    industryData: saasIndustryData,
+    // Institution-specific data (for backward compatibility)
+    institutionData: {
+      nominalRoll: school.nominalRoll,
+      subscriptionPackageId: school.subscriptionPackageId,
+      subscriptionRate: school.subscriptionRate,
+      billingAddress: school.billingAddress,
+      currency: school.currency,
+      modules: school.modules,
+      implementationDate: school.implementationDate,
+      referee: school.referee,
+      logoUrl: school.logoUrl,
+      heroImageUrl: school.heroImageUrl,
+      initials: school.initials,
+      slogan: school.slogan,
+      discountPercentage: school.discountPercentage,
+      arrearsBalance: school.arrearsBalance,
+      creditBalance: school.creditBalance,
+      location: school.zone ? {
+        zone: school.zone,
+        locationString: school.location,
+      } : undefined,
+    },
+    // Migration tracking
+    migrationStatus: school.migrationStatus || 'legacy',
+    legacySchoolId: school.id,
+  };
+
+  return entity;
+}
+
+/**
+ * Infers SaaS account status from legacy school data.
+ */
+function inferAccountStatus(school: School): 'lead' | 'trial' | 'active' | 'suspended' | 'churned' {
+  if (school.status === 'Inactive' || school.status === 'archived') {
+    return 'churned';
+  }
+  if (school.lifecycleStatus === 'Lead') {
+    return 'lead';
+  }
+  if (school.lifecycleStatus === 'Onboarding') {
+    return 'trial';
+  }
+  if (school.lifecycleStatus === 'Active') {
+    return 'active';
+  }
+  if (school.lifecycleStatus === 'Churned') {
+    return 'churned';
+  }
+  // Default to active for legacy data
+  return 'active';
+}
+
+/**
+ * Infers customer tier from legacy school data.
+ */
+function inferCustomerTier(school: School): 'basic' | 'pro' | 'enterprise' | undefined {
+  const packageName = school.subscriptionPackageName?.toLowerCase() || '';
+  if (packageName.includes('enterprise')) return 'enterprise';
+  if (packageName.includes('pro') || packageName.includes('premium')) return 'pro';
+  if (packageName.includes('basic') || packageName.includes('starter')) return 'basic';
+  return undefined;
+}
+
+/**
+ * Reads an entity from the legacy schools collection.
+ * 
+ * This helper is used during the dual-read migration pattern to support
+ * entities that haven't been migrated yet (migrationStatus: 'legacy').
+ * 
+ * @param legacySchoolId - ID of the school document in the schools collection
+ * @returns Entity mapped from the legacy school, or null if not found
+ */
+export async function readFromLegacySchools(legacySchoolId: string): Promise<Entity | null> {
+  try {
+    const schoolRef = adminDb.collection('schools').doc(legacySchoolId);
+    const schoolSnap = await schoolRef.get();
+    
+    if (!schoolSnap.exists) {
+      return null;
+    }
+
+    const school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+    return await mapSchoolToSaaSEntity(school);
+  } catch (error: any) {
+    console.error(`[ADAPTER] Failed to read from legacy schools collection:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Reads an entity from the new entities collection.
+ * 
+ * This helper is used during the dual-read migration pattern to support
+ * entities that have been migrated (migrationStatus: 'migrated' or 'dual-write').
+ * 
+ * @param entityId - ID of the entity document in the entities collection
+ * @returns Entity from the entities collection, or null if not found
+ */
+export async function readFromEntities(entityId: string): Promise<Entity | null> {
+  try {
+    const entityRef = adminDb.collection('entities').doc(entityId);
+    const entitySnap = await entityRef.get();
+    
+    if (!entitySnap.exists) {
+      return null;
+    }
+
+    const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
+    return entity;
+  } catch (error: any) {
+    console.error(`[ADAPTER] Failed to read from entities collection:`, error.message);
+    return null;
+  }
+}
+
+/**
+ * Gets an entity by ID, branching on migrationStatus to read from the appropriate collection.
+ * 
+ * Migration Status Branching (Requirement 11.8–11.10):
+ * - 'legacy': Read from schools collection only
+ * - 'dual-write': Read from entities collection with fallback to schools
+ * - 'migrated': Read from entities collection only
+ * 
+ * @param entityId - Entity ID (or legacy school ID)
+ * @param migrationStatus - Migration status of the entity
+ * @returns Entity from the appropriate collection, or null if not found
+ */
+export async function getEntity(
+  entityId: string,
+  migrationStatus?: 'legacy' | 'migrated' | 'dual-write'
+): Promise<Entity | null> {
+  if (!entityId) return null;
+
+  try {
+    // Determine migration status if not provided
+    let status = migrationStatus;
+    if (!status) {
+      // Try to read from entities first to check migration status
+      const entity = await readFromEntities(entityId);
+      if (entity) {
+        status = entity.migrationStatus || 'migrated';
+      } else {
+        // If not in entities, assume legacy
+        status = 'legacy';
+      }
+    }
+
+    // Branch on migration status (Requirement 11.8–11.10)
+    switch (status) {
+      case 'legacy':
+        // Read from schools collection only
+        return await readFromLegacySchools(entityId);
+
+      case 'dual-write':
+        // Read from entities with fallback to schools
+        const entityFromNew = await readFromEntities(entityId);
+        if (entityFromNew) {
+          return entityFromNew;
+        }
+        // Fallback to legacy schools collection
+        // If entity has legacySchoolId, use it; otherwise use entityId
+        return await readFromLegacySchools(entityId);
+
+      case 'migrated':
+        // Read from entities only
+        return await readFromEntities(entityId);
+
+      default:
+        console.warn(`[ADAPTER] Unknown migration status: ${status}`);
+        return await readFromEntities(entityId);
+    }
+  } catch (error: any) {
+    console.error(`[ADAPTER] Failed to get entity ${entityId}:`, error.message);
+    return null;
+  }
+}
