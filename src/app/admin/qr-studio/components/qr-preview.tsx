@@ -67,7 +67,13 @@ export default function QRPreview({ data, design: designOverrides, size, classNa
 
     // Logo support
     if (design.logoUrl) {
-      opts.image = design.logoUrl;
+      let finalLogoUrl = design.logoUrl;
+      // If it's not a relative path and not from our own domain, proxy it to prevent canvas tainting
+      if (finalLogoUrl.startsWith('http') && !finalLogoUrl.includes(window.location.host) && !finalLogoUrl.includes('firebasestorage.googleapis.com')) {
+        finalLogoUrl = `/api/proxy-image?url=${encodeURIComponent(finalLogoUrl)}`;
+      }
+      
+      opts.image = finalLogoUrl;
       opts.imageOptions = {
         crossOrigin: 'anonymous',
         margin: design.logoMargin ?? 5,
@@ -161,7 +167,13 @@ export async function downloadQR(
   }
 
   if (merged.logoUrl) {
-    opts.image = merged.logoUrl;
+    let finalLogoUrl = merged.logoUrl;
+    // Proxy external images for download as well
+    if (finalLogoUrl.startsWith('http') && !finalLogoUrl.includes(window.location.host) && !finalLogoUrl.includes('firebasestorage.googleapis.com')) {
+      finalLogoUrl = `/api/proxy-image?url=${encodeURIComponent(finalLogoUrl)}`;
+    }
+      
+    opts.image = finalLogoUrl;
     opts.imageOptions = {
       crossOrigin: 'anonymous',
       margin: merged.logoMargin ?? 5,

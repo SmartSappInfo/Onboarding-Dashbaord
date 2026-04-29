@@ -69,6 +69,43 @@ function generateSlug(name: string): string {
 }
 
 /**
+ * Basic heuristic check to prevent generation of QR codes for known bad patterns.
+ * This checks for common phishing keywords, sketchy TLDs, or raw IPs which
+ * are often used in malicious links.
+ */
+function validateSafeUrl(url: string | undefined) {
+  if (!url) return;
+  
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    
+    // 1. Block raw IPs (often used for malware hosting)
+    const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (ipPattern.test(hostname)) {
+      throw new Error('Raw IP addresses are not permitted for security reasons.');
+    }
+    
+    // 2. Block sketchy TLDs commonly used for spam
+    const suspiciousTLDs = ['.zip', '.xxx', '.ru', '.cn', '.tk', '.ml', '.ga', '.cf', '.gq'];
+    if (suspiciousTLDs.some(tld => hostname.endsWith(tld))) {
+      throw new Error('This domain extension is currently restricted.');
+    }
+
+    // 3. Block malicious file extensions in path
+    const suspiciousExts = ['.exe', '.apk', '.bat', '.cmd', '.sh', '.vbs'];
+    if (suspiciousExts.some(ext => parsed.pathname.toLowerCase().endsWith(ext))) {
+      throw new Error('Linking directly to executable files is restricted.');
+    }
+  } catch (err: any) {
+    if (err.message.includes('restricted') || err.message.includes('security')) {
+      throw err;
+    }
+    // If it's just an invalid URL parse error, we let it pass or fail elsewhere
+  }
+}
+
+/**
  * Generates a unique shortPath for dynamic QR codes.
  * Checks Firestore for collisions and retries up to 3 times.
  */
@@ -107,6 +144,11 @@ export interface CreateQRCodeInput {
 }
 
 export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: string; shortPath?: string }> {
+  // Validate destination safety
+  if (input.type === 'url' && input.destination?.url) {
+    validateSafeUrl(input.destination.url);
+  }
+
   const col = qrCodesCollection(input.organizationId, input.workspaceId);
   const id = nanoid(12);
   
@@ -323,6 +365,11 @@ export async function updateQRCode(
   qrId: string,
   updates: Partial<Pick<QRCode, 'name' | 'description' | 'destination' | 'design' | 'tracking' | 'status'>>
 ): Promise<void> {
+  // Validate destination safety on update
+  if (updates.destination?.url) {
+    validateSafeUrl(updates.destination.url);
+  }
+
   const col = qrCodesCollection(orgId, wsId);
   await col.doc(qrId).update(
     stripUndefined({

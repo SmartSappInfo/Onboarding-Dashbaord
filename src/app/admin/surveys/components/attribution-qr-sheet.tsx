@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { QrCode, Download, Save, Radio, Lock, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { downloadQR } from '@/app/admin/qr-studio/components/qr-preview';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createQRCode, getQRCodeByUrl, updateQRCode } from '@/lib/qr-actions';
 import type { QRDesign } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
@@ -83,10 +84,10 @@ export default function AttributionQRSheet({
         return () => { isMounted = false; };
     }, [open, url, workspaceId, organizationId, userName, surveyTitle]);
 
-    const handleDownload = async () => {
+    const handleDownload = async (format: 'png' | 'jpg' | 'svg') => {
         try {
-            await downloadQR(url, design, 'png', name.replace(/[^a-zA-Z0-9-_ ]/g, ''));
-            toast({ title: 'QR Downloaded', description: 'PNG file saved to your downloads.' });
+            await downloadQR(url, design, format, name.replace(/[^a-zA-Z0-9-_ ]/g, ''));
+            toast({ title: 'QR Downloaded', description: `${format.toUpperCase()} file saved to your downloads.` });
         } catch {
             toast({ title: 'Download Failed', description: 'Could not generate QR image.', variant: 'destructive' });
         }
@@ -255,15 +256,29 @@ export default function AttributionQRSheet({
                     </div>
 
                     <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <Button
-                            variant="outline"
-                            className="h-11 rounded-xl font-bold text-xs px-6 w-full sm:w-auto"
-                            onClick={handleDownload}
-                            disabled={isLoading}
-                        >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="h-11 rounded-xl font-bold text-xs px-6 w-full sm:w-auto"
+                                    disabled={isLoading}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl">
+                                <DropdownMenuItem onClick={() => handleDownload('png')} className="font-medium text-xs">
+                                    Download PNG (Best for web)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownload('jpg')} className="font-medium text-xs">
+                                    Download JPG
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownload('svg')} className="font-medium text-xs">
+                                    Download SVG (Best for print/vector)
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                             className="h-11 rounded-xl font-bold text-xs px-8 shadow-lg shadow-primary/20 w-full sm:w-auto transition-all"
                             onClick={handleSaveToStudio}
