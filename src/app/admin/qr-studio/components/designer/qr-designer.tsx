@@ -50,7 +50,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
   const updateDesign = React.useCallback(
     (patch: Partial<QRDesign>) => {
       // Clean up gradient if a solid color template is applied
-      if ('gradient' in patch && patch.gradient === undefined) {
+      if (patch && 'gradient' in patch && patch.gradient === undefined) {
         delete patch.gradient; // It's safer to leave it or let qr-preview handle it via our recent fix
       }
       setPast(prev => [...prev, design]);
