@@ -4,149 +4,77 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { AppField } from '@/lib/types';
-import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction } from '@/lib/fields-actions';
+import type { AppField, FieldGroup, EntityType } from '@/lib/types';
+import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction, createFieldGroupAction, updateFieldGroupAction, deleteFieldGroupAction, reorderFieldGroupsAction } from '@/lib/fields-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Database,
-  Search,
-  Plus,
-  Pencil,
-  Trash2,
-  Copy,
-  Lock,
-  Loader2,
-  Save,
-  Hash,
-  FileText,
-  BookOpen,
-  Layers,
-  RefreshCw,
-  CheckCircle2,
-  ShieldCheck,
-  ListFilter,
-  Code,
-  Zap,
-  Calendar,
-  Mail,
-  Phone,
-  CaseSensitive,
-  ToggleLeft,
-  Link as LinkIcon,
-  MapPin,
-  Eye,
-  EyeOff,
-  LayoutGrid,
-  Download,
-} from 'lucide-react';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // ────────────────────────────────────────────
 // Constants
 // ────────────────────────────────────────────
 
 const FIELD_TYPES: { value: AppField['type']; label: string; icon: React.ElementType }[] = [
-  { value: 'short_text', label: 'Short Text', icon: CaseSensitive },
-  { value: 'long_text', label: 'Long Text', icon: FileText },
-  { value: 'email', label: 'Email', icon: Mail },
-  { value: 'phone', label: 'Phone', icon: Phone },
-  { value: 'number', label: 'Number', icon: Hash },
-  { value: 'currency', label: 'Currency', icon: Hash },
-  { value: 'date', label: 'Date', icon: Calendar },
-  { value: 'datetime', label: 'Date & Time', icon: Calendar },
-  { value: 'select', label: 'Dropdown', icon: ListFilter },
-  { value: 'multi_select', label: 'Multi-Select', icon: ListFilter },
-  { value: 'radio', label: 'Radio', icon: ToggleLeft },
-  { value: 'checkbox', label: 'Checkbox', icon: ToggleLeft },
-  { value: 'yes_no', label: 'Yes / No', icon: ToggleLeft },
-  { value: 'address', label: 'Address', icon: MapPin },
-  { value: 'url', label: 'URL', icon: LinkIcon },
-  { value: 'hidden', label: 'Hidden', icon: EyeOff },
-];
-
-const SECTION_OPTIONS = [
-  { value: 'common', label: 'Common' },
-  { value: 'institution', label: 'Institution' },
-  { value: 'family', label: 'Family' },
-  { value: 'child', label: 'Child' },
-  { value: 'custom_admissions', label: 'Admissions' },
-  { value: 'custom_marketing', label: 'Marketing' },
+  { value: 'short_text', label: 'Short Text', icon: LucideIcons.CaseSensitive },
+  { value: 'long_text', label: 'Long Text', icon: LucideIcons.FileText },
+  { value: 'email', label: 'Email', icon: LucideIcons.Mail },
+  { value: 'phone', label: 'Phone', icon: LucideIcons.Phone },
+  { value: 'number', label: 'Number', icon: LucideIcons.Hash },
+  { value: 'currency', label: 'Currency', icon: LucideIcons.Hash },
+  { value: 'date', label: 'Date', icon: LucideIcons.Calendar },
+  { value: 'datetime', label: 'Date & Time', icon: LucideIcons.Calendar },
+  { value: 'select', label: 'Dropdown', icon: LucideIcons.ListFilter },
+  { value: 'multi_select', label: 'Multi-Select', icon: LucideIcons.ListFilter },
+  { value: 'radio', label: 'Radio', icon: LucideIcons.ToggleLeft },
+  { value: 'checkbox', label: 'Checkbox', icon: LucideIcons.ToggleLeft },
+  { value: 'yes_no', label: 'Yes / No', icon: LucideIcons.ToggleLeft },
+  { value: 'address', label: 'Address', icon: LucideIcons.MapPin },
+  { value: 'url', label: 'URL', icon: LucideIcons.LinkIcon },
+  { value: 'hidden', label: 'Hidden', icon: LucideIcons.EyeOff },
 ];
 
 const SCOPE_OPTIONS = [
-  { value: 'common', label: 'Common' },
-  { value: 'institution', label: 'Institution' },
+  { value: 'common', label: 'Common (All)' },
+  { value: 'institution', label: 'Institution/Company' },
   { value: 'family', label: 'Family' },
-  { value: 'person', label: 'Person' },
+  { value: 'person', label: 'Person/Contact' },
   { value: 'submission-only', label: 'Submission Only' },
-  { value: 'internal-only', label: 'Internal Only' },
-];
-
-const CONTEXTUAL_VARIABLES = [
-  { key: 'agreement_url', label: 'Institutional Signing Link', category: 'Finance', description: 'Link to the agreement signing page for the entity.' },
-  { key: 'subscription_total', label: 'Total Amount', category: 'Finance', description: 'Computed as nominal roll × subscription rate.' },
-  { key: 'meeting_time', label: 'Meeting Time', category: 'Meetings', description: 'Scheduled date/time for the meeting.' },
-  { key: 'meeting_link', label: 'Meeting Link', category: 'Meetings', description: 'Virtual meeting URL (Zoom, Google Meet, etc).' },
-  { key: 'meeting_type', label: 'Meeting Type', category: 'Meetings', description: 'Type/category of the meeting.' },
-  { key: 'survey_score', label: 'Respondent Score', category: 'Surveys', description: 'The score achieved by a survey respondent.' },
-  { key: 'max_score', label: 'Survey Max Points', category: 'Surveys', description: 'Maximum possible score for a survey.' },
-  { key: 'outcome_label', label: 'Logic Result Name', category: 'Surveys', description: 'The outcome label from conditional survey logic.' },
-  { key: 'result_url', label: 'Public Result Link', category: 'Surveys', description: 'Shareable URL for survey results.' },
 ];
 
 type FieldFormData = {
+  groupId: string;
   label: string;
   variableName: string;
   type: AppField['type'];
-  section: string;
   helpText: string;
   placeholder: string;
   compatibilityScope: string[];
   validationRequired: boolean;
-  options: string; // Comma-separated for select/radio
+  options: string;
 };
 
-const defaultFormData: FieldFormData = {
+const defaultFieldData: FieldFormData = {
+  groupId: '',
   label: '',
   variableName: '',
   type: 'short_text',
-  section: 'common',
   helpText: '',
   placeholder: '',
   compatibilityScope: ['common'],
@@ -154,24 +82,158 @@ const defaultFormData: FieldFormData = {
   options: '',
 };
 
+type GroupFormData = {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  entityTypes: EntityType[];
+};
+
+const defaultGroupData: GroupFormData = {
+  name: '',
+  description: '',
+  icon: 'Database',
+  color: '#3b82f6',
+  entityTypes: ['institution', 'person'],
+};
+
 // ────────────────────────────────────────────
-// Helper Functions 
+// Helper Components
 // ────────────────────────────────────────────
 
 function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .substring(0, 50);
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 50);
 }
 
-function getTypeIcon(type: AppField['type']): React.ElementType {
-  return FIELD_TYPES.find(ft => ft.value === type)?.icon || CaseSensitive;
-}
+function SortableGroupAccordionItem({ 
+  group, 
+  fields, 
+  onEditGroup, 
+  onDeleteGroup, 
+  onAddField, 
+  onEditField, 
+  onDeleteField,
+  onCopyVariable
+}: { 
+  group: FieldGroup; 
+  fields: AppField[]; 
+  onEditGroup: (g: FieldGroup) => void;
+  onDeleteGroup: (g: FieldGroup) => void;
+  onAddField: (g: FieldGroup) => void;
+  onEditField: (f: AppField) => void;
+  onDeleteField: (f: AppField) => void;
+  onCopyVariable: (v: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : 0, position: isDragging ? 'relative' : 'static' as any };
+  
+  const Icon = (LucideIcons as any)[group.icon] || LucideIcons.Database;
 
-function getTypeLabel(type: AppField['type']): string {
-  return FIELD_TYPES.find(ft => ft.value === type)?.label || type;
+  return (
+    <AccordionItem ref={setNodeRef} style={style} value={group.id} className={cn("bg-card border rounded-lg mb-3 overflow-hidden shadow-sm", isDragging && "opacity-50 ring-2 ring-primary")}>
+      <div className="flex items-center px-2 border-b bg-muted/20">
+        <div {...attributes} {...listeners} className="cursor-grab p-2 hover:bg-muted rounded text-muted-foreground touch-none">
+          <LucideIcons.GripVertical className="h-4 w-4" />
+        </div>
+        <div className="flex-1">
+          <AccordionTrigger className="hover:no-underline py-3 px-2">
+            <div className="flex items-center gap-3 w-full">
+              <div className="p-2 rounded-md flex-shrink-0" style={{ backgroundColor: `${group.color}20`, color: group.color }}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col items-start text-left">
+                <span className="font-semibold text-sm">{group.name}</span>
+                <span className="text-xs text-muted-foreground">{fields.length} field{fields.length !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          </AccordionTrigger>
+        </div>
+        <div className="flex items-center gap-2 pr-4">
+          <Button variant="outline" size="sm" onClick={() => onAddField(group)}>
+            <LucideIcons.Plus className="h-3 w-3 mr-1" /> Add Field
+          </Button>
+          {!group.isSystem && (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEditGroup(group)}>
+                <LucideIcons.Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDeleteGroup(group)}>
+                <LucideIcons.Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {group.isSystem && <Badge variant="secondary" className="ml-2 font-normal text-xs"><LucideIcons.Lock className="h-3 w-3 mr-1" /> System</Badge>}
+        </div>
+      </div>
+      <AccordionContent className="p-0 border-t-0">
+        {fields.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground text-sm bg-muted/10">
+            No fields in this group.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[250px]">Field Label</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Variable Tag</TableHead>
+                <TableHead>Scope</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fields.map(field => {
+                const FieldIcon = FIELD_TYPES.find(t => t.value === field.type)?.icon || LucideIcons.CaseSensitive;
+                return (
+                  <TableRow key={field.id} className={cn(!field.isNative && "bg-muted/5")}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {field.isNative && <LucideIcons.Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                        {field.label}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <FieldIcon className="h-3.5 w-3.5" />
+                        {FIELD_TYPES.find(t => t.value === field.type)?.label || field.type}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <button 
+                        onClick={() => onCopyVariable(`{{${field.variableName}}}`)}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-xs font-mono"
+                      >
+                        {`{{${field.variableName}}}`}
+                        <LucideIcons.Copy className="h-3 w-3" />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {field.compatibilityScope.map(scope => (
+                          <Badge key={scope} variant="outline" className="text-[10px] uppercase">{scope}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditField(field)}>
+                        <LucideIcons.Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {!field.isNative && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => onDeleteField(field)}>
+                          <LucideIcons.Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </AccordionContent>
+    </AccordionItem>
+  );
 }
 
 // ────────────────────────────────────────────
@@ -180,747 +242,466 @@ function getTypeLabel(type: AppField['type']): string {
 
 export default function FieldsClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeOrganizationId } = useTenant();
+  const { activeWorkspaceId, activeOrganizationId, isSuperAdmin } = useTenant();
   const { user } = useUser();
   const { toast } = useToast();
 
-  // State
-  const [mainTab, setMainTab] = React.useState<'native' | 'custom' | 'sections' | 'variables'>('native');
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [isSeeding, setIsSeeding] = React.useState(false);
-  const [isCreateOpen, setIsCreateOpen] = React.useState(false);
-  const [editingField, setEditingField] = React.useState<AppField | null>(null);
-  const [deletingField, setDeletingField] = React.useState<AppField | null>(null);
-  const [formData, setFormData] = React.useState<FieldFormData>(defaultFormData);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  // Live Firestore subscription
-  const fieldsQuery = useMemoFirebase(() => {
+  // Queries
+  const groupsQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'app_fields'),
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('section', 'asc')
-    );
+    return query(collection(firestore, 'field_groups'), where('workspaceId', '==', activeWorkspaceId), orderBy('order', 'asc'));
   }, [firestore, activeWorkspaceId]);
 
-  const { data: fields, isLoading } = useCollection<AppField>(fieldsQuery);
+  const fieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspaceId));
+  }, [firestore, activeWorkspaceId]);
 
-  // Derived data
-  const nativeFields = React.useMemo(() => fields?.filter(f => f.isNative) || [], [fields]);
-  const customFields = React.useMemo(() => fields?.filter(f => !f.isNative) || [], [fields]);
+  const { data: rawGroups, isLoading: loadingGroups } = useCollection<FieldGroup>(groupsQuery);
+  const { data: fields, isLoading: loadingFields } = useCollection<AppField>(fieldsQuery);
 
-  const sections = React.useMemo(() => {
-    if (!fields) return [];
-    const sectionMap = new Map<string, { count: number; native: number; custom: number }>();
-    fields.forEach(f => {
-      const sec = sectionMap.get(f.section) || { count: 0, native: 0, custom: 0 };
-      sec.count++;
-      if (f.isNative) sec.native++; else sec.custom++;
-      sectionMap.set(f.section, sec);
-    });
-    return Array.from(sectionMap.entries()).map(([name, stats]) => ({ name, ...stats }));
-  }, [fields]);
+  const [groups, setGroups] = React.useState<FieldGroup[]>([]);
+  React.useEffect(() => {
+    if (rawGroups) setGroups(rawGroups);
+  }, [rawGroups]);
 
-  const filteredFields = React.useMemo(() => {
-    const source = mainTab === 'native' ? nativeFields : customFields;
-    if (!searchTerm) return source;
+  // State
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isSeeding, setIsSeeding] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // Modals
+  const [fieldModalOpen, setFieldModalOpen] = React.useState(false);
+  const [editingField, setEditingField] = React.useState<AppField | null>(null);
+  const [fieldForm, setFieldForm] = React.useState<FieldFormData>(defaultFieldData);
+
+  const [groupModalOpen, setGroupModalOpen] = React.useState(false);
+  const [editingGroup, setEditingGroup] = React.useState<FieldGroup | null>(null);
+  const [groupForm, setGroupForm] = React.useState<GroupFormData>(defaultGroupData);
+
+  const [deletingField, setDeletingField] = React.useState<AppField | null>(null);
+  const [deletingGroup, setDeletingGroup] = React.useState<FieldGroup | null>(null);
+
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Computed
+  const filteredGroups = React.useMemo(() => {
+    if (!searchTerm) return groups;
     const s = searchTerm.toLowerCase();
-    return source.filter(f =>
-      f.label.toLowerCase().includes(s) ||
-      f.variableName.toLowerCase().includes(s) ||
-      f.section.toLowerCase().includes(s)
+    return groups.filter(g => 
+      g.name.toLowerCase().includes(s) || 
+      (fields || []).some(f => f.groupId === g.id && (f.label.toLowerCase().includes(s) || f.variableName.toLowerCase().includes(s)))
     );
-  }, [mainTab, nativeFields, customFields, searchTerm]);
+  }, [groups, fields, searchTerm]);
 
   // Handlers
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = groups.findIndex(g => g.id === active.id);
+      const newIndex = groups.findIndex(g => g.id === over?.id);
+      
+      const newGroups = arrayMove(groups, oldIndex, newIndex);
+      setGroups(newGroups);
+      
+      // Update order in firestore
+      const updates = newGroups.map((g, idx) => ({ id: g.id, order: idx * 10 }));
+      if (activeWorkspaceId && user?.uid) {
+        await reorderFieldGroupsAction(updates, activeWorkspaceId, user.uid);
+      }
+    }
+  };
+
+  const handleCopyVariable = (val: string) => {
+    navigator.clipboard.writeText(val);
+    toast({ title: 'Copied to Clipboard', description: val });
+  };
+
   const handleSeed = async () => {
-    if (!activeWorkspaceId || !activeOrganizationId) return;
+    if (!activeWorkspaceId || !activeOrganizationId || !user?.uid) return;
     setIsSeeding(true);
-    const result = await seedNativeFieldsAction(activeWorkspaceId, activeOrganizationId);
+    const result = await seedNativeFieldsAction(activeWorkspaceId, activeOrganizationId, user.uid);
     if (result.success) {
-      toast({ title: 'Registry Seeded', description: `${result.seeded} native fields added, ${result.skipped} already existed.` });
+      toast({ title: 'Registry Seeded', description: `Added ${result.seededGroups} groups and ${result.seededFields} fields.` });
     } else {
       toast({ variant: 'destructive', title: 'Seeding Failed', description: result.error });
     }
     setIsSeeding(false);
   };
 
-  const openCreate = () => {
-    setFormData(defaultFormData);
-    setEditingField(null);
-    setIsCreateOpen(true);
+  // Group Form
+  const openNewGroup = () => {
+    setGroupForm(defaultGroupData);
+    setEditingGroup(null);
+    setGroupModalOpen(true);
   };
 
-  const openEdit = (field: AppField) => {
-    setFormData({
-      label: field.label,
-      variableName: field.variableName,
-      type: field.type,
-      section: field.section,
-      helpText: field.helpText || '',
-      placeholder: field.placeholder || '',
-      compatibilityScope: field.compatibilityScope || ['common'],
-      validationRequired: field.validationRules?.required || false,
-      options: field.options?.map(o => o.label).join(', ') || '',
+  const openEditGroup = (g: FieldGroup) => {
+    setGroupForm({
+      name: g.name,
+      description: g.description || '',
+      icon: g.icon,
+      color: g.color,
+      entityTypes: g.entityTypes,
     });
-    setEditingField(field);
-    setIsCreateOpen(true);
+    setEditingGroup(g);
+    setGroupModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!formData.label.trim() || !activeWorkspaceId || !activeOrganizationId) return;
+  const saveGroup = async () => {
+    if (!groupForm.name.trim() || !activeWorkspaceId || !activeOrganizationId || !user?.uid) return;
     setIsSubmitting(true);
     try {
-      const variableName = formData.variableName || slugify(formData.label);
-      const options = formData.options
-        ? formData.options.split(',').map(o => o.trim()).filter(Boolean).map(o => ({ value: slugify(o), label: o }))
-        : undefined;
+      if (editingGroup) {
+        const res = await updateFieldGroupAction(editingGroup.id, groupForm, user.uid);
+        if (res.success) {
+          toast({ title: 'Group Updated' });
+          setGroupModalOpen(false);
+        } else throw new Error(res.error);
+      } else {
+        const res = await createFieldGroupAction({ ...groupForm, workspaceId: activeWorkspaceId, organizationId: activeOrganizationId }, user.uid);
+        if (res.success) {
+          toast({ title: 'Group Created' });
+          setGroupModalOpen(false);
+        } else throw new Error(res.error);
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+    setIsSubmitting(false);
+  };
+
+  const executeDeleteGroup = async () => {
+    if (!deletingGroup || !user?.uid) return;
+    const res = await deleteFieldGroupAction(deletingGroup.id, user.uid);
+    if (res.success) {
+      toast({ title: 'Group Deleted' });
+      setDeletingGroup(null);
+    } else {
+      toast({ variant: 'destructive', title: 'Error', description: res.error });
+    }
+  };
+
+  // Field Form
+  const openNewField = (g?: FieldGroup) => {
+    setFieldForm({ ...defaultFieldData, groupId: g?.id || (groups.length > 0 ? groups[0].id : '') });
+    setEditingField(null);
+    setFieldModalOpen(true);
+  };
+
+  const openEditField = (f: AppField) => {
+    setFieldForm({
+      groupId: f.groupId || '',
+      label: f.label,
+      variableName: f.variableName,
+      type: f.type,
+      helpText: f.helpText || '',
+      placeholder: f.placeholder || '',
+      compatibilityScope: f.compatibilityScope || ['common'],
+      validationRequired: f.validationRules?.required || false,
+      options: f.options?.map(o => o.label).join(', ') || '',
+    });
+    setEditingField(f);
+    setFieldModalOpen(true);
+  };
+
+  const saveField = async () => {
+    if (!fieldForm.label.trim() || !fieldForm.groupId || !activeWorkspaceId || !activeOrganizationId || !user?.uid) return;
+    setIsSubmitting(true);
+    try {
+      const variableName = fieldForm.variableName || slugify(fieldForm.label);
+      const options = fieldForm.options ? fieldForm.options.split(',').map(o => o.trim()).filter(Boolean).map(o => ({ value: slugify(o), label: o })) : undefined;
+      const payload: Partial<AppField> = {
+        label: fieldForm.label,
+        variableName,
+        type: fieldForm.type,
+        groupId: fieldForm.groupId,
+        section: 'common', // legacy fallback
+        helpText: fieldForm.helpText || undefined,
+        placeholder: fieldForm.placeholder || undefined,
+        compatibilityScope: fieldForm.compatibilityScope as any,
+        validationRules: { required: fieldForm.validationRequired },
+        options,
+      };
 
       if (editingField) {
-        const result = await updateFieldAction(editingField.id, {
-          label: formData.label,
-          variableName,
-          type: formData.type,
-          section: formData.section,
-          helpText: formData.helpText || undefined,
-          placeholder: formData.placeholder || undefined,
-          compatibilityScope: formData.compatibilityScope as AppField['compatibilityScope'],
-          validationRules: { required: formData.validationRequired },
-          options,
-        }, user?.uid ?? '');
-        if (result.success) {
-          toast({ title: 'Field Updated', description: `"${formData.label}" has been saved.` });
-          setIsCreateOpen(false);
-          setEditingField(null);
-        } else {
-          toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
-        }
+        const res = await updateFieldAction(editingField.id, payload, user.uid);
+        if (res.success) {
+          toast({ title: 'Field Updated' });
+          setFieldModalOpen(false);
+        } else throw new Error(res.error);
       } else {
-        const result = await createFieldAction({
-          workspaceId: activeWorkspaceId,
-          organizationId: activeOrganizationId,
-          name: slugify(formData.label),
-          label: formData.label,
-          variableName,
-          type: formData.type,
-          section: formData.section,
-          isNative: false,
-          compatibilityScope: formData.compatibilityScope as AppField['compatibilityScope'],
-          helpText: formData.helpText || undefined,
-          placeholder: formData.placeholder || undefined,
-          validationRules: { required: formData.validationRequired },
-          options,
-          status: 'active',
-        }, user?.uid ?? '');
-        if (result.success) {
-          toast({ title: 'Field Created', description: `"${formData.label}" has been added to your registry.` });
-          setIsCreateOpen(false);
-        } else {
-          toast({ variant: 'destructive', title: 'Creation Failed', description: result.error });
-        }
+        const createPayload = { ...payload, workspaceId: activeWorkspaceId, organizationId: activeOrganizationId, isNative: false, status: 'active' as const, name: fieldForm.label };
+        const res = await createFieldAction(createPayload as any, user.uid);
+        if (res.success) {
+          toast({ title: 'Field Created' });
+          setFieldModalOpen(false);
+        } else throw new Error(res.error);
       }
-    } finally {
-      setIsSubmitting(false);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
+    setIsSubmitting(false);
   };
 
-  const handleDelete = async () => {
-    if (!deletingField) return;
-    setIsSubmitting(true);
-    try {
-      const result = await deleteFieldAction(deletingField.id, user?.uid ?? '');
-      if (result.success) {
-        toast({ title: 'Field Deleted', description: `"${deletingField.label}" has been removed.` });
-        setDeletingField(null);
-      } else {
-        toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCopyVariable = (variableName: string) => {
-    navigator.clipboard.writeText(`{{${variableName}}}`);
-    toast({ title: 'Variable Copied', description: `{{${variableName}}} is ready to paste.` });
-  };
-
-  const handleToggleStatus = async (field: AppField) => {
-    const newStatus = field.status === 'active' ? 'inactive' : 'active';
-    const result = await updateFieldAction(field.id, { status: newStatus }, user?.uid ?? '');
-    if (result.success) {
-      toast({ title: newStatus === 'active' ? 'Field Activated' : 'Field Deactivated' });
+  const executeDeleteField = async () => {
+    if (!deletingField || !user?.uid) return;
+    const res = await deleteFieldAction(deletingField.id, user.uid);
+    if (res.success) {
+      toast({ title: 'Field Deleted' });
+      setDeletingField(null);
     } else {
-      toast({ variant: 'destructive', title: 'Status Update Failed' });
+      toast({ variant: 'destructive', title: 'Error', description: res.error });
     }
   };
 
-  // Auto-generate variableName from label
-  React.useEffect(() => {
-    if (!editingField && formData.label && !formData.variableName) {
-      // Don't override if user manually set it
-    }
-  }, [formData.label, editingField, formData.variableName]);
-
-  const handleLabelChange = (newLabel: string) => {
-    const updates: Partial<FieldFormData> = { label: newLabel };
-    // Auto-slug only for new custom fields
-    if (!editingField || !editingField.isNative) {
-      updates.variableName = slugify(newLabel);
-    }
-    setFormData(prev => ({ ...prev, ...updates }));
-  };
-
-  if (!activeWorkspaceId) {
+  if (loadingGroups || loadingFields) {
     return (
-     <div className="h-full overflow-y-auto">
-        <div className="flex flex-col items-center justify-center py-32 text-center gap-4">
-          <div className="p-6 bg-card rounded-2xl shadow-inner border border-border/50">
-            <Database className="h-12 w-12 text-muted-foreground/20" />
-          </div>
-          <p className="text-sm font-semibold text-muted-foreground">No workspace selected. Please select a workspace to manage fields.</p>
-        </div>
+      <div className="p-8 max-w-5xl mx-auto space-y-6">
+        <div className="flex justify-between"><Skeleton className="h-10 w-48" /><Skeleton className="h-10 w-32" /></div>
+        <Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" />
       </div>
     );
   }
 
-  // ────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto space-y-8 pb-32">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="flex flex-col items-start">
-            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground">
-                <Database className="h-10 w-10 text-primary" />
-                Fields Hub
-            </h1>
-            <p className="text-muted-foreground font-medium text-lg mt-1">
-              Data capture schema and template variable registry
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              variant="outline"
-              onClick={handleSeed}
-              disabled={isSeeding || isLoading}
-              className="rounded-xl font-bold h-11 gap-2 bg-transparent ring-1 ring-border shadow-sm border-border hover:bg-primary/5 hover:text-primary transition-all"
-            >
-              {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Seed Defaults
-            </Button>
-            <Button
-              onClick={openCreate}
-              className="rounded-xl font-bold shadow-lg h-11 px-6 transform active:scale-95 transition-all"
-            >
-              <Plus className="mr-1 h-5 w-5" /> New Schema Field
-            </Button>
-          </div>
+    <div className="p-6 max-w-6xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Fields & Variables Hub</h1>
+          <p className="text-muted-foreground mt-1">Manage entity attributes, custom data collection, and system variables.</p>
         </div>
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0"><Database className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Aggregate</p>
-                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : (fields?.length || 0)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0"><ShieldCheck className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Native</p>
-                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : nativeFields.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 shrink-0"><Pencil className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Custom</p>
-                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : customFields.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0"><Layers className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Sections</p>
-                  <p className="text-3xl font-bold tabular-nums tracking-tighter">{isLoading ? '—' : sections.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-2">
+          <Button onClick={openNewGroup}>
+            <LucideIcons.Plus className="h-4 w-4 mr-2" /> New Group
+          </Button>
         </div>
-
-        {/* Main Tabs */}
-        <Tabs value={mainTab} onValueChange={v => setMainTab(v as any)}>
-          <TabsList className="bg-transparent border border-border shadow-sm h-12 p-1 rounded-2xl gap-1 ring-1 ring-border">
-            <TabsTrigger value="native" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <ShieldCheck className="h-4 w-4" /> Native Registry
-            </TabsTrigger>
-            <TabsTrigger value="custom" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <Pencil className="h-4 w-4" /> Workspace Schema
-            </TabsTrigger>
-            <TabsTrigger value="sections" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <Layers className="h-4 w-4" /> Data Sections
-            </TabsTrigger>
-            <TabsTrigger value="variables" className="rounded-xl font-bold text-[10px] px-6 gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all">
-              <Code className="h-4 w-4" /> Variables Index
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Search Bar */}
-          {(mainTab === 'native' || mainTab === 'custom') && (
-            <Card className="border border-border shadow-sm rounded-2xl bg-transparent ring-1 ring-border mt-6">
-              <CardContent className="p-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                  <Input
-                    placeholder="Filter schema fields by label, variable, or section…"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-11 h-12 rounded-xl bg-background border border-border shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Native Fields Tab */}
-          <TabsContent value="native" className="mt-6">
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-2xl" />)}
-              </div>
-            ) : filteredFields.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
-                <Database className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-[10px] font-semibold text-muted-foreground">
-                  {searchTerm ? 'No native fields match your search' : 'No native fields yet. Click "Seed Defaults" to populate.'}
-                </p>
-                {!searchTerm && (
-                  <Button variant="outline" size="sm" onClick={handleSeed} disabled={isSeeding} className="mt-4 rounded-xl font-bold">
-                    {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Seed Native Fields
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <FieldsTable fields={filteredFields} onEdit={openEdit} onDelete={setDeletingField} onCopy={handleCopyVariable} onToggle={handleToggleStatus} />
-            )}
-          </TabsContent>
-
-          {/* Custom Fields Tab */}
-          <TabsContent value="custom" className="mt-6">
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-2xl" />)}
-              </div>
-            ) : filteredFields.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
-                <Pencil className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-[10px] font-semibold text-muted-foreground">
-                  {searchTerm ? 'No custom fields match your search' : 'No custom fields created yet.'}
-                </p>
-                {!searchTerm && (
-                  <Button variant="outline" size="sm" onClick={openCreate} className="mt-4 rounded-xl font-bold">
-                    <Plus className="mr-2 h-4 w-4" /> Create Custom Field
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <FieldsTable fields={filteredFields} onEdit={openEdit} onDelete={setDeletingField} onCopy={handleCopyVariable} onToggle={handleToggleStatus} />
-            )}
-          </TabsContent>
-
-          {/* Sections Tab */}
-          <TabsContent value="sections" className="mt-6">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}
-              </div>
-            ) : sections.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-2xl">
-                <Layers className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-[10px] font-semibold text-muted-foreground">No sections yet. Create fields to auto-generate sections.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sections.map(sec => (
-                  <Card key={sec.name} className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border hover:shadow-md transition-all group">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0 group-hover:scale-110 transition-transform">
-                          <Layers className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-base tracking-tight capitalize">{sec.name.replace(/_/g, ' ')}</p>
-                          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">{sec.count} fields tracked</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-0.5 rounded-lg">
-                          {sec.native} Native
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-500 border-amber-500/20 px-3 py-0.5 rounded-lg">
-                          {sec.custom} Custom
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Variables Reference Tab */}
-          <TabsContent value="variables" className="mt-6 space-y-6">
-            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-              <CardHeader className="bg-primary/10 border-b pb-4">
-                <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
-                  <BookOpen className="h-3 w-3" /> Contextual Variables Reference
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <p className="text-xs text-muted-foreground font-medium p-6 pb-0 text-left">
-                  These variables are available in messaging templates but are not data-capture fields. They are resolved at send time from contextual data (meetings, finance, surveys).
-                </p>
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow>
-                      <TableHead className="pl-6 text-[10px] font-semibold py-4">Variable Tag</TableHead>
-                      <TableHead className="text-[10px] font-semibold py-4">Label</TableHead>
-                      <TableHead className="text-[10px] font-semibold py-4">Category</TableHead>
-                      <TableHead className="text-[10px] font-semibold py-4">Description</TableHead>
-                      <TableHead className="text-right pr-6 text-[10px] font-semibold py-4">Copy</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {CONTEXTUAL_VARIABLES.map(v => (
-                      <TableRow key={v.key} className="group hover:bg-accent/5 transition-colors">
-                        <TableCell className="pl-6">
-                          <code className="text-[10px] font-mono font-semibold text-primary opacity-70 bg-primary/5 px-2 py-1 rounded-md">
-                            {'{{' + v.key + '}}'}
-                          </code>
-                        </TableCell>
-                        <TableCell className="text-sm font-semibold">{v.label}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 bg-primary/10 border-border/50">
-                            {v.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-[10px] text-muted-foreground font-medium text-left max-w-[250px]">{v.description}</TableCell>
-                        <TableCell className="text-right pr-6">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg hover:text-primary"
-                            onClick={() => handleCopyVariable(v.key)}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={o => { if (!o) { setIsCreateOpen(false); setEditingField(null); } }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-card border shadow-2xl">
-          <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-primary/10 rounded-xl"><Database className="h-5 w-5 text-primary" /></div>
-              <DialogTitle className="text-xl font-semibold tracking-tight">
-                {editingField ? 'Edit Field' : 'Create Custom Field'}
-              </DialogTitle>
-            </div>
-            <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
-              {editingField?.isNative
-                ? 'Native fields have limited edit options. You can update the label and help text.'
-                : 'Define a new data capture point for forms and templates.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-5 py-4 text-left">
-            {/* Label */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Field Label *</Label>
-              <Input
-                value={formData.label}
-                onChange={e => handleLabelChange(e.target.value)}
-                placeholder="e.g. Parent Name"
-                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-              />
-            </div>
-
-            {/* Variable Name */}
-            {(!editingField || !editingField.isNative) && (
-              <div className="space-y-2">
-                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Variable Name</Label>
-                <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-background/50 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
-                  <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">{'{{'}</div>
-                  <Input
-                    value={formData.variableName}
-                    onChange={e => setFormData(p => ({ ...p, variableName: e.target.value.replace(/\s+/g, '_').toLowerCase() }))}
-                    placeholder="auto_generated"
-                    className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono font-semibold"
-                  />
-                  <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-l">{'}}'}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Type & Section */}
-            {(!editingField || !editingField.isNative) && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Field Type</Label>
-                  <Select value={formData.type} onValueChange={v => setFormData(p => ({ ...p, type: v as AppField['type'] }))}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {FIELD_TYPES.map(ft => (
-                        <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Section</Label>
-                  <Select value={formData.section} onValueChange={v => setFormData(p => ({ ...p, section: v }))}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {SECTION_OPTIONS.map(s => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            {/* Options (for select/radio types) */}
-            {(['select', 'multi_select', 'radio'].includes(formData.type)) && (!editingField || !editingField.isNative) && (
-              <div className="space-y-2">
-                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Options (comma-separated)</Label>
-                <Input
-                  value={formData.options}
-                  onChange={e => setFormData(p => ({ ...p, options: e.target.value }))}
-                  placeholder="e.g. Option A, Option B, Option C"
-                  className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium"
-                />
-              </div>
-            )}
-
-            {/* Help Text */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Help Text</Label>
-              <Textarea
-                value={formData.helpText}
-                onChange={e => setFormData(p => ({ ...p, helpText: e.target.value }))}
-                placeholder="Optional guidance shown beneath the field..."
-                className="min-h-[60px] rounded-xl bg-background/50 border-none p-4 font-medium resize-none"
-                rows={2}
-              />
-            </div>
-
-            {/* Placeholder */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Placeholder</Label>
-              <Input
-                value={formData.placeholder}
-                onChange={e => setFormData(p => ({ ...p, placeholder: e.target.value }))}
-                placeholder="e.g. Enter your full name"
-                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium"
-              />
-            </div>
-
-            {/* Required toggle */}
-            {(!editingField || !editingField.isNative) && (
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-                <Label className="text-xs font-semibold">Required by default</Label>
-                <Switch
-                  checked={formData.validationRequired}
-                  onCheckedChange={v => setFormData(p => ({ ...p, validationRequired: v }))}
-                />
-              </div>
-            )}
+      {/* System Maintenance & Seeding (SuperAdmin Only) */}
+      {isSuperAdmin && (
+        <Card className="border-indigo-100 bg-indigo-50/30 overflow-hidden relative group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <LucideIcons.ShieldCheck className="h-24 w-24 text-indigo-600" />
           </div>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">System Registry</span>
+            </div>
+            <CardTitle className="text-xl text-indigo-950">Native Registry Sync</CardTitle>
+            <CardDescription className="max-w-2xl text-indigo-900/70">
+              Keep your workspace synchronized with the global SmartSapp variable registry. 
+              Seeding adds all platform-standard fields (meetings, surveys, forms) and industry-specific 
+              attributes without affecting your existing custom fields.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Platform Identity</Badge>
+                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Meetings & Forms</Badge>
+                <Badge variant="outline" className="bg-white/50 border-indigo-200 text-indigo-700">Industry Pack</Badge>
+              </div>
+              <Button 
+                onClick={handleSeed} 
+                disabled={isSeeding}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 border-none min-w-[160px]"
+              >
+                {isSeeding ? (
+                  <LucideIcons.Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <LucideIcons.Zap className="h-4 w-4 mr-2 fill-white" />
+                )}
+                {isSeeding ? 'Syncing...' : 'Seed Registry'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <DialogFooter className="bg-muted/30 p-4 -mx-6 -mb-6 mt-4">
-            <Button variant="ghost" onClick={() => { setIsCreateOpen(false); setEditingField(null); }} className="font-bold">Cancel</Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSubmitting || !formData.label.trim()}
-              className="rounded-xl font-bold px-8 shadow-lg min-w-[140px]"
-            >
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              {editingField ? 'Save Changes' : 'Create Field'}
+      {/* Search Bar */}
+      <div className="relative max-w-md">
+        <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input 
+          placeholder="Search fields or groups..." 
+          className="pl-9" 
+          value={searchTerm} 
+          onChange={e => setSearchTerm(e.target.value)} 
+        />
+      </div>
+
+      {/* Main Accordion */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={filteredGroups.map(g => g.id)} strategy={verticalListSortingStrategy}>
+          <Accordion type="multiple" className="w-full space-y-4" defaultValue={groups.map(g => g.id)}>
+            {filteredGroups.map(group => (
+              <SortableGroupAccordionItem
+                key={group.id}
+                group={group}
+                fields={(fields || []).filter(f => f.groupId === group.id)}
+                onEditGroup={openEditGroup}
+                onDeleteGroup={setDeletingGroup}
+                onAddField={openNewField}
+                onEditField={openEditField}
+                onDeleteField={setDeletingField}
+                onCopyVariable={handleCopyVariable}
+              />
+            ))}
+          </Accordion>
+        </SortableContext>
+      </DndContext>
+
+      {groups.length === 0 && (
+        <div className="text-center p-12 border rounded-xl bg-muted/10 border-dashed">
+          <LucideIcons.Database className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium">No Field Groups Found</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">Start by creating a new group or seeding native groups.</p>
+          {isSuperAdmin && (
+            <Button onClick={handleSeed} disabled={isSeeding}>
+              {isSeeding ? 'Seeding...' : 'Seed Native Groups'}
             </Button>
+          )}
+        </div>
+      )}
+
+      {/* Group Modal */}
+      <Dialog open={groupModalOpen} onOpenChange={setGroupModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingGroup ? 'Edit Field Group' : 'Create Field Group'}</DialogTitle>
+            <DialogDescription>Group fields together for organization in forms and entity pages.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Group Name</Label>
+              <Input value={groupForm.name} onChange={e => setGroupForm({...groupForm, name: e.target.value})} placeholder="e.g. Health Profile" />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={groupForm.description} onChange={e => setGroupForm({...groupForm, description: e.target.value})} placeholder="Optional description..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Icon Name</Label>
+                <Input value={groupForm.icon} onChange={e => setGroupForm({...groupForm, icon: e.target.value})} placeholder="Lucide Icon (e.g. Heart)" />
+              </div>
+              <div className="space-y-2">
+                <Label>Accent Color</Label>
+                <div className="flex gap-2">
+                  <Input type="color" className="w-12 p-1 h-10" value={groupForm.color} onChange={e => setGroupForm({...groupForm, color: e.target.value})} />
+                  <Input value={groupForm.color} onChange={e => setGroupForm({...groupForm, color: e.target.value})} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveGroup} disabled={isSubmitting || !groupForm.name}>{isSubmitting ? 'Saving...' : 'Save Group'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deletingField} onOpenChange={open => !open && setDeletingField(null)}>
-        <AlertDialogContent className="rounded-2xl">
+      {/* Field Modal */}
+      <Dialog open={fieldModalOpen} onOpenChange={setFieldModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingField ? 'Edit Field' : 'Create Field'}</DialogTitle>
+            <DialogDescription>Add a data collection field to a group.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+            <div className="space-y-2">
+              <Label>Field Group</Label>
+              <Select value={fieldForm.groupId} onValueChange={v => setFieldForm({...fieldForm, groupId: v})} disabled={editingField?.isNative}>
+                <SelectTrigger><SelectValue placeholder="Select group" /></SelectTrigger>
+                <SelectContent>
+                  {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Field Label</Label>
+              <Input value={fieldForm.label} onChange={e => setFieldForm({...fieldForm, label: e.target.value})} placeholder="e.g. Allergies" disabled={editingField?.isNative} />
+            </div>
+            {!editingField?.isNative && (
+              <>
+                <div className="space-y-2">
+                  <Label>Variable Name</Label>
+                  <Input value={fieldForm.variableName} onChange={e => setFieldForm({...fieldForm, variableName: e.target.value})} placeholder="e.g. student_allergies" />
+                  <p className="text-xs text-muted-foreground">Used as {'{{variable_name}}'} in templates.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Field Type</Label>
+                  <Select value={fieldForm.type} onValueChange={v => setFieldForm({...fieldForm, type: v as any})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {FIELD_TYPES.map(t => (
+                        <SelectItem key={t.value} value={t.value}>
+                          <div className="flex items-center gap-2"><t.icon className="h-4 w-4" />{t.label}</div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+            {['select', 'multi_select', 'radio'].includes(fieldForm.type) && !editingField?.isNative && (
+              <div className="space-y-2">
+                <Label>Options</Label>
+                <Textarea value={fieldForm.options} onChange={e => setFieldForm({...fieldForm, options: e.target.value})} placeholder="Comma separated (e.g. Yes, No, Maybe)" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Help Text</Label>
+              <Input value={fieldForm.helpText} onChange={e => setFieldForm({...fieldForm, helpText: e.target.value})} placeholder="Optional hint text" />
+            </div>
+            <div className="space-y-2">
+              <Label>Placeholder</Label>
+              <Input value={fieldForm.placeholder} onChange={e => setFieldForm({...fieldForm, placeholder: e.target.value})} placeholder="e.g. Enter value..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFieldModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveField} disabled={isSubmitting || !fieldForm.label || !fieldForm.groupId}>{isSubmitting ? 'Saving...' : 'Save Field'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Alerts */}
+      <AlertDialog open={!!deletingGroup} onOpenChange={open => !open && setDeletingGroup(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-semibold">Delete Field?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Group?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove <span className="font-bold">&quot;{deletingField?.label}&quot;</span> and its variable <code className="text-primary font-mono text-xs">{'{{'}{deletingField?.variableName}{'}}'}</code> from the registry. Any forms using this field will need to be updated.
+              Are you sure you want to delete the "{deletingGroup?.name}" group? Any fields inside it will be moved to a default system group.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold"
-            >
-              {isSubmitting ? 'Deleting...' : 'Delete Field'}
-            </AlertDialogAction>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDeleteGroup} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete Group</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
 
-// ────────────────────────────────────────────
-// Sub-components
-// ────────────────────────────────────────────
-
-function FieldsTable({
-  fields,
-  onEdit,
-  onDelete,
-  onCopy,
-  onToggle,
-}: {
-  fields: AppField[];
-  onEdit: (f: AppField) => void;
-  onDelete: (f: AppField) => void;
-  onCopy: (variableName: string) => void;
-  onToggle: (f: AppField) => void;
-}) {
-  return (
-    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50">
-      <Table>
-        <TableHeader className="bg-muted/30">
-          <TableRow>
-            <TableHead className="pl-6 text-[10px] font-semibold py-4">Field Label & Variable</TableHead>
-            <TableHead className="text-[10px] font-semibold py-4">Type</TableHead>
-            <TableHead className="text-[10px] font-semibold py-4">Section</TableHead>
-            <TableHead className="text-center text-[10px] font-semibold py-4">Scope</TableHead>
-            <TableHead className="text-center text-[10px] font-semibold py-4">Status</TableHead>
-            <TableHead className="text-right pr-6 text-[10px] font-semibold py-4">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fields.map(field => {
-            const TypeIcon = getTypeIcon(field.type);
-            const isInactive = field.status === 'inactive';
-            return (
-              <TableRow key={field.id} className={cn('group hover:bg-accent/5 transition-colors', isInactive && 'opacity-50')}>
-                <TableCell className="pl-6 w-[300px]">
-                  <div className="flex flex-col gap-0.5 text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-foreground">{field.label}</span>
-                      {field.isNative && (
-                        <Badge variant="secondary" className="h-4 text-[8px] uppercase px-1.5 gap-0.5">
-                          <Lock className="h-2.5 w-2.5" /> Native
-                        </Badge>
-                      )}
-                    </div>
-                    <code className="text-[10px] font-mono text-primary font-semibold opacity-60">
-                      {'{{' + field.variableName + '}}'}
-                    </code>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-semibold text-muted-foreground">{getTypeLabel(field.type)}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-[9px] font-semibold capitalize h-5 bg-primary/5 border-border/50">
-                    {field.section.replace(/_/g, ' ')}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {field.compatibilityScope?.slice(0, 2).map(s => (
-                      <Badge key={s} variant="outline" className="text-[8px] font-medium h-4 capitalize">
-                        {s}
-                      </Badge>
-                    ))}
-                    {(field.compatibilityScope?.length || 0) > 2 && (
-                      <Badge variant="outline" className="text-[8px] font-medium h-4">
-                        +{field.compatibilityScope.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge
-                    className={cn(
-                      'text-[9px] font-semibold uppercase h-5 px-2',
-                      isInactive
-                        ? 'bg-slate-100 text-slate-500 border-slate-200'
-                        : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                    )}
-                  >
-                    {field.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right pr-6">
-                  <div className="flex items-center justify-end gap-1">
-                    <Switch
-                      checked={field.status === 'active'}
-                      onCheckedChange={() => onToggle(field)}
-                      className="scale-75"
-                    />
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:text-primary" onClick={() => onCopy(field.variableName)}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => onEdit(field)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    {!field.isNative && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive" onClick={() => onDelete(field)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <AlertDialog open={!!deletingField} onOpenChange={open => !open && setDeletingField(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Field?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the "{deletingField?.label}" field? This variable will stop resolving in templates.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDeleteField} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete Field</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -69,24 +69,24 @@ export function VariablePicker({
 
   // Group variables by context
   const groupedVariables = React.useMemo(() => {
-    const groups: Record<VariableContext, TemplateVariable[]> = {
-      common: [],
-      meeting: [],
-      form: [],
-      survey: [],
-      agreement: [],
-      entity: [],
-      campaign: [],
-    };
+    const groups: Record<string, TemplateVariable[]> = {};
 
     filteredVariables.forEach((variable) => {
-      if (groups[variable.context]) {
-        groups[variable.context].push(variable);
+      const ctx = variable.context || 'common';
+      if (!groups[ctx]) {
+        groups[ctx] = [];
       }
+      groups[ctx].push(variable);
     });
 
-    // Remove empty groups
-    return Object.entries(groups).filter(([_, vars]) => vars.length > 0);
+    // Sort groups so 'common' is first, then alphabetical
+    return Object.entries(groups)
+      .filter(([_, vars]) => vars.length > 0)
+      .sort(([a], [b]) => {
+        if (a === 'common') return -1;
+        if (b === 'common') return 1;
+        return a.localeCompare(b);
+      });
   }, [filteredVariables]);
 
   const handleVariableClick = (variableName: string) => {
@@ -95,14 +95,17 @@ export function VariablePicker({
     setSearchQuery(''); // Reset search on selection
   };
 
-  const contextLabels: Record<VariableContext, string> = {
-    common: 'Common',
-    meeting: 'Meeting',
-    form: 'Form',
-    survey: 'Survey',
-    agreement: 'Agreement',
-    entity: 'Entity',
-    campaign: 'Campaign',
+  const getContextLabel = (context: string) => {
+    const defaultLabels: Record<string, string> = {
+      common: 'Common',
+      meeting: 'Meeting',
+      form: 'Form',
+      survey: 'Survey',
+      agreement: 'Agreement',
+      entity: 'Entity',
+      campaign: 'Campaign',
+    };
+    return defaultLabels[context] || context;
   };
 
   return (
@@ -144,7 +147,7 @@ export function VariablePicker({
                   <div key={context} className="mb-4 last:mb-0">
                     {/* Context Header */}
                     <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {contextLabels[context as VariableContext]}
+                      {getContextLabel(context)}
                     </div>
 
                     {/* Variables in this context */}

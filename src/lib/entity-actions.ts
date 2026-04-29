@@ -295,6 +295,11 @@ export async function createEntityAction(
       entityData.industryData = data.industryData;
     }
 
+    // Append custom fields data
+    if (data.customData) {
+      entityData.customData = data.customData;
+    }
+
     // Save to Universal Identity Collection
     await adminDb.collection('entities').doc(entityId).set(entityData);
 
@@ -488,6 +493,17 @@ export async function updateEntityAction(
       delete indData.entityType;
       
       entityUpdate.industryData = indData;
+    }
+
+    // Custom data
+    if (data.customData) {
+      if (!entitySnap.data()?.customData) {
+         entityUpdate.customData = data.customData;
+      } else {
+         for (const key of Object.keys(data.customData)) {
+           entityUpdate[`customData.${key}`] = data.customData[key];
+         }
+      }
     }
 
     // 3. Update Universal Identity Collection

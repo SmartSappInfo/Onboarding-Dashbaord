@@ -107,6 +107,13 @@ export default function ScannabilityChecker({ design }: ScannabilityCheckerProps
       results.push({ id: 'size', label: 'Minimum Print Size', severity: 'info', message: 'Print at 2cm × 2cm minimum for reliable scanning' });
     }
 
+    // 6. Print Format Check
+    if (design.logoUrl && (design.errorCorrection === 'L' || design.errorCorrection === 'M')) {
+      results.push({ id: 'print-svg', label: 'Print Readiness', severity: 'critical', message: 'Not recommended for print with current logo and low EC settings.', fix: 'Increase EC to High (H) and download as SVG for printing.' });
+    } else {
+      results.push({ id: 'print-svg', label: 'Print Readiness', severity: 'info', message: 'For physical marketing materials, always download as SVG to ensure crisp edges at any scale.' });
+    }
+
     return results;
   }, [design]);
 

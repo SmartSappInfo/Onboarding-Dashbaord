@@ -3,6 +3,7 @@
 
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
+import LocationHierarchyEditor from './components/LocationHierarchyEditor';
 // RoleEditor has been moved to /admin/users/roles/RolesClient.tsx
 import WorkspaceEditor from './components/WorkspaceEditor';
 import FeatureManager from './components/FeatureManager';
@@ -123,6 +124,8 @@ export default function SettingsClient() {
             <ModuleEditor />
             <ZoneEditor />
           </div>
+
+          <LocationHierarchyEditor />
         </div>
       </div>
 

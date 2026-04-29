@@ -9,19 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, 
   AlignVerticalJustifyEnd, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
-  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw,
-  CaseUpper, CaseSensitive, Baseline
+  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw, Baseline,
+  CaseUpper, CaseSensitive
 } from 'lucide-react';
-import { PDFFormField } from '@/lib/types';
+import { PDFFormField, AppField, FieldGroup } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
 import { cn } from '@/lib/utils';
 
@@ -38,29 +41,51 @@ const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
   variable: Database,
 };
 
-const SCHOOL_VARIABLES = [
-    { key: 'school_name', label: 'School Name' },
-    { key: 'school_initials', label: 'School Initials' },
-    { key: 'school_location', label: 'School Location' },
-    { key: 'school_phone', label: 'School Phone' },
-    { key: 'school_email', label: 'School Email' },
-    { key: 'contact_name', label: 'Signatory Name' },
-    { key: 'contact_position', label: 'Signatory Position' },
-    { key: 'contact_email', label: 'Signatory Email' },
-    { key: 'contact_phone', label: 'Signatory Phone' },
-    { key: 'school_package', label: 'Subscription Tier' },
-    { key: 'subscription_rate', label: 'Effective Rate' },
-    { key: 'subscription_total', label: 'Total Amount' },
-    { key: 'nominal_roll', label: 'Student Count' },
-    { key: 'arrears_balance', label: 'Outstanding Arrears' },
-];
-
 export function Inspector() {
   const { 
     pdf, fields, selectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen,
     alignFields, distributeFields, duplicateFields
   } = useEditor();
+
+  const firestore = useFirestore();
+  const { activeWorkspaceId } = useTenant();
+
+  // Field Groups
+  const fieldGroupsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'field_groups'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: fieldGroups } = useCollection<FieldGroup>(fieldGroupsQuery);
+
+  // App Fields
+  const appFieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'app_fields'),
+      where('workspaceId', '==', activeWorkspaceId),
+      where('status', '==', 'active')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: appFields } = useCollection<AppField>(appFieldsQuery);
+
+  const groupedVariables = React.useMemo(() => {
+    if (!fieldGroups || !appFields) return [];
+    return fieldGroups.map(g => ({
+      label: g.name,
+      options: appFields
+        .filter(f => f.groupId === g.id && f.status === 'active' && f.type !== 'hidden')
+        .map(f => ({ key: f.variableName, label: f.label }))
+    })).filter(g => g.options.length > 0);
+  }, [fieldGroups, appFields]);
+
+  const allVariablesFlattened = React.useMemo(() => {
+    return groupedVariables.flatMap(g => g.options);
+  }, [groupedVariables]);
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const isMulti = selectedFieldIds.length > 1;
@@ -128,27 +153,32 @@ export function Inspector() {
  <div className="space-y-4">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
- <Building className="h-3 w-3" /> School Data Context
+ <Building className="h-3 w-3" /> Entity Data Context
                         </Label>
                         {pdf.entityId ? (
                             <Select 
                                 value={selectedField.variableKey} 
-                                onValueChange={(val) => updateField(selectedField.id, { variableKey: val, label: SCHOOL_VARIABLES.find(v => v.key === val)?.label })}
+                                onValueChange={(val) => updateField(selectedField.id, { variableKey: val, label: allVariablesFlattened.find(v => v.key === val)?.label })}
                             >
                                  <SelectTrigger className="h-11 rounded-xl bg-background border border-border font-bold shadow-sm focus:ring-1 focus:ring-primary/20 transition-all">
-                                    <SelectValue placeholder="Pick school field..." />
+                                    <SelectValue placeholder="Pick entity field..." />
                                 </SelectTrigger>
  <SelectContent className="rounded-xl">
-                                    {SCHOOL_VARIABLES.map(v => (
-                                        <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                                    {groupedVariables.map(g => (
+                                        <SelectGroup key={g.label}>
+                                            <SelectLabel className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">{g.label}</SelectLabel>
+                                            {g.options.map(v => (
+                                                <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
                                     ))}
                                 </SelectContent>
                             </Select>
                         ) : (
  <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex flex-col items-center text-center gap-2">
  <AlertCircle className="h-5 w-5 text-orange-600" />
- <p className="text-[9px] font-semibold text-orange-800 leading-tight">No School Associated</p>
- <p className="text-[8px] font-bold text-orange-700/60 tracking-tighter">Please bind this document to a school in "Step 1: Details" to use variables.</p>
+ <p className="text-[9px] font-semibold text-orange-800 leading-tight">No Entity Associated</p>
+ <p className="text-[8px] font-bold text-orange-700/60 tracking-tighter">Please bind this document to an entity in "Step 1: Setup" to use variables.</p>
                             </div>
                         )}
                     </div>

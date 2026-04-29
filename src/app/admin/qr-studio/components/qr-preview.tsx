@@ -61,6 +61,8 @@ export default function QRPreview({ data, design: designOverrides, size, classNa
         rotation: design.gradient.rotation || 0,
         colorStops: design.gradient.colorStops,
       };
+    } else {
+      opts.dotsOptions.gradient = null;
     }
 
     // Logo support
@@ -154,6 +156,8 @@ export async function downloadQR(
       rotation: merged.gradient.rotation || 0,
       colorStops: merged.gradient.colorStops,
     };
+  } else {
+    opts.dotsOptions.gradient = null;
   }
 
   if (merged.logoUrl) {

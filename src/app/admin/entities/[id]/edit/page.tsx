@@ -27,6 +27,7 @@ import { useFirestore, useDoc, useMemoFirebase, useUser, useCollection } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
+import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
 import { EntityContactManager } from '../../components/EntityContactManager';
 import { ManagerSelect } from '../../components/ManagerSelect';
 import { PackageSelect } from '../../components/PackageSelect';
@@ -95,10 +96,12 @@ function EditEntityForm({ entityId }: EditFormProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
-  const { activeOrganizationId } = useTenant();
+  const { activeOrganizationId, activeOrganization } = useTenant();
   const { singular, updateStatus, termStatus } = useTerminology();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [locationValue, setLocationValue] = React.useState<LocationValue>({});
+  const defaultCountryId = activeOrganization?.defaultCountryId || 'GH';
 
   // 1. Subscribe to Global Entity
   const entityDocRef = useMemoFirebase(() => {
@@ -190,6 +193,12 @@ function EditEntityForm({ entityId }: EditFormProps) {
         arrearsBalance: financeData.arrearsBalance ?? 0,
         creditBalance: financeData.creditBalance ?? 0,
       });
+      // Set location cascade values from entity
+      setLocationValue({
+        country: entityData.location?.country || null,
+        region: entityData.location?.region || null,
+        district: entityData.location?.district || null,
+      });
       setHasInitialized(true);
     }
   }, [entityData, weData, methods, hasInitialized]);
@@ -233,6 +242,9 @@ function EditEntityForm({ entityId }: EditFormProps) {
         location: {
             zone: data.zone,
             locationString: data.locationString,
+            ...(locationValue.country ? { country: locationValue.country } : {}),
+            ...(locationValue.region ? { region: locationValue.region } : {}),
+            ...(locationValue.district ? { district: locationValue.district } : {}),
         },
         // Interests (renamed from modules)
         interests: data.modules,
@@ -630,7 +642,17 @@ function EditEntityForm({ entityId }: EditFormProps) {
                             </FormControl>
                             <FormMessage />
                         </FormItem>
-                    )} /> 
+                    )} />
+
+                    {/* Location Hierarchy: Country → Region → District */}
+                    <div className="pt-2 border-t border-border/30">
+                        <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 mb-2">Administrative Location</p>
+                        <LocationCascade
+                            value={locationValue}
+                            onChange={setLocationValue}
+                            defaultCountryId={defaultCountryId}
+                        />
+                    </div>
                     <FormField control={methods.control} name="locationString" render={({ field }) => (
  <FormItem className="text-left">
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Physical Hub</FormLabel>

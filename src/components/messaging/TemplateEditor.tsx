@@ -46,6 +46,35 @@ interface VariablePickerProps {
 function BasicVariablePicker({ variables, onInsert }: VariablePickerProps) {
   const [open, setOpen] = React.useState(false);
 
+  const groupedVariables = React.useMemo(() => {
+    const groups: Record<string, TemplateVariable[]> = {};
+    variables.forEach(v => {
+      const ctx = v.context || 'common';
+      if (!groups[ctx]) groups[ctx] = [];
+      groups[ctx].push(v);
+    });
+    return Object.entries(groups)
+      .filter(([_, vars]) => vars.length > 0)
+      .sort(([a], [b]) => {
+        if (a === 'common') return -1;
+        if (b === 'common') return 1;
+        return a.localeCompare(b);
+      });
+  }, [variables]);
+
+  const getContextLabel = (context: string) => {
+    const defaultLabels: Record<string, string> = {
+      common: 'Common',
+      meeting: 'Meeting',
+      form: 'Form',
+      survey: 'Survey',
+      agreement: 'Agreement',
+      entity: 'Entity',
+      campaign: 'Campaign',
+    };
+    return defaultLabels[context] || context;
+  };
+
   if (!variables.length) return null;
 
   return (
@@ -63,20 +92,26 @@ function BasicVariablePicker({ variables, onInsert }: VariablePickerProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2 bg-muted border-border" align="start">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 pb-2">
-          Available Variables
-        </p>
-        <div className="max-h-48 overflow-y-auto space-y-0.5">
-          {variables.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => { onInsert(v.name); setOpen(false); }}
-              className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-accent/50 transition-colors group"
-            >
-              <span className="text-xs font-mono text-blue-400">{`{{${v.name}}}`}</span>
-              <span className="text-[10px] text-muted-foreground ml-2 group-hover:text-foreground/70">{v.label}</span>
-            </button>
+        <div className="max-h-64 overflow-y-auto space-y-3">
+          {groupedVariables.map(([context, vars]) => (
+            <div key={context}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 pb-1">
+                {getContextLabel(context)}
+              </p>
+              <div className="space-y-0.5">
+                {vars.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => { onInsert(v.name); setOpen(false); }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-accent/50 transition-colors group flex items-center justify-between"
+                  >
+                    <span className="text-xs font-mono text-blue-400 truncate max-w-[120px]">{`{{${v.name}}}`}</span>
+                    <span className="text-[9px] text-muted-foreground group-hover:text-foreground/70 truncate text-right flex-1 ml-2">{v.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </PopoverContent>

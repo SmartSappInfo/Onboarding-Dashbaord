@@ -1,4 +1,4 @@
-import QRStudioClient from './QRStudioClient';
+import QRStudioClient from '@/app/admin/qr-studio/QRStudioClient';
 
 export const metadata = {
   title: 'QR Studio | SmartSapp',

@@ -254,6 +254,8 @@ export interface Organization {
   defaultRoleId?: string; // Default role for new invites
   /** Optional default industry for new workspaces (Requirement 18) */
   industry?: IndustryVertical;
+  /** Default country for new entities in this org. Falls back to 'GH' (Ghana) if unset. */
+  defaultCountryId?: string;
   /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
   enabledFeatures?: FeatureToggleMap;
   /** Global default values applied when entities are created via survey submissions */
@@ -472,6 +474,41 @@ export interface Zone {
   name: string;
   organizationId?: string;
   isDefault?: boolean;
+}
+
+/**
+ * A globally-scoped country record (seeded from ISO 3166-1 alpha-2).
+ * Not org/workspace scoped — shared across the entire platform.
+ */
+export interface Country {
+  id: string;       // ISO 3166-1 alpha-2 code (e.g. "GH")
+  name: string;     // e.g. "Ghana"
+  code: string;     // Same as id — kept for explicit access
+  flag: string;     // Unicode emoji flag (e.g. "\uD83C\uDDEC\uD83C\uDDED")
+  dialCode?: string; // e.g. "+233"
+}
+
+/**
+ * An administrative region, scoped to an organization.
+ * Belongs to a Country. Shared across all workspaces in the org.
+ */
+export interface Region {
+  id: string;
+  name: string;
+  countryId: string;      // Reference to Country.id
+  organizationId: string;
+}
+
+/**
+ * An administrative district, scoped to an organization.
+ * Belongs to a Region. Shared across all workspaces in the org.
+ * Can be created inline when entering entity data.
+ */
+export interface District {
+  id: string;
+  name: string;
+  regionId: string;       // Reference to Region.id
+  organizationId: string;
 }
 
 export interface Pipeline {
@@ -732,6 +769,12 @@ export interface Entity {
       id: string;
       name: string;
     };
+    /** Official country (from global countries collection) */
+    country?: { id: string; name: string; code: string; flag: string };
+    /** Administrative region (org-scoped) */
+    region?: { id: string; name: string };
+    /** Administrative district (org-scoped, can be created inline) */
+    district?: { id: string; name: string };
   };
 
   entityContacts: EntityContact[]; // Canonical contact data (FER-01)
@@ -763,6 +806,9 @@ export interface Entity {
   
   // Reserved for future cross-entity relationships
   relatedEntityIds?: string[];
+
+  // Dynamic custom data bucket (Requirement: Phase 6)
+  customData?: Record<string, any>;
 }
 
 /**
@@ -806,13 +852,20 @@ export interface WorkspaceEntity {
   logoUrl?: string;
   initials?: string;
   slogan?: string;
-  location?: { locationString?: string; zone?: { id: string; name: string } };
+  location?: { locationString?: string; zone?: { id: string; name: string }; country?: { id: string; name: string; code: string; flag: string }; region?: { id: string; name: string }; district?: { id: string; name: string } };
   locationString?: string; // Legacy/flat location fallback
   nominalRoll?: number;
   implementationDate?: string;
   zone?: { id: string; name: string };
   modules?: Partial<Module>[];
   slug?: string;
+  /** Denormalized location IDs for performant filtering */
+  locationCountryId?: string;
+  locationRegionId?: string;
+  locationDistrictId?: string;
+
+  // Dynamic custom data bucket (Requirement: Phase 6)
+  customData?: Record<string, any>;
 }
 
 /**
@@ -848,10 +901,33 @@ export interface ResolvedContact {
   entityType?: EntityType | null;
   entityId?: string | null;
   workspaceEntityId?: string | null;
+  
+  // Primary Contact Details (Denormalized for convenience)
+  primaryContactName?: string;
+  primaryContactEmail?: string;
+  primaryContactPhone?: string;
+  
+  // Signatory Details
+  signatoryName?: string;
+  signatoryEmail?: string;
+  signatoryPhone?: string;
+
+  // Identity & Location
+  initials?: string;
+  referee?: string;
+  locationString?: string;
+  zoneName?: string;
   // Migration tracking
   migrationStatus: MigrationStatus;
   // Legacy school data (for backward compatibility)
   schoolData?: School;
+  
+  // Data Buckets (Requirement: Phase 6)
+  industryData?: any;
+  financeData?: any;
+  personData?: any;
+  familyData?: any;
+  customData?: any;
 }
 
 export interface SubscriptionPackage {
@@ -1594,7 +1670,8 @@ export type VariableContext =
   | 'agreement'
   | 'entity'
   | 'campaign'
-  | 'common';
+  | 'common'
+  | (string & {});
 
 export interface TemplateVariable {
   id: string;
@@ -1814,6 +1891,7 @@ export interface MessageTask {
   sentAt?: string;
   error?: string;
 }
+
 
 export interface Module {
   id: string;
@@ -2113,6 +2191,24 @@ export interface PageSubmission {
 /**
  * Fields Manager Data Models
  */
+export interface FieldGroup {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;                    // e.g. "Contact Identity", "Financial Profile"
+  slug: string;                    // Auto-generated kebab-case key
+  description?: string;
+  icon: string;                    // Lucide icon name, auto-determined
+  color: string;                   // Accent color
+  entityTypes: EntityType[];       // Which entity types this group applies to
+  industry?: IndustryVertical;     // Which industry seeded this (null = user-created)
+  isSystem: boolean;               // System groups are immutable
+  order: number;                   // Drag-sort position
+  fieldCount?: number;             // Denormalized
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface AppField {
   id: string;
   workspaceId: string;
@@ -2121,7 +2217,10 @@ export interface AppField {
   label: string; // Display label
   variableName: string; // Used in liquid/mustache templates
   type: 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'currency' | 'date' | 'datetime' | 'select' | 'multi_select' | 'radio' | 'checkbox' | 'yes_no' | 'address' | 'url' | 'hidden';
+  groupId?: string; // Reference to FieldGroup.id
+  /** @deprecated Use groupId */
   section: 'common' | 'institution' | 'family' | 'child' | 'custom_admissions' | 'custom_marketing' | string;
+  industryOrigin?: IndustryVertical; // Which industry seeded this
   isNative: boolean; // System fields are immutable
   compatibilityScope: ('common' | 'institution' | 'family' | 'person' | 'submission-only' | 'internal-only')[];
   helpText?: string;
@@ -2260,6 +2359,7 @@ export interface QRDesign {
   quietZone?: number;       // px
   errorCorrection: QRErrorCorrection;
   size?: number;            // px, default 300
+  posterData?: any;         // Serialized CanvasState for advanced poster designer
 }
 
 export interface QRDestination {

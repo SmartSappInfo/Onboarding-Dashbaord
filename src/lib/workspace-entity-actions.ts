@@ -489,3 +489,80 @@ export async function updateWorkspaceEntityAction(input: UpdateWorkspaceEntityIn
     };
   }
 }
+
+interface DeleteEntityPermanentlyInput {
+  workspaceEntityId: string;
+  entityId: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  /** If true (default), also purges root entities doc when no memberships remain */
+  purgeRootEntity?: boolean;
+}
+
+/**
+ * Permanently deletes an archived workspace_entities record.
+ * If no other workspace memberships remain for the entity, also deletes the root entities doc.
+ * Requirements: archived-only guard, full audit trail.
+ */
+export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanentlyInput) {
+  try {
+    const timestamp = new Date().toISOString();
+
+    const weRef = adminDb.collection('workspace_entities').doc(input.workspaceEntityId);
+    const weSnap = await weRef.get();
+    if (!weSnap.exists) return { success: false, error: 'Workspace-entity record not found' };
+
+    const weData = { id: weSnap.id, ...weSnap.data() } as WorkspaceEntity;
+    if (weData.status !== 'archived') {
+      return { success: false, error: 'Only archived entities can be permanently deleted.' };
+    }
+
+    await weRef.delete();
+
+    let rootEntityDeleted = false;
+    if (input.purgeRootEntity !== false) {
+      const remainingSnap = await adminDb
+        .collection('workspace_entities')
+        .where('entityId', '==', input.entityId)
+        .limit(1)
+        .get();
+      if (remainingSnap.empty) {
+        await adminDb.collection('entities').doc(input.entityId).delete();
+        rootEntityDeleted = true;
+      }
+    }
+
+    await logWorkspaceEntityDeleted({
+      organizationId: weData.organizationId,
+      workspaceId: weData.workspaceId,
+      entityId: weData.entityId,
+      entityType: weData.entityType,
+      userId: input.userId,
+      userName: input.userName || 'Unknown User',
+      userEmail: input.userEmail || '',
+      oldValue: weData,
+      operationContext: 'permanent_delete',
+    });
+
+    await logActivity({
+      organizationId: weData.organizationId,
+      workspaceId: weData.workspaceId,
+      entityId: weData.entityId,
+      entityType: weData.entityType,
+      displayName: weData.displayName,
+      userId: input.userId,
+      type: 'entity_unlinked_from_workspace',
+      source: 'user_action',
+      description: `permanently deleted "${weData.displayName}" from workspace${rootEntityDeleted ? ' and purged root record' : ''}`,
+      metadata: { workspaceEntityId: input.workspaceEntityId, rootEntityDeleted, deletedAt: timestamp },
+    });
+
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/contacts');
+    return { success: true, rootEntityDeleted };
+  } catch (e: any) {
+    console.error('>>> [WORKSPACE_ENTITY:PERMANENT_DELETE] Failed:', e.message);
+    return { success: false, error: e.message };
+  }
+}

@@ -83,6 +83,7 @@ const formSchema = z.object({
   company: z.string().optional(),
   jobTitle: z.string().optional(),
   leadSource: z.string().optional(),
+  customData: z.record(z.any()).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -117,6 +118,26 @@ export default function NewEntityPage() {
   }, [firestore, activeWorkspaceId]);
   const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
 
+  const fieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+        collection(firestore, 'app_fields'),
+        where('workspaceId', '==', activeWorkspaceId),
+        where('status', '==', 'active')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: appFields } = useCollection<any>(fieldsQuery);
+
+  const groupsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+        collection(firestore, 'field_groups'),
+        where('workspaceId', '==', activeWorkspaceId),
+        orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: fieldGroups } = useCollection<any>(groupsQuery);
+
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -136,12 +157,33 @@ export default function NewEntityPage() {
       discountPercentage: 0,
       arrearsBalance: 0,
       creditBalance: 0,
-      subscriptionPackageId: null
+      subscriptionPackageId: null,
+      customData: {}
     },
   });
 
   const watchName = methods.watch("name");
   const watchPackageId = methods.watch("subscriptionPackageId");
+
+  const contactScope = activeWorkspace?.contactScope || 'institution';
+
+  const customFieldGroups = React.useMemo(() => {
+      if (!fieldGroups || !appFields) return [];
+      
+      return fieldGroups.map(group => {
+          const groupFields = appFields.filter((f: any) => 
+              f.groupId === group.id && 
+              f.status === 'active' && 
+              f.type !== 'hidden' &&
+              (f.compatibilityScope?.includes('common') || f.compatibilityScope?.includes(contactScope))
+          );
+          
+          return {
+              ...group,
+              fields: groupFields
+          };
+      }).filter(g => g.fields.length > 0 && !g.isSystem); // Only non-system groups for generic custom inputs
+  }, [fieldGroups, appFields, contactScope]);
 
   // Auto-generate initials
   React.useEffect(() => {
@@ -191,6 +233,7 @@ export default function NewEntityPage() {
         assignedTo,
         primaryEmail: (data.entityContacts || []).find(c => c.isPrimary)?.email || (data.entityContacts || []).find(c => c.isSignatory)?.email || '',
         primaryPhone: (data.entityContacts || []).find(c => c.isPrimary)?.phone || (data.entityContacts || []).find(c => c.isSignatory)?.phone || '',
+        customData: data.customData || {},
     };
 
     if (contactScope === 'institution') {
@@ -472,7 +515,7 @@ export default function NewEntityPage() {
  <FormItem className="text-left">
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Detailed Billing Address</FormLabel>
                                 <FormControl>
- <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+ <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-background/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -560,6 +603,35 @@ export default function NewEntityPage() {
                         )} />
                     </CardContent>
                 </Card>
+
+                {/* Dynamic Custom Field Groups */}
+                {customFieldGroups.map((group) => (
+                    <Card key={group.id} className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
+                        <CardHeader className="bg-card/20 border-b pb-6 text-left">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="p-2 bg-primary/10 rounded-xl text-left"><Layout className="h-5 w-5 text-primary" /></div>
+                                <CardTitle className="text-lg font-semibold tracking-tight text-left">{group.name}</CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 text-left grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {group.fields.map((field: any) => (
+                                <FormField key={field.id} control={methods.control} name={`customData.${field.variableName}`} render={({ field: formField }) => (
+                                    <FormItem className="text-left">
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{field.label}</FormLabel>
+                                        <FormControl>
+                                            {field.type === 'long_text' ? (
+                                                <Textarea {...formField} value={formField.value || ''} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                            ) : (
+                                                <Input {...formField} value={formField.value || ''} type={field.type === 'number' ? 'number' : 'text'} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold" />
+                                            )}
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            ))}
+                        </CardContent>
+                    </Card>
+                ))}
               </div>
 
               {/* Right Sidebar: Operations */}

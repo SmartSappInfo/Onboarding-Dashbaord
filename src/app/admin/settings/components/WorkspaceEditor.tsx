@@ -72,6 +72,8 @@ import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { setOrganizationDefaultWorkspaceAction } from '@/lib/organization-actions';
 import { INDUSTRY_CONFIG, getEnabledIndustries } from '@/lib/industry-config';
+import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
+import * as Icons from 'lucide-react';
 
 export default function WorkspaceEditor() {
     const firestore = useFirestore();
@@ -103,62 +105,19 @@ export default function WorkspaceEditor() {
 
     // Helper function to get industry icon
     const getIndustryIcon = (industryType: IndustryVertical) => {
-        switch (industryType) {
-            case 'SaaS':
-                return Building2;
-            case 'SchoolEnrollment':
-                return Users;
-            case 'Law':
-                return Scale;
-            case 'Marketing':
-                return Megaphone;
-            case 'RealEstate':
-                return Home;
-            case 'Consultancy':
-                return Briefcase;
-            default:
-                return Building2;
-        }
+        const meta = INDUSTRY_METADATA[industryType];
+        const IconName = meta?.icon || 'Building2';
+        return (Icons as any)[IconName] || Icons.Building2;
     };
 
     // Helper function to get industry display name
     const getIndustryDisplayName = (industryType: IndustryVertical) => {
-        switch (industryType) {
-            case 'SaaS':
-                return 'SaaS';
-            case 'SchoolEnrollment':
-                return 'School Enrollment';
-            case 'Law':
-                return 'Law Firm';
-            case 'Marketing':
-                return 'Marketing Agency';
-            case 'RealEstate':
-                return 'Real Estate';
-            case 'Consultancy':
-                return 'Consultancy';
-            default:
-                return industryType;
-        }
+        return INDUSTRY_METADATA[industryType]?.name || industryType;
     };
 
     // Helper function to get industry description
     const getIndustryDescription = (industryType: IndustryVertical) => {
-        switch (industryType) {
-            case 'SaaS':
-                return 'B2B SaaS customer management with trials, subscriptions, and health scoring';
-            case 'SchoolEnrollment':
-                return 'Education admissions management with applications, enrollments, and school visits';
-            case 'Law':
-                return 'Legal practice management with matters, conflict checks, and time tracking';
-            case 'Marketing':
-                return 'Marketing agency CRM with campaigns, proposals, and performance tracking';
-            case 'RealEstate':
-                return 'Real estate CRM with properties, viewings, offers, and deal management';
-            case 'Consultancy':
-                return 'Consulting engagement tracking with discoveries, proposals, and outcomes';
-            default:
-                return '';
-        }
+        return INDUSTRY_METADATA[industryType]?.description || '';
     };
 
     // Filter workspaces by current organization

@@ -25,9 +25,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
-import { getQRCode, updateQRCode, updateQRDesign, pauseQRCode, resumeQRCode } from '@/lib/qr-actions';
+import { getQRCode, updateQRCode, updateQRDesign, pauseQRCode, resumeQRCode, updateQRShortPath, saveQRTemplate } from '@/lib/qr-actions';
 import { getQRAnalytics, type ScanAnalytics } from '@/lib/qr-scan-actions';
 import type { QRCode as QRCodeType, QRDesign } from '@/lib/types';
 import QRPreview from '../components/qr-preview';
@@ -120,91 +121,105 @@ export default function QRDetailPage() {
     : qr.destination.url || '';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <Button variant="ghost" onClick={() => router.push('/admin/qr-studio')} className="rounded-xl mb-3 text-muted-foreground hover:text-foreground -ml-3">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to QR Studio
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/admin/qr-studio')} className="rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{qr.name}</h1>
-            <Badge
-              variant="outline"
-              className={`text-[9px] uppercase font-bold tracking-wider rounded-lg ${
-                qr.status === 'active'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                  : qr.status === 'paused'
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                  : 'bg-muted text-muted-foreground border-border'
-              }`}
-            >
-              {qr.status}
-            </Badge>
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold tracking-tight text-foreground truncate">{qr.name}</h1>
+              <Badge
+                variant="outline"
+                className={`text-[9px] uppercase font-bold tracking-wider rounded-lg shrink-0 ${
+                  qr.status === 'active'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                    : qr.status === 'paused'
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-muted text-muted-foreground border-border'
+                }`}
+              >
+                {qr.status}
+              </Badge>
+            </div>
+            {qr.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{qr.description}</p>}
           </div>
-          {qr.description && <p className="text-sm text-muted-foreground mt-1">{qr.description}</p>}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" onClick={handleCopyLink} className="rounded-xl h-10">
-            <Copy className="h-4 w-4 mr-2" /> Copy Link
+          <Button variant="outline" size="sm" onClick={handleCopyLink} className="rounded-xl h-9 text-xs">
+            <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Link
           </Button>
-          <Button variant="outline" onClick={handleToggleStatus} className="rounded-xl h-10">
-            {qr.status === 'active' ? <><Pause className="h-4 w-4 mr-2" /> Pause</> : <><Play className="h-4 w-4 mr-2" /> Resume</>}
+          <Button variant="outline" size="sm" onClick={handleToggleStatus} className="rounded-xl h-9 text-xs">
+            {qr.status === 'active' ? <><Pause className="h-3.5 w-3.5 mr-1.5" /> Pause</> : <><Play className="h-3.5 w-3.5 mr-1.5" /> Resume</>}
           </Button>
-          <Button onClick={() => setShowDownload(true)} className="rounded-xl h-10 shadow-lg shadow-primary/20">
-            <Download className="h-4 w-4 mr-2" /> Download
+          <Button size="sm" onClick={() => setShowDownload(true)} className="rounded-xl h-9 text-xs shadow-lg shadow-primary/20">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Download
           </Button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* QR Preview Card */}
-        <Card className="lg:col-span-1 p-6 rounded-2xl border-border bg-card flex flex-col items-center gap-4">
-          <div className="p-6 rounded-2xl bg-white shadow-inner">
-            <QRPreview data={qrData} design={qr.design} size={240} />
-          </div>
-          <div className="text-center space-y-1">
-            <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider rounded-lg">
-              {TYPE_LABELS[qr.type] || qr.type}
-            </Badge>
-            <p className="text-[10px] text-muted-foreground">
-              {qr.mode === 'dynamic' ? 'Dynamic — Trackable' : 'Static — Permanent'}
-            </p>
+      {/* Row 1: Compact Preview Strip */}
+      <Card className="p-4 rounded-2xl border-border bg-card">
+        <div className="flex flex-col sm:flex-row items-center gap-5">
+          {/* QR Preview */}
+          <div className="shrink-0 p-3 rounded-xl bg-white shadow-lg border border-border/50">
+            <QRPreview data={qrData} design={qr.design} size={120} />
           </div>
 
-          {/* Quick stats */}
-          <div className="w-full grid grid-cols-2 gap-3 pt-4 border-t border-border">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-foreground tabular-nums">{qr.stats.totalScans}</p>
-              <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Scans</p>
+          {/* Info + Stats */}
+          <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="space-y-1">
+              <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-wider rounded-lg">
+                {TYPE_LABELS[qr.type] || qr.type}
+              </Badge>
+              <p className="text-[10px] text-muted-foreground">
+                {qr.mode === 'dynamic' ? 'Dynamic — Trackable' : 'Static — Permanent'}
+              </p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-foreground tabular-nums">{qr.stats.uniqueScans || 0}</p>
-              <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Unique</p>
+            {qr.shortPath && (
+              <div className="space-y-0.5">
+                <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground">Short Link</p>
+                <p className="text-xs font-mono text-primary">{typeof window !== 'undefined' ? window.location.origin : ''}/q/{qr.shortPath}</p>
+              </div>
+            )}
+            <div className="space-y-0.5">
+              <p className="text-xl font-bold text-foreground tabular-nums">{qr.stats.totalScans}</p>
+              <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground">Scans</p>
             </div>
+            <div className="space-y-0.5">
+              <p className="text-xl font-bold text-foreground tabular-nums">{qr.stats.uniqueScans || 0}</p>
+              <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground">Unique</p>
+            </div>
+            {qr.stats.lastScannedAt && (
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground">{new Date(qr.stats.lastScannedAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}</p>
+                <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground">Last Scan</p>
+              </div>
+            )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {/* Tabs */}
-        <Card className="lg:col-span-2 rounded-2xl border-border bg-card overflow-hidden">
+      {/* Row 2: Full-width Tabs */}
+      <Card className="rounded-2xl border-border bg-card overflow-hidden">
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="w-full justify-start bg-muted/30 rounded-none border-b border-border p-0 h-12">
-              <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
+              <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="destination" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
+              <TabsTrigger value="destination" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
                 Destination
               </TabsTrigger>
-              <TabsTrigger value="design" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
+              <TabsTrigger value="design" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
                 Design
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
+              <TabsTrigger value="analytics" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
                 Analytics
               </TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
+              <TabsTrigger value="settings" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider">
                 Settings
               </TabsTrigger>
             </TabsList>
@@ -278,35 +293,10 @@ export default function QRDetailPage() {
             </TabsContent>
 
             <TabsContent value="settings" className="p-6 space-y-4">
-              {qr.tracking.enabled && (
-                <div className="space-y-3">
-                  <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">UTM Parameters</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Source</Label>
-                      <p className="text-sm text-foreground">{qr.tracking.utmSource || '—'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Medium</Label>
-                      <p className="text-sm text-foreground">{qr.tracking.utmMedium || '—'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Campaign</Label>
-                      <p className="text-sm text-foreground">{qr.tracking.utmCampaign || '—'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="space-y-1 pt-4 border-t border-border">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Error Correction</p>
-                <p className="text-sm text-foreground">{qr.design.errorCorrection} — {
-                  { L: '7% recovery', M: '15% recovery', Q: '25% recovery', H: '30% recovery' }[qr.design.errorCorrection]
-                }</p>
-              </div>
+              <SettingsTab qr={qr} orgId={activeOrganizationId!} wsId={activeWorkspaceId!} onSaved={fetchQR} />
             </TabsContent>
           </Tabs>
         </Card>
-      </div>
 
       {/* Download Dialog */}
       {showDownload && (
@@ -486,6 +476,12 @@ function DesignTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: string
   const { toast } = useToast();
   const [localDesign, setLocalDesign] = React.useState<QRDesign>(qr.design);
   const [saving, setSaving] = React.useState(false);
+  
+  // Template saving state
+  const [showTemplateDialog, setShowTemplateDialog] = React.useState(false);
+  const [templateName, setTemplateName] = React.useState('');
+  const [savingTemplate, setSavingTemplate] = React.useState(false);
+  
   const hasChanges = JSON.stringify(localDesign) !== JSON.stringify(qr.design);
 
   const qrData = qr.mode === 'dynamic' && qr.shortPath
@@ -505,6 +501,26 @@ function DesignTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: string
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      await saveQRTemplate(orgId, wsId, {
+        name: templateName.trim(),
+        category: 'Custom',
+        design: localDesign,
+        createdBy: qr.createdBy.userId,
+      });
+      toast({ title: 'Template saved', description: 'Your design has been saved as a template.' });
+      setShowTemplateDialog(false);
+      setTemplateName('');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to save template.' });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -512,17 +528,198 @@ function DesignTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: string
           <h3 className="text-sm font-bold text-foreground">QR Code Designer</h3>
           <p className="text-xs text-muted-foreground">Customize colors, patterns, logo, and frame.</p>
         </div>
-        {hasChanges && (
+        <div className="flex items-center gap-2">
           <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-xl h-9 px-5 text-xs font-semibold shadow-lg shadow-primary/20"
+            variant="outline"
+            onClick={() => setShowTemplateDialog(true)}
+            className="rounded-xl h-9 px-5 text-xs font-semibold"
           >
-            {saving ? 'Saving...' : 'Save Design'}
+            Save as Template
           </Button>
-        )}
+          {hasChanges && (
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-xl h-9 px-5 text-xs font-semibold shadow-lg shadow-primary/20"
+            >
+              {saving ? 'Saving...' : 'Save Design'}
+            </Button>
+          )}
+        </div>
       </div>
-      <QRDesigner data={qrData} design={localDesign} onDesignChange={setLocalDesign} />
+      <QRDesigner data={qrData} design={localDesign} onDesignChange={setLocalDesign} orgId={orgId} wsId={wsId} />
+
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Save this design to reuse it for future QR codes in this workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Template Name</Label>
+              <Input
+                placeholder="e.g. Primary Brand, Marketing Campaign"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplateDialog(false)} className="rounded-xl">Cancel</Button>
+            <Button onClick={handleSaveTemplate} disabled={savingTemplate || !templateName.trim()} className="rounded-xl">
+              {savingTemplate ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Settings Tab Component
+// ─────────────────────────────────────────────────
+
+function SettingsTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: string; wsId: string; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [shortPath, setShortPath] = React.useState(qr.shortPath || '');
+  const [savingShortPath, setSavingShortPath] = React.useState(false);
+
+  const [utmSource, setUtmSource] = React.useState(qr.tracking.utmSource || '');
+  const [utmMedium, setUtmMedium] = React.useState(qr.tracking.utmMedium || '');
+  const [utmCampaign, setUtmCampaign] = React.useState(qr.tracking.utmCampaign || '');
+  const [savingUTM, setSavingUTM] = React.useState(false);
+
+  const hasShortPathChanges = qr.mode === 'dynamic' && shortPath !== (qr.shortPath || '');
+  const hasUTMChanges = 
+    utmSource !== (qr.tracking.utmSource || '') ||
+    utmMedium !== (qr.tracking.utmMedium || '') ||
+    utmCampaign !== (qr.tracking.utmCampaign || '');
+
+  const handleSaveShortPath = async () => {
+    setSavingShortPath(true);
+    try {
+      await updateQRShortPath(orgId, wsId, qr.id, shortPath);
+      toast({ title: 'Shortlink updated', description: 'Your custom shortlink has been saved.' });
+      onSaved();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to update shortlink.' });
+    } finally {
+      setSavingShortPath(false);
+    }
+  };
+
+  const handleSaveUTM = async () => {
+    setSavingUTM(true);
+    try {
+      await updateQRCode(orgId, wsId, qr.id, { 
+        tracking: { 
+          ...qr.tracking, 
+          utmSource: utmSource || undefined,
+          utmMedium: utmMedium || undefined,
+          utmCampaign: utmCampaign || undefined,
+        }
+      });
+      toast({ title: 'UTM updated', description: 'Your UTM parameters have been saved.' });
+      onSaved();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to update UTM parameters.' });
+    } finally {
+      setSavingUTM(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {qr.mode === 'dynamic' && (
+        <div className="space-y-3">
+          <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Custom Shortlink</p>
+          <div className="flex items-end gap-3 max-w-md">
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="h-10 px-3 rounded-xl bg-muted border border-border flex items-center text-sm text-muted-foreground select-none shrink-0">
+                  smartsapp.com/q/
+                </div>
+                <Input
+                  value={shortPath}
+                  onChange={(e) => setShortPath(e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())}
+                  className="flex-1 rounded-xl h-10"
+                  maxLength={30}
+                  placeholder="my-campaign"
+                />
+              </div>
+            </div>
+            {hasShortPathChanges && (
+              <Button
+                onClick={handleSaveShortPath}
+                disabled={savingShortPath || !shortPath}
+                className="rounded-xl h-10 px-4 shrink-0"
+              >
+                {savingShortPath ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Changing the shortlink will immediately break the old link.</p>
+        </div>
+      )}
+
+      {qr.tracking.enabled && (
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">UTM Parameters</p>
+            {hasUTMChanges && (
+              <Button
+                onClick={handleSaveUTM}
+                disabled={savingUTM}
+                className="rounded-xl h-8 px-3 text-xs"
+              >
+                {savingUTM ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save UTM'}
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Source</Label>
+              <Input
+                value={utmSource}
+                onChange={(e) => setUtmSource(e.target.value)}
+                placeholder="e.g. facebook"
+                className="rounded-xl h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Medium</Label>
+              <Input
+                value={utmMedium}
+                onChange={(e) => setUtmMedium(e.target.value)}
+                placeholder="e.g. social"
+                className="rounded-xl h-9 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Campaign</Label>
+              <Input
+                value={utmCampaign}
+                onChange={(e) => setUtmCampaign(e.target.value)}
+                placeholder="e.g. summer_sale"
+                className="rounded-xl h-9 text-xs"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="space-y-1 pt-4 border-t border-border">
+        <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Error Correction</p>
+        <p className="text-sm text-foreground">{qr.design.errorCorrection} — {
+          { L: '7% recovery', M: '15% recovery', Q: '25% recovery', H: '30% recovery' }[qr.design.errorCorrection]
+        }</p>
+      </div>
     </div>
   );
 }

@@ -11,6 +11,12 @@
       "sourceType": "github",
       "computedHash": "18da189464fd9a53133a1372599369ac4b7f3a9da653a907762e20e89cdb2102"
     },
+    "crm-builder": {
+      "source": "customware-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/crm-builder/SKILL.md",
+      "computedHash": "29d3504a5642c0fe8bd120fc39db0cd919011b313ee75e50b765b62a14d22c03"
+    },
     "eslint-prettier-config": {
       "source": "patricio0312rev/skills",
       "sourceType": "github",
@@ -51,6 +57,12 @@
       "sourceType": "github",
       "computedHash": "ce3084b8f555d1c560d849332483428301f30ec78f315e1d60ca1ddd8bc69a51"
     },
+    "qr-code-generator": {
+      "source": "manojbajaj95/claude-gtm-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/qr-code-generator/SKILL.md",
+      "computedHash": "d7d7c2e8779296f645e1895862081b68384a699d4941c015c7610d6db94152ef"
+    },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
@@ -70,6 +82,12 @@
       "source": "supercent-io/skills-template",
       "sourceType": "github",
       "computedHash": "1459a31d3c87df7fd601a99479363a7f66da1cd2089f08405a7d4854d0da3a93"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "computedHash": "126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f"
     },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",

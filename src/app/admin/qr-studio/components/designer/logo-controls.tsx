@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Upload, ImageIcon, X } from 'lucide-react';
-import type { QRDesign } from '@/lib/types';
+import { Upload, ImageIcon, X, Image as ImageIcon2 } from 'lucide-react';
+import type { QRDesign, MediaAsset } from '@/lib/types';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
 interface LogoControlsProps {
   design: QRDesign;
@@ -16,33 +17,15 @@ interface LogoControlsProps {
 
 export default function LogoControls({ design, updateDesign }: LogoControlsProps) {
   const hasLogo = !!design.logoUrl;
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [showMediaDialog, setShowMediaDialog] = React.useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Create a local preview URL for the logo
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      updateDesign({
-        logoUrl: dataUrl,
-        logoSize: design.logoSize || 20,
-        logoMargin: design.logoMargin ?? 5,
-        // Upgrade error correction when logo is added
-        errorCorrection: design.errorCorrection === 'L' || design.errorCorrection === 'M' ? 'Q' : design.errorCorrection,
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleUrlInput = (url: string) => {
+  const handleAssetSelect = (asset: MediaAsset) => {
+    setShowMediaDialog(false);
     updateDesign({
-      logoUrl: url || undefined,
+      logoUrl: asset.url,
       logoSize: design.logoSize || 20,
       logoMargin: design.logoMargin ?? 5,
-      errorCorrection: url && (design.errorCorrection === 'L' || design.errorCorrection === 'M') ? 'Q' : design.errorCorrection,
+      errorCorrection: design.errorCorrection === 'L' || design.errorCorrection === 'M' ? 'Q' : design.errorCorrection,
     });
   };
 
@@ -59,34 +42,16 @@ export default function LogoControls({ design, updateDesign }: LogoControlsProps
             Add a logo to the center of your QR code. Error correction will be automatically increased.
           </p>
 
-          {/* Upload button */}
           <Button
             type="button"
             variant="outline"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setShowMediaDialog(true)}
             className="w-full rounded-xl h-20 border-dashed border-2 hover:border-primary/40 flex flex-col gap-1"
           >
-            <Upload className="h-5 w-5 text-muted-foreground" />
-            <span className="text-xs font-semibold">Upload Logo</span>
-            <span className="text-[9px] text-muted-foreground">PNG, JPG, SVG</span>
+            <ImageIcon2 className="h-5 w-5 text-muted-foreground" />
+            <span className="text-xs font-semibold">Select from Library</span>
+            <span className="text-[9px] text-muted-foreground">Choose or upload an image</span>
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/svg+xml,image/webp"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          {/* Or URL input */}
-          <div className="space-y-1.5">
-            <Label className="text-[10px] text-muted-foreground">Or paste image URL</Label>
-            <Input
-              placeholder="https://example.com/logo.png"
-              onChange={(e) => handleUrlInput(e.target.value)}
-              className="h-9 rounded-lg bg-muted/30 border-none text-xs"
-            />
-          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -150,21 +115,21 @@ export default function LogoControls({ design, updateDesign }: LogoControlsProps
           <Button
             type="button"
             variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-xl h-9 text-xs"
+            onClick={() => setShowMediaDialog(true)}
+            className="w-full rounded-xl text-xs font-semibold h-9"
           >
-            <Upload className="h-3.5 w-3.5 mr-2" />
             Replace Logo
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/svg+xml,image/webp"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
         </div>
       )}
+
+      <MediaSelectorDialog
+        open={showMediaDialog}
+        onOpenChange={setShowMediaDialog}
+        onSelectAsset={handleAssetSelect}
+        filterType="image"
+        title="Select Logo"
+      />
     </div>
   );
 }

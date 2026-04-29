@@ -1,4 +1,4 @@
-
+import type { IndustryVertical } from '../types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Type Definitions
@@ -352,6 +352,7 @@ export interface PlatformFieldPack {
   fields: PlatformFieldDefinition[];
   sections: PlatformFieldSection[];
   entityCompatibility: ('institution' | 'family' | 'person')[];
+  industryCompatibility?: IndustryVertical[];
   isDefaultForNewWorkspaces: boolean;
   createdAt: string;
   updatedAt: string;

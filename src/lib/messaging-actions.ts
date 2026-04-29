@@ -24,6 +24,31 @@ export async function syncVariableRegistry() {
     const fieldsCol = adminDb.collection('app_fields');
     const timestamp = new Date().toISOString();
 
+    // Helper to get or create a system group for harvested fields
+    const getOrCreateGroup = async (workspaceId: string, organizationId: string, name: string, slug: string, icon: string) => {
+      const groupsCol = adminDb.collection('field_groups');
+      const snap = await groupsCol.where('workspaceId', '==', workspaceId).where('slug', '==', slug).limit(1).get();
+      if (!snap.empty) {
+        return snap.docs[0].id;
+      }
+      const ref = groupsCol.doc();
+      await ref.set({
+        id: ref.id,
+        workspaceId,
+        organizationId,
+        name,
+        slug,
+        icon,
+        color: '#64748b',
+        entityTypes: ['institution', 'person', 'family'],
+        isSystem: true,
+        order: 900,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      return ref.id;
+    };
+
     // 1. DYNAMIC SURVEY HARVESTING
     const surveysSnap = await adminDb.collection('surveys').where('status', '!=', 'archived').get();
     for (const doc of surveysSnap.docs) {
@@ -31,6 +56,7 @@ export async function syncVariableRegistry() {
       const workspaceId = survey.workspaceIds?.[0] || 'onboarding'; // Surveys can be multi-workspace, but we map to primary for field registry
       const organizationId = survey.organizationId || 'default';
       
+      const groupId = await getOrCreateGroup(workspaceId, organizationId, 'Survey Responses', 'surveys', 'FileText');
       const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
 
       for (const q of questions) {
@@ -38,6 +64,7 @@ export async function syncVariableRegistry() {
         await fieldsCol.doc(fieldId).set({
           workspaceId,
           organizationId,
+          groupId,
           name: q.title.replace(/<[^>]*>?/gm, ''),
           label: q.title.replace(/<[^>]*>?/gm, ''),
           variableName: q.id,
@@ -59,6 +86,8 @@ export async function syncVariableRegistry() {
       const organizationId = pdf.organizationId || 'default';
       const fields = pdf.fields || [];
 
+      const groupId = await getOrCreateGroup(workspaceId, organizationId, 'Form Fields', 'forms', 'FileText');
+
       for (const f of fields) {
         if (f.type === 'signature' || f.type === 'photo') continue;
 
@@ -66,6 +95,7 @@ export async function syncVariableRegistry() {
         await fieldsCol.doc(fieldId).set({
           workspaceId,
           organizationId,
+          groupId,
           name: f.label || f.placeholder || f.id,
           label: f.label || f.placeholder || f.id,
           variableName: f.id,

@@ -36,7 +36,7 @@ const schema = z.object({
   channel:         z.enum(['email', 'sms']),
   subject:         z.string().optional(),
   body:            z.string().min(1, 'Body is required'),
-  variableContext: z.enum(['meeting', 'form', 'survey', 'agreement', 'entity', 'campaign', 'common']),
+  variableContext: z.string().min(1, 'Variable context is required'),
 });
 
 type FormData = z.infer<typeof schema>;

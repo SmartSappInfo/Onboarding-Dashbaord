@@ -276,6 +276,9 @@ export async function executeImportBatch(
   const failedRows: ExecutionSummary['failedRows'] = [];
   const createdIds: string[] = [];
 
+  // District Resolution Cache
+  const districtCache = new Map<string, { id: string; name: string }>();
+
   // Fetch workspace entityDefaults for merging (lowest priority layer)
   let workspaceDefaults: Record<string, string> = {};
   if (wsId) {
@@ -304,6 +307,43 @@ export async function executeImportBatch(
       for (const [key, val] of Object.entries(configuration.globalDefaults)) {
         if (!mapped[key] && val) {
           mapped[key] = val;
+        }
+      }
+    }
+
+    // Auto-create district if name is provided (Requirement: Auto-seed districts on import)
+    const dName = mapped.districtName?.trim();
+    const rId = mapped.regionId || configuration?.globalDefaults?.regionId; // Region is required to create a district
+    
+    if (dName && !mapped.districtId && rId && orgId) {
+      const cacheKey = `${rId}_${dName.toLowerCase()}`;
+      if (districtCache.has(cacheKey)) {
+        mapped.districtId = districtCache.get(cacheKey)!.id;
+      } else {
+        // Query Firestore
+        try {
+          const dSnap = await adminDb.collection('districts')
+            .where('organizationId', '==', orgId)
+            .where('regionId', '==', rId)
+            .where('name', '==', dName)
+            .limit(1).get();
+            
+          if (!dSnap.empty) {
+            const dId = dSnap.docs[0].id;
+            districtCache.set(cacheKey, { id: dId, name: dName });
+            mapped.districtId = dId;
+          } else {
+            // Create it
+            const newRef = await adminDb.collection('districts').add({
+              name: dName,
+              regionId: rId,
+              organizationId: orgId
+            });
+            districtCache.set(cacheKey, { id: newRef.id, name: dName });
+            mapped.districtId = newRef.id;
+          }
+        } catch (err) {
+          console.error(`Failed to resolve/create district "${dName}"`, err);
         }
       }
     }
@@ -435,6 +475,12 @@ function buildEntityPayload(
       name: displayName,
       status: 'active',
       lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
+      location: {
+        locationString: mapped.locationString || '',
+        ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),
+        ...(mapped.regionId ? { region: { id: mapped.regionId, name: mapped.regionName || '' } } : {}),
+        ...(mapped.districtId ? { district: { id: mapped.districtId, name: mapped.districtName || '' } } : {})
+      },
       personData: {
         firstName: fName || '',
         lastName: lName || '',
@@ -493,6 +539,12 @@ function buildEntityPayload(
       name: familyName,
       status: 'active',
       lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
+      location: {
+        locationString: mapped.locationString || '',
+        ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),
+        ...(mapped.regionId ? { region: { id: mapped.regionId, name: mapped.regionName || '' } } : {}),
+        ...(mapped.districtId ? { district: { id: mapped.districtId, name: mapped.districtName || '' } } : {})
+      },
       familyData: { guardians, children },
       entityContacts: contacts,
     };
@@ -524,12 +576,17 @@ function buildEntityPayload(
       name: instName,
       status: 'active',
       lifecycleStatus: mapped.lifecycleStatus || 'Onboarding',
+      location: {
+        locationString: mapped.locationString || '',
+        ...(mapped.countryId ? { country: { id: mapped.countryId, name: mapped.countryName || '', code: '', flag: '' } } : {}),
+        ...(mapped.regionId ? { region: { id: mapped.regionId, name: mapped.regionName || '' } } : {}),
+        ...(mapped.districtId ? { district: { id: mapped.districtId, name: mapped.districtName || '' } } : {})
+      },
       institutionData: {
         nominalRoll: mapped.nominalRoll ? parseInt(mapped.nominalRoll, 10) : undefined,
         billingAddress: mapped.billingAddress || '',
         currency: mapped.currency || 'GHS',
         subscriptionPackageId: mapped.subscriptionPackageId || '',
-        locationString: mapped.locationString || '',
       },
       entityContacts: contacts,
     };

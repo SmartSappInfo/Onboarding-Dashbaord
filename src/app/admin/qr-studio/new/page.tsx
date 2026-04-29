@@ -1,4 +1,4 @@
-import CreateQRWizard from '../components/create-qr-wizard';
+import CreateQRWizard from '@/app/admin/qr-studio/components/create-qr-wizard';
 
 export const metadata = {
   title: 'Create QR Code | QR Studio',

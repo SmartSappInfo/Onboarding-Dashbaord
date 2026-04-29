@@ -170,7 +170,7 @@ export function getContactVariables(
     vars['contact_role_signatory'] = signatory.typeLabel || signatory.typeKey || '';
   }
 
-  // Legacy aliases for backward compatibility
+  // Legacy aliases for backward compatibility and Registry alignment
   if (primary) {
     vars['school_phone'] = primary.phone || '';
     vars['school_email'] = primary.email || '';
@@ -182,6 +182,13 @@ export function getContactVariables(
     vars['email'] = primary.email || '';
     vars['phone'] = primary.phone || '';
     vars['first_name'] = (primary.name || '').split(' ')[0] || '';
+  }
+
+  if (signatory) {
+    vars['signatory_name'] = signatory.name || '';
+    vars['signatory_email'] = signatory.email || '';
+    vars['signatory_phone'] = signatory.phone || '';
+    vars['signatory_role'] = signatory.typeLabel || signatory.typeKey || '';
   }
 
   return vars;

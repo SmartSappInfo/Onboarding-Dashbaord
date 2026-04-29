@@ -14,6 +14,7 @@ import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData, resolveRecipientContacts } from '@/lib/messaging-actions';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
+import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -411,13 +412,29 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     // Load variables when template is selected
     React.useEffect(() => {
-        if (!selectedTemplate) {
-            setAvailableVariables([]);
-            return;
-        }
-        const vars = getVariablesForContext(selectedTemplate.variableContext);
-        setAvailableVariables(vars);
-    }, [selectedTemplate]);
+        if (!activeWorkspaceId) return;
+        
+        const loadVars = async () => {
+            const res = await getWorkspaceVariablesAction(activeWorkspaceId);
+            if (res.success && res.variables) {
+                // Filter by context if selectedTemplate exists
+                if (selectedTemplate) {
+                    const filtered = res.variables.filter(v => 
+                        v.context === 'common' || v.context === selectedTemplate.variableContext
+                    );
+                    setAvailableVariables(filtered);
+                } else {
+                    setAvailableVariables(res.variables);
+                }
+            } else {
+                // Fallback to static if action fails
+                const fallback = getVariablesForContext(selectedTemplate?.variableContext || 'common');
+                setAvailableVariables(fallback);
+            }
+        };
+
+        loadVars();
+    }, [activeWorkspaceId, selectedTemplate]);
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -255,7 +255,28 @@ async function resolveFromEntity(
       entityId: entity.id,
       workspaceEntityId,
       migrationStatus: 'migrated',
+      
+      // Resolve Primary & Signatory (FER-01)
+      primaryContactName: entityContacts.find(c => c.isPrimary)?.name,
+      primaryContactEmail: entityContacts.find(c => c.isPrimary)?.email,
+      primaryContactPhone: entityContacts.find(c => c.isPrimary)?.phone,
+      
+      signatoryName: entityContacts.find(c => c.isSignatory)?.name,
+      signatoryEmail: entityContacts.find(c => c.isSignatory)?.email,
+      signatoryPhone: entityContacts.find(c => c.isSignatory)?.phone,
+
+      // Identity & Location
+      initials: entity.initials,
+      referee: entity.referee,
+      locationString: entity.location?.locationString || (entity as any).locationString,
+      zoneName: entity.location?.zone?.name || (entity as any).zone?.name,
+
       schoolData: virtualSchoolData || legacySchoolData,
+      industryData: entity.industryData,
+      financeData: entity.financeData,
+      personData: entity.personData,
+      familyData: entity.familyData,
+      customData: entity.customData || (entity as any).institutionData?.customData,
     };
 
     return resolved;

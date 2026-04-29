@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { doc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Form, FormFieldInstance, AppField, FormThemeConfig, FormSubmissionActions } from '@/lib/types';
+import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
@@ -183,6 +183,18 @@ export default function EditFormPage() {
   }, [firestore, activeWorkspaceId]);
 
   const { data: availableFields } = useCollection<AppField>(availableFieldsQuery);
+
+  // Field Groups
+  const fieldGroupsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'field_groups'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, activeWorkspaceId]);
+
+  const { data: fieldGroups } = useCollection<FieldGroup>(fieldGroupsQuery);
 
   // Initialize from Firestore
   React.useEffect(() => {
@@ -558,7 +570,7 @@ export default function EditFormPage() {
                       <CardDescription className="text-xs">Click a field to add it to your form.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {!availableFields || availableFields.length === 0 ? (
+                      {!availableFields || !fieldGroups || fieldGroups.length === 0 ? (
                         <div className="py-8 text-center">
                           <p className="text-[10px] text-muted-foreground font-semibold">No fields available. Seed native fields first.</p>
                           <Button variant="link" size="sm" className="mt-2" onClick={() => router.push('/admin/settings/fields')}>
@@ -566,44 +578,72 @@ export default function EditFormPage() {
                           </Button>
                         </div>
                       ) : (
-                        availableFields.map(af => {
-                          const isAlreadyAdded = fields.some(f => f.appFieldId === af.id);
-                          const Icon = FIELD_TYPE_ICONS[af.type] || CaseSensitive;
-                          return (
-                            <button
-                              key={af.id}
-                              type="button"
-                              disabled={isAlreadyAdded}
-                              onClick={() => addFieldFromRegistry(af)}
-                              className={cn(
-                                'w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border group/item',
-                                isAlreadyAdded
-                                  ? 'opacity-40 cursor-not-allowed border-border/30 bg-muted/20'
-                                  : 'hover:bg-accent/10 hover:border-primary/30 border-border/50 cursor-pointer'
-                              )}
-                            >
-                              <div className="p-1.5 bg-primary/10 rounded-lg group-hover/item:scale-110 transition-transform">
-                                <Icon className="h-3.5 w-3.5 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                    <p className="text-xs font-bold truncate">{af.label}</p>
-                                    {af.isNative && (
-                                        <Badge variant="secondary" className="h-3 text-[7px] uppercase px-1 font-extrabold tracking-tighter bg-primary/10 text-primary border-none">
-                                            Native
-                                        </Badge>
-                                    )}
+                        <div className="space-y-6">
+                          {fieldGroups.map(group => {
+                            const groupFields = availableFields.filter(f => f.groupId === group.id);
+                            if (groupFields.length === 0) return null;
+                            
+                            // Sort hidden fields to the bottom of the group
+                            const sortedFields = [...groupFields].sort((a, b) => {
+                              if (a.type === 'hidden' && b.type !== 'hidden') return 1;
+                              if (a.type !== 'hidden' && b.type === 'hidden') return -1;
+                              return 0;
+                            });
+
+                            return (
+                              <div key={group.id} className="space-y-2">
+                                <h4 className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5 px-1 uppercase tracking-wider">
+                                  {group.name}
+                                </h4>
+                                <div className="space-y-1.5">
+                                  {sortedFields.map(af => {
+                                    const isAlreadyAdded = fields.some(f => f.appFieldId === af.id);
+                                    const Icon = FIELD_TYPE_ICONS[af.type] || CaseSensitive;
+                                    return (
+                                      <button
+                                        key={af.id}
+                                        type="button"
+                                        disabled={isAlreadyAdded}
+                                        onClick={() => addFieldFromRegistry(af)}
+                                        className={cn(
+                                          'w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border group/item',
+                                          isAlreadyAdded
+                                            ? 'opacity-40 cursor-not-allowed border-border/30 bg-muted/20'
+                                            : 'hover:bg-accent/10 hover:border-primary/30 border-border/50 cursor-pointer'
+                                        )}
+                                      >
+                                        <div className="p-1.5 bg-primary/10 rounded-lg group-hover/item:scale-110 transition-transform">
+                                          <Icon className="h-3.5 w-3.5 text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5 mb-0.5">
+                                              <p className="text-xs font-bold truncate">{af.label}</p>
+                                              {af.isNative && (
+                                                  <Badge variant="secondary" className="h-3 text-[7px] uppercase px-1 font-extrabold tracking-tighter bg-primary/10 text-primary border-none">
+                                                      Native
+                                                  </Badge>
+                                              )}
+                                              {af.type === 'hidden' && (
+                                                  <Badge variant="outline" className="h-3 text-[7px] uppercase px-1 font-extrabold tracking-tighter">
+                                                      Hidden
+                                                  </Badge>
+                                              )}
+                                          </div>
+                                          <p className="text-[9px] text-muted-foreground font-mono truncate">{'{{' + af.variableName + '}}'}</p>
+                                        </div>
+                                        {isAlreadyAdded ? (
+                                          <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                        ) : (
+                                          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                                        )}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
-                                <p className="text-[9px] text-muted-foreground font-mono truncate">{'{{' + af.variableName + '}}'}</p>
                               </div>
-                              {isAlreadyAdded ? (
-                                <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                              ) : (
-                                <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                              )}
-                            </button>
-                          );
-                        })
+                            );
+                          })}
+                        </div>
                       )}
                     </CardContent>
                   </Card>

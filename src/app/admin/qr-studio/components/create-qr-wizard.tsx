@@ -27,6 +27,7 @@ export interface WizardState {
   tracking: QRTracking;
   name: string;
   description: string;
+  customShortPath?: string;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -69,9 +70,15 @@ function validateStep(step: number, state: WizardState): StepValidation {
       return { valid: true, errors: [], message: '' };
     }
 
-    case 2:
+    case 2: {
       if (!state.mode) return { valid: false, errors: ['mode'], message: 'Please select static or dynamic mode.' };
+      if (state.mode === 'dynamic' && state.customShortPath) {
+        if (!/^[a-zA-Z0-9-]+$/.test(state.customShortPath)) {
+          return { valid: false, errors: ['customShortPath'], message: 'Custom shortlink can only contain letters, numbers, and hyphens.' };
+        }
+      }
       return { valid: true, errors: [], message: '' };
+    }
 
     case 3:
       return { valid: true, errors: [], message: '' }; // Design is always valid
@@ -162,6 +169,7 @@ export default function CreateQRWizard() {
         destination: state.destination,
         design: state.design,
         tracking: state.tracking,
+        customShortPath: state.mode === 'dynamic' && state.customShortPath ? state.customShortPath : undefined,
         createdBy: {
           userId: user.uid,
           name: user.displayName || '',
@@ -184,7 +192,7 @@ export default function CreateQRWizard() {
   };
 
   return (
-    <div className={`mx-auto space-y-8 ${currentStep === 3 ? 'max-w-6xl' : 'max-w-3xl'}`}>
+    <div className="w-full h-full flex flex-col space-y-8 pb-32">
       {/* Header */}
       <div>
         <Button variant="ghost" onClick={handleBack} className="rounded-xl mb-4 text-muted-foreground hover:text-foreground">
@@ -199,29 +207,40 @@ export default function CreateQRWizard() {
 
       {/* Progress Stepper */}
       <div className="flex items-center gap-2">
-        {STEPS.map((step, i) => (
-          <React.Fragment key={step.id}>
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
-                i === currentStep
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : i < currentStep
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {i < currentStep ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <span>{step.number}</span>
+        {STEPS.map((step, i) => {
+          const isAccessible = i <= currentStep || validation.valid; // rough check, allow clicking if valid or going backward
+          
+          return (
+            <React.Fragment key={step.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  // Allow jumping back, or jumping forward if the current step is valid
+                  if (i < currentStep || (i > currentStep && validation.valid)) {
+                    setCurrentStep(i);
+                  }
+                }}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                  i === currentStep
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                    : i < currentStep
+                    ? 'bg-primary/10 text-primary cursor-pointer hover:bg-primary/20'
+                    : 'bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80'
+                } ${(!isAccessible && i > currentStep) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {i < currentStep ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <span>{step.number}</span>
+                )}
+                <span className="hidden sm:inline">{step.label}</span>
+              </button>
+              {i < STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 rounded-full transition-colors ${i < currentStep ? 'bg-primary/40' : 'bg-border'}`} />
               )}
-              <span className="hidden sm:inline">{step.label}</span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 rounded-full transition-colors ${i < currentStep ? 'bg-primary/40' : 'bg-border'}`} />
-            )}
-          </React.Fragment>
-        ))}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Validation Alert */}
@@ -253,7 +272,7 @@ export default function CreateQRWizard() {
           >
             {currentStep === 0 && <StepType state={state} updateState={updateState} />}
             {currentStep === 1 && <StepDestination state={state} updateState={updateState} validationErrors={validationErrors} />}
-            {currentStep === 2 && <StepMode state={state} updateState={updateState} />}
+            {currentStep === 2 && <StepMode state={state} updateState={updateState} validationErrors={validationErrors} />}
             {currentStep === 3 && (
               <div className="space-y-4">
                 <div>
@@ -264,6 +283,8 @@ export default function CreateQRWizard() {
                   data={state.destination.url || 'https://smartsapp.com'}
                   design={state.design}
                   onDesignChange={(design) => updateState({ design })}
+                  orgId={activeOrganizationId!}
+                  wsId={activeWorkspaceId!}
                 />
               </div>
             )}

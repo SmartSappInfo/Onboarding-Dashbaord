@@ -31,7 +31,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useCollection, useFirestore } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { suggestBulkMapping } from '@/ai/flows/bulk-mapping-flow';
 import { ingestBatchAction, type BatchResult } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
@@ -53,57 +54,6 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 type Step = 'UPLOAD' | 'MAPPING' | 'PREVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
-
-// ─── Entity-aware field definitions ──────────────────────────────────────────
-
-const INSTITUTION_FIELDS = [
-    { key: 'name', label: 'Entity Name', required: true },
-    { key: 'initials', label: 'Initials/Acronym' },
-    { key: 'slogan', label: 'Motto/Slogan' },
-    { key: 'location', label: 'Physical Location' },
-    { key: 'zone', label: 'Regional Zone' },
-    { key: 'nominalRoll', label: 'Capacity / Nominal Roll' },
-    { key: 'assignedTo', label: 'Account Manager' },
-    { key: 'package', label: 'Subscription Tier' },
-    { key: 'modules', label: 'Requested Modules' },
-    { key: 'implementationDate', label: 'Go-Live Date' },
-    { key: 'referee', label: 'Referral Source' },
-    { key: 'includeDroneFootage', label: 'Drone Footage' },
-    { key: 'contactName', label: 'Primary Contact' },
-    { key: 'contactEmail', label: 'Contact Email' },
-    { key: 'contactPhone', label: 'Contact Phone' },
-    { key: 'contactRole', label: 'Contact Role' },
-    { key: 'isSignatory', label: 'Is Signatory' },
-    { key: 'billingAddress', label: 'Billing Address' },
-    { key: 'currency', label: 'Currency' },
-    { key: 'subscriptionRate', label: 'Effective Rate' },
-    { key: 'discountPercentage', label: 'Discount %' },
-    { key: 'arrearsBalance', label: 'Initial Arrears' },
-    { key: 'creditBalance', label: 'Initial Credit' },
-];
-
-const PERSON_FIELDS = [
-    { key: 'name', label: 'Full Name', required: true },
-    { key: 'contactEmail', label: 'Email Address' },
-    { key: 'contactPhone', label: 'Phone Number' },
-    { key: 'company', label: 'Company' },
-    { key: 'jobTitle', label: 'Job Title' },
-    { key: 'leadSource', label: 'Lead Source' },
-    { key: 'lifecycleStatus', label: 'Lifecycle Status' },
-];
-
-const FAMILY_FIELDS = [
-    { key: 'name', label: 'Family Name', required: true },
-    { key: 'contactName', label: 'Guardian Name' },
-    { key: 'contactPhone', label: 'Guardian Phone' },
-    { key: 'contactEmail', label: 'Guardian Email' },
-    { key: 'relationship', label: 'Relationship' },
-    { key: 'childFirstName', label: 'Child First Name' },
-    { key: 'childLastName', label: 'Child Last Name' },
-    { key: 'childGradeLevel', label: 'Child Grade Level' },
-    { key: 'leadSource', label: 'Lead Source' },
-    { key: 'lifecycleStatus', label: 'Lifecycle Status' },
-];
 
 /** Sample data for each entity type */
 const SAMPLE_ROWS: Record<string, string[]> = {
@@ -134,11 +84,28 @@ export default function BulkUploadClient() {
     const { toast } = useToast();
     const terms = useTerminology();
     const { activeWorkspace } = useWorkspace();
-
+    const firestore = useFirestore();
     const contactScope = activeWorkspace?.contactScope || 'institution';
-    const TARGET_FIELDS = contactScope === 'person' ? PERSON_FIELDS
-        : contactScope === 'family' ? FAMILY_FIELDS
-        : INSTITUTION_FIELDS;
+
+    // Fetch dynamic fields from the registry
+    const fieldsQuery = React.useMemo(() => 
+        firestore && activeWorkspace?.id 
+            ? query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspace.id), where('status', '==', 'active'))
+            : null,
+    [firestore, activeWorkspace?.id]);
+    const { data: registryFields } = useCollection<any>(fieldsQuery);
+
+    const TARGET_FIELDS = React.useMemo(() => {
+        if (!registryFields) return [];
+        // Map registry fields to the format expected by the uploader
+        return registryFields
+            .filter(f => !f.compatibilityScope || f.compatibilityScope.includes(contactScope) || f.compatibilityScope.includes('common'))
+            .map(f => ({
+                key: f.variableName,
+                label: f.label,
+                required: f.variableName === 'name' || f.variableName === 'school_name' || f.variableName === 'company_name'
+            }));
+    }, [registryFields, contactScope]);
 
     const [currentStep, setCurrentStep] = React.useState<Step>('UPLOAD');
     const [fileName, setFileName] = React.useState('');

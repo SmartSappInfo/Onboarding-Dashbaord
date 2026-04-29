@@ -11,10 +11,12 @@ import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
 import { TagFilter } from '@/components/tags/TagFilter';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
+import { deleteEntityPermanentlyAction } from '@/lib/workspace-entity-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2 } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame } from 'lucide-react';
+import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,7 @@ import TransferPipelineModal from './components/TransferPipelineModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, toTitleCase } from '@/lib/utils';
+import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -82,6 +85,7 @@ export default function EntitiesClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { user: currentUser } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { industry } = useIndustry();
   const { 
@@ -100,11 +104,14 @@ export default function EntitiesClient() {
   } = useTerminology();
 
   const [entityToDelete, setEntityToDelete] = useState<WorkspaceEntity | null>(null);
+  const [entityToPermanentDelete, setEntityToPermanentDelete] = useState<WorkspaceEntity | null>(null);
+  const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
   const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
   const [changingStageEntity, setChangingStageEntity] = useState<WorkspaceEntity | null>(null);
   const [changingStatusEntity, setChangingStatusEntity] = useState<WorkspaceEntity | null>(null);
   const [transferringEntity, setTransferringEntity] = useState<WorkspaceEntity | null>(null);
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
+  const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
 
   const { can } = usePermissions();
   const canCreate = can('operations', 'campuses', 'create');
@@ -115,7 +122,7 @@ export default function EntitiesClient() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [sortConfig, setSortConfig] = useState<{ key: keyof WorkspaceEntity | string; direction: 'asc' | 'desc' } | null>({ key: 'addedAt', direction: 'desc' });
 
   // Tag-related state
@@ -133,6 +140,9 @@ export default function EntitiesClient() {
       categoryFilter: categoryParam ?? undefined,
     };
   });
+
+  // Location filter state
+  const [locationFilter, setLocationFilter] = useState<LocationValue>({});
 
   // IDs returned by server-side tag filter query
   const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
@@ -215,11 +225,16 @@ export default function EntitiesClient() {
     if (stageFilter !== 'all') temp = temp.filter(s => s.stageId === stageFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
     
-    // 3. Tag Filter — restrict to IDs returned by getContactsByTagsAction
+    // 3. Location Filters
+    if (locationFilter.country) temp = temp.filter(s => s.locationCountryId === locationFilter.country?.id);
+    if (locationFilter.region) temp = temp.filter(s => s.locationRegionId === locationFilter.region?.id);
+    if (locationFilter.district) temp = temp.filter(s => s.locationDistrictId === locationFilter.district?.id);
+
+    // 4. Tag Filter — restrict to IDs returned by getContactsByTagsAction
     if (tagFilteredIds !== null) temp = temp.filter(s => tagFilteredIds.has(s.entityId));
     
     return temp;
-  }, [entities, assignedUserId, searchTerm, stageFilter, statusFilter, tagFilteredIds]);
+  }, [entities, assignedUserId, searchTerm, stageFilter, statusFilter, tagFilteredIds, locationFilter]);
   
   const sortedEntities = useMemo(() => {
     let sortable = [...filteredEntities];
@@ -254,7 +269,7 @@ export default function EntitiesClient() {
     const docRef = doc(firestore, 'workspace_entities', entityToDelete.id);
     updateDoc(docRef, { status: 'archived', updatedAt: new Date().toISOString() }).then(() => {
         const successMessage = getIndustrySuccessMessage('archive', industry, entityToDelete.displayName);
-        toast({ title: successMessage, description: `${entityToDelete.displayName} has been removed from this workspace.` });
+        toast({ title: successMessage, description: `${entityToDelete.displayName} has been archived.` });
         setEntityToDelete(null);
     }).catch((error) => {
         const errorMessage = getIndustryErrorMessage('entity_delete_failed', industry, { entityName: entityToDelete.displayName, details: error.message });
@@ -262,6 +277,33 @@ export default function EntitiesClient() {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update' }));
         setEntityToDelete(null);
     });
+  };
+
+  const handlePermanentDelete = async () => {
+    if (!entityToPermanentDelete || !currentUser || isPermanentDeleting) return;
+    setIsPermanentDeleting(true);
+    try {
+      const result = await deleteEntityPermanentlyAction({
+        workspaceEntityId: entityToPermanentDelete.id,
+        entityId: entityToPermanentDelete.entityId,
+        userId: currentUser.uid,
+        userName: currentUser.displayName || undefined,
+        userEmail: currentUser.email || undefined,
+      });
+      if (result.success) {
+        toast({
+          title: 'Permanently Deleted',
+          description: `"${entityToPermanentDelete.displayName}" has been purged${result.rootEntityDeleted ? ' including the core identity record' : ' from this workspace'}.`,
+        });
+        setEntityToPermanentDelete(null);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+    } finally {
+      setIsPermanentDeleting(false);
+    }
   };
 
     return (
@@ -337,12 +379,23 @@ export default function EntitiesClient() {
                                 {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Badge variant="outline" className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center">
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center shrink-0">
                             {filteredEntities.length} {filteredEntities.length === 1 ? singular : plural}
                         </Badge>
                     </div>
-                    {/* Tag filter row */}
-                    <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
+
+                    {/* Location and Tag filter row */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
+                            <LocationCascade 
+                                value={locationFilter} 
+                                onChange={setLocationFilter} 
+                            />
+                        </div>
+                        <div className="bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
+                            <TagFilter onFilterChange={handleTagFilterChange} className="pt-0.5" />
+                        </div>
+                    </div>
             
                     {/* Data Table */}
                     <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
@@ -477,10 +530,22 @@ export default function EntitiesClient() {
                                                             </DropdownMenuItem>
                                                             
                                                             <DropdownMenuSeparator className="my-2" />
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setManagingWorkspacesEntity(entity)}>
+                                                                <div className="p-1.5 bg-sky-500/10 rounded-lg text-sky-500"><Share2 className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Manage Workspaces</span>
+                                                            </DropdownMenuItem>
+
+                                                            <DropdownMenuSeparator className="my-2" />
                                                             {canDelete && (
                                                                 <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToDelete(entity)}>
                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                     <span className="font-bold text-sm">{deleteLabel}</span>
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            {canDelete && entity.status === 'archived' && (
+                                                                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setEntityToPermanentDelete(entity)}>
+                                                                    <Flame className="h-3.5 w-3.5" />
+                                                                    <span className="font-bold text-sm">Delete Permanently</span>
                                                                 </DropdownMenuItem>
                                                             )}
                                                         </DropdownMenuContent>
@@ -500,7 +565,24 @@ export default function EntitiesClient() {
                 </div>
             </div>
             <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. You can still access the core record in global management.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span> from the active pipeline. Switch the status filter to &ldquo;Archived&rdquo; to find and permanently delete it later.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={!!entityToPermanentDelete} onOpenChange={(open) => !open && setEntityToPermanentDelete(null)}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-semibold text-destructive">Permanently Delete?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will <span className="font-bold text-foreground">irreversibly purge</span> <span className="font-bold">{entityToPermanentDelete?.displayName}</span> and all associated data. If this is the last workspace it belongs to, the core identity record will also be deleted. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl" disabled={isPermanentDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handlePermanentDelete} disabled={isPermanentDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2">
+                            {isPermanentDeleting ? 'Deleting…' : '⚠ Delete Forever'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
             </AlertDialog>
             
             <AssignUserModal entity={assigningEntity} open={!!assigningEntity} onOpenChange={(open) => !open && setAssigningEntity(null)} />
@@ -535,6 +617,16 @@ export default function EntitiesClient() {
                 contactType="workspace_entity"
                 onComplete={() => setSelectedEntityIds([])}
             />
+
+            {managingWorkspacesEntity && (
+                <ManageWorkspacesModal
+                    entityId={managingWorkspacesEntity.entityId}
+                    entityType={managingWorkspacesEntity.entityType}
+                    entityName={managingWorkspacesEntity.displayName}
+                    open={!!managingWorkspacesEntity}
+                    onOpenChange={(open) => !open && setManagingWorkspacesEntity(null)}
+                />
+            )}
         </TooltipProvider>
     );
 }

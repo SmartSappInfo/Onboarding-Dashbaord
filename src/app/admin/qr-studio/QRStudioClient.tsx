@@ -20,11 +20,13 @@ import {
   Zap,
   ScanLine,
   AlertTriangle,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -66,9 +68,11 @@ import {
   archiveQRCode,
   duplicateQRCode,
   getQRStudioStats,
+  bulkQRAction,
 } from '@/lib/qr-actions';
-import type { QRCode as QRCodeType, QRStatus, QRCodeMode } from '@/lib/types';
+import type { QRCode as QRCodeType, QRStatus, QRCodeMode, QRCodeType as QRCodeTypeEnum } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import BatchImportDialog from './components/batch-import-dialog';
 
 const QR_TYPE_LABELS: Record<string, string> = {
   url: 'External URL',
@@ -117,6 +121,11 @@ export default function QRStudioClient() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [modeFilter, setModeFilter] = React.useState<string>('all');
+  const [typeFilter, setTypeFilter] = React.useState<string>('all');
+
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [isBulkActionLoading, setIsBulkActionLoading] = React.useState(false);
+  const [showBatchDialog, setShowBatchDialog] = React.useState(false);
 
   // Archive confirmation dialog state
   const [archiveTarget, setArchiveTarget] = React.useState<QRCodeType | null>(null);
@@ -132,6 +141,7 @@ export default function QRStudioClient() {
         listQRCodes(activeOrganizationId, activeWorkspaceId, {
           status: statusFilter !== 'all' ? statusFilter as QRStatus : undefined,
           mode: modeFilter !== 'all' ? modeFilter as QRCodeMode : undefined,
+          type: typeFilter !== 'all' ? typeFilter as QRCodeTypeEnum : undefined,
         }),
         getQRStudioStats(activeOrganizationId, activeWorkspaceId),
       ]);
@@ -143,7 +153,7 @@ export default function QRStudioClient() {
     } finally {
       setLoading(false);
     }
-  }, [activeOrganizationId, activeWorkspaceId, statusFilter, modeFilter, toast]);
+  }, [activeOrganizationId, activeWorkspaceId, statusFilter, modeFilter, typeFilter, toast]);
 
   React.useEffect(() => {
     fetchData();
@@ -156,6 +166,37 @@ export default function QRStudioClient() {
       toast({ title: 'QR Code paused', description: `${qr.name} has been paused.` });
       fetchData();
     } catch { toast({ variant: 'destructive', title: 'Error', description: 'Failed to pause QR code.' }); }
+  };
+
+  const handleBulkAction = async (action: 'pause' | 'resume' | 'archive' | 'delete') => {
+    if (!activeOrganizationId || !activeWorkspaceId || selectedIds.length === 0) return;
+    setIsBulkActionLoading(true);
+    try {
+      await bulkQRAction(activeOrganizationId, activeWorkspaceId, selectedIds, action);
+      toast({ title: 'Success', description: `Successfully performed bulk action on ${selectedIds.length} items.` });
+      setSelectedIds([]);
+      fetchData();
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to perform bulk action.' });
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredCodes.map(qr => qr.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelect = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(x => x !== id));
+    }
   };
 
   const handleResume = async (qr: QRCodeType) => {
@@ -207,13 +248,23 @@ export default function QRStudioClient() {
             Create branded, trackable QR codes for your links and campaigns.
           </p>
         </div>
-        <Button
-          onClick={() => router.push('/admin/qr-studio/new')}
-          className="rounded-xl h-11 px-6 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create QR Code
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowBatchDialog(true)}
+            className="rounded-xl h-11 px-4 font-semibold text-sm"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Batch Import
+          </Button>
+          <Button
+            onClick={() => router.push('/admin/qr-studio/new')}
+            className="rounded-xl h-11 px-6 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create QR Code
+          </Button>
+        </div>
       </div>
 
       {/* Stats Row */}
@@ -237,39 +288,102 @@ export default function QRStudioClient() {
 
       {/* Filters Bar */}
       <Card className="p-4 rounded-xl border-border bg-card">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        {/* Filters and Search */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search QR codes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 rounded-xl bg-muted/30 border-none h-10"
+              className="pl-9 rounded-xl border-border bg-background h-10 w-full"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] rounded-xl h-10">
-              <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="paused">Paused</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={modeFilter} onValueChange={setModeFilter}>
-            <SelectTrigger className="w-[140px] rounded-xl h-10">
-              <SelectValue placeholder="Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Modes</SelectItem>
-              <SelectItem value="static">Static</SelectItem>
-              <SelectItem value="dynamic">Dynamic</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={modeFilter} onValueChange={setModeFilter}>
+              <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                <SelectValue placeholder="Mode" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all">All Modes</SelectItem>
+                <SelectItem value="dynamic">Dynamic</SelectItem>
+                <SelectItem value="static">Static</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-40 rounded-xl border-border bg-background h-10">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl max-h-[280px]">
+                <SelectItem value="all">All Types</SelectItem>
+                {Object.entries(QR_TYPE_LABELS).map(([val, label]) => (
+                  <SelectItem key={val} value={val}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        <AnimatePresence>
+          {selectedIds.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 p-3 bg-card border border-primary/20 rounded-2xl shadow-2xl flex items-center gap-6 min-w-[400px]"
+            >
+              <div className="flex items-center gap-2 pl-2 border-r border-border pr-6">
+                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-primary">{selectedIds.length}</span>
+                </div>
+                <span className="text-xs font-bold text-foreground">Items selected</span>
+              </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg"
+                disabled={isBulkActionLoading}
+                onClick={() => handleBulkAction('resume')}
+              >
+                <Play className="h-4 w-4 mr-1" /> Resume
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg"
+                disabled={isBulkActionLoading}
+                onClick={() => handleBulkAction('pause')}
+              >
+                <Pause className="h-4 w-4 mr-1" /> Pause
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg text-destructive hover:bg-destructive/10"
+                disabled={isBulkActionLoading}
+                onClick={() => handleBulkAction('archive')}
+              >
+                <Trash2 className="h-4 w-4 mr-1" /> Archive
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </Card>
 
       {/* QR Codes Table */}
@@ -306,6 +420,12 @@ export default function QRStudioClient() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filteredCodes.length > 0 && selectedIds.length === filteredCodes.length}
+                    onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                  />
+                </TableHead>
                 <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Name</TableHead>
                 <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Type</TableHead>
                 <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground hidden md:table-cell">Destination</TableHead>
@@ -328,6 +448,12 @@ export default function QRStudioClient() {
                       className="border-border cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => router.push(`/admin/qr-studio/${qr.id}`)}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.includes(qr.id)}
+                          onCheckedChange={(checked) => handleSelect(qr.id, checked as boolean)}
+                        />
+                      </TableCell>
                       <TableCell className="font-semibold text-sm text-foreground">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
@@ -440,6 +566,13 @@ export default function QRStudioClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Batch Import Dialog */}
+      <BatchImportDialog
+        open={showBatchDialog}
+        onOpenChange={setShowBatchDialog}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

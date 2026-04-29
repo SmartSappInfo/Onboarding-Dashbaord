@@ -439,12 +439,12 @@ export default function FormsClient() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 px-2 capitalize">
+                        <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 px-2">
                           {form.formType}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={getStatusVariant(form.status)} className="capitalize text-[9px] font-semibold uppercase rounded-full px-2.5">
+                        <Badge variant={getStatusVariant(form.status)} className="text-[9px] font-semibold uppercase rounded-full px-2.5">
                           {form.status}
                         </Badge>
                       </TableCell>

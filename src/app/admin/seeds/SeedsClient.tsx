@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { migrateContractsToEntities, rollbackContractsMigration } from '@/lib/entity-migrations';
-import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle } from 'lucide-react';
+import { seedCountriesAction } from '@/lib/seed-countries';
+import { seedGhanaLocationsAction } from '@/lib/seed-ghana';
+import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
@@ -41,12 +43,18 @@ type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 export default function SeedsClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { activeWorkspaceId } = useTenant();
+  const { activeWorkspaceId, activeOrganizationId } = useTenant();
   
   const [migrationStatus, setMigrationStatus] = useState<SeedingState>('idle');
   const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
   const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
   const [globalTemplatesStatus, setGlobalTemplatesStatus] = useState<SeedingState>('idle');
+  
+  const [countriesSeedStatus, setCountriesSeedStatus] = useState<SeedingState>('idle');
+  const [countriesSeedMessage, setCountriesSeedMessage] = useState<string>('');
+
+  const [ghanaSeedStatus, setGhanaSeedStatus] = useState<SeedingState>('idle');
+  const [ghanaSeedMessage, setGhanaSeedMessage] = useState<string>('');
   
   // Entity Schema Restructure States
   const [schemaFetchStatus, setSchemaFetchStatus] = useState<SeedingState>('idle');
@@ -69,6 +77,7 @@ export default function SeedsClient() {
   const [workspaceRollbackStatus, setWorkspaceRollbackStatus] = useState<SeedingState>('idle');
   const [workspaceMigrationStats, setWorkspaceMigrationStats] = useState<WorkspaceMigrationResult | null>(null);
 
+
   const handleMigration = async () => {
     if (!firestore) return;
     setMigrationStatus('seeding');
@@ -81,6 +90,44 @@ export default function SeedsClient() {
       toast({ variant: 'destructive', title: 'Migration Failed', description: error.message });
     } finally {
       setTimeout(() => setMigrationStatus('idle'), 2500);
+    }
+  };
+
+  const handleSeedCountries = async () => {
+    setCountriesSeedStatus('seeding');
+    try {
+      const result = await seedCountriesAction();
+      if (result.success) {
+        setCountriesSeedStatus('success');
+        setCountriesSeedMessage(result.message || `${result.seeded} countries seeded`);
+        toast({ title: '🌍 Countries Seeded', description: result.message });
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setCountriesSeedStatus('error');
+      setCountriesSeedMessage(e.message);
+      toast({ variant: 'destructive', title: 'Seed Failed', description: e.message });
+    }
+  };
+
+  const handleSeedGhanaLocations = async () => {
+    setGhanaSeedStatus('seeding');
+    try {
+      const orgId = activeOrganizationId || 'smartsapp-hq';
+      const result = await seedGhanaLocationsAction(orgId);
+      
+      if (result.success) {
+        setGhanaSeedStatus('success');
+        setGhanaSeedMessage(`Created ${result.seededRegions} regions, ${result.seededDistricts} districts`);
+        toast({ title: 'Ghana Locations Seeded', description: result.message });
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setGhanaSeedStatus('error');
+      setGhanaSeedMessage(e.message);
+      toast({ variant: 'destructive', title: 'Seed Failed', description: e.message });
     }
   };
 
@@ -429,6 +476,32 @@ export default function SeedsClient() {
             </div>
 
             
+            {/* Reference Data Section */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Reference Data</h3>
+                    <p className="text-muted-foreground font-medium">Seed shared reference data used across the platform.</p>
+                </div>
+
+                <SimpleMigrationCard
+                    title="🌍 Seed Countries"
+                    description="Populate the global countries collection with 195 countries including ISO codes, flag emojis, and dial codes. Ghana is set as the platform default. This is idempotent — safe to run multiple times."
+                    onSync={handleSeedCountries}
+                    status={countriesSeedStatus}
+                    icon={Globe}
+                    syncLabel={countriesSeedStatus === 'success' ? (countriesSeedMessage || 'Done') : 'Seed Countries'}
+                />
+
+                <SimpleMigrationCard
+                    title="🇬🇭 Seed Ghana Regions & Districts"
+                    description="Populate the current organization with the 16 administrative regions of Ghana and all 261 districts. This enables cascading location selection."
+                    onSync={handleSeedGhanaLocations}
+                    status={ghanaSeedStatus}
+                    icon={MapPin}
+                    syncLabel={ghanaSeedStatus === 'success' ? (ghanaSeedMessage || 'Done') : 'Seed Ghana Locations'}
+                />
+            </section>
+
             {/* Entity Schema Restructure Section */}
             <section className="space-y-8">
                 <div className="flex flex-col gap-1 items-start">

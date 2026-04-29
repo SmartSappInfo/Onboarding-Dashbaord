@@ -24,8 +24,8 @@ async function getSurveyBySlug(slug: string): Promise<Survey | null> {
         if (!querySnapshot.empty) {
             const surveyDoc = querySnapshot.docs[0];
             const data = surveyDoc.data();
-            // Ensure the survey is published
-            if (data.status === 'published') {
+            // Ensure the survey is not archived
+            if (data.status !== 'archived') {
                 return { ...data, id: surveyDoc.id } as Survey;
             }
         }
@@ -37,8 +37,8 @@ async function getSurveyBySlug(slug: string): Promise<Survey | null> {
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            // Even via ID, we enforce the 'published' status requirement for public access
-            if (data.status === 'published') {
+            // Ensure the survey is not archived
+            if (data.status !== 'archived') {
                 return { ...data, id: docSnap.id } as Survey;
             }
         }

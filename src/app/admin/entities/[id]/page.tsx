@@ -38,7 +38,11 @@ import {
     RefreshCw,
     Zap,
     Target,
-    Info
+    Info,
+    Share2,
+    Network,
+    Building2,
+    X,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +68,9 @@ import {
 import ChangeStatusModal from '../components/ChangeStatusModal';
 import TransferPipelineModal from '../components/TransferPipelineModal';
 import ConvertLeadModal from '../components/ConvertLeadModal';
+import ManageWorkspacesModal from '../components/ManageWorkspacesModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import PipelineAutomationsTab from '../components/PipelineAutomationsTab';
@@ -97,7 +103,14 @@ export default function EntityDetailPage() {
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
     const { activeWorkspaceId } = useWorkspace();
+    const { accessibleWorkspaces } = useTenant();
     const { industry } = useIndustry();
+
+    // Workspace name lookup map (from tenant context — already loaded)
+    const workspaceNameMap = React.useMemo(
+        () => new Map(accessibleWorkspaces.map(w => [w.id, w.name])),
+        [accessibleWorkspaces]
+    );
     const { 
         singular, 
         plural, 
@@ -107,6 +120,7 @@ export default function EntityDetailPage() {
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
+    const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
     
     const [statusModalOpen, setStatusModalOpen] = React.useState(false);
     const [transferModalOpen, setTransferModalOpen] = React.useState(false);
@@ -162,6 +176,17 @@ export default function EntityDetailPage() {
         );
     }, [firestore, entityId]);
     const { data: tagAuditLogs } = useCollection<TagAuditLog>(tagAuditQuery);
+
+    // Cross-workspace memberships for this entity (all workspaces)
+    const allMembershipsQuery = useMemoFirebase(() => {
+        if (!firestore || !entityId) return null;
+        return query(
+            collection(firestore, 'workspace_entities'),
+            where('entityId', '==', entityId),
+        );
+    }, [firestore, entityId]);
+    const { data: allMemberships } = useCollection<WorkspaceEntity>(allMembershipsQuery);
+    const activeMembershipsCount = (allMemberships || []).filter(m => m.status === 'active').length;
 
     // Navigation Entity Resolution
     useSetBreadcrumb(entityData?.name || weData?.displayName);
@@ -219,7 +244,17 @@ export default function EntityDetailPage() {
     // New schema — read directly from root fields and industryData
     const capacity = (entityData.industryData as any)?.capacity ?? 0;
     const logoUrl = entityData.logoUrl;
+    
+    // Construct location string from hierarchy
+    const locationParts = [
+      entityData.location?.district?.name,
+      entityData.location?.region?.name,
+    ].filter(Boolean);
+    const hierachyString = locationParts.length > 0 ? locationParts.join(', ') : null;
+    const countryFlag = entityData.location?.country?.flag;
     const locationZone = entityData.location?.zone?.name;
+    const displayLocation = hierachyString || locationZone || 'Unassigned';
+
     const website = (entityData as any).website;
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
@@ -269,7 +304,10 @@ export default function EntityDetailPage() {
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium">
-                                <span><MapPin className="h-3.5 w-3.5 inline mr-1" /> {locationZone || 'Unassigned'}</span>
+                                <span>
+                                  {countryFlag ? <span className="mr-1.5">{countryFlag}</span> : <MapPin className="h-3.5 w-3.5 inline mr-1" />}
+                                  {displayLocation}
+                                </span>
                                 <Separator orientation="vertical" className="h-4 mx-1" />
                                 <span className="uppercase text-[10px] tracking-wider font-bold">{entityData.entityType}</span>
                             </div>
@@ -305,6 +343,12 @@ export default function EntityDetailPage() {
                         </TabsTrigger>
  <TabsTrigger value="billing" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
  <Receipt className="h-3 w-3" /> Billing & Finance
+                        </TabsTrigger>
+                        <TabsTrigger value="workspaces" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
+                            <Network className="h-3 w-3" /> Workspaces
+                            {activeMembershipsCount > 0 && (
+                                <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-sky-500 text-[8px] border-none text-white">{activeMembershipsCount}</Badge>
+                            )}
                         </TabsTrigger>
  <TabsTrigger value="timeline" className="rounded-xl font-semibold text-[10px] px-8">Activity Feed</TabsTrigger>
                     </TabsList>
@@ -422,6 +466,90 @@ export default function EntityDetailPage() {
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
                     </TabsContent>
 
+                    {/* Workspaces Tab */}
+                    <TabsContent value="workspaces" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold tracking-tight">Workspace Memberships</h3>
+                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                        {displayName} is active in <span className="font-bold text-foreground">{activeMembershipsCount}</span> workspace{activeMembershipsCount !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={() => setIsManageWorkspacesOpen(true)}
+                                    className="rounded-xl font-bold h-11 px-6 gap-2 shadow-md"
+                                >
+                                    <Share2 className="h-4 w-4" />
+                                    Manage Workspaces
+                                </Button>
+                            </div>
+
+                            {/* Membership cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {(allMemberships || []).length === 0 ? (
+                                    <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl bg-background/20 opacity-40 flex flex-col items-center gap-3">
+                                        <Network className="h-8 w-8 text-muted-foreground" />
+                                        <p className="text-sm font-semibold text-muted-foreground">Not linked to any workspace</p>
+                                        <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setIsManageWorkspacesOpen(true)}>
+                                            <Plus className="h-4 w-4 mr-2" /> Add to a Workspace
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    (allMemberships || []).map(m => (
+                                        <div
+                                            key={m.id}
+                                            className={cn(
+                                                'rounded-2xl border p-5 flex flex-col gap-3 bg-card shadow-sm transition-all hover:shadow-md',
+                                                m.status === 'archived' && 'opacity-50 grayscale'
+                                            )}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={cn(
+                                                        'p-2 rounded-xl shrink-0',
+                                                        m.status === 'active' ? 'bg-sky-500/10 text-sky-500' : 'bg-muted text-muted-foreground'
+                                                    )}>
+                                                        <Building2 className="h-4 w-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm truncate">{workspaceNameMap.get(m.workspaceId) ?? m.workspaceId}</p>
+                                                        <Badge
+                                                            variant={m.status === 'active' ? 'default' : 'outline'}
+                                                            className="text-[8px] h-4 uppercase font-bold mt-0.5"
+                                                        >
+                                                            {m.status}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                                                {m.currentStageName && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Workflow className="h-3 w-3 shrink-0" />
+                                                        <span className="font-medium">{m.currentStageName}</span>
+                                                    </div>
+                                                )}
+                                                {m.assignedTo?.name && (
+                                                    <div className="flex items-center gap-2">
+                                                        <UserCheck className="h-3 w-3 shrink-0" />
+                                                        <span className="font-medium">{m.assignedTo.name}</span>
+                                                    </div>
+                                                )}
+                                                {m.addedAt && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-3 w-3 shrink-0" />
+                                                        <span>Added {(() => { try { const d = (m.addedAt as any)?.toDate?.() ?? new Date(m.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, yyyy'); } catch { return '—'; } })()}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </TabsContent>
+
  <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
  <div className="mb-10 flex items-center gap-3 text-left">
@@ -472,6 +600,15 @@ export default function EntityDetailPage() {
             <LogActivityModal entity={weData} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
             <ChangeStatusModal entity={weData} open={statusModalOpen} onOpenChange={setStatusModalOpen} />
             <TransferPipelineModal entity={weData} open={transferModalOpen} onOpenChange={setTransferModalOpen} />
+            {entityData && (
+                <ManageWorkspacesModal
+                    entityId={entityId}
+                    entityType={entityData.entityType}
+                    entityName={displayName}
+                    open={isManageWorkspacesOpen}
+                    onOpenChange={setIsManageWorkspacesOpen}
+                />
+            )}
         </div>
     );
 }

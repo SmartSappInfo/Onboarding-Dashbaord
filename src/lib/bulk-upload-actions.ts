@@ -5,6 +5,7 @@ import { logActivity } from './activity-logger';
 import type { OnboardingStage, EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
+import { resolveFieldStorageBucket } from './field-storage-utils';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -314,65 +315,102 @@ async function processRow(
     const entityId = `entity_${crypto.randomUUID()}`;
     const timestamp = new Date().toISOString();
 
+    // Initialize Storage Buckets
     const entityDoc: any = {
         id: entityId,
         organizationId,
         entityType,
-        name,
-        slug,
-        entityContacts,
         globalTags: [],
         status: 'active',
-        industry: workspaceIndustry,
-        initials,
-        location,
-        lifecycleStatus,
         createdAt: timestamp,
         updatedAt: timestamp,
+        industry: workspaceIndustry,
+        customData: {}
     };
 
-    // Polymorphic data
-    if (entityType === 'institution') {
-        const nominalRoll = Number(getValue('nominalRoll')) || 0;
-        const currency = getValue('currency') || 'GHS';
-        const billingAddress = getValue('billingAddress') || location;
-        const subscriptionRate = Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0;
+    const financeData: any = {};
+    const industryData: any = {};
+    const personData: any = {};
+    const familyData: any = { guardians: [], children: [] };
 
-        entityDoc.financeData = { currency, billingAddress, subscriptionRate };
-        if (selectedPackage?.id) entityDoc.financeData.subscriptionIds = [selectedPackage.id];
-        entityDoc.industryData = { capacity: nominalRoll };
-        entityDoc.interests = selectedModules.map((m: any) => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color }));
-    } else if (entityType === 'person') {
-        const { firstName, lastName } = splitPersonName(name);
-        entityDoc.personData = {
-            firstName,
-            lastName,
-            company: getValue('company') || '',
-            jobTitle: getValue('jobTitle') || '',
-            leadSource: getValue('leadSource') || '',
+    // Process ALL mapped fields dynamically
+    Object.keys(mapping).forEach(variableName => {
+        const value = getValue(variableName);
+        if (value === undefined || value === null || value === '') return;
+
+        const bucket = resolveFieldStorageBucket(variableName, entityType as any, workspaceIndustry as any);
+        
+        switch (bucket) {
+            case 'root':
+                entityDoc[variableName] = value;
+                break;
+            case 'financeData':
+                financeData[variableName] = value;
+                break;
+            case 'industryData':
+                industryData[variableName] = value;
+                break;
+            case 'personData':
+                personData[variableName] = value;
+                break;
+            case 'familyData':
+                // Special handling for family fields if needed, or just flat storage
+                familyData[variableName] = value;
+                break;
+            case 'customData':
+                entityDoc.customData[variableName] = value;
+                break;
+        }
+    });
+
+    // Post-processing & Derived fields
+    entityDoc.name = name;
+    entityDoc.slug = slug;
+    entityDoc.entityContacts = entityContacts;
+    if (!entityDoc.initials) {
+        entityDoc.initials = name.split(' ').map(w => w[0]).join('').toUpperCase();
+    }
+
+    if (Object.keys(financeData).length > 0) {
+        entityDoc.financeData = { 
+            currency: getValue('currency') || 'GHS',
+            billingAddress: getValue('billingAddress') || entityDoc.location || '',
+            subscriptionRate: Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0,
+            ...financeData 
         };
+        if (selectedPackage?.id) entityDoc.financeData.subscriptionIds = [selectedPackage.id];
+    }
+
+    if (Object.keys(industryData).length > 0) {
+        entityDoc.industryData = { ...industryData };
+    }
+
+    if (entityType === 'person') {
+        const { firstName, lastName } = splitPersonName(name);
+        entityDoc.personData = { firstName, lastName, ...personData };
     } else if (entityType === 'family') {
-        const guardians: any[] = [];
-        const guardianName = getValue('contactName') || name;
-        if (guardianName) {
-            guardians.push({
-                name: String(guardianName),
+        // Build guardians/children if missing but raw data present
+        if (familyData.guardians.length === 0 && (getValue('contactName') || name)) {
+            familyData.guardians.push({
+                name: String(getValue('contactName') || name),
                 phone: String(getValue('contactPhone') || ''),
                 email: String(getValue('contactEmail') || ''),
                 relationship: getValue('relationship') || 'Guardian',
                 isPrimary: true,
             });
         }
-        const children: any[] = [];
-        const childFirst = getValue('childFirstName');
-        if (childFirst) {
-            children.push({
-                firstName: String(childFirst),
+        if (familyData.children.length === 0 && getValue('childFirstName')) {
+            familyData.children.push({
+                firstName: String(getValue('childFirstName')),
                 lastName: getValue('childLastName') || '',
                 gradeLevel: getValue('childGradeLevel') || '',
             });
         }
-        entityDoc.familyData = { guardians, children };
+        entityDoc.familyData = familyData;
+    }
+
+    if (selectedModules.length > 0) {
+        entityDoc.interests = selectedModules.map((m: any) => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color }));
     }
 
     // Save entity
@@ -401,6 +439,7 @@ async function processRow(
         primaryPhone: primaryContact?.phone || '',
         entityContacts,
         interests: entityDoc.interests || [],
+        customData: entityDoc.customData || {}
     });
 
     return { entityName: name };

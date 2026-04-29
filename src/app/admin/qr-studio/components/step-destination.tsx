@@ -6,6 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Search } from 'lucide-react';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
+import { Button } from '@/components/ui/button';
 import type { WizardState } from './create-qr-wizard';
 
 interface StepDestinationProps {
@@ -62,16 +67,42 @@ export default function StepDestination({ state, updateState, validationErrors =
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-foreground">
-          {isSmartSappType ? 'Choose destination' : isExternalUrl ? 'Enter URL' : 'Enter details'}
+          {isSmartSappType ? 'Pick a SmartSapp link' : isExternalUrl ? 'Enter URL' : 'Enter details'}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           {isSmartSappType
-            ? 'Paste the link to your SmartSapp resource, or enter it manually.'
+            ? `Select one of your ${state.type.replace('_', ' ')}s to convert it to a QR code.`
             : isExternalUrl
             ? 'Paste any website URL.'
             : `Enter the ${state.type} details to encode in the QR code.`}
         </p>
       </div>
+
+      {/* Resource Picker for SmartSapp Types */}
+      {isSmartSappType && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Select {state.type.replace('_', ' ')}</Label>
+            <SmartSappResourceSelector
+              type={state.type}
+              onSelect={(url, name) =>
+                updateState({
+                  destination: { ...state.destination, url, resourceName: name, resourceId: 'selected' },
+                })
+              }
+            />
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
+              <span className="bg-card px-2 text-muted-foreground">Or enter manually</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* URL-based types */}
       {(isSmartSappType || isExternalUrl) && (
@@ -230,6 +261,211 @@ export default function StepDestination({ state, updateState, validationErrors =
           <p className="text-sm text-foreground font-mono break-all">{state.destination.url}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// SmartSapp Resource Selector
+// ─────────────────────────────────────────────────
+
+function SmartSappResourceSelector({
+  type,
+  onSelect,
+}: {
+  type: string;
+  onSelect: (url: string, name: string) => void;
+}) {
+  const firestore = useFirestore();
+  const { activeWorkspaceId } = useTenant();
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [expandedSurvey, setExpandedSurvey] = React.useState<string | null>(null);
+
+  // Query resources
+  const queryRef = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    let colName = '';
+    switch (type) {
+      case 'survey': colName = 'surveys'; break;
+      case 'form': colName = 'forms'; break;
+      case 'landing_page': colName = 'campaign_pages'; break;
+      case 'doc_signing': colName = 'pdfs'; break;
+      case 'meeting': colName = 'meetings'; break;
+      case 'invoice': colName = 'invoices'; break;
+      default: return null;
+    }
+    if (type === 'survey') {
+      return query(collection(firestore, colName), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }
+    return query(collection(firestore, colName), where('workspaceId', '==', activeWorkspaceId));
+  }, [firestore, activeWorkspaceId, type]);
+
+  // For surveys: fetch assigned users for attribution links
+  const usersQueryRef = useMemoFirebase(() => {
+    if (!firestore || type !== 'survey') return null;
+    return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+  }, [firestore, type]);
+
+  const { data, isLoading } = useCollection<any>(queryRef);
+  const { data: allUsers } = useCollection<any>(usersQueryRef);
+
+  if (type === 'public_portal') {
+    return (
+      <div className="p-4 rounded-2xl border border-border bg-primary/5 flex flex-col gap-2">
+        <p className="text-xs text-muted-foreground">This workspace has a dedicated public portal.</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl h-9 text-xs font-bold"
+          onClick={() => {
+            const url = `${window.location.origin}/portal/${activeWorkspaceId}`;
+            onSelect(url, 'Public Portal');
+          }}
+        >
+          <ExternalLink className="h-3 w-3 mr-2" />
+          Use Workspace Portal Link
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-11 bg-muted/30 rounded-xl border border-dashed border-border">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+        <span className="text-xs text-muted-foreground">Loading resources...</span>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="p-4 rounded-2xl border border-dashed border-border bg-muted/10 text-center">
+        <p className="text-xs text-muted-foreground">No {type.replace('_', ' ')}s found in this workspace.</p>
+      </div>
+    );
+  }
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.smartsapp.com';
+
+  const getResourceUrl = (item: any, refId?: string) => {
+    switch (type) {
+      case 'survey': {
+        const base = `${origin}/surveys/${item.slug || item.id}`;
+        return refId ? `${base}?ref=${refId}` : base;
+      }
+      case 'form': return `${origin}/f/${item.id}`;
+      case 'landing_page': return `${origin}/p/${item.slug || item.id}`;
+      case 'doc_signing': return `${origin}/forms/${item.id}`;
+      case 'meeting': return `${origin}/meetings/${item.id}`;
+      case 'invoice': return `${origin}/pay/${item.id}`;
+      default: return '';
+    }
+  };
+
+  const filteredData = data.filter((item: any) => {
+    const name = (item.name || item.title || item.internalName || '').toLowerCase();
+    return name.includes(searchTerm.toLowerCase());
+  });
+
+  return (
+    <div className="space-y-2">
+      {/* Search */}
+      {data.length > 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder={`Search ${type.replace('_', ' ')}s...`}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 h-9 rounded-xl border border-border bg-muted/20 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+          />
+        </div>
+      )}
+
+      {/* Resource List */}
+      <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
+        {filteredData.map((item: any) => {
+          const name = item.name || item.title || item.internalName || item.id;
+          const internalName = item.internalName;
+          const url = getResourceUrl(item);
+          const assignedUsers = item.assignedUsers || [];
+          const isExpanded = expandedSurvey === item.id;
+
+          // Find assigned user details for surveys
+          const assignedUserDetails = type === 'survey' && allUsers
+            ? allUsers.filter((u: any) => assignedUsers.includes(u.id))
+            : [];
+
+          return (
+            <div key={item.id} className="border border-border rounded-xl overflow-hidden bg-card hover:border-primary/30 transition-all">
+              {/* Main resource row */}
+              <button
+                type="button"
+                onClick={() => onSelect(url, name)}
+                className="w-full text-left p-3 flex items-center gap-3 hover:bg-primary/5 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Link2 className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-foreground truncate">{name}</p>
+                  {internalName && internalName !== name && (
+                    <p className="text-[10px] text-muted-foreground truncate">{internalName}</p>
+                  )}
+                  <p className="text-[10px] font-mono text-muted-foreground truncate mt-0.5">{url}</p>
+                </div>
+                <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+              </button>
+
+              {/* Attribution links for surveys */}
+              {type === 'survey' && assignedUserDetails.length > 0 && (
+                <div className="border-t border-border">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setExpandedSurvey(isExpanded ? null : item.id); }}
+                    className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-between"
+                  >
+                    <span>{assignedUserDetails.length} attribution link{assignedUserDetails.length > 1 ? 's' : ''}</span>
+                    <span className="text-[9px]">{isExpanded ? '▲' : '▼'}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-2 space-y-1">
+                      {assignedUserDetails.map((user: any) => {
+                        const refUrl = getResourceUrl(item, user.id);
+                        const userName = user.name || user.email || 'User';
+                        return (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => onSelect(refUrl, `${name} — ${userName}`)}
+                            className="w-full text-left p-2 rounded-lg bg-muted/20 hover:bg-primary/5 transition-colors flex items-center gap-2"
+                          >
+                            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <span className="text-[8px] font-black text-primary uppercase">{userName[0]}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-bold text-foreground truncate">{userName}</p>
+                              <p className="text-[9px] font-mono text-muted-foreground truncate">{refUrl}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {filteredData.length === 0 && searchTerm && (
+          <div className="p-4 text-center">
+            <p className="text-xs text-muted-foreground">No results for &quot;{searchTerm}&quot;</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

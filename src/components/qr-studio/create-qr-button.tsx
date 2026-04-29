@@ -45,6 +45,10 @@ export default function CreateQRButton({
   const [created, setCreated] = React.useState(false);
   const [isDynamic, setIsDynamic] = React.useState(true);
   const [name, setName] = React.useState(`${resourceName} QR`);
+  const [customShortPath, setCustomShortPath] = React.useState('');
+  const [utmSource, setUtmSource] = React.useState('');
+  const [utmMedium, setUtmMedium] = React.useState('');
+  const [utmCampaign, setUtmCampaign] = React.useState('');
   const [design] = React.useState<QRDesign>({ ...DEFAULT_QR_DESIGN });
 
   // Reset state when dialog opens
@@ -53,6 +57,10 @@ export default function CreateQRButton({
       setCreated(false);
       setCreating(false);
       setName(`${resourceName} QR`);
+      setCustomShortPath('');
+      setUtmSource('');
+      setUtmMedium('');
+      setUtmCampaign('');
       setIsDynamic(true);
     }
   }, [open, resourceName]);
@@ -74,6 +82,13 @@ export default function CreateQRButton({
           resourceName,
         },
         design,
+        tracking: {
+          enabled: isDynamic,
+          utmSource: utmSource || undefined,
+          utmMedium: utmMedium || undefined,
+          utmCampaign: utmCampaign || undefined,
+        },
+        customShortPath: isDynamic && customShortPath ? customShortPath : undefined,
         createdBy: {
           userId: user.uid,
           name: user.displayName || '',
@@ -160,6 +175,52 @@ export default function CreateQRButton({
                 </div>
                 <Switch checked={isDynamic} onCheckedChange={setIsDynamic} />
               </div>
+
+              {/* Custom Shortlink */}
+              {isDynamic && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Custom Shortlink <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 px-3 rounded-xl bg-muted border border-border flex items-center text-xs text-muted-foreground select-none shrink-0">
+                      smartsapp.com/q/
+                    </div>
+                    <Input
+                      placeholder="my-campaign"
+                      value={customShortPath}
+                      onChange={(e) => setCustomShortPath(e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())}
+                      className="flex-1 rounded-xl h-10 bg-muted/30 border-none"
+                      maxLength={30}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* UTM Parameters */}
+              {isDynamic && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">UTM Parameters <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      placeholder="Source (e.g. email)"
+                      value={utmSource}
+                      onChange={(e) => setUtmSource(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-muted/30 border-none"
+                    />
+                    <Input
+                      placeholder="Medium (e.g. social)"
+                      value={utmMedium}
+                      onChange={(e) => setUtmMedium(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-muted/30 border-none"
+                    />
+                    <Input
+                      placeholder="Campaign (e.g. fall_sale)"
+                      value={utmCampaign}
+                      onChange={(e) => setUtmCampaign(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-muted/30 border-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Preview */}
               <div className="flex justify-center">

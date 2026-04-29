@@ -1,0 +1,29 @@
+
+> nextn@0.1.0 typecheck /Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main
+> tsc --noEmit
+
+src/app/(backoffice)/backoffice/messaging/templates/[id]/EditTemplateClient.tsx(223,15): error TS2345: Argument of type '{ name: string; category: TemplateCategory; templateType: string; channel: "email" | "sms"; subject: string; body: string; variableContext: VariableContext; }' is not assignable to parameter of type '{ name: string; channel: "email" | "sms"; body: string; category: "forms" | "surveys" | "meetings" | "agreements" | "campaigns" | "reminders" | "general"; templateType: string; variableContext: "survey" | ... 5 more ... | "common"; subject?: string | undefined; } | { ...; } | ResetAction<...> | undefined'.
+  Types of property 'variableContext' are incompatible.
+    Type 'VariableContext' is not assignable to type '"survey" | "form" | "meeting" | "agreement" | "entity" | "campaign" | "common" | undefined'.
+      Type 'string & {}' is not assignable to type '"survey" | "form" | "meeting" | "agreement" | "entity" | "campaign" | "common" | undefined'.
+src/app/admin/pdfs/[id]/edit/components/Editor/Sidebar/Inspector.tsx(157,46): error TS2339: Property 'bindToEntity' does not exist on type 'PDFForm'.
+src/app/admin/pdfs/[id]/edit/components/Editor/Sidebar/Inspector.tsx(374,3): error TS2304: Cannot find name 'CaseUpper'.
+src/app/admin/pdfs/[id]/edit/components/Editor/Sidebar/Inspector.tsx(387,3): error TS2304: Cannot find name 'CaseSensitive'.
+src/app/admin/qr-studio/[id]/page.tsx(495,13): error TS2554: Expected 3 arguments, but got 2.
+src/app/admin/qr-studio/components/designer/qr-designer.tsx(83,59): error TS2322: Type '{ className: string; alt: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'alt' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/app/admin/qr-studio/components/qr-download-dialog.tsx(93,39): error TS2339: Property 'logo' does not exist on type 'QRDesign'.
+src/app/admin/qr-studio/QRStudioClient.tsx(309,32): error TS2304: Cannot find name 'handleBulkAction'.
+src/app/admin/qr-studio/QRStudioClient.tsx(318,32): error TS2304: Cannot find name 'handleBulkAction'.
+src/app/admin/qr-studio/QRStudioClient.tsx(327,32): error TS2304: Cannot find name 'handleBulkAction'.
+src/app/admin/qr-studio/QRStudioClient.tsx(373,51): error TS2304: Cannot find name 'handleSelectAll'.
+src/app/admin/qr-studio/QRStudioClient.tsx(401,57): error TS2304: Cannot find name 'handleSelect'.
+src/app/admin/settings/fields/FieldsClient.tsx(359,67): error TS2345: Argument of type 'GroupFormData' is not assignable to parameter of type 'Partial<FieldGroup>'.
+  Types of property 'entityTypes' are incompatible.
+    Type 'string[]' is not assignable to type 'EntityType[]'.
+      Type 'string' is not assignable to type 'EntityType'.
+src/app/admin/settings/fields/FieldsClient.tsx(365,50): error TS2345: Argument of type '{ workspaceId: string; organizationId: string; name: string; description: string; icon: string; color: string; entityTypes: string[]; }' is not assignable to parameter of type 'Omit<FieldGroup, "id" | "slug" | "order" | "updatedAt" | "createdAt" | "isSystem">'.
+  Types of property 'entityTypes' are incompatible.
+    Type 'string[]' is not assignable to type 'EntityType[]'.
+      Type 'string' is not assignable to type 'EntityType'.
+ ELIFECYCLE  Command failed with exit code 2.

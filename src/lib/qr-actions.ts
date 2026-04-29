@@ -75,12 +75,13 @@ function generateSlug(name: string): string {
 async function generateUniqueShortPath(maxAttempts = 3): Promise<string> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const candidate = nanoid(8);
+    // Check root 'short_paths' collection instead of collectionGroup
     const existing = await adminDb
-      .collectionGroup('qr_codes')
-      .where('shortPath', '==', candidate)
-      .limit(1)
+      .collection('short_paths')
+      .doc(candidate)
       .get();
-    if (existing.empty) return candidate;
+      
+    if (!existing.exists) return candidate;
     console.warn(`[QR] shortPath collision on "${candidate}", retrying (${attempt + 1}/${maxAttempts})`);
   }
   // Fallback: use longer ID to virtually eliminate collision
@@ -102,12 +103,33 @@ export interface CreateQRCodeInput {
   design?: Partial<QRDesign>;
   tracking?: Partial<QRTracking>;
   createdBy: { userId: string; name: string; email: string };
+  customShortPath?: string;
 }
 
 export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: string; shortPath?: string }> {
   const col = qrCodesCollection(input.organizationId, input.workspaceId);
   const id = nanoid(12);
-  const shortPath = input.mode === 'dynamic' ? await generateUniqueShortPath() : undefined;
+  
+  let shortPath: string | undefined = undefined;
+  if (input.mode === 'dynamic') {
+    if (input.customShortPath) {
+      const sanitized = input.customShortPath.trim();
+      if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
+        throw new Error('Custom shortlink can only contain letters, numbers, and hyphens.');
+      }
+      const existing = await adminDb
+        .collection('short_paths')
+        .doc(sanitized)
+        .get();
+      if (existing.exists) {
+        throw new Error('This custom shortlink is already in use. Please choose another one.');
+      }
+      shortPath = sanitized;
+    } else {
+      shortPath = await generateUniqueShortPath();
+    }
+  }
+
   const now = new Date().toISOString();
 
   const design: QRDesign = { ...DEFAULT_QR_DESIGN, ...input.design };
@@ -138,7 +160,95 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
   };
 
   await col.doc(id).set(stripUndefined(qrCode));
+  
+  // Register the short path globally for fast lookup and uniqueness
+  if (shortPath) {
+    await adminDb.collection('short_paths').doc(shortPath).set({
+      orgId: input.organizationId,
+      wsId: input.workspaceId,
+      qrId: id,
+      createdAt: now,
+    });
+  }
+
   return { id, shortPath: shortPath || undefined };
+}
+
+export interface BatchQRItem {
+  name: string;
+  destinationUrl: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+}
+
+export async function batchCreateQRCodes(
+  orgId: string,
+  wsId: string,
+  baseDesign: Partial<QRDesign>,
+  items: BatchQRItem[],
+  createdBy: { userId: string; name: string; email: string }
+): Promise<{ count: number }> {
+  const CHUNK_SIZE = 100;
+  const col = qrCodesCollection(orgId, wsId);
+  const now = new Date().toISOString();
+  let count = 0;
+
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    const batch = adminDb.batch();
+
+    for (const item of chunk) {
+      const id = nanoid(12);
+      const shortPath = await generateUniqueShortPath();
+
+      const tracking: QRTracking = {
+        enabled: true,
+        utmSource: item.utmSource || undefined,
+        utmMedium: item.utmMedium || undefined,
+        utmCampaign: item.utmCampaign || undefined,
+      };
+
+      const qrCode: QRCode = {
+        id,
+        organizationId: orgId,
+        workspaceId: wsId,
+        name: item.name,
+        slug: generateSlug(item.name),
+        description: '',
+        mode: 'dynamic',
+        type: 'url',
+        destination: {
+          url: item.destinationUrl,
+        },
+        shortPath,
+        redirectUrl: `/q/${shortPath}`,
+        design: { ...DEFAULT_QR_DESIGN, ...baseDesign },
+        tracking,
+        status: 'active',
+        stats: { totalScans: 0 },
+        createdBy,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      batch.set(col.doc(id), stripUndefined(qrCode));
+      
+      // Register the short path globally
+      batch.set(adminDb.collection('short_paths').doc(shortPath), {
+        orgId,
+        wsId,
+        qrId: id,
+        createdAt: now,
+      });
+
+      count++;
+    }
+
+    await batch.commit();
+  }
+
+  return { count };
 }
 
 // ─────────────────────────────────────────────────
@@ -153,6 +263,20 @@ export async function getQRCode(
   const doc = await qrCodesCollection(orgId, wsId).doc(qrId).get();
   if (!doc.exists) return null;
   return doc.data() as QRCode;
+}
+
+export async function getQRCodeByUrl(
+  orgId: string,
+  wsId: string,
+  url: string
+): Promise<QRCode | null> {
+  const snapshot = await qrCodesCollection(orgId, wsId)
+    .where('destination.url', '==', url)
+    .limit(1)
+    .get();
+    
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].data() as QRCode;
 }
 
 export interface ListQRCodesFilter {
@@ -226,6 +350,37 @@ export async function updateQRDestination(
   await updateQRCode(orgId, wsId, qrId, { destination });
 }
 
+export async function updateQRShortPath(
+  orgId: string,
+  wsId: string,
+  qrId: string,
+  newShortPath: string
+): Promise<void> {
+  const sanitized = newShortPath.trim();
+  if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
+    throw new Error('Custom shortlink can only contain letters, numbers, and hyphens.');
+  }
+
+  const existing = await adminDb
+    .collectionGroup('qr_codes')
+    .where('shortPath', '==', sanitized)
+    .limit(1)
+    .get();
+
+  if (!existing.empty) {
+    if (existing.docs[0].id !== qrId) {
+      throw new Error('This custom shortlink is already in use. Please choose another one.');
+    }
+  }
+
+  const col = qrCodesCollection(orgId, wsId);
+  await col.doc(qrId).update({
+    shortPath: sanitized,
+    redirectUrl: `/q/${sanitized}`,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 // ─────────────────────────────────────────────────
 // Status management
 // ─────────────────────────────────────────────────
@@ -240,6 +395,35 @@ export async function resumeQRCode(orgId: string, wsId: string, qrId: string): P
 
 export async function archiveQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
   await updateQRCode(orgId, wsId, qrId, { status: 'archived' });
+}
+
+export async function bulkQRAction(
+  orgId: string,
+  wsId: string,
+  qrIds: string[],
+  action: 'pause' | 'resume' | 'archive' | 'delete'
+): Promise<void> {
+  const col = qrCodesCollection(orgId, wsId);
+  // Break into chunks of 500 for batch limits
+  const CHUNK_SIZE = 500;
+  
+  for (let i = 0; i < qrIds.length; i += CHUNK_SIZE) {
+    const chunk = qrIds.slice(i, i + CHUNK_SIZE);
+    const batch = adminDb.batch();
+
+    for (const id of chunk) {
+      const docRef = col.doc(id);
+      if (action === 'delete') {
+        batch.delete(docRef);
+      } else {
+        batch.update(docRef, { 
+          status: action === 'resume' ? 'active' : action,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+    await batch.commit();
+  }
 }
 
 // ─────────────────────────────────────────────────
@@ -334,14 +518,12 @@ export async function deleteQRTemplate(
 export async function getQRCodeByShortPath(
   shortPath: string
 ): Promise<QRCode | null> {
-  const snapshot = await adminDb
-    .collectionGroup('qr_codes')
-    .where('shortPath', '==', shortPath)
-    .limit(1)
-    .get();
+  // Direct lookup in root 'short_paths' collection
+  const pathDoc = await adminDb.collection('short_paths').doc(shortPath).get();
+  if (!pathDoc.exists) return null;
 
-  if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as QRCode;
+  const { orgId, wsId, qrId } = pathDoc.data() as { orgId: string; wsId: string; qrId: string };
+  return getQRCode(orgId, wsId, qrId);
 }
 
 // ─────────────────────────────────────────────────

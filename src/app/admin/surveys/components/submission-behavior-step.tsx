@@ -48,16 +48,7 @@ export default function SubmissionBehaviorStep() {
         name: "entityMapping.additionalMappings"
     });
 
-    const TARGET_FIELDS = [
-        { label: 'Nominal Roll (Institution)', value: 'institutionData.nominalRoll' },
-        { label: 'Website (Institution)', value: 'institutionData.website' },
-        { label: 'Slogan (Institution)', value: 'institutionData.slogan' },
-        { label: 'Initials (Institution)', value: 'institutionData.initials' },
-        { label: 'Billing Address (Institution)', value: 'institutionData.billingAddress' },
-        { label: 'Company (Person)', value: 'personData.company' },
-        { label: 'Job Title (Person)', value: 'personData.jobTitle' },
-        { label: 'Lead Source (Person)', value: 'personData.leadSource' },
-    ];
+
 
     const createEntity = watch('createEntity');
     const assignmentEnabled = watch('assignmentEnabled');
@@ -79,11 +70,20 @@ export default function SubmissionBehaviorStep() {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'app_fields'),
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('section', 'asc')
+            where('workspaceId', '==', activeWorkspaceId)
         );
     }, [firestore, activeWorkspaceId]);
     const { data: appFields } = useCollection<AppField>(fieldsQuery);
+
+    const fieldGroupsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'field_groups'),
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('order', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
+    const { data: fieldGroups } = useCollection<any>(fieldGroupsQuery);
 
     const automationsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -108,45 +108,30 @@ export default function SubmissionBehaviorStep() {
     const emailTemplates = templates?.filter(t => t.channel === 'email') || [];
     const smsTemplates = templates?.filter(t => t.channel === 'sms') || [];
 
-    // Group fields by section for the mapping dropdown
-    const dynamicTargetFields = React.useMemo(() => {
-        if (!appFields) return [];
+    // Group fields by FieldGroup for the mapping dropdown
+    const groupedTargetFields = React.useMemo(() => {
+        if (!appFields || !fieldGroups) return [];
         
-        // Define entity-compatible scopes
-        const entityScopes = ['common', 'institution', 'family', 'person'];
-
-        return appFields
-            .filter(f => {
-                const isActive = f.status === 'active';
-                // Only load fields that are compatible with entities (exclude submission-only/internal-only)
-                const isEntityCompatible = !f.compatibilityScope || f.compatibilityScope.some(s => entityScopes.includes(s));
-                return isActive && isEntityCompatible;
-            })
-            .map(f => {
-                // Determine logical persistence prefix based on section compatibility
-                // institution -> institutionData
-                // person/child/common -> personData
-                let prefix = 'personData.';
-                if (f.section === 'institution') prefix = 'institutionData.';
-                
-                return {
-                    label: f.label,
-                    value: `${prefix}${f.variableName}`,
-                    section: f.section
-                };
-            });
-    }, [appFields]);
-
-    const groupedTargetFields = React.useMemo(() => [
-        {
-            label: "Native Properties",
-            options: TARGET_FIELDS
-        },
-        {
-            label: "Custom Fields",
-            options: dynamicTargetFields
-        }
-    ], [dynamicTargetFields]);
+        return fieldGroups.map(group => {
+            const options = appFields
+                .filter(f => f.groupId === group.id && f.status === 'active' && f.type !== 'hidden')
+                .map(f => {
+                    // Default to personData for custom fields
+                    let prefix = 'personData.';
+                    if (f.compatibilityScope?.includes('institution') && !f.compatibilityScope?.includes('person')) {
+                        prefix = 'institutionData.';
+                    }
+                    return {
+                        label: f.label,
+                        value: `${prefix}${f.variableName}`
+                    };
+                });
+            return {
+                label: group.name,
+                options
+            };
+        }).filter(g => g.options.length > 0);
+    }, [appFields, fieldGroups]);
 
     // 2. Dialog States
     const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);

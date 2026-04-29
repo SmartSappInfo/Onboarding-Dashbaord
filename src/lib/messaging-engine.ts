@@ -119,7 +119,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             // no direct schoolData field reads for contact/location/initials.
             const contactVars: Record<string, any> = {
                 school_name: contact.name,
+                entity_name: contact.name, // Unified name
                 id: resolvedEntityId || '',
+                initials: contact.initials || '',
+                referee: contact.referee || '',
+                location_string: contact.locationString || '',
+                zone_name: contact.zoneName || '',
             };
 
             // FER-02: Generate all role/primary/signatory variables from entityContacts
@@ -142,6 +147,23 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const tagVars = await resolveTagVariables(resolvedEntityId || '', 'school', resolvedWorkspaceId);
             Object.entries(tagVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
+            });
+
+            // Phase 6: Merge Dynamic Data Buckets
+            const buckets = [
+                contact.financeData,
+                contact.industryData,
+                contact.personData,
+                contact.familyData,
+                contact.customData
+            ];
+
+            buckets.forEach(bucket => {
+                if (bucket) {
+                    Object.entries(bucket).forEach(([k, v]) => {
+                        if (finalVariables[k] === undefined) finalVariables[k] = v;
+                    });
+                }
             });
         }
     }

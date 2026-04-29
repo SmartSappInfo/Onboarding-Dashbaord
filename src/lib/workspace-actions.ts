@@ -98,8 +98,11 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
                 const pipelineResult = await createDefaultPipelineForIndustry(newId, data.industry);
                 if (!pipelineResult.success) {
                     console.warn(`[WORKSPACE:CREATE] Failed to create default pipeline for ${data.industry}:`, pipelineResult.error);
-                    // Don't fail workspace creation if pipeline creation fails
                 }
+
+                // Seed industry-specific fields and groups (Requirement: Fields Reform)
+                const { seedNativeFieldsAction } = await import('./fields-actions');
+                await seedNativeFieldsAction(newId, data.organizationId || 'default', userId);
             }
 
             // Check if organization has a default workspace. If not, set this one as default.
