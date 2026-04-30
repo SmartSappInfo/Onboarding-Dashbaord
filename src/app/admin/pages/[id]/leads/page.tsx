@@ -4,6 +4,9 @@ import LeadsClient from './LeadsClient';
 import { CampaignPage } from '@/lib/types';
 import { getLeadsForPageAction } from '@/lib/lead-actions';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 interface LeadsPageProps {
     params: Promise<{ id: string }>;
 }

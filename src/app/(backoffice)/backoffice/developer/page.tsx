@@ -6,6 +6,9 @@ export const metadata = {
   title: 'Developer & API | Backoffice',
 };
 
+// Force dynamic rendering - this page requires Firebase Admin credentials
+export const dynamic = 'force-dynamic';
+
 export default async function DeveloperPage() {
   // Pre-fetch workspaces to pass to the client component for dropdowns
   const workspacesSnap = await adminDb.collection('workspaces').get();

@@ -3,6 +3,9 @@ import type { PDFForm, Submission, School } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import SharedSubmissionView from '../../components/SharedSubmissionView';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 /**
  * @fileOverview Individual Submission Audit Page (Server Entry).
  * Resolves the PDF form template and the specific submission record.

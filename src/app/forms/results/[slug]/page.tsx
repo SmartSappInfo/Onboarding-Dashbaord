@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation';
 import PasswordGatedResults from '../components/PasswordGatedResults';
 import { Metadata } from 'next';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 async function getPdfForm(id: string): Promise<PDFForm | null> {
     try {
         let docSnap = await adminDb.collection('pdfs').doc(id).get();

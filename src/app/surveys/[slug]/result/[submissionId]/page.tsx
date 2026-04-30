@@ -6,6 +6,9 @@ import { Building2 } from 'lucide-react';
 import Image from 'next/image';
 import type { Metadata, ResolvingMetadata } from 'next';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
 
 async function getResultData(slug: string, submissionId: string) {

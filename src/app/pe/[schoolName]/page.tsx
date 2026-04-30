@@ -12,6 +12,9 @@ import JoinMeetingButton from '@/components/join-meeting-button';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 async function getSchoolBySlug(slug: string): Promise<School | null> {
     try {
         const querySnap = await adminDb.collection('entities').where('slug', '==', slug).limit(1).get();

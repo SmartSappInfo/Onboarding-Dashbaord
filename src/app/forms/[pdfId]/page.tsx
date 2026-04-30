@@ -5,6 +5,9 @@ import { notFound } from 'next/navigation';
 import PasswordGatedForm from './components/PasswordGatedForm';
 import { Metadata } from 'next';
 
+// Force dynamic rendering - requires Firebase Admin
+export const dynamic = 'force-dynamic';
+
 interface PageData {
     pdfForm: PDFForm;
     entity?: WorkspaceEntity;
