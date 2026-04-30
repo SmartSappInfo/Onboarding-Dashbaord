@@ -40,7 +40,7 @@ function LogicSimulator() {
  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <Sparkles size={120} />
             </div>
- <CardHeader className="pb-2">
+ <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <BrainCircuit className="h-4 w-4 text-primary" /> Outcome Simulator
                 </CardTitle>
@@ -49,11 +49,11 @@ function LogicSimulator() {
  <div className="flex flex-col sm:flex-row items-center gap-4">
  <div className="w-full sm:w-32">
  <Label className="text-sm font-semibold mb-1 block">Test Score (Points)</Label>
-                        <Input 
-                            type="number" 
-                            value={testScore} 
-                            onChange={(e) => setTestScore(Number(e.target.value))} 
- className="bg-background font-semibold text-xl h-12 text-center"
+ <Input 
+                             type="number" 
+                             value={testScore} 
+                             onChange={(e) => setTestScore(Number(e.target.value))} 
+                             className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 font-semibold text-xl h-12 text-center rounded-xl"
                         />
                     </div>
  <div className="shrink-0 pt-4 hidden sm:block">
@@ -95,7 +95,7 @@ export default function ResultsStep() {
     return (
  <div className="space-y-8">
             <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-                <CardHeader>
+                <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-2">
  <Trophy className="h-6 w-6 text-yellow-500" />
@@ -119,7 +119,7 @@ export default function ResultsStep() {
                                             type="number" 
                                             value={watch('maxScore')} 
                                             onChange={(e) => setValue('maxScore', parseInt(e.target.value, 10) || 0, { shouldDirty: true })}
- className="max-w-[120px] font-bold text-lg rounded-xl" 
+                                            className="max-w-[120px] font-bold text-lg rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30" 
                                         />
  <span className="text-xs text-muted-foreground font-medium italic">Max points available.</span>
                                     </div>

@@ -10,7 +10,7 @@ export const firebaseConfig = {
 };
 
 // Re-export firestore for test compatibility
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 
 let _firestore: ReturnType<typeof getFirestore> | null = null;
@@ -19,6 +19,10 @@ export const firestore = (() => {
   if (_firestore) return _firestore;
   
   const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-  _firestore = getFirestore(app);
+  try {
+    _firestore = initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch (e) {
+    _firestore = getFirestore(app);
+  }
   return _firestore;
 })();

@@ -114,7 +114,7 @@ export default function Step4Publish() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
  <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-6">
+ <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Globe className="h-5 w-5 text-primary" />
@@ -154,7 +154,7 @@ export default function Step4Publish() {
  <div className="space-y-2">
  <Label className="text-sm font-semibold">Lifecycle State</Label>
                                     <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-all">
+ <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/30">
                                             <SelectValue />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -219,7 +219,7 @@ export default function Step4Publish() {
             <div className="space-y-8">
                 {assignmentEnabled && (
                     <Card className="rounded-2xl border border-border bg-card overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                        <CardHeader className="bg-blue-500/5 border-b pb-6 px-6">
+                        <CardHeader className="bg-blue-500/5 border-b py-5 px-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                                     <Link2 className="h-5 w-5" />

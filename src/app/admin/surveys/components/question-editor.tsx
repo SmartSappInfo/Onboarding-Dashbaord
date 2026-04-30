@@ -1072,7 +1072,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         {...field} 
                                                         value={field.value || ''} 
                                                         placeholder="Type your answer here..." 
-                                                        className="h-12 bg-muted/30 border border-transparent rounded-xl px-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                        className="h-12 bg-card border border-border/50 rounded-xl px-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                     />
                                                 )}
                                             />
@@ -1086,7 +1086,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         {...field} 
                                                         value={field.value || ''} 
                                                         placeholder="Share your thoughts..." 
-                                                        className="min-h-[100px] bg-muted/30 border border-transparent rounded-xl p-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 resize-none transition-all" 
+                                                        className="min-h-[100px] bg-card border border-border/50 rounded-xl p-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 resize-none transition-all" 
                                                     />
                                                 )}
                                             />
@@ -1102,7 +1102,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="email@example.com" 
-                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                            className="h-12 bg-card border border-border/50 rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1119,7 +1119,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="+1 555-0123" 
-                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                            className="h-12 bg-card border border-border/50 rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1136,7 +1136,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="e.g. 42" 
-                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                            className="h-12 bg-card border border-border/50 rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1153,7 +1153,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="https://example.com" 
-                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                            className="h-12 bg-card border border-border/50 rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}

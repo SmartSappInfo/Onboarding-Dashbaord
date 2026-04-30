@@ -274,7 +274,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                         render={({ field }) => (
                                             <Input 
                                                 type="number" 
-                                                className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
+                                                className="h-11 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl font-bold" 
                                                 {...field}
                                                 onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                                             />
@@ -289,7 +289,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                         render={({ field }) => (
                                             <Input 
                                                 type="number" 
-                                                className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
+                                                className="h-11 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl font-bold" 
                                                 {...field}
                                                 onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                                             />
@@ -351,7 +351,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                 name={`elements.${activeIndex}.stepperTitle`}
                                 render={({ field }) => (
                                     <Input 
-                                        className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
+                                        className="h-11 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl font-bold" 
                                         placeholder="e.g. Basic Info"
                                         {...field}
                                     />
@@ -531,7 +531,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                                             render={({ field }) => (
                                                                 <Input 
                                                                     type="number" 
-                                                                    className="h-11 bg-muted/30 border border-transparent font-bold" 
+                                                                    className="h-11 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl font-bold" 
                                                                     {...field}
                                                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                                                 />
@@ -546,7 +546,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                                             render={({ field }) => (
                                                                 <Input 
                                                                     type="number" 
-                                                                    className="h-11 bg-muted/30 border border-transparent font-bold" 
+                                                                    className="h-11 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-xl font-bold" 
                                                                     {...field}
                                                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                                                 />
@@ -569,7 +569,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                                                     render={({ field }) => (
                                                                         <Input 
                                                                             type="number" 
-                                                                            className="h-8 w-16 bg-muted/30 border-none text-right font-bold text-xs" 
+                                                                            className="h-8 w-16 bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 rounded-md text-right font-bold text-xs" 
                                                                             value={field.value ?? 0}
                                                                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                                                         />

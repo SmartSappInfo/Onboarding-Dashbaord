@@ -183,7 +183,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
  <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
             {/* Identity Card */}
  <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-6">
+ <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Type className="h-5 w-5 text-primary" />
@@ -199,7 +199,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             render={({ field }) => (
  <div className="space-y-2">
  <Label className="text-sm font-semibold">Internal Blueprint Name</Label>
- <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
+ <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                 </div>
                             )}
                         />
@@ -209,7 +209,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             render={({ field }) => (
  <div className="space-y-2">
  <Label className="text-sm font-semibold">Public Header Title</Label>
- <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
+ <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                 </div>
                             )}
                         />
@@ -257,7 +257,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         render={({ field }) => (
  <div className="space-y-2">
  <Label className="text-sm font-semibold">Introductory Prose</Label>
- <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-muted/30 border border-transparent p-4" />
+ <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm p-4 focus-visible:ring-1 focus-visible:ring-primary/30" />
                             </div>
                         )}
                     />
@@ -291,7 +291,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
 
             {/* Immersive Media Card */}
  <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-6">
+ <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Video className="h-5 w-5 text-primary" />
@@ -308,7 +308,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 render={({ field }) => (
                                     <div className="space-y-2">
                                         <Label className="text-sm font-semibold">Feature Video URL</Label>
-                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
+                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                     </div>
                                 )}
                             />
@@ -320,7 +320,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
                                             <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
                                         </Label>
-                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
+                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                         <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
                                     </div>
                                 )}
@@ -383,7 +383,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
 
             {/* Aesthetics Card */}
  <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b pb-6 px-6">
+ <CardHeader className="bg-muted/10 border-b py-5 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Palette className="h-5 w-5 text-primary" />
@@ -427,7 +427,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
  <div className="space-y-2">
  <Label className="text-sm font-semibold">Overlay Pattern</Label>
                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors">
+ <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                         <SelectValue placeholder="Select pattern..." />
                                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -467,7 +467,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 <div className="space-y-2 pt-1 md:pt-0">
                                     <Label className="text-sm font-semibold">Survey Stepper Style</Label>
                                     <Select onValueChange={field.onChange} value={field.value || 'full'}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors">
+                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                             <SelectValue placeholder="Select stepper style..." />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
