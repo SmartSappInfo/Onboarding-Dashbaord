@@ -53,9 +53,15 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
     };
   });
 
-  // Sync upward
+  const lastSyncedCanvasRef = React.useRef<string>(JSON.stringify(canvas));
+
+  // Sync upward without infinite loops
   React.useEffect(() => {
-    onPosterDataChange?.(canvas);
+    const currentStr = JSON.stringify(canvas);
+    if (currentStr !== lastSyncedCanvasRef.current) {
+      lastSyncedCanvasRef.current = currentStr;
+      onPosterDataChange?.(canvas);
+    }
   }, [canvas, onPosterDataChange]);
 
   const selectedElement = canvas.elements.find(el => el.id === canvas.selectedId) || null;
