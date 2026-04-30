@@ -8,158 +8,29 @@
   · clientTraceMetadata
 
   Creating an optimized production build ...
-✓ Compiled successfully in 67s
-  Running next.config.js provided runAfterProductionCompile ...
-✓ Completed runAfterProductionCompile in 4.7s
-  Running TypeScript ...
-  Finished TypeScript in 48s ...
-  Collecting page data using 7 workers ...
-  Generating static pages using 7 workers (0/90) ...
-  Generating static pages using 7 workers (22/90) 
-  Generating static pages using 7 workers (44/90) 
-  Generating static pages using 7 workers (67/90) 
-✓ Generating static pages using 7 workers (90/90) in 1485ms
-  Finalizing page optimization ...
 
-Route (app)
-┌ ○ /
-├ ○ /_not-found
-├ ƒ /admin
-├ ƒ /admin/activities
-├ ○ /admin/automations
-├ ƒ /admin/automations/[id]/edit
-├ ○ /admin/automations/new
-├ ○ /admin/contacts/import
-├ ○ /admin/contacts/tags
-├ ○ /admin/entities
-├ ƒ /admin/entities/[id]
-├ ƒ /admin/entities/[id]/edit
-├ ○ /admin/entities/new
-├ ○ /admin/entities/new/ai
-├ ○ /admin/entities/upload
-├ ○ /admin/finance/contracts
-├ ○ /admin/finance/invoices
-├ ƒ /admin/finance/invoices/[id]
-├ ○ /admin/finance/packages
-├ ○ /admin/finance/periods
-├ ○ /admin/finance/settings
-├ ○ /admin/forms
-├ ƒ /admin/forms/[id]
-├ ƒ /admin/forms/[id]/edit
-├ ○ /admin/media
-├ ○ /admin/meetings
-├ ƒ /admin/meetings/[id]
-├ ƒ /admin/meetings/[id]/edit
-├ ƒ /admin/meetings/[id]/registrants
-├ ƒ /admin/meetings/[id]/results
-├ ○ /admin/meetings/new
-├ ○ /admin/messaging
-├ ○ /admin/messaging/composer
-├ ○ /admin/messaging/jobs
-├ ○ /admin/messaging/logs
-├ ○ /admin/messaging/profiles
-├ ○ /admin/messaging/scheduled
-├ ○ /admin/messaging/styles
-├ ○ /admin/messaging/templates
-├ ○ /admin/messaging/variables
-├ ○ /admin/pages
-├ ƒ /admin/pages/[id]/builder
-├ ƒ /admin/pages/[id]/leads
-├ ○ /admin/pages/new
-├ ○ /admin/pdfs
-├ ƒ /admin/pdfs/[id]
-├ ƒ /admin/pdfs/[id]/edit
-├ ƒ /admin/pdfs/[id]/submissions
-├ ƒ /admin/pdfs/[id]/submissions/[submissionId]
-├ ○ /admin/pipeline
-├ ○ /admin/pipeline/settings
-├ ○ /admin/portals
-├ ○ /admin/profile
-├ ○ /admin/reports
-├ ○ /admin/reports/metrics
-├ ○ /admin/seeds
-├ ○ /admin/settings
-├ ○ /admin/settings/fields
-├ ○ /admin/settings/invitation
-├ ○ /admin/settings/messaging/templates
-├ ƒ /admin/settings/messaging/templates/[id]/override
-├ ○ /admin/settings/organizations
-├ ○ /admin/surveys
-├ ƒ /admin/surveys/[id]
-├ ƒ /admin/surveys/[id]/edit
-├ ƒ /admin/surveys/[id]/results
-├ ƒ /admin/surveys/[id]/results/[responseId]
-├ ○ /admin/surveys/new
-├ ○ /admin/surveys/new/ai
-├ ○ /admin/tasks
-├ ○ /admin/users
-├ ○ /admin/users/roles
-├ ƒ /api/activities
-├ ƒ /api/automations/webhook/[id]
-├ ƒ /api/contacts
-├ ƒ /api/contacts/[entityId]
-├ ƒ /api/cron/process-scheduled-messages
-├ ƒ /api/migration/alerts
-├ ƒ /api/migration/cleanup
-├ ƒ /api/migration/dashboard
-├ ƒ /api/migration/export
-├ ƒ /api/migration/log-operation-complete
-├ ƒ /api/migration/log-operation-failed
-├ ƒ /api/migration/log-operation-start
-├ ƒ /api/migration/logs
-├ ƒ /api/migration/metrics
-├ ƒ /api/migration/schoolid-to-entityid-mapping
-├ ƒ /api/pdfs/[pdfId]/generate/[submissionId]
-├ ƒ /api/pdfs/submit
-├ ƒ /api/sentry-example-api
-├ ƒ /api/tasks
-├ ƒ /api/tasks/[taskId]
-├ ƒ /api/webhooks/resend
-├ ƒ /api/workspaces/[workspaceId]/contacts
-├ ○ /backoffice
-├ ○ /backoffice/assets
-├ ○ /backoffice/audit
-├ ○ /backoffice/features
-├ ƒ /backoffice/features/[featureId]
-├ ○ /backoffice/fields
-├ ○ /backoffice/messaging/templates
-├ ƒ /backoffice/messaging/templates/[id]
-├ ○ /backoffice/messaging/templates/new
-├ ○ /backoffice/operations
-├ ○ /backoffice/organizations
-├ ƒ /backoffice/organizations/[orgId]
-├ ○ /backoffice/settings
-├ ○ /backoffice/settings/system-defaults
-├ ○ /backoffice/templates
-├ ƒ /backoffice/templates/[templateId]
-├ ○ /backoffice/workspaces
-├ ƒ /backoffice/workspaces/[workspaceId]
-├ ○ /campaign/school-comparison
-├ ○ /campaign/school-comparison-1
-├ ○ /campaign/school-comparison/statistics
-├ ○ /dashboard
-├ ○ /force-password-reset
-├ ○ /forgot-password
-├ ƒ /forms/[pdfId]
-├ ƒ /forms/results/[slug]
-├ ƒ /forms/results/[slug]/[submissionId]
-├ ƒ /invoice/[id]
-├ ○ /login
-├ ƒ /meetings/[typeSlug]
-├ ƒ /meetings/[typeSlug]/[schoolSlug]
-├ ƒ /p/[slug]
-├ ƒ /p/f/[slug]
-├ ƒ /pe/[schoolName]
-├ ƒ /register-new-signup
-├ ○ /seeds
-├ ○ /sentry-example-page
-├ ○ /signup
-├ ƒ /surveys/[slug]
-└ ƒ /surveys/[slug]/result/[submissionId]
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./src/app/(backoffice)/backoffice/developer/DeveloperClient.tsx:13:1
+Module not found: Can't resolve 'sonner'
+  [90m11 |[0m ...[36mport[0m { [33mKey[0m, [33mPlus[0m, [33mTrash2[0m, [33m...[0m
+  [90m12 |[0m ...[36mport[0m { generateApiKey, lis...
+[31m[1m>[0m [90m13 |[0m ...[36mport[0m { toast } [36mfrom[0m [32m'sonner'[0m;
+  [90m   |[0m    [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m14 |[0m ...
+  [90m15 |[0m ...[36mterface[0m [33mWorkspaceInfo[0m {
+  [90m16 |[0m ...id: string;
 
 
-ƒ Proxy (Middleware)
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
+Import trace:
+  Server Component:
+    ./src/app/(backoffice)/backoffice/developer/DeveloperClient.tsx
+    ./src/app/(backoffice)/backoffice/developer/page.tsx
 
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./src/app/(backoffice)/backoffice/developer/DeveloperClient.tsx:13:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+ ELIFECYCLE  Command failed with exit code 1.

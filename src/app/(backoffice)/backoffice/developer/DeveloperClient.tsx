@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Key, Plus, Trash2, Copy, Check, Terminal, Code, Database } from 'lucide-react';
 import { generateApiKey, listApiKeys, revokeApiKey, type ApiKeyRecord } from '@/lib/api-key-actions';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface WorkspaceInfo {
   id: string;
@@ -21,6 +21,7 @@ interface WorkspaceInfo {
 export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceInfo[] }) {
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
   // Create state
   const [newKeyName, setNewKeyName] = useState('');
@@ -39,7 +40,7 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
     if (res.success && res.keys) {
       setKeys(res.keys);
     } else {
-      toast.error('Failed to load API keys');
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to load API keys' });
     }
     setLoading(false);
   };
@@ -54,13 +55,13 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
     const res = await generateApiKey(ws.id, ws.organizationId, newKeyName, 'backoffice-admin');
     
     if (res.success && res.key && res.record) {
-      toast.success('API Key generated successfully');
+      toast({ title: 'Success', description: 'API Key generated successfully' });
       setGeneratedKey(res.key);
       setKeys(prev => [res.record!, ...prev]);
       setNewKeyName('');
       setSelectedWorkspace('');
     } else {
-      toast.error(res.error || 'Failed to generate key');
+      toast({ variant: 'destructive', title: 'Error', description: res.error || 'Failed to generate key' });
     }
   };
 
@@ -69,10 +70,10 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
     
     const res = await revokeApiKey(id);
     if (res.success) {
-      toast.success('Key revoked successfully');
+      toast({ title: 'Success', description: 'Key revoked successfully' });
       setKeys(prev => prev.filter(k => k.id !== id));
     } else {
-      toast.error(res.error || 'Failed to revoke key');
+      toast({ variant: 'destructive', title: 'Error', description: res.error || 'Failed to revoke key' });
     }
   };
 

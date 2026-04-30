@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import { createEntityAction } from '@/lib/entity-actions';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import type { EntityType } from '@/lib/types';
-import { unstable_after as after } from 'next/server';
 
 /**
  * @fileOverview External API endpoint for Entity Creation
@@ -36,10 +35,8 @@ export async function POST(request: NextRequest) {
     const keyDoc = keyQuery.docs[0];
     const keyData = keyDoc.data();
     
-    // Update lastUsedAt in the background using after()
-    after(() => {
-      keyDoc.ref.update({ lastUsedAt: new Date().toISOString() }).catch(console.error);
-    });
+    // Update lastUsedAt in the background (fire and forget)
+    keyDoc.ref.update({ lastUsedAt: new Date().toISOString() }).catch(console.error);
 
     const { workspaceId, organizationId } = keyData;
 

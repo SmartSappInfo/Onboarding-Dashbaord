@@ -8,9 +8,18 @@ import { processScheduledMessages } from '@/lib/reminder-actions';
  * Security: Validates CRON_SECRET header to prevent unauthorized access.
  */
 export async function POST(request: NextRequest) {
+  return processCronRequest(request);
+}
+
+export async function GET(request: NextRequest) {
+  return processCronRequest(request);
+}
+
+async function processCronRequest(request: NextRequest) {
   try {
-    // Verify cron secret for security
+    // Verify cron secret for security (support both Header and Query Param)
     const authHeader = request.headers.get('authorization');
+    const querySecret = request.nextUrl.searchParams.get('secret');
     const cronSecret = process.env.CRON_SECRET;
 
     if (!cronSecret) {
@@ -21,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
       console.warn('[CRON] Unauthorized cron request attempt');
       return NextResponse.json(
         { error: 'Unauthorized' },
