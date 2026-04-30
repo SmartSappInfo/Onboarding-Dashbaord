@@ -110,43 +110,33 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     ];
 
     return (
- <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
-            {steps.map((step, index) => {
+        <div className="flex items-center justify-center gap-2 mb-12 max-w-2xl mx-auto px-4">
+            {steps.map((step, i) => {
                 const isActive = currentStep === step.n;
                 const isCompleted = currentStep > step.n;
-                const Icon = step.icon;
-
+                
                 return (
                     <React.Fragment key={step.label}>
-                        <button 
+                        <button
                             type="button"
                             onClick={() => onStepClick(step.n)}
- className="flex flex-col items-center group outline-none"
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
+                                isActive
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    : isCompleted
+                                    ? 'bg-primary/10 text-primary cursor-pointer hover:bg-primary/20'
+                                    : 'bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80'
+                            }`}
                         >
-                            <div
- className={cn(
-                                    'flex items-center justify-center w-9 h-9 rounded-2xl border-2 transition-all duration-300 shadow-sm',
-                                    isCompleted ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 
-                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-card border-border text-muted-foreground',
-                                )}
-                            >
- {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
-                            </div>
- <p className={cn(
-                                'mt-3 text-[10px] font-semibold uppercase  transition-colors', 
-                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
-                            )}>
-                                {step.label}
-                            </p>
+                            {isCompleted ? (
+                                <Check className="h-3 w-3" />
+                            ) : (
+                                <span>{step.n}</span>
+                            )}
+                            <span className="hidden sm:inline">{step.label}</span>
                         </button>
-                        {index < steps.length - 1 && (
- <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative">
-                                <motion.div 
-                                    initial={false}
-                                    animate={{ width: isCompleted ? '100%' : '0%' }}
- className="absolute inset-0 bg-primary"
-                                />
-                            </div>
+                        {i < steps.length - 1 && (
+                            <div className={`flex-1 h-0.5 rounded-full transition-colors ${isCompleted ? 'bg-primary/40' : 'bg-border'}`} />
                         )}
                     </React.Fragment>
                 );
@@ -1008,19 +998,21 @@ export default function NewSurveyPage() {
                             )}
                         </AnimatePresence>
 
- <div className="mt-8 p-4 sm:p-6 bg-card border-t border-border/50 rounded-t-[2.5rem] shadow-[0_-12px_40px_-5px_rgba(0,0,0,0.05)]">
- <div className=" flex items-center justify-between text-left">
- <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
- <div className="flex items-center gap-4 text-left">
- {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
+ <div className="mt-8 p-4 sm:p-6 bg-card border-t border-border shadow-[0_-12px_40px_-5px_rgba(0,0,0,0.05)]">
+ <div className="flex justify-between items-center max-w-5xl mx-auto">
+ <Button type="button" variant="outline" onClick={() => { if (step > 1) handleStepChange(step - 1); else router.push('/admin/surveys'); }} className="rounded-xl h-11 px-6 font-semibold text-sm">
+ <ArrowLeft className="h-4 w-4 mr-2" />
+ {step === 1 ? 'Cancel' : 'Back'}
+ </Button>
+ <div className="flex items-center gap-4">
                                     {step < 4 ? (
- <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-semibold shadow-xl rounded-xl transition-all active:scale-95 group">
- Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+ <Button type="button" onClick={handleNext} className="rounded-xl h-11 px-6 font-semibold shadow-lg shadow-primary/20">
+ Continue <ArrowRight className="h-4 w-4 ml-2" />
                                         </Button>
                                     ) : (
- <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="gap-2 px-12 h-14 font-semibold shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
- {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
-                                            Finalize & Initialize
+ <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="rounded-xl h-11 px-8 font-semibold shadow-lg shadow-primary/20">
+ {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />} 
+                                            Create Survey
                                         </Button>
                                     )}
                                 </div>

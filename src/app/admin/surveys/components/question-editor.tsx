@@ -417,7 +417,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
- className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
+ className="bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -444,7 +444,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
- className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="w-24 bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -498,7 +498,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
- className="bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20" 
+ className="bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -525,7 +525,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
- className="w-24 bg-card h-11 rounded-xl border-none shadow-none ring-1 ring-border focus-visible:ring-1 focus-visible:ring-primary/20"
+ className="w-24 bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -567,7 +567,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
               />
             )}
           />
- <Label htmlFor={`allowOther-${questionIndex}`} className="text-xs font-bold tracking-wider text-muted-foreground">Allow "Other" option</Label>
+ <Label htmlFor={`allowOther-${questionIndex}`} className="text-sm font-semibold">Allow "Other" option</Label>
         </div>
       )}
     </div>
@@ -848,13 +848,13 @@ function QuestionSettingsPopover({ element, index, changeType }: {
  <div className="space-y-4">
  <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Validation</h4>
  <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`min-chars-toggle-${index}`} className="text-xs">Min characters</Label>
+ <Label htmlFor={`min-chars-toggle-${index}`} className="text-sm font-semibold">Min characters</Label>
                         <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                     </div>
  {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
  <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`max-chars-toggle-${index}`} className="text-xs">Max characters</Label>
+ <Label htmlFor={`max-chars-toggle-${index}`} className="text-sm font-semibold">Max characters</Label>
                         <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
                     </div>
  {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
@@ -863,7 +863,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
  <div className="space-y-4">
  <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Content</h4>
  <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`hidden-toggle-${index}`} className="text-xs">Hidden by default</Label>
+ <Label htmlFor={`hidden-toggle-${index}`} className="text-sm font-semibold">Hidden by default</Label>
                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
                 </div>
             </div>
@@ -1072,7 +1072,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         {...field} 
                                                         value={field.value || ''} 
                                                         placeholder="Type your answer here..." 
-                                                        className="h-12 bg-muted/20 border-border/50 rounded-xl px-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                        className="h-12 bg-muted/30 border border-transparent rounded-xl px-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                     />
                                                 )}
                                             />
@@ -1086,7 +1086,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         {...field} 
                                                         value={field.value || ''} 
                                                         placeholder="Share your thoughts..." 
-                                                        className="min-h-[100px] bg-muted/20 border-border/50 rounded-xl p-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 resize-none" 
+                                                        className="min-h-[100px] bg-muted/30 border border-transparent rounded-xl p-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 resize-none transition-all" 
                                                     />
                                                 )}
                                             />
@@ -1102,7 +1102,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="email@example.com" 
-                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1119,7 +1119,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="+1 555-0123" 
-                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1136,7 +1136,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="e.g. 42" 
-                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}
@@ -1153,7 +1153,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                             {...field} 
                                                             value={field.value || ''} 
                                                             placeholder="https://example.com" 
-                                                            className="h-12 bg-primary/5 border border-primary/20 rounded-xl pl-14 pr-6 italic text-muted-foreground text-sm font-medium shadow-none focus-visible:ring-1 focus-visible:ring-primary/30" 
+                                                            className="h-12 bg-muted/30 border border-transparent rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>
                                                 )}

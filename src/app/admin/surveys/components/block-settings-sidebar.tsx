@@ -67,7 +67,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                 <div className="p-6 space-y-8 pb-32">
                     {/* 0. Quick Actions */}
                     <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Quick Actions</Label>
+                        <Label className="text-sm font-semibold">Quick Actions</Label>
                         <div className="grid grid-cols-2 gap-2">
                              <Button 
                                 variant="outline" 
@@ -267,14 +267,14 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                         {(element.type === 'text' || element.type === 'long-text') && (
                             <div className="grid grid-cols-2 gap-4 pt-2">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Min Length</Label>
+                                    <Label className="text-sm font-semibold">Min Length</Label>
                                     <Controller
                                         control={control}
                                         name={`elements.${activeIndex}.minLength`}
                                         render={({ field }) => (
                                             <Input 
                                                 type="number" 
-                                                className="h-10 bg-muted/30 border-none rounded-lg font-bold" 
+                                                className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
                                                 {...field}
                                                 onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                                             />
@@ -282,14 +282,14 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Max Length</Label>
+                                    <Label className="text-sm font-semibold">Max Length</Label>
                                     <Controller
                                         control={control}
                                         name={`elements.${activeIndex}.maxLength`}
                                         render={({ field }) => (
                                             <Input 
                                                 type="number" 
-                                                className="h-10 bg-muted/30 border-none rounded-lg font-bold" 
+                                                className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
                                                 {...field}
                                                 onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
                                             />
@@ -345,13 +345,13 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Stepper Title</Label>
+                            <Label className="text-sm font-semibold">Stepper Title</Label>
                             <Controller
                                 control={control}
                                 name={`elements.${activeIndex}.stepperTitle`}
                                 render={({ field }) => (
                                     <Input 
-                                        className="h-10 bg-muted/30 border-none rounded-lg font-bold" 
+                                        className="h-11 bg-muted/30 border border-transparent rounded-xl font-bold" 
                                         placeholder="e.g. Basic Info"
                                         {...field}
                                     />
@@ -386,7 +386,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
 
                 {/* 4. Appearance & Formatting */}
                 <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Appearance</Label>
+                    <Label className="text-sm font-semibold">Appearance</Label>
                     
                     <div className="space-y-4">
                         <div className="flex flex-col gap-2">
@@ -524,14 +524,14 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                             {element.type === 'yes-no' ? (
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="space-y-1.5">
-                                                        <Label className="text-[10px] uppercase font-black text-muted-foreground">"Yes" Points</Label>
+                                                        <Label className="text-sm font-semibold">"Yes" Points</Label>
                                                         <Controller
                                                             control={control}
                                                             name={`elements.${activeIndex}.yesScore`}
                                                             render={({ field }) => (
                                                                 <Input 
                                                                     type="number" 
-                                                                    className="h-9 bg-muted/30 border-none font-bold" 
+                                                                    className="h-11 bg-muted/30 border border-transparent font-bold" 
                                                                     {...field}
                                                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                                                 />
@@ -539,14 +539,14 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                                         />
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                        <Label className="text-[10px] uppercase font-black text-muted-foreground">"No" Points</Label>
+                                                        <Label className="text-sm font-semibold">"No" Points</Label>
                                                         <Controller
                                                             control={control}
                                                             name={`elements.${activeIndex}.noScore`}
                                                             render={({ field }) => (
                                                                 <Input 
                                                                     type="number" 
-                                                                    className="h-9 bg-muted/30 border-none font-bold" 
+                                                                    className="h-11 bg-muted/30 border border-transparent font-bold" 
                                                                     {...field}
                                                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                                                 />
@@ -556,7 +556,7 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                                 </div>
                                             ) : (element.options && element.options.length > 0) ? (
                                                 <div className="space-y-3">
-                                                    <Label className="text-[10px] uppercase font-black text-muted-foreground">Points per Option</Label>
+                                                    <Label className="text-sm font-semibold">Points per Option</Label>
                                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
                                                         {element.options.map((opt: string, optIdx: number) => (
                                                             <div key={optIdx} className="flex items-center gap-3">

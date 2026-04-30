@@ -17,6 +17,7 @@ import {
   Shield,
   Sparkles,
   MessageSquare,
+  Code,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,6 +58,7 @@ const controlNavItems: NavItem[] = [
   { href: '/backoffice/messaging/templates', icon: MessageSquare, label: 'Message Templates', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },
+  { href: '/backoffice/developer', icon: Code, label: 'Developer & API', module: 'settings' },
 ];
 
 const operationsNavItems: NavItem[] = [

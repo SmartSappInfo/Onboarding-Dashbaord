@@ -40,6 +40,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { updateEntityAction } from '@/lib/entity-actions';
 import { useTerminology } from '@/hooks/use-terminology';
+import EntityNotesTab from '../../components/EntityNotesTab';
 
 const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -673,6 +674,8 @@ function EditEntityForm({ entityId }: EditFormProps) {
                     )} />
                 </CardContent>
             </Card>
+
+            <EntityNotesTab entityId={entityId} />
 
  <div className="pt-4 sticky top-24 text-left">
                 <Button 

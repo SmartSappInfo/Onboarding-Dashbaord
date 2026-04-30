@@ -309,7 +309,7 @@ export default function SurveyFormBuilder() {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="bg-background rounded-[3rem] shadow-2xl p-8 sm:p-12 border-t-8 border-t-primary">
+                                    <div className="bg-background rounded-2xl shadow-2xl p-8 sm:p-12 border border-border">
                                         <SurveyForm 
                                             survey={{
                                                 ...watchedForm,
@@ -342,7 +342,7 @@ export default function SurveyFormBuilder() {
                                     isAccordion={isAccordion}
                                 />
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-40 bg-card border-2 border-dashed border-border rounded-[3rem] shadow-sm space-y-8 text-center">
+                                <div className="flex flex-col items-center justify-center py-40 bg-card border-2 border-dashed border-border rounded-2xl shadow-sm space-y-8 text-center">
                                     <div className="h-24 w-24 rounded-full bg-primary/5 flex items-center justify-center">
                                         <PlusCircle className="h-12 w-12 text-primary/30" />
                                     </div>

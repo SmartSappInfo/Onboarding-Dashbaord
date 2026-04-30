@@ -104,7 +104,6 @@ export default function AttributionQRSheet({
                 // Update existing
                 await updateQRCode(organizationId, workspaceId, existingQrId, {
                     name,
-                    mode,
                     design
                 });
                 toast({ title: 'QR Code Updated', description: 'Your design changes have been saved.' });

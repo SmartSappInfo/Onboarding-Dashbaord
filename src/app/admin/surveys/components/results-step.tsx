@@ -36,7 +36,7 @@ function LogicSimulator() {
         : `${testScore} PTS`;
 
     return (
- <Card className="bg-primary/5 border-primary/20 mb-8 overflow-hidden relative">
+ <Card className="rounded-2xl border border-primary/20 bg-primary/5 mb-8 overflow-hidden relative">
  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <Sparkles size={120} />
             </div>
@@ -44,12 +44,11 @@ function LogicSimulator() {
  <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <BrainCircuit className="h-4 w-4 text-primary" /> Outcome Simulator
                 </CardTitle>
-                <CardDescription>Test your scoring logic by entering a simulated score.</CardDescription>
             </CardHeader>
             <CardContent>
  <div className="flex flex-col sm:flex-row items-center gap-4">
  <div className="w-full sm:w-32">
- <Label className="text-[10px] font-bold mb-1 block text-muted-foreground">Test Score (Points)</Label>
+ <Label className="text-sm font-semibold mb-1 block">Test Score (Points)</Label>
                         <Input 
                             type="number" 
                             value={testScore} 
@@ -61,7 +60,7 @@ function LogicSimulator() {
  <ArrowRight className="h-6 w-6 text-muted-foreground/30" />
                     </div>
  <div className="flex-grow w-full">
- <Label className="text-[10px] font-bold mb-1 block text-muted-foreground">Public Perspective ({scoreDisplayMode})</Label>
+ <Label className="text-sm font-semibold mb-1 block">Public Perspective ({scoreDisplayMode})</Label>
  <div className={cn(
                             "h-12 flex items-center px-4 rounded-md border transition-all",
                             matchedRule ? "bg-background border-primary shadow-sm" : "bg-background0 border-dashed"
@@ -95,14 +94,12 @@ export default function ResultsStep() {
 
     return (
  <div className="space-y-8">
-            <Card>
+            <Card className="rounded-2xl border border-border bg-card overflow-hidden">
                 <CardHeader>
  <div className="flex items-center justify-between">
- <div className="space-y-1">
- <CardTitle className="flex items-center gap-2 text-xl font-semibold">
- <Trophy className="h-6 w-6 text-yellow-500" /> Scoring Engine
-                            </CardTitle>
-                            <CardDescription>Enable scoring to provide tailored results based on survey answers.</CardDescription>
+ <div className="flex items-center gap-2">
+ <Trophy className="h-6 w-6 text-yellow-500" />
+ <CardTitle className="text-xl font-semibold">Scoring Engine</CardTitle>
                         </div>
                         <Switch 
                             checked={!!scoringEnabled} 
@@ -115,7 +112,7 @@ export default function ResultsStep() {
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
  <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
  <div className="grid gap-1.5 flex-1">
- <Label htmlFor="max-score" className="text-xs font-bold text-muted-foreground ">Total Possible Score</Label>
+ <Label htmlFor="max-score" className="text-sm font-semibold">Total Possible Score</Label>
  <div className="flex items-center gap-2">
                                         <Input 
                                             id="max-score" 
@@ -131,7 +128,7 @@ export default function ResultsStep() {
 
  <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
  <div className="grid gap-1.5 flex-1">
- <Label className="text-xs font-bold text-muted-foreground ">Score Presentation</Label>
+ <Label className="text-sm font-semibold">Score Presentation</Label>
                                     <Controller
                                         name="scoreDisplayMode"
                                         control={control}
@@ -170,7 +167,7 @@ export default function ResultsStep() {
             <LogicSimulator />
 
  <Tabs defaultValue="logic" className="w-full">
- <TabsList className="grid w-full grid-cols-2 h-12 bg-background0 p-1 border">
+ <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/30 p-1 border rounded-xl">
  <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
  <BrainCircuit className="h-4 w-4" /> Outcome Logic
                     </TabsTrigger>

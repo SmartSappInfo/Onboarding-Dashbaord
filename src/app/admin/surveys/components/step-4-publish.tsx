@@ -45,14 +45,18 @@ export default function Step4Publish() {
     const workspaceIds = watch('workspaceIds') || [];
 
     const usersQuery = useMemoFirebase(() => {
-        if (!firestore || assignedUserIds.length === 0) return null;
+        if (!firestore) return null;
         return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
-    }, [firestore, assignedUserIds.length]);
+    }, [firestore]);
     const { data: users } = useCollection<any>(usersQuery);
 
     const filteredUsers = React.useMemo(() => {
-        return (users || []).filter(u => assignedUserIds.includes(u.id));
+        return (users || []).filter((u: any) => assignedUserIds.includes(u.id));
     }, [users, assignedUserIds]);
+
+    const userOptions = React.useMemo(() => {
+        return (users || []).map((u: any) => ({ label: u.name || u.email, value: u.id }));
+    }, [users]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -109,21 +113,18 @@ export default function Step4Publish() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
- <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+ <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Globe className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
- <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
- <CardDescription className="text-[10px] font-bold text-muted-foreground/60">Configure public accessibility and data streams.</CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
                     </div>
                 </CardHeader>
  <CardContent className="p-6 space-y-10 bg-background text-left">
  <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
+ <Label className="text-sm font-semibold flex items-center gap-2">
  <Layout className="h-3 w-3" /> Shared Context (Workspaces)
                         </Label>
                         <Controller 
@@ -151,9 +152,9 @@ export default function Step4Publish() {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Lifecycle State</Label>
+ <Label className="text-sm font-semibold">Lifecycle State</Label>
                                     <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+ <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-all">
                                             <SelectValue />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -170,10 +171,10 @@ export default function Step4Publish() {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Portal URL Backhalf</Label>
- <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+ <Label className="text-sm font-semibold">Portal URL Backhalf</Label>
+ <div className="flex h-11 border border-border rounded-xl overflow-hidden bg-muted/30 transition-all">
  <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">/surveys/</div>
- <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
+ <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent" />
                                     </div>
                                 </div>
                             )}
@@ -217,22 +218,40 @@ export default function Step4Publish() {
 
             <div className="space-y-8">
                 {assignmentEnabled && (
-                    <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                    <Card className="rounded-2xl border border-border bg-card overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
                         <CardHeader className="bg-blue-500/5 border-b pb-6 px-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
                                     <Link2 className="h-5 w-5" />
                                 </div>
-                                <div>
-                                    <CardTitle className="text-sm font-semibold tracking-tight">Assigned Attribution Links</CardTitle>
-                                    <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Unique tracking links for your representatives.</CardDescription>
-                                </div>
+                                <CardTitle className="text-sm font-semibold tracking-tight">Assigned Attribution Links</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-6 space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
+                        <CardContent className="p-6 space-y-6 max-h-[500px] overflow-y-auto no-scrollbar">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Assign Team Members</Label>
+                                <Controller 
+                                    name="assignedUsers"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <MultiSelect 
+                                            options={userOptions}
+                                            value={field.value || []}
+                                            onChange={field.onChange}
+                                            placeholder="Select representatives..."
+                                        />
+                                    )}
+                                />
+                                <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
+                                    Links will generate automatically as you select team members.
+                                </p>
+                            </div>
+                            
+                            <Separator className="bg-border/50" />
+
                             {filteredUsers.length === 0 ? (
                                 <div className="p-8 text-center bg-muted/20 rounded-2xl border border-dashed">
-                                    <p className="text-[10px] font-bold text-muted-foreground/50 italic">No users selected in the "Behavior" step yet.</p>
+                                    <p className="text-[10px] font-bold text-muted-foreground/50 italic">No representatives selected yet.</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3">

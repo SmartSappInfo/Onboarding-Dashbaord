@@ -14,6 +14,7 @@ import { AssigneeLinksModal } from './components/AssigneeLinksModal';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList } from 'lucide-react';
 import {
@@ -374,17 +375,14 @@ export default function SurveysClient() {
         <TooltipProvider>
             <div className="h-full overflow-y-auto">
                 <div className="max-w-5xl mx-auto space-y-8 pb-32">
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                        <div className="flex flex-col">
-                            <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground">
-                                <Sparkles className="h-10 w-10 text-primary" />
-                                Survey Intelligence
-                            </h1>
-                            <p className="text-muted-foreground font-medium text-lg mt-1">Manage public survey templates and response data.</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Surveys</h1>
+                            <p className="text-sm text-muted-foreground mt-1">Manage public survey templates and response data.</p>
                         </div>
-                <div className="flex justify-end items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2">
                     {canCreate && (
-                        <RainbowButton asChild className="h-11 rounded-xl font-semibold">
+                        <RainbowButton asChild className="h-11 px-4 rounded-xl font-semibold text-sm">
                             <Link href="/admin/surveys/new/ai">
                                 <Sparkles className="mr-2 h-4 w-4" />
                                 AI Architect
@@ -392,7 +390,7 @@ export default function SurveysClient() {
                         </RainbowButton>
                     )}
                     {canCreate && (
-                        <Button asChild className="h-11 rounded-xl font-bold shadow-lg">
+                        <Button asChild className="h-11 px-6 rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
                             <Link href="/admin/surveys/new">
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 New Survey
@@ -402,37 +400,41 @@ export default function SurveysClient() {
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-3 items-center bg-transparent p-4 rounded-3xl border shadow-sm ring-1 ring-border">
-                 <div className="relative flex-1 w-full max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+            <Card className="p-4 rounded-xl border-border bg-card">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                 <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Search survey titles..." 
-                         className="pl-10 h-10 bg-background/50 backdrop-blur-sm border-border text-foreground placeholder:text-muted-foreground rounded-xl focus:ring-1 focus:ring-primary/20 font-medium shadow-sm transition-all" 
+                         className="pl-9 rounded-xl border-border bg-background h-10 w-full" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
                 </div>
-                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                     <SelectTrigger className="w-[180px] h-10 bg-background/50 backdrop-blur-sm border-border text-foreground rounded-xl shadow-sm transition-all focus:ring-1 focus:ring-primary/20">
-                        <SelectValue />
-                    </SelectTrigger>
- <SelectContent className="rounded-xl">
-                        <SelectItem value="all">Global Hub</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                        <SelectItem value="draft">Drafts</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="rounded-2xl border border-border bg-transparent text-card-foreground shadow-sm overflow-hidden">
+                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                         <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="draft">Drafts</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
+                </div>
+            </Card>
+             <Card className="rounded-xl border-border bg-card overflow-hidden">
              <Table>
-                 <TableHeader className="bg-muted/10">
+                 <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 pl-6">Blueprint Title</TableHead>
-                        <TableHead className="w-[120px] text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 text-center">Status</TableHead>
-                        <TableHead className="w-[120px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4">Responses</TableHead>
-                        <TableHead className="w-[180px] hidden md:table-cell text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4">Created At</TableHead>
-                        <TableHead className="w-[160px] text-right text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-4 pr-6">Management</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground pl-6">Blueprint Title</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-center">Status</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-center">Responses</TableHead>
+                        <TableHead className="hidden md:table-cell text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Created At</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground text-right pr-6">Management</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -448,7 +450,7 @@ export default function SurveysClient() {
                     ))
                 ) : filteredTemplates.length > 0 ? (
                     filteredTemplates.map((survey) => (
- <TableRow key={survey.id} className="group hover:bg-accent/5 transition-colors border-border/30">
+ <TableRow key={survey.id} className="border-border hover:bg-muted/30 transition-colors">
  <TableCell className="font-bold pl-6">
  <div className="flex items-center gap-3">
                                 <AsyncEntityAvatar 
@@ -504,7 +506,7 @@ export default function SurveysClient() {
                 )}
                 </TableBody>
             </Table>
-            </div>
+            </Card>
             </div>
         </div>
       <AlertDialog open={!!surveyToDelete} onOpenChange={(open) => !open && setSurveyToDelete(null)}>

@@ -67,7 +67,7 @@ function EntityPickerField({
 
     return (
         <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Associated Entity</Label>
+            <Label className="text-sm font-semibold">Associated Entity</Label>
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <button
@@ -182,16 +182,13 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
     return (
  <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
             {/* Identity Card */}
- <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+ <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Type className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
- <CardTitle className="text-sm font-semibold tracking-tight">Identity & Branding</CardTitle>
- <CardDescription className="text-[10px] font-bold text-muted-foreground/60">Core nomenclature and organizational context.</CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Identity & Branding</CardTitle>
                     </div>
                 </CardHeader>
  <CardContent className="p-6 space-y-6">
@@ -201,8 +198,8 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Blueprint Name</Label>
- <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+ <Label className="text-sm font-semibold">Internal Blueprint Name</Label>
+ <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
                                 </div>
                             )}
                         />
@@ -211,8 +208,8 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Public Header Title</Label>
- <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+ <Label className="text-sm font-semibold">Public Header Title</Label>
+ <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
                                 </div>
                             )}
                         />
@@ -235,7 +232,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Survey Branding</Label>
+                                    <Label className="text-sm font-semibold">Survey Branding</Label>
                                     <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20">
                                         <Switch 
                                             checked={field.value} 
@@ -259,8 +256,8 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         control={control}
                         render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Introductory Prose</Label>
- <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-muted/20 border-none p-4 font-medium leading-relaxed shadow-inner" />
+ <Label className="text-sm font-semibold">Introductory Prose</Label>
+ <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-muted/30 border border-transparent p-4" />
                             </div>
                         )}
                     />
@@ -269,7 +266,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         control={control}
                         render={({ field }) => (
  <div className="space-y-3">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Start Button Label</Label>
+ <Label className="text-sm font-semibold">Start Button Label</Label>
                                 <Input
                                     {...field}
                                     value={field.value || ''}
@@ -280,7 +277,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
  <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
                                     <button
                                         type="button"
- className="inline-flex items-center gap-2 h-9 px-5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
+ className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
                                         style={{ width: 'fit-content' }}
                                     >
  {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
@@ -293,16 +290,13 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
             </Card>
 
             {/* Immersive Media Card */}
- <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+ <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Video className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
- <CardTitle className="text-sm font-semibold tracking-tight">Immersive Hero</CardTitle>
- <CardDescription className="text-[10px] font-bold text-muted-foreground/60">High-engagement video and cover assets.</CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Immersive Hero</CardTitle>
                     </div>
                 </CardHeader>
  <CardContent className="p-6 space-y-8">
@@ -313,8 +307,8 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Feature Video URL</Label>
-                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                        <Label className="text-sm font-semibold">Feature Video URL</Label>
+                                        <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
                                     </div>
                                 )}
                             />
@@ -326,7 +320,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
                                             <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
                                         </Label>
-                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors" />
                                         <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
                                     </div>
                                 )}
@@ -366,7 +360,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                     control={control}
                                     render={({ field }) => (
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Video Poster (Frame)</Label>
+                                            <Label className="text-sm font-semibold">Video Poster (Frame)</Label>
                                             <MediaSelect {...field} filterType="image" className="rounded-xl" />
                                         </div>
                                     )}
@@ -376,7 +370,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                     control={control}
                                     render={({ field }) => (
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Cover Image (Fallback)</Label>
+                                            <Label className="text-sm font-semibold">Cover Image (Fallback)</Label>
                                             <MediaSelect {...field} filterType="image" className="rounded-xl" />
                                         </div>
                                     )}
@@ -388,16 +382,13 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
             </Card>
 
             {/* Aesthetics Card */}
- <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+ <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+ <CardHeader className="bg-muted/10 border-b pb-6 px-6">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary/10 rounded-xl">
  <Palette className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
- <CardTitle className="text-sm font-semibold tracking-tight">Visual Theme</CardTitle>
- <CardDescription className="text-[10px] font-bold text-muted-foreground/60">Customize the atmospheric design.</CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Visual Theme</CardTitle>
                     </div>
                 </CardHeader>
  <CardContent className="p-6 space-y-6">
@@ -407,7 +398,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Base Color</Label>
+ <Label className="text-sm font-semibold">Base Color</Label>
  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/20 border shadow-inner">
  <Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" />
  <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] font-semibold " />
@@ -420,7 +411,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Pattern Tint</Label>
+ <Label className="text-sm font-semibold">Pattern Tint</Label>
  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/20 border shadow-inner">
  <Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" />
  <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] font-semibold " />
@@ -434,9 +425,9 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                         control={control}
                         render={({ field }) => (
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Overlay Pattern</Label>
+ <Label className="text-sm font-semibold">Overlay Pattern</Label>
                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
- <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+ <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors">
                                         <SelectValue placeholder="Select pattern..." />
                                     </SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -474,9 +465,9 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-2 pt-1 md:pt-0">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Survey Stepper Style</Label>
+                                    <Label className="text-sm font-semibold">Survey Stepper Style</Label>
                                     <Select onValueChange={field.onChange} value={field.value || 'full'}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-transparent transition-colors">
                                             <SelectValue placeholder="Select stepper style..." />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">

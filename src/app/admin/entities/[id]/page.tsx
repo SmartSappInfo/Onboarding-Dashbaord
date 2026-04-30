@@ -76,6 +76,8 @@ import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import PipelineAutomationsTab from '../components/PipelineAutomationsTab';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
+import EntityNotesTab from '../components/EntityNotesTab';
+import EntityNotesWidget from '../components/EntityNotesWidget';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -125,6 +127,7 @@ export default function EntityDetailPage() {
     const [statusModalOpen, setStatusModalOpen] = React.useState(false);
     const [transferModalOpen, setTransferModalOpen] = React.useState(false);
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState('overview');
 
     // 1. Subscribe to Global Entity (Identity)
     const entityDocRef = useMemoFirebase(() => {
@@ -329,9 +332,12 @@ export default function EntityDetailPage() {
                 </div>
             </div>
 
- <Tabs defaultValue="overview" className="space-y-8">
+ <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+ <div className="lg:col-span-3">
+ <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
  <TabsList className="bg-card/40 border shadow-sm p-1 h-auto md:h-12 rounded-2xl w-full md:w-fit backdrop-blur-sm flex-wrap">
  <TabsTrigger value="overview" className="rounded-xl font-semibold text-[10px] px-8">Insights</TabsTrigger>
+ <TabsTrigger value="notes" className="rounded-xl font-semibold text-[10px] px-8">Notes</TabsTrigger>
  <TabsTrigger value="tasks" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
                             Tasks
                             {tasks && tasks.length > 0 && (
@@ -358,8 +364,7 @@ export default function EntityDetailPage() {
                 </TabsContent>
 
  <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
- <Card className="lg:col-span-2 border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+ <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
  <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Contact Directory</CardTitle>
                                 </CardHeader>
@@ -395,34 +400,12 @@ export default function EntityDetailPage() {
                                         })()}
                                     </div>
                                 </CardContent>
-                            </Card>
-
- <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
- <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 text-left">
- <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
-                                </CardHeader>
- <CardContent className="p-8 space-y-8 text-left">
- <div className="flex items-center justify-between p-5 rounded-xl bg-primary/10 border border-primary/20 shadow-inner">
- <div className="space-y-1 text-left">
- <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
- <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{capacity?.toLocaleString() || '0'}</p>
-                                        </div>
- <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
-                                    </div>
- <div className="space-y-6 text-left">
-                                        <DetailItem icon={UserCheck} label="Account Manager" value={weData.assignedTo?.name || 'Unassigned'} />
-                                        <DetailItem icon={Workflow} label="Current Stage" value={weData.currentStageName || 'Not Set'} />
-                                        <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = (weData.addedAt as any)?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
-                                        <Separator />
- <div className="space-y-3">
- <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">System Information</p>
-                                            <DetailItem icon={Globe} label="Website" value={website || '—'} href={website ? (website.startsWith('http') ? website : `https://${website}`) : undefined} />
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                             </Card>
                     </TabsContent>
+
+ <TabsContent value="notes" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+     <EntityNotesTab entityId={entityId} />
+ </TabsContent>
 
  <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="flex justify-between items-center mb-2 px-2">
@@ -563,6 +546,43 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
                 </Tabs>
+             </div>
+             <div className="lg:col-span-1 space-y-6">
+                 {/* 
+                  * TODO: Dynamic Right Column 
+                  * This column holds critical information and should be dynamic for each entity type and industry.
+                  * As new features are added (especially for other entity types like 'person' or 'family'), 
+                  * restructure this panel to show the most relevant metrics and widgets depending on the 
+                  * current industry and workspace.
+                  */}
+                 <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                     <CardHeader className="border-b bg-card/20 pb-5 px-6 pt-6 text-left">
+                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
+                     </CardHeader>
+                     <CardContent className="p-6 space-y-8 text-left">
+                         <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 shadow-inner">
+                             <div className="space-y-1 text-left">
+                                 <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
+                                 <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{capacity?.toLocaleString() || '0'}</p>
+                             </div>
+                             <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
+                         </div>
+                         <div className="space-y-6 text-left">
+                             <DetailItem icon={UserCheck} label="Account Manager" value={weData.assignedTo?.name || 'Unassigned'} />
+                             <DetailItem icon={Workflow} label="Current Stage" value={weData.currentStageName || 'Not Set'} />
+                             <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = (weData.addedAt as any)?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
+                             <Separator />
+                             <div className="space-y-3">
+                                 <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">System Information</p>
+                                 <DetailItem icon={Globe} label="Website" value={website || '—'} href={website ? (website.startsWith('http') ? website : `https://${website}`) : undefined} />
+                             </div>
+                         </div>
+                     </CardContent>
+                 </Card>
+
+                 <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
+             </div>
+         </div>
             </div>
 
             <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>

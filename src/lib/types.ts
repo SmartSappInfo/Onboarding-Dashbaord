@@ -409,6 +409,21 @@ export interface FocalPersonNote {
   createdAt: string;
 }
 
+/**
+ * A general note attached to an Entity, stored in the 'entity_notes' subcollection
+ * or separate collection.
+ */
+export interface EntityNote {
+  id: string;
+  entityId: string;
+  workspaceId: string;
+  content: string;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FocalPersonAttachment {
   id: string;
   name: string;

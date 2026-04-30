@@ -1354,7 +1354,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                             videoCaption={survey.videoCaption}
                                         />
                                     ) : survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-card">
+                                        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
                                             <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
                                         </div>
                                     )}
@@ -1388,7 +1388,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                             videoCaption={survey.videoCaption}
                                         />
                                     ) : survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-border/50 bg-card">
+                                        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
                                             <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
                                         </div>
                                     )}
@@ -1411,7 +1411,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                             )}
                             
                             
-                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-card text-foreground">
+                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-2xl overflow-hidden bg-card text-foreground">
                                 <CardContent className="p-6 sm:p-8 space-y-6 sm:space-y-8 text-left">
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {

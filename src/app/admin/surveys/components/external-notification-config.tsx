@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Bell, UserCheck, Users, Mail, Smartphone, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MultiSelect } from '@/components/ui/multi-select';
+import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
@@ -74,8 +74,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                         control={control}
                         render={({ field }) => (
                             <Switch 
-                                disabled={!entityId}
-                                checked={!!field.value && !!entityId} 
+                                checked={!!field.value} 
                                 onCheckedChange={field.onChange} 
  className="scale-125"
                             />
@@ -83,18 +82,9 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                     />
                 </div>
 
-                {!entityId && (
- <div className="px-6 pb-6">
- <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 flex items-center gap-3">
- <AlertCircle className="h-4 w-4 text-orange-600 shrink-0" />
- <p className="text-[9px] font-bold text-orange-800 leading-relaxed tracking-tighter">
-                                Please associate an entity in Phase 1 to enable external alerts.
-                            </p>
-                        </div>
-                    </div>
-                )}
+                {/* Warning removed */}
 
-                {enabled && entityId && (
+                {enabled && (
  <div className="p-6 pt-0 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
  <Separator className="bg-primary/10" />
                         
@@ -112,16 +102,15 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             name={`${prefix}ContactTypes`}
                                             control={control}
                                             render={({ field }) => (
-                                                <MultiSelect 
-                                                    options={contactRoleOptions}
+                                                <TagInput 
                                                     value={field.value || []}
                                                     onChange={field.onChange}
-                                                    placeholder="Select roles (e.g. Principal)..."
+                                                    placeholder="Enter emails, phones, or roles..."
                                                 />
                                             )}
                                         />
  <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
-                                            Anyone listed in the entity metadata with these roles will be alerted.
+                                            Add comma or semicolon-separated custom contacts or workspace roles.
                                         </p>
                                     </div>
                                 </div>
@@ -138,7 +127,6 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                 <button
                                                     key={c}
                                                     type="button"
-                                                    disabled={!entityId}
                                                     onClick={() => field.onChange(c)}
  className={cn(
                                                         "h-10 rounded-xl font-semibold uppercase text-[9px]  transition-all",
