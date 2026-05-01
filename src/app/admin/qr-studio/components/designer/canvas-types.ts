@@ -30,6 +30,7 @@ export interface CanvasElement {
   lineWidth?: number;
   // Interaction
   selected?: boolean;
+  rotation?: number;
 }
 
 export interface CanvasState {

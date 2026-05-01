@@ -92,16 +92,17 @@ export async function processImage(
 
 export async function getImageDimensions(file: File): Promise<{ width: number; height: number; dataUrl: string }> {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const image = new Image();
-            image.onload = () => {
-                resolve({ width: image.width, height: image.height, dataUrl: e.target?.result as string });
-            };
-            image.onerror = reject;
-            image.src = e.target?.result as string;
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+            // Note: we don't revoke here because the URL is passed back as dataUrl for preview/editing
+            // The consumer of this function must call URL.revokeObjectURL(dataUrl) when done
+            resolve({ width: image.width, height: image.height, dataUrl: url });
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        image.onerror = (e) => {
+            URL.revokeObjectURL(url);
+            reject(e);
+        };
+        image.src = url;
     });
 }

@@ -1,16 +1,15 @@
-
 'use client';
 
 import { useState } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import MediaUploader from './media-uploader';
 
 interface UploadButtonProps {
@@ -27,25 +26,25 @@ export default function UploadButton({ workspaceId }: UploadButtonProps) {
   return (
     <>
       <Button onClick={() => setIsSheetOpen(true)}>
- <PlusCircle className="mr-2 h-4 w-4" />
+        <PlusCircle className="mr-2 h-4 w-4" />
         Upload Media
       </Button>
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
- <SheetContent className="w-full sm:max-w-5xl p-0 flex flex-col h-full">
- <SheetHeader className="px-6 pt-6 pb-4 border-b">
-            <SheetTitle>Upload Media</SheetTitle>
-            <SheetDescription>
+      <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <DialogContent className="w-full sm:max-w-5xl p-0 flex flex-col border-none shadow-2xl overflow-hidden max-h-[90vh]">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/10 shrink-0">
+            <DialogTitle className="text-2xl font-semibold tracking-tight">Upload Media</DialogTitle>
+            <DialogDescription>
               Drag and drop files, edit, and upload. Max 50MB per file.
-            </SheetDescription>
-          </SheetHeader>
- <div className="flex-grow p-6 overflow-y-auto">
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-grow p-6 overflow-y-auto">
             <MediaUploader 
               onUploadSuccess={handleUploadSuccess} 
               defaultWorkspaceId={workspaceId}
             />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

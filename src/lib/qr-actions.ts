@@ -402,30 +402,61 @@ export async function updateQRShortPath(
   wsId: string,
   qrId: string,
   newShortPath: string
-): Promise<void> {
-  const sanitized = newShortPath.trim();
-  if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
-    throw new Error('Custom shortlink can only contain letters, numbers, and hyphens.');
-  }
-
-  const existing = await adminDb
-    .collectionGroup('qr_codes')
-    .where('shortPath', '==', sanitized)
-    .limit(1)
-    .get();
-
-  if (!existing.empty) {
-    if (existing.docs[0].id !== qrId) {
-      throw new Error('This custom shortlink is already in use. Please choose another one.');
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const sanitized = newShortPath.trim();
+    if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
+      return { success: false, error: 'Custom shortlink can only contain letters, numbers, and hyphens.' };
     }
-  }
 
-  const col = qrCodesCollection(orgId, wsId);
-  await col.doc(qrId).update({
-    shortPath: sanitized,
-    redirectUrl: `/q/${sanitized}`,
-    updatedAt: new Date().toISOString(),
-  });
+    const existing = await adminDb
+      .collection('short_paths')
+      .doc(sanitized)
+      .get();
+
+    if (existing.exists) {
+      if (existing.data()?.qrId !== qrId) {
+        return { success: false, error: 'This custom shortlink is already in use. Please choose another one.' };
+      }
+    }
+
+    const col = qrCodesCollection(orgId, wsId);
+    
+    // Check if the QR code exists and get its current shortPath
+    const qrDoc = await col.doc(qrId).get();
+    if (!qrDoc.exists) {
+      return { success: false, error: 'QR Code not found.' };
+    }
+    const oldShortPath = qrDoc.data()?.shortPath;
+
+    // Run as batch to update both qr_code and short_paths safely
+    const batch = adminDb.batch();
+    
+    batch.update(col.doc(qrId), {
+      shortPath: sanitized,
+      redirectUrl: `/q/${sanitized}`,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Remove old short_path document if it changed
+    if (oldShortPath && oldShortPath !== sanitized) {
+      batch.delete(adminDb.collection('short_paths').doc(oldShortPath));
+    }
+
+    // Set new short_path document
+    batch.set(adminDb.collection('short_paths').doc(sanitized), {
+      orgId,
+      wsId,
+      qrId,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await batch.commit();
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to update short path:', error);
+    return { success: false, error: 'Internal Server Error: Could not save shortlink.' };
+  }
 }
 
 // ─────────────────────────────────────────────────

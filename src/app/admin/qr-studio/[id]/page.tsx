@@ -604,7 +604,11 @@ function SettingsTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: stri
   const handleSaveShortPath = async () => {
     setSavingShortPath(true);
     try {
-      await updateQRShortPath(orgId, wsId, qr.id, shortPath);
+      const result = await updateQRShortPath(orgId, wsId, qr.id, shortPath);
+      if (result && !result.success) {
+        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update shortlink.' });
+        return;
+      }
       toast({ title: 'Shortlink updated', description: 'Your custom shortlink has been saved.' });
       onSaved();
     } catch (err: any) {

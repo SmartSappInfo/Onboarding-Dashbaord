@@ -43,8 +43,8 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
 
       if (dragRef.current.type === 'move') {
         onUpdate({
-          x: Math.max(0, Math.min(100 - dragRef.current.elW, dragRef.current.elX + dx)),
-          y: Math.max(0, Math.min(100 - dragRef.current.elH, dragRef.current.elY + dy)),
+          x: dragRef.current.elX + dx,
+          y: dragRef.current.elY + dy,
         });
       } else if (dragRef.current.type === 'resize' && dragRef.current.handle) {
         let newX = dragRef.current.elX;
@@ -97,7 +97,11 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
         className="w-full h-full"
         onMouseDown={e => startDrag(e, 'move')}
         onClick={e => e.stopPropagation()}
-        style={{ cursor: isSelected ? 'move' : 'pointer' }}
+        style={{ 
+          cursor: isSelected ? 'move' : 'pointer',
+          transform: `rotate(${element.rotation || 0}deg)`,
+          transformOrigin: 'center center'
+        }}
       >
         {children}
       </div>

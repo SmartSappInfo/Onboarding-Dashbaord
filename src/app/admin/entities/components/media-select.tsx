@@ -12,12 +12,12 @@ import { cn } from '@/lib/utils';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export interface MediaSelectProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
     value?: string;
@@ -139,28 +139,28 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
         filterType={filterType}
       />
 
-      <Sheet open={isUploadOpen} onOpenChange={setIsUploadOpen}>
- <SheetContent className="w-full sm:max-w-5xl p-0 flex flex-col h-full border-none shadow-2xl rounded-l-[3rem]">
- <SheetHeader className="p-8 border-b bg-muted/30 shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <Upload className="h-6 w-6" />
-                </div>
- <div className="text-left">
- <SheetTitle className="text-2xl font-semibold tracking-tight">Direct Upload</SheetTitle>
- <SheetDescription className="text-xs font-bold text-muted-foreground">Upload and optimize institutional branding assets.</SheetDescription>
-                </div>
+      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+        <DialogContent className="w-full sm:max-w-5xl p-0 flex flex-col border-none shadow-2xl overflow-hidden max-h-[90vh]">
+          <DialogHeader className="p-8 border-b bg-muted/10 shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                <Upload className="h-6 w-6" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-2xl font-semibold tracking-tight">Direct Upload</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-muted-foreground">Upload and optimize institutional branding assets.</DialogDescription>
+              </div>
             </div>
-          </SheetHeader>
- <div className="flex-1 p-8 overflow-y-auto bg-background">
+          </DialogHeader>
+          <div className="flex-1 p-8 overflow-y-auto bg-background">
             <MediaUploader 
                 onUploadSuccess={() => setIsUploadOpen(false)} 
                 onUploadComplete={handleUploadComplete}
                 acceptedFileTypes={[filterType as any]}
             />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 });

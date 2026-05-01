@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Trash2, Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -62,12 +63,20 @@ export default function CanvasPropertiesPanel({ canvas, selectedElement, onCanva
             ))}
           </div>
 
+          <div className="space-y-0.5">
+            <div className="flex justify-between">
+              <Label className="text-[9px]">Rotation</Label>
+              <span className="text-[9px] text-muted-foreground">{el.rotation || 0}°</span>
+            </div>
+            <Slider value={[el.rotation || 0]} min={0} max={360} step={1} onValueChange={([v]) => upd({ rotation: v })} />
+          </div>
+
           {/* Text Props */}
           {el.type === 'text' && !el.isQR && (
             <>
               <div className="space-y-0.5">
                 <Label className="text-[9px]">Content</Label>
-                <Input value={el.text || ''} onChange={e => upd({ text: e.target.value })} className="h-7 rounded-lg text-[10px]" />
+                <Textarea value={el.text || ''} onChange={e => upd({ text: e.target.value })} className="min-h-[60px] rounded-lg text-[10px] resize-y" />
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="space-y-0.5">
