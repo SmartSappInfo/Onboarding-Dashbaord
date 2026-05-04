@@ -29,8 +29,8 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
         transition,
     };
 
-    const smsTemplates = templates?.filter(t => t.channel === 'sms' && t.isActive);
-    const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive);
+    const smsTemplates = templates?.filter(t => t.channel === 'sms' && t.isActive && t.category === 'surveys' && t.recipientType === 'respondent');
+    const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive && t.category === 'surveys' && t.recipientType === 'respondent');
     const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
     const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
 
@@ -233,6 +233,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                     onOpenChange={(o) => !o && setActiveTemplateConfig(null)}
                     channel={activeTemplateConfig.channel}
                     category="surveys"
+                    recipientType="respondent"
                     fixedSourceId={surveyId}
                     templateId={activeTemplateConfig.templateId}
                     onCreated={(id) => {

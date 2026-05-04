@@ -1,5 +1,27 @@
 'use client';
 
+/**
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║  ENTITY DATA GOVERNANCE — READ BEFORE MODIFYING THIS FILE  ║
+ * ╠══════════════════════════════════════════════════════════════╣
+ * ║                                                              ║
+ * ║  When you ADD, REMOVE, or RENAME any field in this form:    ║
+ * ║                                                              ║
+ * ║  1. Update BULK_IMPORT_FIELDS in BulkUploadClient.tsx        ║
+ * ║     → Simple Template fields (Basic tab)                     ║
+ * ║     → Advanced Template fields for each industry             ║
+ * ║       (institution / person / family / …)                    ║
+ * ║  2. Update processRow() in bulk-upload-actions.ts            ║
+ * ║     → Ensure the new field is parsed from CSV data           ║
+ * ║  3. Update the entity payload builder in this file           ║
+ * ║     → entityPayload construction in onSubmit()               ║
+ * ║  4. Update SAMPLE_ROWS in BulkUploadClient.tsx               ║
+ * ║     → Add realistic sample data for each industry            ║
+ * ║  5. Run a test E2E import to verify persistence              ║
+ * ║                                                              ║
+ * ╚══════════════════════════════════════════════════════════════╝
+ */
+
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +59,8 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
+import { LocationCascade } from '@/components/location/LocationCascade';
+import { TagSelector } from '@/components/tags/TagSelector';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Required name must be at least 2 characters.' }),
@@ -51,8 +75,18 @@ const formSchema = z.object({
     id: z.string(),
     name: z.string(),
   }).optional().nullable(),
+  location: z.object({
+    country: z.object({ id: z.string(), name: z.string(), code: z.string(), flag: z.string() }).nullable().optional(),
+    region: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
+    district: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
+  }).optional(),
   locationString: z.string().optional(),
+  workspaceTags: z.array(z.string()).optional().default([]),
   nominalRoll: z.coerce.number().optional(),
+  // ── Narrative Fields (non-required, all industries) ──────────────────────
+  currentNeeds: z.string().optional(),
+  currentChallenges: z.string().optional(),
+  interests: z.string().optional(),
   entityContacts: z.array(z.object({
     name: z.string().min(1, 'Name required.'),
     email: z.string().optional().or(z.literal('')),
@@ -147,7 +181,9 @@ export default function NewEntityPage() {
       workspaceIds: [activeWorkspaceId],
       status: 'active',
       lifecycleStatus: 'Onboarding',
+      location: {},
       locationString: '',
+      workspaceTags: [],
       nominalRoll: 0,
       entityContacts: [{ name: '', email: '', phone: '', typeKey: 'administrator', typeLabel: 'Administrator', isSignatory: true, isPrimary: true }],
       modules: [],
@@ -158,7 +194,10 @@ export default function NewEntityPage() {
       arrearsBalance: 0,
       creditBalance: 0,
       subscriptionPackageId: null,
-      customData: {}
+      customData: {},
+      currentNeeds: '',
+      currentChallenges: '',
+      interests: '',
     },
   });
 
@@ -230,10 +269,15 @@ export default function NewEntityPage() {
         entityContacts: data.entityContacts || [],
         status: data.status,
         lifecycleStatus: data.lifecycleStatus || 'Onboarding',
+        location: { ...data.location, locationString: data.locationString },
+        workspaceTags: data.workspaceTags || [],
         assignedTo,
         primaryEmail: (data.entityContacts || []).find(c => c.isPrimary)?.email || (data.entityContacts || []).find(c => c.isSignatory)?.email || '',
         primaryPhone: (data.entityContacts || []).find(c => c.isPrimary)?.phone || (data.entityContacts || []).find(c => c.isSignatory)?.phone || '',
         customData: data.customData || {},
+        currentNeeds: data.currentNeeds || undefined,
+        currentChallenges: data.currentChallenges || undefined,
+        interests: data.interests || undefined,
     };
 
     if (contactScope === 'institution') {
@@ -242,10 +286,6 @@ export default function NewEntityPage() {
       entityPayload.slogan = data.slogan;
       entityPayload.logoUrl = data.logoUrl;
       entityPayload.heroImageUrl = data.heroImageUrl;
-      entityPayload.location = {
-        zone: data.zone || undefined,
-        locationString: data.locationString,
-      };
       entityPayload.interests = data.modules;
       entityPayload.financeData = {
         billingAddress: data.billingAddress,
@@ -405,6 +445,13 @@ export default function NewEntityPage() {
  <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Vision / Motto</Label>
                         <FormField control={methods.control} name="slogan" render={({ field }) => (
  <FormItem className="text-left"><FormControl><Input placeholder="e.g. Forward Ever" {...field} className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 italic font-medium" /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </div>
+
+ <div className="space-y-2 text-left pt-4">
+ <Label className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Tags & Categories</Label>
+                        <FormField control={methods.control} name="workspaceTags" render={({ field }) => (
+ <FormItem className="text-left"><FormControl><TagSelector currentTagIds={field.value || []} onTagsChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                         )} />
                     </div>
                   </CardContent>
@@ -590,7 +637,7 @@ export default function NewEntityPage() {
  <CardTitle className="text-lg font-semibold tracking-tight text-left">Interests</CardTitle>
                         </div>
                     </CardHeader>
- <CardContent className="p-6 text-left">
+ <CardContent className="p-6 space-y-6 text-left">
                         <FormField control={methods.control} name="modules" render={({ field }) => (
  <FormItem className="text-left">
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/50 ml-1 text-left">Specific Interests</FormLabel>
@@ -598,6 +645,49 @@ export default function NewEntityPage() {
                                     <ModuleSelect {...field} />
                                 </FormControl>
  <FormDescription className="text-[9px] font-bold opacity-60 text-left">Identify the specific interests for this workspace.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="interests" render={({ field }) => (
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Interests (Text)</FormLabel>
+                                <FormControl>
+                                    <Input {...field} placeholder="e.g. Technology, Sports, Arts..." className="h-11 rounded-xl bg-background/50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+                                </FormControl>
+                                <FormDescription className="text-[9px] font-bold opacity-60 text-left">Comma-separated list of areas of interest.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </CardContent>
+                </Card>
+
+                {/* Current Situation Card */}
+                <Card className="border border-border shadow-sm rounded-2xl overflow-hidden bg-card text-left">
+                    <CardHeader className="bg-card/20 border-b pb-6 text-left">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className="p-2 bg-amber-500/10 rounded-xl text-left"><Target className="h-5 w-5 text-amber-600" /></div>
+                            <div className="text-left">
+                                <CardTitle className="text-lg font-semibold tracking-tight text-left">Current Situation</CardTitle>
+                                <CardDescription className="text-xs font-medium text-left">Discovery notes for sales & pipeline context.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6 text-left">
+                        <FormField control={methods.control} name="currentNeeds" render={({ field }) => (
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-semibold text-amber-600 ml-1 text-left">Current Needs</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} placeholder="What is this entity actively looking for or needing right now?" className="min-h-[90px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="currentChallenges" render={({ field }) => (
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-semibold text-rose-600 ml-1 text-left">Current Challenges</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} placeholder="What pain points or obstacles is this entity facing?" className="min-h-[90px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -653,11 +743,22 @@ export default function NewEntityPage() {
                                 <FormMessage />
                             </FormItem>
                         )} /> 
-                        <FormField control={methods.control} name="locationString" render={({ field }) => (
- <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Physical Address</FormLabel>
+                        <FormField control={methods.control} name="location" render={({ field }) => (
+                            <FormItem className="text-left">
                                 <FormControl>
- <Textarea {...field} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
+                                    <LocationCascade 
+                                        value={field.value || {}} 
+                                        onChange={field.onChange} 
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="locationString" render={({ field }) => (
+                            <FormItem className="text-left">
+                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Descriptive Physical Address</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} className="min-h-[80px] rounded-xl bg-background/50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

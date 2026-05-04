@@ -178,38 +178,6 @@ export async function createEntityAction(
     
     const slug = displayName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-    let initialPipelineId = 'default_pipeline';
-    let defaultStage = { 
-      id: 'stg_default_0', 
-      name: 'Welcome', 
-      order: 1, 
-    };
-
-    // Try to get the actual pipeline for the workspace
-    const pipelinesSnap = await adminDb.collection('pipelines')
-      .where('workspaceId', '==', workspaceId)
-      .limit(1)
-      .get();
-
-    if (!pipelinesSnap.empty) {
-      initialPipelineId = pipelinesSnap.docs[0].id;
-
-      // Get the first stage of this pipeline
-      const stagesSnap = await adminDb.collection('onboardingStages')
-        .where('pipelineId', '==', initialPipelineId)
-        .orderBy('order', 'asc')
-        .limit(1)
-        .get();
-
-      if (!stagesSnap.empty) {
-        const stageData = stagesSnap.docs[0].data();
-        defaultStage = {
-          id: stagesSnap.docs[0].id,
-          name: stageData.name,
-          order: stageData.order,
-        };
-      }
-    }
 
     // FER-01: Convert incoming contacts to EntityContact format
     const rawContacts: EntityContact[] = (data.contacts || data.entityContacts || []).map(
@@ -300,6 +268,25 @@ export async function createEntityAction(
       entityData.customData = data.customData;
     }
 
+    // Narrative Fields (currentNeeds, currentChallenges, interests text)
+    if (data.currentNeeds) entityData.currentNeeds = data.currentNeeds;
+    if (data.currentChallenges) entityData.currentChallenges = data.currentChallenges;
+    if (data.interests && typeof data.interests === 'string') entityData.interestsText = data.interests;
+
+    // Clean undefined values before saving to Firestore
+    const cleanUndefined = (obj: any) => {
+      Object.keys(obj).forEach(key => {
+        if (obj[key] === undefined) {
+          delete obj[key];
+        } else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+          cleanUndefined(obj[key]);
+        }
+      });
+      return obj;
+    };
+
+    cleanUndefined(entityData);
+
     // Save to Universal Identity Collection
     await adminDb.collection('entities').doc(entityId).set(entityData);
 
@@ -311,9 +298,6 @@ export async function createEntityAction(
         workspaceId,
         entityId,
         entityType,
-        pipelineId: initialPipelineId,
-        stageId: defaultStage.id,
-        currentStageName: defaultStage.name,
         assignedTo: data.assignedTo || null,
         status: 'active',
         workspaceTags: data.workspaceTags || [],
@@ -326,7 +310,12 @@ export async function createEntityAction(
         primaryPhone,
         entityContacts, // Denormalized for list performance
         interests: data.modules || [],
+        ...(entityData.currentNeeds && { currentNeeds: entityData.currentNeeds }),
+        ...(entityData.currentChallenges && { currentChallenges: entityData.currentChallenges }),
+        ...(entityData.interestsText && { interestsText: entityData.interestsText }),
     };
+
+    cleanUndefined(workspaceEntityData);
 
     // Save to Operational Workspace Collection
     await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData);

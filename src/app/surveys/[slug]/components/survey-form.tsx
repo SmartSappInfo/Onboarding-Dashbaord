@@ -1370,15 +1370,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                         </div>
                     ) : (
                         <>
-                            {/* Main Title Hierarchy - Show above stepper/section if enabled */}
-                            {/* Guard: don't double-render title on page 0 when inline intro is active */}
-                            {showTitles && !isCoverPage && !(currentPageIndex === 0 && !(survey.showIntroAsPage ?? survey.showCoverPage ?? true)) && (
-                                <div className="flex flex-col items-center text-center space-y-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground/90 leading-tight uppercase">{survey.title}</h1>
-                                </div>
-                            )}
-
-                            {currentPageIndex === 0 && !(survey.showIntroAsPage ?? survey.showCoverPage ?? true) && showTitles && (
+                            {/* Inline Header (When Standalone Intro is OFF) */}
+                            {!(survey.showIntroAsPage ?? survey.showCoverPage ?? true) && showTitles && (
                                 <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                                     {survey.videoUrl ? (
                                         <VideoHero 

@@ -26,12 +26,14 @@ export interface Terminology {
   termStatus: string;
   viewConsole: string;
   editProfile: string;
+  dealSingular: string;
+  dealPlural: string;
 }
 
-export const DEFAULT_TERMINOLOGY: Record<string, { singular: string; plural: string }> = {
-  institution: { singular: 'Campus', plural: 'Campuses' },
-  family: { singular: 'Family', plural: 'Families' },
-  person: { singular: 'Person', plural: 'People' },
+export const DEFAULT_TERMINOLOGY: Record<string, { singular: string; plural: string; dealSingular?: string; dealPlural?: string }> = {
+  institution: { singular: 'Campus', plural: 'Campuses', dealSingular: 'Deal', dealPlural: 'Deals' },
+  family: { singular: 'Family', plural: 'Families', dealSingular: 'Deal', dealPlural: 'Deals' },
+  person: { singular: 'Person', plural: 'People', dealSingular: 'Deal', dealPlural: 'Deals' },
 };
 
 /**
@@ -65,6 +67,8 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
             termStatus: `${industryTerms.entitySingular} Status`,
             viewConsole: `View ${industryTerms.entitySingular} Console`,
             editProfile: `Edit ${industryTerms.entitySingular} Profile`,
+            dealSingular: (industryTerms as any).dealSingular || 'Deal',
+            dealPlural: (industryTerms as any).dealPlural || 'Deals',
         };
     }
 
@@ -88,6 +92,8 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
         termStatus: `${s} Status`,
         viewConsole: `View ${s} Console`,
         editProfile: `Edit ${s} Profile`,
+        dealSingular: terms.dealSingular || 'Deal',
+        dealPlural: terms.dealPlural || 'Deals',
     };
 }
 

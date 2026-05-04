@@ -14,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, User as UserIcon, Camera, Settings2 } from 'lucide-react';
+import { Loader2, User as UserIcon, Camera, Settings2, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -22,6 +23,12 @@ const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().optional(),
   photoURL: z.string().url().optional().or(z.literal('')),
+  notificationPreferences: z.object({
+    email: z.boolean().default(true),
+    sms: z.boolean().default(true),
+    inApp: z.boolean().default(true),
+    push: z.boolean().default(true),
+  }).optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
@@ -37,7 +44,17 @@ export default function ProfileClient() {
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues: { name: '', phone: '', photoURL: '' },
+    defaultValues: { 
+      name: '', 
+      phone: '', 
+      photoURL: '',
+      notificationPreferences: {
+        email: true,
+        sms: true,
+        inApp: true,
+        push: true,
+      }
+    },
   });
 
   React.useEffect(() => {
@@ -50,6 +67,12 @@ export default function ProfileClient() {
             name: data.name || user.displayName || '',
             phone: data.phone || '',
             photoURL: user.photoURL || data.photoURL || '',
+            notificationPreferences: data.notificationPreferences || {
+              email: true,
+              sms: true,
+              inApp: true,
+              push: true,
+            },
           });
         }
         setIsLoadingProfile(false);
@@ -101,6 +124,7 @@ export default function ProfileClient() {
         name: data.name,
         phone: data.phone,
         photoURL: data.photoURL,
+        notificationPreferences: data.notificationPreferences,
       });
 
       toast({ title: 'Profile Updated', description: 'Your changes have been saved.' });
@@ -130,14 +154,13 @@ export default function ProfileClient() {
     }
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-2xl mx-auto space-y-8 pb-32">
+        <div className="h-full overflow-y-auto w-full">
+            <div className="space-y-8 pb-32 w-full max-w-3xl">
                 <div className="flex flex-col items-start pt-8">
-                    <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
-                        <UserIcon className="h-10 w-10 text-primary" />
+                    <h1 className="text-3xl font-bold text-foreground">
                         Account Profile
                     </h1>
-                    <p className="text-muted-foreground font-medium text-lg mt-1">
+                    <p className="text-muted-foreground text-sm mt-1">
                         Manage your identity and communication preferences
                     </p>
                 </div>
@@ -220,6 +243,82 @@ export default function ProfileClient() {
                         </FormItem>
                     )}
                     />
+                    
+                    {/* Notification Preferences */}
+                    <div className="pt-6 border-t border-border/50">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                            <Bell className="h-5 w-5 text-emerald-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold tracking-tight text-foreground">Notification Preferences</h3>
+                            <p className="text-xs text-muted-foreground">Choose how you want to receive alerts and messages.</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="notificationPreferences.email"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-semibold">Email</FormLabel>
+                                <FormDescription className="text-[10px]">Receive emails</FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="notificationPreferences.sms"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-semibold">SMS</FormLabel>
+                                <FormDescription className="text-[10px]">Receive text messages</FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="notificationPreferences.inApp"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-semibold">In-App</FormLabel>
+                                <FormDescription className="text-[10px]">Notifications in the app</FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="notificationPreferences.push"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-semibold">Push</FormLabel>
+                                <FormDescription className="text-[10px]">Device push notifications</FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
                     
  <div className="flex justify-end pt-4">
  <Button type="submit" disabled={form.formState.isSubmitting || isUploading} className="rounded-xl font-bold h-11 px-10 shadow-lg">

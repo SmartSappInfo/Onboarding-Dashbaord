@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function DeveloperPage() {
   return (
-    <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-8 w-full">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Developer API</h1>
         <p className="text-muted-foreground mt-2">

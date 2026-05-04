@@ -12,8 +12,10 @@ interface InternalNotificationOptions {
   notifyManager?: boolean;
   emailTemplateId?: string;
   smsTemplateId?: string;
+  inAppTemplateId?: string;
+  pushTemplateId?: string;
   variables: Record<string, any>;
-  channel?: 'email' | 'sms' | 'both';
+  channel?: 'email' | 'sms' | 'both' | 'all';
 }
 
 interface ExternalNotificationOptions {
@@ -32,13 +34,13 @@ interface ExternalNotificationOptions {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
-  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, variables, channel = 'both' } = options;
+  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, inAppTemplateId, pushTemplateId, variables, channel = 'both' } = options;
 
   console.log(`>>> [NOTIFY] Triggering Internal Notification Hub...`);
 
   try {
     const recipients = new Set<string>(); // Set of user IDs
-    const resolvedContacts: { email?: string; phone?: string; name: string }[] = [];
+    const resolvedContacts: { id: string; email?: string; phone?: string; name: string; preferences?: any }[] = [];
 
     // 1. Resolve Assigned Manager using adapter layer (Requirement 18)
     if (notifyManager && entityId) {
@@ -69,9 +71,11 @@ export async function triggerInternalNotification(options: InternalNotificationO
         const userData = snap.data() as UserProfile;
         if (userData.isAuthorized) {
           resolvedContacts.push({
+            id: userData.id,
             email: userData.email,
             phone: userData.phone,
-            name: userData.name
+            name: userData.name,
+            preferences: userData.notificationPreferences
           });
         }
       }
@@ -82,23 +86,30 @@ export async function triggerInternalNotification(options: InternalNotificationO
 
     for (const contact of resolvedContacts) {
       const personalVars = { ...variables, admin_name: contact.name };
+      const prefs = contact.preferences || { email: true, sms: true, inApp: true, push: true };
+
+      // Check category-specific opt-outs if defined
+      const category = variables.category || 'general';
+      if (prefs.categories && prefs.categories[category] === false) {
+        continue; // User opted out of this category entirely
+      }
 
       // Email Dispatch
-      if ((channel === 'email' || channel === 'both') && emailTemplateId && contact.email) {
+      if ((channel === 'email' || channel === 'both' || channel === 'all') && emailTemplateId && contact.email && prefs.email !== false) {
         dispatchPromises.push(
           sendMessage({
             templateId: emailTemplateId,
-            senderProfileId: 'default', // Fallback to default sender
+            senderProfileId: 'default',
             recipient: contact.email,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
+            workspaceId: variables.workspaceId || 'onboarding'
           })
         );
       }
 
       // SMS Dispatch
-      if ((channel === 'sms' || channel === 'both') && smsTemplateId && contact.phone) {
+      if ((channel === 'sms' || channel === 'both' || channel === 'all') && smsTemplateId && contact.phone && prefs.sms !== false) {
         dispatchPromises.push(
           sendMessage({
             templateId: smsTemplateId,
@@ -106,7 +117,35 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.phone,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+
+      // In-App Dispatch
+      if (inAppTemplateId && prefs.inApp !== false) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: inAppTemplateId,
+            senderProfileId: 'default',
+            recipient: contact.id, // For in-app, recipient is userId
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
+          })
+        );
+      }
+
+      // Push Dispatch
+      if (pushTemplateId && prefs.push !== false) {
+        dispatchPromises.push(
+          sendMessage({
+            templateId: pushTemplateId,
+            senderProfileId: 'default',
+            recipient: contact.id, // For push, recipient is userId
+            variables: personalVars,
+            entityId,
+            workspaceId: variables.workspaceId || 'onboarding'
           })
         );
       }

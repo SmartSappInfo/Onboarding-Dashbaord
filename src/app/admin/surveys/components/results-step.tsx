@@ -7,6 +7,7 @@ import { BrainCircuit, Layout, Trophy, ArrowRight, Sparkles, Percent, Hash } fro
 import { cn } from '@/lib/utils';
 import ResultRuleManager from './result-rule-manager';
 import ResultPageBuilder from './result-page-builder';
+import { MinimalRespondentMessage, MinimalThankYouPage } from './minimal-results-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -95,18 +96,25 @@ export default function ResultsStep() {
     return (
  <div className="space-y-8">
             <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-                <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-2">
- <Trophy className="h-6 w-6 text-yellow-500" />
- <CardTitle className="text-xl font-semibold">Scoring Engine</CardTitle>
+ <div className="flex items-center justify-between p-6">
+ <div className="flex items-center gap-4">
+ <div className={cn(
+                            "p-3 rounded-2xl transition-all duration-500", 
+                            scoringEnabled ? "bg-yellow-500 text-white shadow-lg shadow-yellow-500/20 rotate-3" : "bg-muted text-muted-foreground"
+                        )}>
+ <Trophy className="h-6 w-6" />
                         </div>
-                        <Switch 
-                            checked={!!scoringEnabled} 
-                            onCheckedChange={(val) => setValue('scoringEnabled', val, { shouldDirty: true })} 
-                        />
+ <div className="space-y-0.5">
+ <Label className="text-base font-semibold tracking-tight">Scoring Engine</Label>
+ <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Enable logic-based survey scoring</p>
+                        </div>
                     </div>
-                </CardHeader>
+                    <Switch 
+                        checked={!!scoringEnabled} 
+                        onCheckedChange={(val) => setValue('scoringEnabled', val, { shouldDirty: true })} 
+                        className="scale-125 data-[state=checked]:bg-yellow-500"
+                    />
+                </div>
                 {scoringEnabled && (
  <CardContent className="space-y-8">
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
@@ -164,14 +172,16 @@ export default function ResultsStep() {
                 )}
             </Card>
 
-            <LogicSimulator />
+            {scoringEnabled ? (
+                <>
+                    <LogicSimulator />
 
  <Tabs defaultValue="logic" className="w-full">
  <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/30 p-1 border rounded-xl">
- <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+ <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
  <BrainCircuit className="h-4 w-4" /> Outcome Logic
                     </TabsTrigger>
- <TabsTrigger value="pages" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+ <TabsTrigger value="pages" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
  <Layout className="h-4 w-4" /> Result Pages
                     </TabsTrigger>
                 </TabsList>
@@ -181,7 +191,14 @@ export default function ResultsStep() {
  <TabsContent value="pages" className="pt-6">
                     <ResultPageBuilder />
                 </TabsContent>
-            </Tabs>
+                </Tabs>
+                </>
+            ) : (
+                <div className="space-y-8">
+                    <MinimalRespondentMessage />
+                    <MinimalThankYouPage />
+                </div>
+            )}
         </div>
     );
 }

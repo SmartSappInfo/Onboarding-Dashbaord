@@ -9,6 +9,8 @@ export interface TerminologyMap {
   entityPlural: string;
   personSingular: string;
   personPlural: string;
+  dealSingular?: string;
+  dealPlural?: string;
 }
 
 export interface FeatureGate {
@@ -66,6 +68,7 @@ export interface IndustryContext {
   pipelineTemplate: PipelineTemplate;
   contactTypes: string[];
   sidebarItems: SidebarItem[];
+  defaultAutomations?: { name: string; trigger: string; action: string; }[];
 }
 
 // ─────────────────────────────────────────────────
@@ -80,6 +83,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Accounts',
       personSingular: 'User',
       personPlural: 'Users',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: true,
@@ -123,6 +128,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'health', label: 'Health', icon: 'Heart', href: '/health' },
       { key: 'support', label: 'Support', icon: 'LifeBuoy', href: '/support' },
     ],
+    defaultAutomations: [
+      { name: 'Create Deal on Account Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
+    ],
   },
 
   SchoolEnrollment: {
@@ -132,6 +140,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Schools',
       personSingular: 'Student',
       personPlural: 'Students',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: false,
@@ -174,6 +184,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'admissions', label: 'Admissions', icon: 'FileText', href: '/admissions' },
       { key: 'enrollments', label: 'Enrollments', icon: 'UserCheck', href: '/enrollments' },
     ],
+    defaultAutomations: [
+      { name: 'Create Deal on School Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
+    ],
   },
 
   Law: {
@@ -183,6 +196,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Clients',
       personSingular: 'Contact',
       personPlural: 'Contacts',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: false,
@@ -226,6 +241,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'deadlines', label: 'Deadlines', icon: 'Calendar', href: '/deadlines' },
       { key: 'time-tracking', label: 'Time Tracking', icon: 'Clock', href: '/time-tracking' },
     ],
+    defaultAutomations: [
+      { name: 'Create Deal on Client Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
+    ],
   },
 
   Marketing: {
@@ -235,6 +253,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Clients',
       personSingular: 'Contact',
       personPlural: 'Contacts',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: false,
@@ -277,6 +297,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'deliverables', label: 'Deliverables', icon: 'Target', href: '/deliverables' },
       { key: 'reports', label: 'Reports', icon: 'BarChart', href: '/reports' },
     ],
+    defaultAutomations: [
+      { name: 'Create Deal on Client Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
+    ],
   },
 
   RealEstate: {
@@ -286,6 +309,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Clients',
       personSingular: 'Contact',
       personPlural: 'Contacts',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: false,
@@ -328,6 +353,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'offers', label: 'Offers', icon: 'Handshake', href: '/offers' },
       { key: 'deals', label: 'Deals', icon: 'TrendingUp', href: '/deals' },
     ],
+    defaultAutomations: [
+      { name: 'Create Deal on Client Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
+    ],
   },
 
   Consultancy: {
@@ -337,6 +365,8 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       entityPlural: 'Clients',
       personSingular: 'Contact',
       personPlural: 'Contacts',
+      dealSingular: 'Deal',
+      dealPlural: 'Deals',
     },
     features: {
       trials: false,
@@ -378,6 +408,9 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
       { key: 'proposals', label: 'Proposals', icon: 'FileText', href: '/proposals' },
       { key: 'deliverables', label: 'Deliverables', icon: 'Target', href: '/deliverables' },
       { key: 'outcomes', label: 'Outcomes', icon: 'TrendingUp', href: '/outcomes' },
+    ],
+    defaultAutomations: [
+      { name: 'Create Deal on Client Creation', trigger: 'ENTITY_CREATED', action: 'CREATE_DEAL' }
     ],
   },
 };

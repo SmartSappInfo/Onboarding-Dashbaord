@@ -60,6 +60,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
 
         // 4. BROADCAST TO AUTOMATION ENGINE
         const triggerMap: Record<string, AutomationTrigger> = {
+            'entity_created': 'ENTITY_CREATED',
             'school_created': 'SCHOOL_CREATED',
             'pipeline_stage_changed': 'SCHOOL_STAGE_CHANGED',
             'pdf_form_submitted': 'PDF_SIGNED',

@@ -197,24 +197,12 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             name="internalName"
                             control={control}
                             render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Internal Blueprint Name</Label>
- <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Internal Blueprint Name</Label>
+                                    <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                 </div>
                             )}
                         />
-                        <Controller
-                            name="title"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Public Header Title</Label>
- <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                </div>
-                            )}
-                        />
-                    </div>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="entityId"
                             control={control}
@@ -227,23 +215,104 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                                 />
                             )}
                         />
+                    </div>
+
+                    <div className="h-px bg-border/50" />
+
+                    <div className="space-y-6">
+                        <Controller
+                            name="title"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Public Header Title</Label>
+                                    <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
+                                </div>
+                            )}
+                        />
+                        <Controller
+                            name="description"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Introductory Prose</Label>
+                                    <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm p-4 focus-visible:ring-1 focus-visible:ring-primary/30" />
+                                </div>
+                            )}
+                        />
+                        <Controller
+                            name="startButtonText"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-semibold">Start Button Label</Label>
+                                    <Input
+                                        {...field}
+                                        value={field.value || ''}
+                                        placeholder="e.g. Start the 2-Minute Survey"
+                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                    />
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
+                                            style={{ width: 'fit-content' }}
+                                        >
+                                            {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        />
+                    </div>
+
+                    <div className="h-px bg-border/50" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="showBranding"
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-4">
                                     <Label className="text-sm font-semibold">Survey Branding</Label>
-                                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20">
+                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 h-[88px]">
                                         <Switch 
                                             checked={field.value} 
                                             onCheckedChange={field.onChange} 
+                                            className="mt-1"
                                         />
-                                        <div className="space-y-0.5">
+                                        <div className="space-y-1">
                                             <p className="text-sm font-bold leading-none">{field.value ? 'Branding Enabled' : 'No Branding'}</p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold">
+                                            <p className="text-[10px] text-muted-foreground font-semibold leading-snug">
                                                 {field.value 
-                                                    ? 'Survey will show company logo in headers and pre-loaders' 
-                                                    : 'Survey will be completely unbranded'}
+                                                    ? 'Survey shows company logo' 
+                                                    : 'Survey completely unbranded'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        />
+                        <Controller
+                            name="showIntroAsPage"
+                            control={control}
+                            defaultValue={true}
+                            render={({ field }) => (
+                                <div className="space-y-4">
+                                    <Label className="text-sm font-semibold">Intro Layout</Label>
+                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 h-[88px]">
+                                        <Switch 
+                                            checked={field.value ?? true} 
+                                            onCheckedChange={field.onChange} 
+                                            className="mt-1"
+                                        />
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-bold leading-none">{(field.value ?? true) ? 'Standalone Intro' : 'Inline Intro'}</p>
+                                            <p className="text-[10px] text-muted-foreground font-semibold leading-snug">
+                                                {(field.value ?? true)
+                                                    ? 'Dedicated start page' 
+                                                    : 'Header shown on every page'}
                                             </p>
                                         </div>
                                     </div>
@@ -251,41 +320,6 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             )}
                         />
                     </div>
-                    <Controller
-                        name="description"
-                        control={control}
-                        render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Introductory Prose</Label>
- <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm p-4 focus-visible:ring-1 focus-visible:ring-primary/30" />
-                            </div>
-                        )}
-                    />
-                    <Controller
-                        name="startButtonText"
-                        control={control}
-                        render={({ field }) => (
- <div className="space-y-3">
- <Label className="text-sm font-semibold">Start Button Label</Label>
-                                <Input
-                                    {...field}
-                                    value={field.value || ''}
-                                    placeholder="e.g. Start the 2-Minute Survey"
- className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                />
- <div className="flex items-center gap-2 pt-1">
- <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
-                                    <button
-                                        type="button"
- className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
-                                        style={{ width: 'fit-content' }}
-                                    >
- {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    />
                 </CardContent>
             </Card>
 
@@ -443,23 +477,7 @@ export default function Step1Details({ institutions }: Step1DetailsProps) {
                             </div>
                         )}
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
-                        <Controller
-                            name="showIntroAsPage"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Standalone Intro</Label>
-                                        <p className="text-[11px] font-medium text-muted-foreground">Show intro as a dedicated first page instead of a persistent top header.</p>
-                                    </div>
-                                    <Switch
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </div>
-                            )}
-                        />
+                    <div className="pb-2">
                         <Controller
                             name="stepperVariant"
                             control={control}

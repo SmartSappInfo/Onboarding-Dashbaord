@@ -21,9 +21,9 @@ export default function SettingsClient() {
   const [isOrgDialogOpen, setIsOrgDialogOpen] = React.useState(false);
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto space-y-8 pb-32">
-        <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-transparent mt-8">
+    <div className="h-full overflow-y-auto w-full">
+      <div className="space-y-8 pb-32 w-full">
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-transparent">
           <CardContent className="p-8 md:p-12">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
               {/* Logo Section */}
@@ -45,7 +45,7 @@ export default function SettingsClient() {
               <div className="flex-1 space-y-6 text-center md:text-left min-w-0">
                 <div className="space-y-2">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground leading-none">
+                    <h1 className="text-3xl font-bold text-foreground">
                       {activeOrganization?.name || 'System Parameters'}
                     </h1>
                     {activeOrganization && (
@@ -55,7 +55,7 @@ export default function SettingsClient() {
                       </Button>
                     )}
                   </div>
- <p className="text-sm md:text-lg font-medium text-muted-foreground leading-relaxed max-w-2xl">
+                  <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-2xl">
                     {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
                   </p>
                 </div>

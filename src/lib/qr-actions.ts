@@ -363,7 +363,7 @@ export async function updateQRCode(
   orgId: string,
   wsId: string,
   qrId: string,
-  updates: Partial<Pick<QRCode, 'name' | 'description' | 'destination' | 'design' | 'tracking' | 'status'>>
+  updates: Partial<Pick<QRCode, 'name' | 'description' | 'destination' | 'design' | 'tracking' | 'status' | 'notifications'>>
 ): Promise<void> {
   // Validate destination safety on update
   if (updates.destination?.url) {

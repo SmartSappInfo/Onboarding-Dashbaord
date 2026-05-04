@@ -270,7 +270,7 @@ export default function QRStudioClient() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.label} className="p-5 rounded-xl border-border bg-card hover:shadow-md transition-all duration-200">
+          <Card key={stat.label} className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl bg-primary/5 ${stat.color}`}>
                 <stat.icon className="h-5 w-5" />
@@ -287,7 +287,7 @@ export default function QRStudioClient() {
       </div>
 
       {/* Filters Bar */}
-      <Card className="p-4 rounded-xl border-border bg-card">
+      <Card className="p-4 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card">
         {/* Filters and Search */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="relative w-full sm:w-80">
@@ -387,7 +387,7 @@ export default function QRStudioClient() {
       </Card>
 
       {/* QR Codes Table */}
-      <Card className="rounded-xl border-border bg-card overflow-hidden">
+      <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
         {loading ? (
           <div className="p-12 flex flex-col items-center gap-4">
             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

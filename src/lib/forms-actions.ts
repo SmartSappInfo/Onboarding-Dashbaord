@@ -331,24 +331,51 @@ export async function processFormSubmissionAction(input: {
     // 6a. Notifications
     if (form.actions?.notifications) {
       const { triggerInternalNotification, triggerExternalNotification } = await import('./notification-engine');
+      const { sendMessage } = await import('./messaging-engine');
       
+      const { internalAlerts, respondentAlerts } = form.actions.notifications;
+
       // Internal Notifications
-      if (form.actions.notifications.internalUserIds?.length) {
+      if (internalAlerts?.enabled) {
+        let channel: 'email' | 'sms' | 'both' = 'email';
+        if (internalAlerts.emailTemplateId && internalAlerts.smsTemplateId) channel = 'both';
+        else if (internalAlerts.smsTemplateId) channel = 'sms';
+
         await triggerInternalNotification({
-          specificUserIds: form.actions.notifications.internalUserIds,
+          specificUserIds: internalAlerts.userIds || [],
           variables: automationVars,
-          channel: 'email'
+          emailTemplateId: internalAlerts.emailTemplateId,
+          smsTemplateId: internalAlerts.smsTemplateId,
+          channel
         });
       }
 
       // External Respondent Confirmation
-      if (form.actions.notifications.sendConfirmationEmail && input.entityId) {
-        await triggerExternalNotification({
-          entityId: input.entityId,
-          contactTypes: ['primary_contact', 'focal_person'],
-          variables: automationVars,
-          channel: 'email'
-        });
+      if (respondentAlerts?.enabled) {
+        const respondentEmail = respondentAlerts.respondentEmailField ? input.data[respondentAlerts.respondentEmailField] : undefined;
+        const respondentPhone = respondentAlerts.respondentPhoneField ? input.data[respondentAlerts.respondentPhoneField] : undefined;
+
+        if (respondentAlerts.emailTemplateId && respondentEmail) {
+          await sendMessage({
+            templateId: respondentAlerts.emailTemplateId,
+            senderProfileId: 'default',
+            recipient: respondentEmail,
+            variables: automationVars,
+            entityId: input.entityId,
+            workspaceId: form.workspaceId
+          });
+        }
+
+        if (respondentAlerts.smsTemplateId && respondentPhone) {
+          await sendMessage({
+            templateId: respondentAlerts.smsTemplateId,
+            senderProfileId: 'default',
+            recipient: respondentPhone,
+            variables: automationVars,
+            entityId: input.entityId,
+            workspaceId: form.workspaceId
+          });
+        }
       }
     }
 

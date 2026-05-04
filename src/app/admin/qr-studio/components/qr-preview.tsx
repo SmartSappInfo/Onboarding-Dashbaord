@@ -20,15 +20,17 @@ export default function QRPreview({ data, design: designOverrides, size, classNa
   const containerRef = React.useRef<HTMLDivElement>(null);
   const qrInstanceRef = React.useRef<any>(null);
 
-  const design = React.useMemo(
-    () => ({ ...DEFAULT_QR_DESIGN, ...designOverrides }),
-    [designOverrides]
-  );
+  // Extract only the properties that affect the QR code graphic (ignore posterData)
+  const qrSpecificDesignStr = React.useMemo(() => {
+    const { posterData, ...qrOnlyDesign } = designOverrides || {};
+    return JSON.stringify(qrOnlyDesign);
+  }, [designOverrides]);
 
-  const resolvedSize = size || design.size || 300;
+  const resolvedSize = size || (designOverrides?.size) || 300;
 
   // Build qr-code-styling options from our QRDesign type
   const qrOptions = React.useMemo(() => {
+    const design = { ...DEFAULT_QR_DESIGN, ...JSON.parse(qrSpecificDesignStr) };
     const opts: any = {
       width: resolvedSize,
       height: resolvedSize,
@@ -83,7 +85,7 @@ export default function QRPreview({ data, design: designOverrides, size, classNa
     }
 
     return opts;
-  }, [data, design, resolvedSize]);
+  }, [data, qrSpecificDesignStr, resolvedSize]);
 
   // Initialize and update QR code
   React.useEffect(() => {

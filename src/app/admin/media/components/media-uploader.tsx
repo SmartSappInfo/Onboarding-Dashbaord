@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { addDoc, collection } from 'firebase/firestore';
@@ -79,6 +80,12 @@ export default function MediaUploader({
 
   // Keep track of object URLs to clean up on unmount
   const objectUrls = useRef<Set<string>>(new Set());
+  
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById('uploader-header-portal'));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -218,7 +225,9 @@ export default function MediaUploader({
             editingState.resize?.width || fileState.dimensions!.width,
             editingState.quality,
             editingState.filename,
-            editingState.resize?.height
+            editingState.resize?.height,
+            editingState.format,
+            editingState.rotation
           );
           blobToUpload = file;
           finalFile = file;
@@ -323,23 +332,26 @@ export default function MediaUploader({
     setStagedFiles(prev => prev.map(fs => fs.id === activeFileId ? { ...fs, editingState: newState } : fs));
   }, [activeFileId]);
 
-  return (
-    <div className="flex flex-col space-y-6 w-full">
-      
-      {/* Workspace Selection */}
-      <div className="space-y-4">
-          <WorkspaceDestinationSelector 
-              options={workspaceOptions}
-              selectedWorkspaces={selectedWorkspaces}
-              onChange={setSelectedWorkspaces}
-              isSuperAdmin={isSuperAdmin}
-          />
-      </div>
+  const renderWorkspaceSelector = () => (
+      <WorkspaceDestinationSelector 
+          options={workspaceOptions}
+          selectedWorkspaces={selectedWorkspaces}
+          onChange={setSelectedWorkspaces}
+          isSuperAdmin={isSuperAdmin}
+      />
+  );
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+  return (
+    <div className="flex flex-col space-y-6 w-full h-full relative">
+      {portalTarget ? createPortal(renderWorkspaceSelector(), portalTarget) : (
+          <div className="mb-4">
+              {renderWorkspaceSelector()}
+          </div>
+      )}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
         
         {/* Left Column: Dropzone or Editor */}
-        <div className={cn("flex flex-col gap-4 transition-all duration-300", stagedFiles.length > 0 ? "lg:col-span-8" : "lg:col-span-12")}>
+        <div className={cn("flex flex-col gap-4 transition-all duration-300 h-full", stagedFiles.length > 0 ? "lg:col-span-8" : "lg:col-span-12")}>
             <AnimatePresence mode="wait">
                 {!activeFileState && (
                     <motion.div
@@ -348,6 +360,7 @@ export default function MediaUploader({
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ duration: 0.2 }}
+                        className="h-full flex flex-col"
                     >
                         <UploadDropzone 
                             onFilesDropped={handleFiles} 
@@ -363,7 +376,7 @@ export default function MediaUploader({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="space-y-4 bg-muted/20 p-4 rounded-2xl border border-border"
+                        className="flex flex-col flex-1 h-full min-h-0 space-y-4 bg-muted/20 p-4 rounded-2xl border border-border"
                     >
                         <div className="flex items-center justify-between pb-2 border-b border-border/50">
                             <h3 className="font-semibold text-sm">Image Editor</h3>

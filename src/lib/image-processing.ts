@@ -27,7 +27,9 @@ export async function processImage(
   outputWidth: number,
   quality: number = 80,
   fileName: string,
-  outputHeight?: number
+  outputHeight?: number,
+  format: 'jpeg' | 'png' | 'webp' = 'webp',
+  rotation: number = 0
 ): Promise<ProcessedImage & { file: File }> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -37,25 +39,50 @@ export async function processImage(
     throw new Error('Could not get canvas context');
   }
 
-  // Set canvas to the cropped size first
+  // The crop box dimensions
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
 
+  // The origin of the crop box in the natural unrotated coordinate system
+  const cropX = pixelCrop.x;
+  const cropY = pixelCrop.y;
+
+  const rotateRads = (rotation * Math.PI) / 180;
+  const centerX = image.naturalWidth / 2;
+  const centerY = image.naturalHeight / 2;
+
+  ctx.save();
+
+  // Move the crop origin to the canvas origin (0,0)
+  ctx.translate(-cropX, -cropY);
+  
+  // Move the origin to the center of the original position to allow for rotating around the center
+  ctx.translate(centerX, centerY);
+  ctx.rotate(rotateRads);
+  
+  // Move center back to top left (0,0)
+  ctx.translate(-centerX, -centerY);
+  
+  // Draw the image
   ctx.drawImage(
     image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    image.naturalWidth,
+    image.naturalHeight,
+    0,
+    0,
+    image.naturalWidth,
+    image.naturalHeight
   );
 
+  ctx.restore();
+
+  const mimeType = format === 'jpeg' ? 'image/jpeg' : format === 'png' ? 'image/png' : 'image/webp';
   const croppedBlob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/webp', 0.95);
+    canvas.toBlob(resolve, mimeType, quality / 100);
   });
+  
   if (!croppedBlob) {
     throw new Error('Could not create cropped image blob.');
   }
@@ -65,22 +92,22 @@ export async function processImage(
   let finalHeight = outputHeight || Math.round((outputWidth / pixelCrop.width) * pixelCrop.height);
 
   const options = {
-    maxSizeMB: 2,
+    maxSizeMB: 50, // Let the main uploader handle size limits, we just want to resize
     maxWidthOrHeight: Math.max(finalWidth, finalHeight),
     useWebWorker: true,
     initialQuality: quality / 100,
-    fileType: 'image/webp',
-    alwaysKeepResolution: false,
+    fileType: mimeType,
+    alwaysKeepResolution: true, // We want the exact dimensions requested
   };
   
-  const originalFile = new File([croppedBlob], "temp.webp", {type: "image/webp"});
+  const originalFile = new File([croppedBlob], `temp.${format}`, {type: mimeType});
   const compressedBlob = await imageCompression(originalFile, options);
 
   const compressedDataUrl = URL.createObjectURL(compressedBlob);
   const finalImage = await createImage(compressedDataUrl);
   URL.revokeObjectURL(compressedDataUrl);
   
-  const finalFile = new File([compressedBlob], `${fileName}.webp`, { type: 'image/webp' });
+  const finalFile = new File([compressedBlob], `${fileName}.${format}`, { type: mimeType });
 
   return {
     blob: compressedBlob,

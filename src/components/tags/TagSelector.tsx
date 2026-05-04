@@ -75,8 +75,8 @@ const TAG_COLORS = [
 ];
 
 interface TagSelectorProps {
-  contactId: string;
-  contactType: 'school' | 'prospect' | 'workspace_entity' | 'entity';
+  contactId?: string;
+  contactType?: 'school' | 'prospect' | 'workspace_entity' | 'entity';
   currentTagIds: string[];
   onTagsChange?: (tagIds: string[]) => void;
   className?: string;
@@ -226,6 +226,14 @@ export function TagSelector({
     startTransition(() => {
       setOptimisticTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
     });
+    
+    if (!contactId || !contactType) {
+      // Draft mode (e.g. creating new entity)
+      recordRecentTag(tagId);
+      onTagsChange?.([...currentTagIds, tagId]);
+      return;
+    }
+
     const result = await withRetryAction(
       () => applyTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
       {
@@ -240,7 +248,7 @@ export function TagSelector({
       setAnnouncement(`Tag "${tag?.name}" applied`);
       toast({
         title: 'Tag Applied',
-        description: `"${tag?.name}" added to contact.`,
+        description: `"${tag?.name}" added.`,
         action: (
           <button
             onClick={() => handleRemove(tagId)}
@@ -262,6 +270,13 @@ export function TagSelector({
     startTransition(() => {
       setOptimisticTagIds(prev => prev.filter(id => id !== tagId));
     });
+
+    if (!contactId || !contactType) {
+      // Draft mode
+      onTagsChange?.(currentTagIds.filter(id => id !== tagId));
+      return;
+    }
+
     const result = await withRetryAction(
       () => removeTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
       {
@@ -275,7 +290,7 @@ export function TagSelector({
       setAnnouncement(`Tag "${tag?.name}" removed`);
       toast({
         title: 'Tag Removed',
-        description: `"${tag?.name}" removed from contact.`,
+        description: `"${tag?.name}" removed.`,
         action: (
           <button
             onClick={() => handleApply(tagId)}

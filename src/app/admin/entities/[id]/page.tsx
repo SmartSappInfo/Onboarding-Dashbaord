@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
 import EntityBillingTab from '../components/EntityBillingTab';
+import EntityDealsTab from '../components/EntityDealsTab';
 import { MediaSelect } from '../components/media-select';
 import {
   Dialog,
@@ -78,6 +79,7 @@ import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/indust
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
 import EntityNotesWidget from '../components/EntityNotesWidget';
+import { CurrentStageMetric } from './components/CurrentStageMetric';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -263,10 +265,10 @@ export default function EntityDetailPage() {
     const displayName = entityData.name || weData.displayName;
 
     return (
-        <div className={cn("h-full overflow-y-auto", weData.status === 'archived' && "grayscale opacity-80")}>
-            <div className="max-w-7xl mx-auto space-y-6">
+        <div className={cn("h-full overflow-y-auto w-full", weData.status === 'archived' && "grayscale opacity-80")}>
+            <div className="space-y-6 w-full">
 
-            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
+            <div className="relative overflow-visible rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     
                     {/* Identity & Logo */}
@@ -285,7 +287,7 @@ export default function EntityDetailPage() {
 
                         <div className="space-y-1.5 flex-1">
                             <div className="flex flex-wrap items-center gap-3">
-                                <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{displayName}</h2>
+                                <h2 className="text-3xl font-bold tracking-tight">{displayName}</h2>
                                 <button 
                                     onClick={() => setStatusModalOpen(true)}
                                     className="group relative transition-all"
@@ -334,36 +336,38 @@ export default function EntityDetailPage() {
 
  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
  <div className="lg:col-span-3">
- <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
- <TabsList className="bg-card/40 border shadow-sm p-1 h-auto md:h-12 rounded-2xl w-full md:w-fit backdrop-blur-sm flex-wrap">
- <TabsTrigger value="overview" className="rounded-xl font-semibold text-[10px] px-8">Insights</TabsTrigger>
- <TabsTrigger value="notes" className="rounded-xl font-semibold text-[10px] px-8">Notes</TabsTrigger>
- <TabsTrigger value="tasks" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
+ <Card className="rounded-2xl border-border bg-card overflow-visible">
+ <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+ <TabsList className="w-full justify-start bg-muted/30 rounded-none border-b border-border p-0 h-12 overflow-x-auto hide-scrollbar flex-nowrap">
+ <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Insights</TabsTrigger>
+ <TabsTrigger value="deals" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Deals</TabsTrigger>
+ <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Notes</TabsTrigger>
+ <TabsTrigger value="tasks" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             Tasks
                             {tasks && tasks.length > 0 && (
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
                         </TabsTrigger>
- <TabsTrigger value="pipeline" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
- <Workflow className="h-3 w-3" /> Pipeline & Automations
+ <TabsTrigger value="pipeline" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+ <Workflow className="h-3 w-3" /> Pipeline
                         </TabsTrigger>
- <TabsTrigger value="billing" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
- <Receipt className="h-3 w-3" /> Billing & Finance
+ <TabsTrigger value="billing" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+ <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
-                        <TabsTrigger value="workspaces" className="rounded-xl font-semibold text-[10px] px-8 gap-2">
+                        <TabsTrigger value="workspaces" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Network className="h-3 w-3" /> Workspaces
                             {activeMembershipsCount > 0 && (
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-sky-500 text-[8px] border-none text-white">{activeMembershipsCount}</Badge>
                             )}
                         </TabsTrigger>
- <TabsTrigger value="timeline" className="rounded-xl font-semibold text-[10px] px-8">Activity Feed</TabsTrigger>
+ <TabsTrigger value="timeline" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Activity Feed</TabsTrigger>
                     </TabsList>
 
- <TabsContent value="pipeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+ <TabsContent value="pipeline" className="m-0 pt-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <PipelineAutomationsTab weData={weData} onTransferPipeline={() => setTransferModalOpen(true)} />
                 </TabsContent>
 
- <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
  <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
  <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Contact Directory</CardTitle>
@@ -403,11 +407,15 @@ export default function EntityDetailPage() {
                              </Card>
                     </TabsContent>
 
- <TabsContent value="notes" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="notes" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
      <EntityNotesTab entityId={entityId} />
  </TabsContent>
 
- <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+     <EntityDealsTab entityId={entityId} />
+ </TabsContent>
+
+ <TabsContent value="tasks" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="flex justify-between items-center mb-2 px-2">
  <h3 className="text-xl font-semibold tracking-tight">Pending Actions</h3>
  <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
@@ -445,12 +453,12 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
 
- <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="billing" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
                     </TabsContent>
 
                     {/* Workspaces Tab */}
-                    <TabsContent value="workspaces" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                    <TabsContent value="workspaces" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -533,7 +541,7 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
 
- <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="timeline" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
  <div className="mb-10 flex items-center gap-3 text-left">
  <div className="flex flex-col text-left">
@@ -546,6 +554,7 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
                 </Tabs>
+              </Card>
              </div>
              <div className="lg:col-span-1 space-y-6">
                  {/* 
@@ -569,7 +578,7 @@ export default function EntityDetailPage() {
                          </div>
                          <div className="space-y-6 text-left">
                              <DetailItem icon={UserCheck} label="Account Manager" value={weData.assignedTo?.name || 'Unassigned'} />
-                             <DetailItem icon={Workflow} label="Current Stage" value={weData.currentStageName || 'Not Set'} />
+                             <CurrentStageMetric entityId={entityId} />
                              <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = (weData.addedAt as any)?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
                              <Separator />
                              <div className="space-y-3">

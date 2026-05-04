@@ -59,6 +59,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
 import NotificationBell from './components/NotificationBell';
+import NotificationCenter from './components/NotificationCenter';
 import UnifiedOrgWorkspaceSwitcher from './components/UnifiedOrgWorkspaceSwitcher';
 import {
   DropdownMenu,
@@ -92,7 +93,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { plural } = useTerminology();
+  const { plural, dealPlural } = useTerminology();
   const { activeWorkspaceId } = useTenant();
   const { isFeatureEnabled } = useFeatures();
   
@@ -204,7 +205,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const coreNavItems = [
     { href: wrapHref('/admin'), icon: LayoutDashboard, label: 'Dashboard', visible: isVisible(can('operations', 'dashboard', 'view')) },
     { href: wrapHref('/admin/entities'), icon: School, label: plural, visible: isVisible(can('operations', 'campuses', 'view'), 'entities') },
-    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: 'Pipeline', visible: isVisible(can('operations', 'pipeline', 'view'), 'pipeline') },
+    { href: wrapHref('/admin/pipeline'), icon: Workflow, label: dealPlural || 'Deals', visible: isVisible(can('operations', 'pipeline', 'view'), 'pipeline') },
     { href: wrapHref('/admin/tasks'), icon: CheckSquare, label: 'Tasks', visible: isVisible(can('operations', 'tasks', 'view'), 'tasks') },
     { href: wrapHref('/admin/meetings'), icon: Calendar, label: 'Meetings', visible: isVisible(can('operations', 'meetings', 'view'), 'meetings') },
     { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isVisible(can('operations', 'automations', 'view'), 'automations') },
@@ -346,9 +347,9 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               >
                 Workspace
               </Badge>
-              <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
               <ThemeToggle />
               <NotificationBell />
+              <NotificationCenter />
               <div className="h-6 w-px bg-border mx-1" />
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -385,7 +386,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 flex flex-col overflow-auto relative p-6">
+        <main className="flex-1 flex flex-col overflow-auto relative pt-8 px-8 max-w-7xl mx-auto w-full">
           {children}
         </main>
       </SidebarInset>

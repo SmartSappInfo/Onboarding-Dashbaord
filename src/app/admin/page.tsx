@@ -149,7 +149,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     });
 
     return (
-        <div className="h-full overflow-y-auto text-left">
+        <div className="h-full overflow-y-auto text-left w-full">
             <DashboardClientWrapper 
                 activeWorkspaceId={activeWorkspaceId}
                 activeWorkspace={activeWorkspace}

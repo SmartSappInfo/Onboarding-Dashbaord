@@ -247,6 +247,24 @@ async function executeAutomation(automation: Automation, triggerPayload: Record<
 }
 
 /**
+ * Trigger an explicit automation by ID directly.
+ * Useful for manual workflows or specific bulk actions.
+ */
+export async function runAutomationById(automationId: string, triggerPayload: Record<string, any>) {
+    try {
+        const autoDoc = await adminDb.collection('automations').doc(automationId).get();
+        if (!autoDoc.exists) return;
+        
+        const automation = { id: autoDoc.id, ...autoDoc.data() } as Automation;
+        if (!automation.isActive) return;
+
+        await executeAutomation(automation, triggerPayload);
+    } catch (error: any) {
+        console.error(`>>> [LOGIC:PROCESSOR] Failed to run manual automation ${automationId}:`, error.message);
+    }
+}
+
+/**
  * Path Traversal: Recursive function to follow edges and execute node logic.
  */
 async function traverseNodes(nodeId: string, automation: Automation, context: ExecutionContext) {
@@ -338,6 +356,9 @@ async function processActionNode(node: any, context: ExecutionContext) {
             break;
         case 'UPDATE_SCHOOL':
             await handleUpdateSchool(resolvedConfig, context);
+            break;
+        case 'CREATE_DEAL':
+            await handleCreateDeal(resolvedConfig, context);
             break;
     }
 }
@@ -579,4 +600,33 @@ async function handleUpdateSchool(config: any, context: ExecutionContext) {
     } else {
         throw new Error("Cannot update contact: Contact not found or invalid.");
     }
+}
+
+async function handleCreateDeal(config: any, context: ExecutionContext) {
+    const { createDeal } = await import('../app/actions/deal-actions');
+    
+    let pipelineId = config.pipelineId;
+    if (!pipelineId) {
+        const pipelinesSnap = await adminDb.collection('pipelines')
+            .where('workspaceId', '==', context.workspaceId)
+            .limit(1)
+            .get();
+        if (!pipelinesSnap.empty) {
+            pipelineId = pipelinesSnap.docs[0].id;
+        } else {
+            throw new Error("No pipeline found in workspace to create a deal.");
+        }
+    }
+
+    const name = config.name || `${context.payload.entityName || context.payload.name || 'New'} Deal`;
+
+    await createDeal({
+        entityId: context.entityId!,
+        workspaceId: context.workspaceId,
+        organizationId: context.payload.organizationId || 'smartsapp-hq',
+        pipelineId,
+        name,
+        value: config.value || 0,
+        assignmentStrategy: config.assignmentStrategy || 'direct'
+    });
 }

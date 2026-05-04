@@ -124,7 +124,7 @@ export default function BatchImportDialog({ open, onOpenChange, onSuccess }: Bat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] rounded-2xl">
+      <DialogContent className="sm:max-w-[500px] rounded-2xl bg-white dark:bg-[#0f1117] border-border/50 shadow-2xl">
         <DialogHeader>
           <DialogTitle>Batch Create QR Codes</DialogTitle>
           <DialogDescription>

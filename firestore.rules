@@ -66,6 +66,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- Shared Reference Data ---
+    match /countries/{countryId} {
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /regions/{regionId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
+    }
+
+    match /districts/{districtId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
+    }
+
     // --- Governance Layer (Org Bound) ---
     match /organizations/{orgId} {
       allow read: if isSignedIn() && (isSystemAdmin() || isOrgMatch(orgId));
@@ -117,6 +133,51 @@ service cloud.firestore {
       allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
       allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('system_admin') && canAccessWorkspace(request.resource.data.workspaceIds);
+    }
+
+    match /onboardingStages/{stageId} {
+      allow get: if isAuthorized();
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        canAccessWorkspace(get(/databases/$(database)/documents/pipelines/$(request.resource.data.pipelineId)).data.workspaceIds)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (canAccessWorkspace(get(/databases/$(database)/documents/pipelines/$(resource.data.pipelineId)).data.workspaceIds) &&
+         request.resource.data.pipelineId == resource.data.pipelineId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        canAccessWorkspace(get(/databases/$(database)/documents/pipelines/$(resource.data.pipelineId)).data.workspaceIds)
+      );
+    }
+
+    match /deals/{dealId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Allow list if user is system admin or authorized with workspace access
+      // Special case: admin@smartsapp.com always has access
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        (isAuthorized() && getUserData() != null && getUserData().workspaceIds.size() > 0)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || 
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
     }
 
     match /meetings/{meetingId} {
@@ -587,8 +648,31 @@ service cloud.firestore {
          request.resource.data.organizationId == resource.data.organizationId)
       );
       
-      // Allow delete if user has system_admin permission
+    // Allow delete if user has system_admin permission
       allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /entity_notes/{noteId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        request.resource.data.workspaceId in getUserData().workspaceIds
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (resource.data.workspaceId in getUserData().workspaceIds &&
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         request.auth.uid == resource.data.createdBy)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (resource.data.workspaceId in getUserData().workspaceIds &&
+         request.auth.uid == resource.data.createdBy)
+      );
     }
 
     match /workspace_entities/{workspaceEntityId} {

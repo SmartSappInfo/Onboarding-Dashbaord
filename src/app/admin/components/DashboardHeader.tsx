@@ -7,6 +7,7 @@ import {
     CalendarPlus, 
     FilePlus, 
     LayoutGrid,
+    CheckSquare
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ interface DashboardHeaderProps {
     canManageDashboard: boolean;
     terminology: { singular: string; plural: string };
     onOpenCustomizer: () => void;
+    onOpenTaskEditor?: () => void;
 }
 
 export function DashboardHeader({ 
@@ -26,19 +28,20 @@ export function DashboardHeader({
     activeWorkspace, 
     canManageDashboard,
     terminology,
-    onOpenCustomizer
+    onOpenCustomizer,
+    onOpenTaskEditor
 }: DashboardHeaderProps) {
     const isProspectTrack = activeWorkspaceId === 'prospects' || activeWorkspaceId === 'prospect';
 
     return (
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 pb-10 border-b border-border/40">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-10 border-b border-border/40">
             <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col gap-1.5 text-left"
             >
                 <div className="flex items-center gap-4">
-                    <h1 className="text-4xl font-black tracking-tighter text-foreground">Intelligence Hub</h1>
+                    <h1 className="text-3xl font-bold text-foreground">Intelligence Hub</h1>
                     <Badge 
                         variant="outline" 
                         className="font-bold text-[10px] px-3 h-6 border uppercase tracking-widest ring-1 ring-border/50"
@@ -51,7 +54,7 @@ export function DashboardHeader({
                         {activeWorkspace?.name || 'Main Operational Track'}
                     </Badge>
                 </div>
-                <p className="text-muted-foreground font-medium text-lg mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                     Enterprise performance audit for the <span className="text-primary font-bold italic">{activeWorkspaceId}</span> subsystem
                 </p>
             </motion.div>
@@ -70,6 +73,10 @@ export function DashboardHeader({
                                 <PlusCircle className="h-4 w-4 mr-2" /> 
                                 {isProspectTrack ? 'Add Lead' : `New ${terminology.singular}`}
                             </Link>
+                        </Button>
+
+                        <Button onClick={onOpenTaskEditor} variant="ghost" size="sm" className="rounded-xl font-bold h-11 px-6 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm">
+                            <CheckSquare className="h-4 w-4 mr-2" /> Task
                         </Button>
 
                         <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold h-11 px-6 bg-transparent ring-1 ring-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 shadow-sm">

@@ -140,9 +140,9 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
       />
 
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-        <DialogContent className="w-full sm:max-w-5xl p-0 flex flex-col border-none shadow-2xl overflow-hidden max-h-[90vh]">
-          <DialogHeader className="p-8 border-b bg-muted/10 shrink-0">
-            <div className="flex items-center gap-4">
+        <DialogContent className="w-screen h-[100dvh] max-w-none p-0 m-0 border-none rounded-none flex flex-col shadow-2xl overflow-hidden bg-background">
+          <DialogHeader className="p-8 border-b bg-muted/10 shrink-0 relative">
+            <div className="flex items-center gap-4 w-2/3">
               <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                 <Upload className="h-6 w-6" />
               </div>
@@ -151,6 +151,7 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
                 <DialogDescription className="text-xs font-bold text-muted-foreground">Upload and optimize institutional branding assets.</DialogDescription>
               </div>
             </div>
+            <div id="uploader-header-portal" className="absolute top-10 right-16 z-[100]"></div>
           </DialogHeader>
           <div className="flex-1 p-8 overflow-y-auto bg-background">
             <MediaUploader 

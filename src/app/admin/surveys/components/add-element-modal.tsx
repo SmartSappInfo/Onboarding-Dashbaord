@@ -76,44 +76,48 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
- <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle>Add a New Element</DialogTitle>
-                    <DialogDescription>
+ <DialogContent className="sm:max-w-4xl rounded-[2rem] border border-border bg-card p-0 overflow-hidden shadow-2xl">
+                <DialogHeader className="p-8 pb-6 bg-muted/10 border-b">
+                    <DialogTitle className="text-2xl font-bold tracking-tight">Add a New Element</DialogTitle>
+                    <DialogDescription className="text-sm font-medium text-muted-foreground/80 mt-1">
                         Select the type of element you want to add to your survey.
                     </DialogDescription>
                 </DialogHeader>
  <ScrollArea className="max-h-[70vh] -mx-6">
  <div className="space-y-6 px-6 py-4">
                         <div>
- <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Question Elements</h3>
+ <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 px-1">Question Elements</h3>
  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {questionTypes.map(({ type, label, icon: Icon }) => (
                                     <Button
                                         key={type}
                                         variant="outline"
- className="h-28 flex-col gap-2 p-4"
+                                        className="h-28 flex-col gap-3 p-4 rounded-2xl border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-sm hover:shadow-md"
                                         onClick={() => handleSelect(type)}
                                     >
- <Icon className="h-8 w-8 text-primary" />
- <span className="text-center text-xs font-normal">{label}</span>
+                                        <div className="p-2.5 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                            <Icon className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <span className="text-center text-xs font-semibold tracking-tight">{label}</span>
                                     </Button>
                                 ))}
                             </div>
                         </div>
                         <Separator />
                         <div>
- <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Layout & Logic Blocks</h3>
+ <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 px-1 mt-4">Layout & Logic Blocks</h3>
  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                             {layoutTypes.map(({ type, label, icon: Icon }) => (
                                     <Button
                                         key={type}
                                         variant="outline"
- className="h-28 flex-col gap-2 p-4"
+                                        className="h-28 flex-col gap-3 p-4 rounded-2xl border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-sm hover:shadow-md"
                                         onClick={() => handleSelect(type)}
                                     >
- <Icon className="h-8 w-8 text-primary" />
- <span className="text-center text-xs font-normal">{label}</span>
+                                        <div className="p-2.5 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                            <Icon className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <span className="text-center text-xs font-semibold tracking-tight">{label}</span>
                                     </Button>
                                 ))}
                             </div>

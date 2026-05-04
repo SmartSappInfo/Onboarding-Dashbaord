@@ -418,12 +418,23 @@ async function callAI<T>(params: {
     try {
       // OpenRouter bypass (same as generate-survey-flow.ts)
       if (provider === 'openrouter') {
-        let apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey && input.organizationId) {
+        let apiKey: string | undefined;
+        let aiKeyMode: 'platform' | 'custom' = 'platform';
+
+        if (input.organizationId) {
           const orgDoc = await adminDb.collection('organizations').doc(input.organizationId).get();
-          apiKey = orgDoc.data()?.openRouterApiKey;
+          aiKeyMode = orgDoc.data()?.aiKeyMode || 'platform';
+          
+          if (aiKeyMode === 'custom') {
+            apiKey = orgDoc.data()?.openRouterApiKey;
+            if (!apiKey) throw new Error('Organization is configured to use custom AI APIs, but OpenRouter API key is missing. Please add it to your organization settings.');
+          }
         }
-        if (!apiKey) throw new Error('OpenRouter API key is missing. Please add it to your organization settings.');
+
+        if (aiKeyMode === 'platform') {
+          apiKey = process.env.OPENROUTER_API_KEY;
+          if (!apiKey) throw new Error('Platform AI API keys are not configured. Please contact the administrator or switch to custom API keys in your organization settings.');
+        }
 
         const fullPrompt = `${prompt}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
 

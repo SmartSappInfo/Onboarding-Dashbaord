@@ -373,19 +373,18 @@ export default function SurveysClient() {
 
     return (
         <TooltipProvider>
-            <div className="h-full overflow-y-auto">
-                <div className="max-w-5xl mx-auto space-y-8 pb-32">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="h-full overflow-y-auto w-full">
+                <div className="space-y-8 pb-32 w-full">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Surveys</h1>
+                            <h1 className="text-3xl font-bold text-foreground">Surveys</h1>
                             <p className="text-sm text-muted-foreground mt-1">Manage public survey templates and response data.</p>
                         </div>
                 <div className="flex items-center gap-2">
                     {canCreate && (
-                        <RainbowButton asChild className="h-11 px-4 rounded-xl font-semibold text-sm">
+                        <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
                             <Link href="/admin/surveys/new/ai">
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                AI Architect
+                                <Sparkles className="h-4 w-4" /> AI Architect
                             </Link>
                         </RainbowButton>
                     )}
@@ -467,7 +466,7 @@ export default function SurveysClient() {
                                     {survey.scoringEnabled && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-semibold gap-1">
+                                        <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-semibold gap-1">
  <Trophy className="h-2.5 w-2.5" />
                                             Scored
                                         </Badge>

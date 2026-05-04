@@ -28,7 +28,9 @@ export default function LivePreviewPane() {
         backgroundPattern, 
         patternColor,
         startButtonText,
-        showCoverPage
+        showCoverPage,
+        showBranding,
+        showIntroAsPage
     } = watchedValues;
 
     const BackgroundPattern = () => {
@@ -86,17 +88,19 @@ export default function LivePreviewPane() {
  <ScrollArea className="h-full w-full">
  <div className="p-8 sm:p-12 space-y-10 text-center relative z-10">
                             {/* Logo */}
- <div className="flex justify-center">
-                                {logoUrl ? (
- <div className="relative h-10 w-40 sm:h-12 sm:w-48">
- <img src={logoUrl} alt="logo" className="object-contain w-full h-full" />
-                                    </div>
- ) : <SmartSappLogo className="h-8" />}
-                            </div>
+                            {showBranding !== false && (
+                                <div className="flex justify-center">
+                                    {logoUrl ? (
+                                        <div className="relative h-10 w-40 sm:h-12 sm:w-48">
+                                            <img src={logoUrl} alt="logo" className="object-contain w-full h-full" />
+                                        </div>
+                                    ) : <SmartSappLogo className="h-8" />}
+                                </div>
+                            )}
 
                             {/* Hero Content */}
                             {videoUrl ? (
- <div className="space-y-6">
+                                <div className="space-y-6">
                                     <VideoHero 
                                         videoUrl={videoUrl} 
                                         thumbnailUrl={videoThumbnailUrl} 
@@ -105,23 +109,68 @@ export default function LivePreviewPane() {
                                     />
                                 </div>
                             ) : bannerImageUrl ? (
- <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-card">
- <img src={bannerImageUrl} alt="banner" className="w-full h-full object-cover" />
+                                <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-card">
+                                    <img src={bannerImageUrl} alt="banner" className="w-full h-full object-cover" />
                                 </div>
                             ) : null}
 
                             {/* Text Content */}
- <div className="space-y-4 max-w-2xl mx-auto">
- <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{stripHtml(title || 'Your Survey Title')}</h1>
- <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{stripHtml(description || 'Explain why this audit matters to your community.')}</p>
+                            <div className="space-y-4 max-w-2xl mx-auto">
+                                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{stripHtml(title || 'Your Survey Title')}</h1>
+                                <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{stripHtml(description || 'Explain why this audit matters to your community.')}</p>
                             </div>
 
-                            {/* Call to Action */}
- <div className="pt-4 flex justify-center">
- <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-semibold text-lg shadow-2xl gap-3 transition-all hover:scale-105 ">
- {startButtonText || "Let's Start"} <ArrowRight className="h-6 w-6" />
-                                </Button>
-                            </div>
+                            {/* Conditional Layout based on showIntroAsPage */}
+                            {showIntroAsPage !== false ? (
+                                <div className="pt-4 flex justify-center">
+                                    {/* Call to Action */}
+                                    <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-semibold text-lg shadow-2xl gap-3 transition-all hover:scale-105 ">
+                                        {startButtonText || "Let's Start"} <ArrowRight className="h-6 w-6" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="pt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
+                                    {/* Dummy Stepper */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                                            <span>Step 1 of 3</span>
+                                            <span>33%</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 w-full">
+                                            <div className="h-1.5 flex-1 bg-primary rounded-full transition-all duration-1000"></div>
+                                            <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
+                                            <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Dummy Question Card */}
+                                    <Card className="text-left border border-border/50 shadow-lg rounded-3xl bg-card overflow-hidden">
+                                        <div className="p-6 sm:p-8 space-y-6">
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-primary font-bold text-[10px] tracking-widest uppercase">
+                                                    <span>Question 1</span>
+                                                    <span className="text-destructive">*</span>
+                                                </div>
+                                                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-snug">What is your primary email address?</h3>
+                                                <p className="text-sm font-medium text-muted-foreground">We will use this to send your results.</p>
+                                            </div>
+                                            <div className="relative">
+                                                <div className="h-14 w-full bg-background rounded-2xl border border-border shadow-sm flex items-center px-5 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                                    <div className="h-4 w-[1px] bg-primary animate-pulse mr-1"></div>
+                                                    <span className="text-muted-foreground/50 text-sm font-medium">hello@example.com</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                    
+                                    {/* Dummy Action */}
+                                    <div className="flex justify-end pt-2">
+                                        <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-bold shadow-xl gap-2 opacity-90 cursor-default hover:bg-primary transition-all">
+                                            Next Step <ArrowRight className="h-5 w-5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
                 </div>

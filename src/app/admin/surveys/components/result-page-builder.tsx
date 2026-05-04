@@ -397,7 +397,7 @@ function SortableResultBlock({
     );
 }
 
-function PageEditor({ pageIndex }: { pageIndex: number }) {
+export function PageEditor({ pageIndex }: { pageIndex: number }) {
     const { control, getValues } = useFormContext();
     const { fields: blocks, append, remove, move, swap, insert } = useFieldArray({
         control,

@@ -30,12 +30,13 @@ export default function UploadButton({ workspaceId }: UploadButtonProps) {
         Upload Media
       </Button>
       <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <DialogContent className="w-full sm:max-w-5xl p-0 flex flex-col border-none shadow-2xl overflow-hidden max-h-[90vh]">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/10 shrink-0">
-            <DialogTitle className="text-2xl font-semibold tracking-tight">Upload Media</DialogTitle>
+        <DialogContent className="w-screen h-[100dvh] max-w-none p-0 m-0 border-none rounded-none flex flex-col shadow-2xl overflow-hidden bg-background">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/10 shrink-0 relative">
+            <DialogTitle className="text-2xl font-semibold tracking-tight w-3/4">Upload Media</DialogTitle>
             <DialogDescription>
               Drag and drop files, edit, and upload. Max 50MB per file.
             </DialogDescription>
+            <div id="uploader-header-portal" className="absolute top-6 right-16 z-[100]"></div>
           </DialogHeader>
           <div className="flex-grow p-6 overflow-y-auto">
             <MediaUploader 

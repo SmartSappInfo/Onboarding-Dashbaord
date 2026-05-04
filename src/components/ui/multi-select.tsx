@@ -27,6 +27,7 @@ interface MultiSelectProps {
   placeholder?: string;
   className?: string;
   maxCount?: number;
+  onCreate?: (value: string) => void;
 }
 
 /**
@@ -41,9 +42,11 @@ export function MultiSelect({
   placeholder = 'Select options...',
   className,
   maxCount = 2,
+  onCreate,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState('');
   const selectedValues = new Set(value);
 
   const toggleSelection = (val: string) => {
@@ -133,8 +136,13 @@ export function MultiSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 border-none shadow-2xl rounded-xl overflow-hidden" align="start">
-        <Command className="w-full">
-          <CommandInput placeholder="Search registry..." className="font-bold text-sm h-11" />
+        <Command className="w-full" shouldFilter={true}>
+          <CommandInput 
+            placeholder="Create or Search Tags" 
+            className="font-bold text-sm h-11" 
+            value={inputValue} 
+            onValueChange={setInputValue} 
+          />
           <CommandList className="max-h-64 overflow-auto scrollbar-thin">
             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">No matches identified.</CommandEmpty>
             <CommandGroup className="p-1.5">
@@ -162,6 +170,24 @@ export function MultiSelect({
                 );
               })}
             </CommandGroup>
+            {onCreate && inputValue.trim() !== '' && !options.some(o => o.label.toLowerCase() === inputValue.trim().toLowerCase()) && (
+              <CommandGroup className="p-1.5 border-t border-border/50" forceMount>
+                <CommandItem
+                  value={inputValue}
+                  onSelect={() => {
+                    onCreate(inputValue.trim());
+                    setInputValue('');
+                  }}
+                  className="cursor-pointer rounded-lg p-2 gap-2 text-primary font-bold"
+                  forceMount
+                >
+                  <div className="flex h-4 w-4 items-center justify-center rounded-sm border border-primary bg-primary/10">
+                    <Check className="h-3.5 w-3.5 opacity-0" />
+                  </div>
+                  Create "{inputValue.trim()}"
+                </CommandItem>
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

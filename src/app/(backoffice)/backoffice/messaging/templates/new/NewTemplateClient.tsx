@@ -23,9 +23,10 @@ import type { TemplateCategory, VariableContext, ReminderConfig as ReminderConfi
 
 const schema = z.object({
   name:            z.string().min(1, 'Name is required'),
-  category:        z.enum(['forms', 'surveys', 'meetings', 'agreements', 'campaigns', 'reminders', 'general']),
+  category:        z.enum(['forms', 'surveys', 'meetings', 'agreements', 'campaigns', 'reminders', 'tasks', 'automations', 'qr_codes', 'general']),
   templateType:    z.string().min(1, 'Template type is required'),
-  channel:         z.enum(['email', 'sms']),
+  recipientType:   z.enum(['respondent', 'internal_alert', 'assignee', 'entity', 'external_alert']).optional(),
+  channel:         z.enum(['email', 'sms', 'in_app', 'push']),
   subject:         z.string().optional(),
   body:            z.string().min(1, 'Body is required'),
   variableContext: z.enum(['meeting', 'form', 'survey', 'agreement', 'entity', 'campaign', 'common']),
@@ -42,7 +43,18 @@ const CATEGORIES: { value: TemplateCategory; label: string }[] = [
   { value: 'agreements', label: 'Agreements' },
   { value: 'campaigns',  label: 'Campaigns' },
   { value: 'reminders',  label: 'Reminders' },
+  { value: 'tasks',      label: 'Tasks' },
+  { value: 'automations',label: 'Automations' },
+  { value: 'qr_codes',   label: 'QR Codes' },
   { value: 'general',    label: 'General' },
+];
+
+const RECIPIENT_TYPES: { value: string; label: string }[] = [
+  { value: 'respondent', label: 'Respondent' },
+  { value: 'internal_alert', label: 'Internal Alert' },
+  { value: 'assignee', label: 'Assignee' },
+  { value: 'entity', label: 'Entity' },
+  { value: 'external_alert', label: 'External Alert' },
 ];
 
 const VARIABLE_CONTEXTS: { value: VariableContext; label: string }[] = [
@@ -70,6 +82,7 @@ export default function NewTemplateClient() {
       name: '',
       category: 'general',
       templateType: '',
+      recipientType: undefined,
       channel: 'email',
       subject: '',
       body: '',
@@ -92,6 +105,7 @@ export default function NewTemplateClient() {
         name: data.name,
         category: data.category,
         templateType: data.templateType,
+        recipientType: data.recipientType as any,
         channel: data.channel,
         subject: data.channel === 'email' ? data.subject : undefined,
         body: data.body,
@@ -180,6 +194,8 @@ export default function NewTemplateClient() {
                       <SelectContent className="bg-muted border-border">
                         <SelectItem value="email">Email</SelectItem>
                         <SelectItem value="sms">SMS</SelectItem>
+                        <SelectItem value="in_app">In-App</SelectItem>
+                        <SelectItem value="push">Push</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -187,7 +203,7 @@ export default function NewTemplateClient() {
               </div>
             </div>
 
-            {/* Template Type + Variable Context */}
+            {/* Template Type + Recipient Type */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Template Type</Label>
@@ -205,17 +221,17 @@ export default function NewTemplateClient() {
                 {errors.templateType && <p className="text-xs text-red-400">{errors.templateType.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Variable Context</Label>
+                <Label className="text-xs text-muted-foreground">Recipient Type</Label>
                 <Controller
-                  name="variableContext"
+                  name="recipientType"
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl">
-                        <SelectValue />
+                        <SelectValue placeholder="Optional" />
                       </SelectTrigger>
                       <SelectContent className="bg-muted border-border">
-                        {VARIABLE_CONTEXTS.map((c) => (
+                        {RECIPIENT_TYPES.map((c) => (
                           <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                         ))}
                       </SelectContent>
@@ -223,6 +239,27 @@ export default function NewTemplateClient() {
                   )}
                 />
               </div>
+            </div>
+
+            {/* Variable Context */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Variable Context</Label>
+              <Controller
+                name="variableContext"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="h-10 bg-muted/50 border-border text-foreground rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-muted border-border">
+                      {VARIABLE_CONTEXTS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             {/* Subject (email only) */}

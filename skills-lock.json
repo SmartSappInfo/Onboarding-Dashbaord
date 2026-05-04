@@ -17,6 +17,12 @@
       "skillPath": "skills/crm-builder/SKILL.md",
       "computedHash": "29d3504a5642c0fe8bd120fc39db0cd919011b313ee75e50b765b62a14d22c03"
     },
+    "email-template-generator": {
+      "source": "onewave-ai/claude-skills",
+      "sourceType": "github",
+      "skillPath": "email-template-generator/SKILL.md",
+      "computedHash": "c64203235d47263d0f38248c9130c62312eaf91623aa83f90396206bc76c7962"
+    },
     "eslint-prettier-config": {
       "source": "patricio0312rev/skills",
       "sourceType": "github",

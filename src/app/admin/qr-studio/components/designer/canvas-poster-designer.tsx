@@ -37,6 +37,7 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
   const [activeTemplate, setActiveTemplate] = React.useState<string | null>(null);
   const [showMediaDialog, setShowMediaDialog] = React.useState(false);
   const [lastInsertType, setLastInsertType] = React.useState<'text' | 'rect' | 'circle' | 'line' | 'image'>('text');
+  const [editingElementId, setEditingElementId] = React.useState<string | null>(null);
 
   const [canvas, setCanvas] = React.useState<CanvasState>(() => {
     if (qrDesign.posterData) return qrDesign.posterData;
@@ -289,7 +290,7 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
         {/* Canvas Area */}
         <div 
           className="flex-1 flex justify-center bg-muted/10 rounded-2xl border border-dashed border-border p-4 overflow-hidden"
-          onClick={() => setCanvas(prev => ({ ...prev, selectedId: null }))}
+          onClick={() => { setCanvas(prev => ({ ...prev, selectedId: null })); setEditingElementId(null); }}
         >
           <div
             ref={canvasRef}
@@ -375,22 +376,43 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
                   )}
 
                   {el.type === 'text' && !el.isQR && (
-                    <div
-                      className="w-full h-full flex flex-col justify-center"
-                      style={{
-                        fontSize: `${(el.fontSize || 14) * scaleFactor}px`,
-                        fontFamily: el.fontFamily || 'Inter',
-                        fontWeight: el.fontWeight || '400',
-                        fontStyle: el.fontStyle || 'normal',
-                        color: el.fill || '#000',
-                        textAlign: (el.textAlign as any) || 'left',
-                        lineHeight: 1.2,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}
-                    >
-                      {el.text}
-                    </div>
+                    editingElementId === el.id ? (
+                      <textarea
+                        value={el.text || ''}
+                        onChange={(e) => updateElement(el.id, { text: e.target.value })}
+                        onBlur={() => setEditingElementId(null)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        autoFocus
+                        className="w-full h-full bg-transparent border-none outline-none resize-none p-0 m-0"
+                        style={{
+                          fontSize: `${(el.fontSize || 14) * scaleFactor}px`,
+                          fontFamily: el.fontFamily || 'Inter',
+                          fontWeight: el.fontWeight || '400',
+                          fontStyle: el.fontStyle || 'normal',
+                          color: el.fill || '#000',
+                          textAlign: (el.textAlign as any) || 'left',
+                          lineHeight: 1.2,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        onDoubleClick={() => setEditingElementId(el.id)}
+                        className="w-full h-full flex flex-col justify-center cursor-text"
+                        style={{
+                          fontSize: `${(el.fontSize || 14) * scaleFactor}px`,
+                          fontFamily: el.fontFamily || 'Inter',
+                          fontWeight: el.fontWeight || '400',
+                          fontStyle: el.fontStyle || 'normal',
+                          color: el.fill || '#000',
+                          textAlign: (el.textAlign as any) || 'left',
+                          lineHeight: 1.2,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {el.text}
+                      </div>
+                    )
                   )}
                 </CanvasInteractiveElement>
               );

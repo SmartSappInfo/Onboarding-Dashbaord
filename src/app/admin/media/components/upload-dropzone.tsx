@@ -37,7 +37,7 @@ export function UploadDropzone({ onFilesDropped, isUploading, maxSizeMB }: Uploa
   };
 
   return (
-    <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative w-full">
+    <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative w-full h-full flex flex-col">
       <input
         ref={inputRef}
         id="file-upload"
@@ -56,7 +56,7 @@ export function UploadDropzone({ onFilesDropped, isUploading, maxSizeMB }: Uploa
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         className={cn(
-          "flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors group",
+          "flex flex-1 min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors group",
           isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-muted/30"
         )}
       >

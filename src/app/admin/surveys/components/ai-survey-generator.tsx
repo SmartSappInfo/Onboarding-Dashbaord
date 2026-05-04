@@ -25,7 +25,7 @@ import { useFirestore, useUser } from '@/firebase';
 import type { Survey, UserProfile } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import AiModelSelector from '@/components/ai/AiModelSelector';
-import { Button as MovingButton } from '@/components/ui/moving-border';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Loader2, Sparkles, Check, X, RotateCcw, FileText, MessageSquare, Zap, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -79,7 +79,7 @@ export default function AiSurveyGenerator() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeOrganizationId } = useWorkspace();
+  const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [phases, setPhases] = React.useState<PhaseState[]>(INITIAL_PHASES);
   const [showProgress, setShowProgress] = React.useState(false);
@@ -229,8 +229,11 @@ export default function AiSurveyGenerator() {
       slug,
       status: 'published',
       backgroundPattern: 'none',
-      workspaceIds: [],
+      workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
       internalName: generatedData.title,
+      autoTags: [],
+      autoAutomations: [],
+      allowCrossVisibility: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -521,15 +524,14 @@ export default function AiSurveyGenerator() {
                     >
                         Cancel
                     </Button>
-                    <MovingButton 
+                    <RainbowButton 
                         type="submit" 
                         disabled={isGenerating} 
-                        containerClassName="h-14 px-8 rounded-full"
- className="h-full w-full font-semibold text-sm gap-3 bg-[#0f172a] text-white hover:bg-[#0f172a]/90 border border-slate-700 shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.1)]"
+                        className="h-14 px-8 rounded-full font-semibold text-sm gap-3 shadow-xl transition-all active:scale-95 text-white"
                     >
  {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
                         {isGenerating ? 'Building Engine...' : 'Generate Intelligent Survey'}
-                    </MovingButton>
+                    </RainbowButton>
                 </div>
             </form>
         </Form>

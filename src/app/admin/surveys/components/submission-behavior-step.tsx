@@ -24,6 +24,9 @@ import { useToast } from '@/hooks/use-toast';
 import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { saveAutomationAction } from '@/lib/automation-actions';
+import WebhookManager from './webhook-manager';
+import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
+import ExternalNotificationConfig from './external-notification-config';
 
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
@@ -313,36 +316,34 @@ export default function SubmissionBehaviorStep() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left pb-32 relative">
             {/* Entity Mapping Card */}
-            <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden bg-background">
-                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner">
-                                <Database className="h-5 w-5 text-emerald-600" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-sm font-semibold tracking-tight">Save Survey Contact as {entityTerminology}</CardTitle>
-                                <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Map response data to your workspace custom properties.</CardDescription>
-                            </div>
+            <div className={cn(
+                "rounded-[2rem] border-2 transition-all duration-500",
+                createEntity ? "border-emerald-500/20 bg-emerald-500/5 shadow-xl shadow-emerald-500/5" : "border-border/50 bg-background"
+            )}>
+                <div className="flex items-center justify-between p-6">
+                    <div className="flex items-center gap-4">
+                        <div className={cn(
+                            "p-3 rounded-2xl transition-all duration-500", 
+                            createEntity ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 rotate-3" : "bg-muted text-muted-foreground"
+                        )}>
+                            <Database className="h-6 w-6" />
                         </div>
-                        <Controller
-                            name="createEntity"
-                            control={control}
-                            render={({ field }) => (
-                                <div className={cn(
-                                    "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300",
-                                    field.value ? "bg-emerald-500/5 border-emerald-500/20" : "bg-muted/20 border-border/50"
-                                )}>
-                                    <span className={cn("text-[9px] font-black uppercase tracking-widest", field.value ? "text-emerald-600" : "text-muted-foreground/40")}>
-                                        Sync Engine {field.value ? 'Engaged' : 'Idle'}
-                                    </span>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                </div>
-                            )}
-                        />
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-semibold tracking-tight">Save Survey Contact as {entityTerminology}</Label>
+                            <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Automatically route contacts into the CRM</p>
+                        </div>
                     </div>
-                </CardHeader>
-                <CardContent className={cn("p-6 space-y-10 transition-all duration-500", !createEntity && "opacity-40 grayscale pointer-events-none select-none overflow-hidden h-[120px]")}>
+                    <Controller
+                        name="createEntity"
+                        control={control}
+                        render={({ field }) => (
+                            <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-125 data-[state=checked]:bg-emerald-500" />
+                        )}
+                    />
+                </div>
+                {createEntity && (
+                    <div className="p-6 pt-0 space-y-10 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <Separator className="bg-emerald-500/10 mb-6" />
                     {/* Identity Mappings */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-6">
@@ -356,9 +357,9 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Business/Entity Name Source</Label>
+                                        <Label className="text-sm font-semibold">Business/Entity Name Source</Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold text-[11px]">
+                                            <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                                 <SelectValue placeholder="Identify entity name source..." />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
@@ -377,9 +378,9 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Focal Person Name</Label>
+                                        <Label className="text-sm font-semibold">Focal Person Name</Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold text-[11px]">
+                                            <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                                 <SelectValue placeholder="Identify focal person source..." />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
@@ -404,9 +405,9 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Communication Email</Label>
+                                        <Label className="text-sm font-semibold">Communication Email</Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold text-[11px]">
+                                            <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                                 <SelectValue placeholder="Select email input..." />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
@@ -424,9 +425,9 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">SMS/Direct Mobile</Label>
+                                        <Label className="text-sm font-semibold">SMS/Direct Mobile</Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold text-[11px]">
+                                            <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                                 <SelectValue placeholder="Select phone input..." />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
@@ -466,13 +467,13 @@ export default function SubmissionBehaviorStep() {
                                 {fields.map((f, i) => (
                                     <div key={f.id} className="group relative grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-3xl bg-muted/20 border border-border/40 hover:border-primary/20 transition-all animate-in zoom-in-95 duration-300">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Source Question</Label>
+                                            <Label className="text-sm font-semibold">Source Question</Label>
                                             <Controller
                                                 name={`entityMapping.additionalMappings.${i}.questionId`}
                                                 control={control}
                                                 render={({ field }) => (
                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold text-[11px] shadow-sm ring-1 ring-border/20">
+                                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
                                                             <SelectValue placeholder="Select question..." />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
@@ -486,16 +487,16 @@ export default function SubmissionBehaviorStep() {
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target CRM Property</Label>
+                                                <Label className="text-sm font-semibold">Target CRM Property</Label>
                                                 <Button 
                                                     type="button" 
                                                     variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-5 w-5 text-primary hover:bg-primary/10 rounded-full"
+                                                    size="sm" 
+                                                    className="h-6 text-primary hover:bg-primary/10 rounded-full px-2 gap-1 text-[10px] font-bold uppercase tracking-wider"
                                                     onClick={() => setIsCreateFieldOpen(true)}
                                                     title="Create missing property"
                                                 >
-                                                    <PlusCircle className="h-3 w-3" />
+                                                    <PlusCircle className="h-3 w-3" /> New
                                                 </Button>
                                             </div>
                                             <Controller
@@ -507,7 +508,7 @@ export default function SubmissionBehaviorStep() {
                                                         onSelect={field.onChange}
                                                         options={groupedTargetFields}
                                                         placeholder="Select property..."
-                                                        triggerClassName="bg-background shadow-none ring-1 ring-border/20 h-11 rounded-xl"
+                                                        triggerClassName="bg-background border border-border/50 shadow-sm h-11 rounded-xl transition-all focus-visible:ring-1 focus-visible:ring-primary/30"
                                                     />
                                                 )}
                                             />
@@ -538,20 +539,19 @@ export default function SubmissionBehaviorStep() {
                             </div>
                         )}
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            )}
+        </div>
 
             {/* Automation Bench */}
-            <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden bg-background">
-                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+            {createEntity && (
+                <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b py-5 px-6">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-500/10 rounded-xl">
                             <Zap className="h-5 w-5 text-indigo-600" />
                         </div>
-                        <div>
-                            <CardTitle className="text-sm font-semibold tracking-tight">Workbench Automations</CardTitle>
-                            <CardDescription className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Trigger complex behavioral logic and labeling on entry.</CardDescription>
-                        </div>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Workbench Automations</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-8">
@@ -559,17 +559,17 @@ export default function SubmissionBehaviorStep() {
                         {/* Tags */}
                         <div className="space-y-5">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
                                     <Tags className="h-3.5 w-3.5 text-primary" /> Auto-Apply Registry Tags
                                 </Label>
                                 <Button 
                                     type="button" 
                                     variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 text-primary hover:bg-primary/10 rounded-full"
+                                    size="sm" 
+                                    className="h-6 text-primary hover:bg-primary/10 rounded-full px-2 gap-1 text-[10px] font-bold uppercase tracking-wider"
                                     onClick={() => setIsCreateTagOpen(true)}
                                 >
-                                    <PlusCircle className="h-4 w-4" />
+                                    <PlusCircle className="h-3 w-3" /> New
                                 </Button>
                             </div>
                             <Controller
@@ -581,7 +581,7 @@ export default function SubmissionBehaviorStep() {
                                         value={field.value || []}
                                         onChange={field.onChange}
                                         placeholder="Deploy tags..."
-                                        className="rounded-2xl bg-muted/20 border-none font-bold min-h-[52px] shadow-none ring-1 ring-border/20 transition-all focus-within:ring-primary/40"
+                                        className="rounded-xl bg-background border border-border/50 shadow-sm font-bold min-h-[44px] transition-all focus-within:ring-1 focus-within:ring-primary/30"
                                     />
                                 )}
                             />
@@ -593,7 +593,7 @@ export default function SubmissionBehaviorStep() {
                         {/* Automations */}
                         <div className="space-y-5">
                             <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                <Label className="text-sm font-semibold flex items-center gap-2">
                                     <Zap className="h-3.5 w-3.5 text-indigo-600" /> Executive Workflows
                                 </Label>
                                 <div className="flex items-center gap-2">
@@ -605,11 +605,11 @@ export default function SubmissionBehaviorStep() {
                                     <Button 
                                         type="button" 
                                         variant="ghost" 
-                                        size="icon" 
-                                        className="h-6 w-6 text-primary hover:bg-primary/10 rounded-full"
+                                        size="sm" 
+                                        className="h-6 text-primary hover:bg-primary/10 rounded-full px-2 gap-1 text-[10px] font-bold uppercase tracking-wider"
                                         onClick={() => setIsCreateAutomationOpen(true)}
                                     >
-                                        <PlusCircle className="h-4 w-4" />
+                                        <PlusCircle className="h-3 w-3" /> New
                                     </Button>
                                 </div>
                             </div>
@@ -625,7 +625,7 @@ export default function SubmissionBehaviorStep() {
                                         value={field.value || []}
                                         onChange={field.onChange}
                                         placeholder="Initialize triggers..."
-                                        className="rounded-2xl bg-muted/20 border-none font-bold min-h-[52px] shadow-none ring-1 ring-border/20 transition-all focus-within:ring-indigo-500/40"
+                                        className="rounded-xl bg-background border border-border/50 shadow-sm font-bold min-h-[44px] transition-all focus-within:ring-1 focus-within:ring-indigo-500/30"
                                     />
                                 )}
                             />
@@ -634,166 +634,16 @@ export default function SubmissionBehaviorStep() {
                             </p>
                         </div>
                     </div>
-
-                    <Separator className="bg-border/50" />
-
-                    {/* Cross-Visibility Toggle */}
-                    <div className={cn(
-                        "rounded-2xl border-2 transition-all duration-300",
-                        watch('allowCrossVisibility') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
-                    )}>
-                        <div className="flex items-center justify-between p-5">
-                            <div className="flex items-center gap-3 text-left">
-                                <div className={cn("p-2 rounded-lg transition-colors", watch('allowCrossVisibility') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                    <Eye className="h-4 w-4" />
-                                </div>
-                                <div className="space-y-0.5">
-                                    <Label className="text-xs font-semibold tracking-tight">Cross-Visibility</Label>
-                                    <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Allow assigned users to view all team submissions, not just their own</p>
-                                </div>
-                            </div>
-                            <Controller
-                                name="allowCrossVisibility"
-                                control={control}
-                                render={({ field }) => (
-                                    <Switch 
-                                        checked={field.value} 
-                                        onCheckedChange={field.onChange} 
-                                    />
-                                )}
-                            />
-                        </div>
-                    </div>
-
-                    <Separator className="bg-border/50" />
-
-                    {/* Team Notifications */}
-                    <div className="space-y-8">
-                        <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/30 text-[9px] font-black uppercase tracking-widest px-3 py-1">Engagement Alerts</Badge>
-                            <div className="h-px flex-1 bg-border/40" />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Email Card */}
-                            <div className="group relative space-y-6 p-8 rounded-[2rem] bg-muted/10 border border-border/40 hover:bg-muted/20 transition-all">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600 shadow-inner">
-                                            <Mail className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs font-black uppercase tracking-tighter block">Email Dispatch</Label>
-                                            <p className="text-[9px] font-bold text-muted-foreground/60 italic leading-none mt-1">Send HTML templated alerts.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-7 w-7 text-primary hover:bg-primary/10 rounded-full"
-                                            onClick={() => { setNewTemplateChannel('email'); setIsCreateTemplateOpen(true); }}
-                                        >
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
-                                        <Controller
-                                            name="notifyAssignedUsers.email"
-                                            control={control}
-                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
-                                        />
-                                    </div>
-                                </div>
-                                <div className={cn("transition-all duration-500", !watch('notifyAssignedUsers.email') && "opacity-20 blur-[1px] pointer-events-none")}>
-                                    <Controller
-                                        name="notifyAssignedUsers.emailTemplateId"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <SearchableSelect 
-                                                value={field.value}
-                                                onSelect={field.onChange}
-                                                options={emailTemplates.map(t => ({ label: t.name, value: t.id }))}
-                                                placeholder="Select email template..."
-                                                triggerClassName="bg-background shadow-none ring-1 ring-border/30 h-12 rounded-2xl"
-                                            />
-                                        )}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* SMS Card */}
-                            <div className="group relative space-y-6 p-8 rounded-[2rem] bg-muted/10 border border-border/40 hover:bg-muted/20 transition-all">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600 shadow-inner">
-                                            <Smartphone className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs font-black uppercase tracking-tighter block">SMS Direct</Label>
-                                            <p className="text-[9px] font-bold text-muted-foreground/60 italic leading-none mt-1">Instant mobile notifications.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-7 w-7 text-primary hover:bg-primary/10 rounded-full"
-                                            onClick={() => { setNewTemplateChannel('sms'); setIsCreateTemplateOpen(true); }}
-                                        >
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
-                                        <Controller
-                                            name="notifyAssignedUsers.sms"
-                                            control={control}
-                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
-                                        />
-                                    </div>
-                                </div>
-                                <div className={cn("transition-all duration-500", !watch('notifyAssignedUsers.sms') && "opacity-20 blur-[1px] pointer-events-none")}>
-                                    <Controller
-                                        name="notifyAssignedUsers.smsTemplateId"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <SearchableSelect 
-                                                value={field.value}
-                                                onSelect={field.onChange}
-                                                options={smsTemplates.map(t => ({ label: t.name, value: t.id }))}
-                                                placeholder="Select SMS template..."
-                                                triggerClassName="bg-background shadow-none ring-1 ring-border/30 h-12 rounded-2xl"
-                                            />
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </CardContent>
             </Card>
+            )}
 
-            {/* Resubmission Toggle Card */}
-            <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden bg-background">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/10 rounded-xl shadow-inner">
-                                <RotateCcw className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold tracking-tight">Allow Resubmission</p>
-                                <p className="text-[10px] font-bold text-muted-foreground/60 tracking-tight">Show a &quot;Submit Another Response&quot; button on the thank you page.</p>
-                            </div>
-                        </div>
-                        <Controller
-                            name="allowResubmission"
-                            control={control}
-                            render={({ field }) => (
-                                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
-                            )}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="space-y-8">
+                <InternalNotificationConfig prefix="adminAlert" category="surveys" />
+                <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
+                <WebhookManager />
+            </div>
+
 
             {/* Creation Dialogs */}
             

@@ -34,6 +34,7 @@ import type { QRCode as QRCodeType, QRDesign } from '@/lib/types';
 import QRPreview from '../components/qr-preview';
 import QRDownloadDialog from '../components/qr-download-dialog';
 import QRDesigner from '../components/designer/qr-designer';
+import { QRNotificationSettings } from '../components/qr-notification-settings';
 
 const TYPE_LABELS: Record<string, string> = {
   url: 'External URL', survey: 'Survey', form: 'Form', landing_page: 'Landing Page',
@@ -723,6 +724,29 @@ function SettingsTab({ qr, orgId, wsId, onSaved }: { qr: QRCodeType; orgId: stri
         <p className="text-sm text-foreground">{qr.design.errorCorrection} — {
           { L: '7% recovery', M: '15% recovery', Q: '25% recovery', H: '30% recovery' }[qr.design.errorCorrection]
         }</p>
+      </div>
+
+      <div className="pt-8 border-t border-border">
+        <div className="mb-4">
+          <h3 className="text-sm font-bold text-foreground">Notifications</h3>
+          <p className="text-xs text-muted-foreground">Configure alerts when this QR code is scanned.</p>
+        </div>
+        <QRNotificationSettings
+          internalAlerts={qr.notifications?.internalAlerts}
+          onChangeInternal={async (val) => {
+            try {
+              await updateQRCode(orgId, wsId, qr.id, {
+                notifications: {
+                  ...qr.notifications,
+                  internalAlerts: val as any,
+                }
+              });
+              onSaved();
+            } catch (err: any) {
+              toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to update notifications.' });
+            }
+          }}
+        />
       </div>
     </div>
   );

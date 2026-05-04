@@ -7,6 +7,7 @@ import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
+import { sendPushNotification } from './onesignal-service';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
 import { getRecipientContact } from './migration-status-utils';
@@ -263,6 +264,28 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
         providerId = providerResponse?.summary?._id;
         providerStatus = providerResponse?.status;
+    } else if (template.channel === 'push') {
+        const providerResponse = await sendPushNotification(
+            [recipient], 
+            resolvedSubject || 'SmartSapp Notification', 
+            resolvedBody
+        );
+        providerId = providerResponse?.id;
+        if (providerResponse?.errors) providerStatus = 'failed';
+        else providerStatus = 'delivered';
+    } else if (template.channel === 'in_app') {
+        const inAppRef = await adminDb.collection('in_app_notifications').add({
+            userId: recipient,
+            organizationId: template.organizationId || variables.organizationId || 'default',
+            workspaceId: resolvedWorkspaceId,
+            title: resolvedSubject || resolvedLogTitle || 'Notification',
+            body: resolvedBody,
+            category: template.category || 'general',
+            isRead: false,
+            createdAt: scheduledAt || new Date().toISOString()
+        });
+        providerId = inAppRef.id;
+        providerStatus = 'delivered';
     } else {
         const providerResponse = await sendEmail({
             from: `${sender.name} <${sender.identifier}>`, 
@@ -326,7 +349,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
  * Sends a raw message without a predefined template.
  */
 export async function sendRawMessage(input: {
-    channel: 'email' | 'sms',
+    channel: 'email' | 'sms' | 'in_app' | 'push',
     recipient: string,
     body: string,
     subject?: string,
@@ -360,6 +383,19 @@ export async function sendRawMessage(input: {
 
         if (channel === 'sms') {
             await sendSms({ recipient, message: resolvedBody, sender: sender.identifier });
+        } else if (channel === 'push') {
+            await sendPushNotification([recipient], resolvedSubject, resolvedBody);
+        } else if (channel === 'in_app') {
+            await adminDb.collection('in_app_notifications').add({
+                userId: recipient,
+                organizationId: variables.organizationId || 'default',
+                workspaceId: workspaceIds[0],
+                title: resolvedSubject,
+                body: resolvedBody,
+                category: 'general',
+                isRead: false,
+                createdAt: new Date().toISOString()
+            });
         } else {
             await sendEmail({ from: `${sender.name} <${sender.identifier}>`, to: recipient, subject: resolvedSubject, html: resolvedBody });
         }

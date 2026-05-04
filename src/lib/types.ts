@@ -185,7 +185,8 @@ export type AutomationTrigger =
   | 'TAG_ADDED'
   | 'TAG_REMOVED'
   | 'CAMPAIGN_PAGE_SUBMITTED'
-  | 'FORM_SUBMITTED';
+  | 'FORM_SUBMITTED'
+  | 'ENTITY_CREATED';
 
 /**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
@@ -246,6 +247,7 @@ export interface Organization {
     defaultLanguage?: string;
   };
   // AI Configuration (Requirement: Multi-Model Architecture)
+  aiKeyMode?: 'platform' | 'custom';
   geminiApiKey?: string;
   openRouterApiKey?: string;
   openaiApiKey?: string;
@@ -594,6 +596,10 @@ export interface UserProfile {
   // AI User Preferences
   preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
   preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
+  
+  // Notification Preferences
+  notificationPreferences?: NotificationPreferences;
+
   /** Backoffice roles for platform control plane access */
   backofficeRoles?: import('./backoffice/backoffice-types').BackofficeRole[];
   createdAt: string;
@@ -840,8 +846,6 @@ export interface WorkspaceEntity {
   workspaceId: string;
   entityId: string;
   entityType: EntityType;
-  pipelineId: string;
-  stageId: string;
   assignedTo?: {
     userId: string | null;
     name: string | null;
@@ -862,7 +866,6 @@ export interface WorkspaceEntity {
   primaryPhone?: string;  // Denormalized from entityContacts where isPrimary
   entityContacts: EntityContact[]; // Denormalized contact data (FER-01)
   interests?: Partial<Module>[];
-  currentStageName?: string;
   entityName?: string; // Snapshot for backward compatibility
   logoUrl?: string;
   initials?: string;
@@ -881,6 +884,31 @@ export interface WorkspaceEntity {
 
   // Dynamic custom data bucket (Requirement: Phase 6)
   customData?: Record<string, any>;
+}
+
+/**
+ * Deal (Opportunity) - represents an independent transactional record
+ * Multiple deals can be linked to a single Entity within a workspace.
+ */
+export interface Deal {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;           // Link back to the Unified Entity
+  pipelineId: string;
+  stageId: string;
+  name: string;               // e.g., "Lincoln Academy Expansion 2026"
+  value?: number;             // Optional deal value
+  status: 'open' | 'won' | 'lost';
+  assignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  } | null;
+  expectedCloseDate?: string;
+  customFields?: Record<string, any>; // Persists across workspaces
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -1590,7 +1618,7 @@ export interface AutomationEventPayload {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL';
   // Legacy template ID (for backward compatibility)
   templateId?: string;
   // New template resolution by category/type (Task 15.2)
@@ -1669,6 +1697,23 @@ export interface VariableDefinition {
   constantValue?: string;
 }
 
+export type MessageChannel = 'email' | 'sms' | 'in_app' | 'push';
+
+export type RecipientType = 
+  | 'respondent'
+  | 'internal_alert'
+  | 'assignee'
+  | 'entity'
+  | 'external_alert';
+
+export interface NotificationPreferences {
+  email: boolean;
+  sms: boolean;
+  inApp: boolean;
+  push: boolean;
+  categories?: Record<string, boolean>; // e.g. { 'tasks': true, 'surveys': false }
+}
+
 export type TemplateCategory =
   | 'forms'
   | 'surveys'
@@ -1676,6 +1721,9 @@ export type TemplateCategory =
   | 'agreements'
   | 'campaigns'
   | 'reminders'
+  | 'tasks'
+  | 'automations'
+  | 'qr_codes'
   | 'general';
 
 export type VariableContext =
@@ -1706,11 +1754,11 @@ export interface TemplateVariable {
 }
 
 export interface ReminderConfig {
-  triggerType: 'before_event' | 'after_event' | 'on_deadline';
+  triggerType: 'before_event' | 'after_event' | 'on_deadline' | 'after_failure' | 'after_completion';
   /** Minutes before/after the event. 0 = at event time. */
   offsetMinutes: number;
   offsetLabel: string;
-  eventType: 'meeting' | 'form_deadline' | 'survey_deadline' | 'payment_due';
+  eventType: 'meeting' | 'form_deadline' | 'survey_deadline' | 'payment_due' | 'task_reminder' | 'automation_failed' | 'automation_completed';
 }
 
 export interface ScheduledMessage {
@@ -1718,8 +1766,8 @@ export interface ScheduledMessage {
   organizationId: string;
   workspaceId?: string;
   templateId: string;
-  channel: 'email' | 'sms';
-  recipientContact: string;   // email or phone
+  channel: MessageChannel;
+  recipientContact: string;   // email, phone, or userId (for in_app/push)
   recipientEntityId?: string;
   variables: Record<string, any>;
   scheduledAt: string;        // ISO timestamp
@@ -1760,10 +1808,11 @@ export interface MessageTemplate {
   // Categorization
   category: TemplateCategory;
   templateType: string;
+  recipientType?: RecipientType;
 
   // Content
   name: string;
-  channel: 'email' | 'sms';
+  channel: MessageChannel;
   subject?: string;
   previewText?: string;
   body: string;
@@ -2310,10 +2359,24 @@ export interface FormThemeConfig {
 export interface FormSubmissionActions {
   tags: string[]; // Appled immediately or post-creation
   automations: string[]; // Triggers 'form_submitted:<formId>' or these explicitly
-  notifications: {
-    internalUserIds: string[];
-    respondentEmailField?: string; // which field holds the respondent's email
-    sendConfirmationEmail?: boolean;
+  notifications?: {
+    internalAlerts?: {
+      enabled: boolean;
+      userIds: string[];
+      emailTemplateId?: string;
+      smsTemplateId?: string;
+      pushTemplateId?: string;
+      inAppTemplateId?: string;
+    };
+    respondentAlerts?: {
+      enabled: boolean;
+      respondentEmailField?: string;
+      respondentPhoneField?: string;
+      emailTemplateId?: string;
+      smsTemplateId?: string;
+      pushTemplateId?: string;
+      inAppTemplateId?: string;
+    };
   };
   webhooks: string[]; // URLs or Webhook document IDs
   entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // only if 'bound'
@@ -2409,6 +2472,16 @@ export interface QRCode {
   design: QRDesign;
   tracking: QRTracking;
   status: QRStatus;
+  notifications?: {
+    internalAlerts?: {
+      enabled: boolean;
+      userIds: string[];
+      emailTemplateId?: string;
+      smsTemplateId?: string;
+      pushTemplateId?: string;
+      inAppTemplateId?: string;
+    };
+  };
   stats: {
     totalScans: number;
     uniqueScans?: number;
@@ -2431,6 +2504,19 @@ export interface QRCodeTemplate {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InAppNotification {
+  id: string;
+  userId: string;
+  organizationId: string;
+  workspaceId?: string;
+  title: string;
+  body: string;
+  category?: string;
+  isRead: boolean;
+  actionUrl?: string;
+  createdAt: string;
 }
 
 export interface QRScanEvent {

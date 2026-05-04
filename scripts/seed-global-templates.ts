@@ -55,7 +55,8 @@ interface TemplateDef {
   name: string;
   category: TemplateCategory;
   templateType: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'in_app' | 'push';
+  recipientType?: string;
   subject?: string;
   body: string;
   variableContext: VariableContext;
@@ -709,6 +710,98 @@ New status: {{new_status}}
     variableContext: 'entity',
     declaredVariables: ['entity_name', 'old_status', 'new_status'],
   },
+  
+  // ── Tasks ─────────────────────────────────────────────────────────────────
+  {
+    name: 'New Task Assigned (Email)', category: 'tasks', templateType: 'task_assigned', channel: 'email', recipientType: 'assignee',
+    subject: 'Action Required: You have been assigned a new task',
+    body: `Hi {{assignee_name}},\n\nA new task has been assigned to you by {{assigner_name}}.\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease review the task and update the status accordingly.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'assigner_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+  },
+  {
+    name: 'New Task Assigned (In-App)', category: 'tasks', templateType: 'task_assigned', channel: 'in_app', recipientType: 'assignee',
+    body: `You have a new task: {{task_name}} due on {{task_due_date}}. Assigned by {{assigner_name}}.`,
+    variableContext: 'entity', declaredVariables: ['task_name', 'task_due_date', 'assigner_name'],
+  },
+  {
+    name: 'New Task Assigned (Push)', category: 'tasks', templateType: 'task_assigned', channel: 'push', recipientType: 'assignee',
+    body: `New task assigned: {{task_name}}`,
+    variableContext: 'entity', declaredVariables: ['task_name'],
+  },
+  {
+    name: 'Task Reminder - 1 Day Before (Email)', category: 'tasks', templateType: 'task_reminder_1day', channel: 'email', recipientType: 'assignee',
+    subject: 'Reminder: Task "{{task_name}}" is due tomorrow',
+    body: `Hi {{assignee_name}},\n\nThis is a reminder that the following task is due tomorrow:\n\n📋 Task: {{task_name}}\n⏰ Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'task_deadline' },
+  },
+  {
+    name: 'Task Reminder - Overdue (Email)', category: 'tasks', templateType: 'task_overdue', channel: 'email', recipientType: 'assignee',
+    subject: 'Urgent: Task "{{task_name}}" is overdue',
+    body: `Hi {{assignee_name}},\n\nThe following task is now overdue:\n\n📋 Task: {{task_name}}\n⏰ Original Due Date: {{task_due_date}}\n🔗 View Details: {{task_link}}\n\nPlease address this as soon as possible.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'task_due_date', 'task_link', 'organization_name'],
+    reminderConfig: { triggerType: 'after_failure', offsetMinutes: 1440, offsetLabel: '1 day after', eventType: 'task_deadline' },
+  },
+  {
+    name: 'Task Completed (Email)', category: 'tasks', templateType: 'task_completed', channel: 'email', recipientType: 'internal_alert',
+    subject: 'Task Completed: {{task_name}}',
+    body: `Hi,\n\nThe following task has been marked as completed by {{assignee_name}}.\n\n📋 Task: {{task_name}}\n📅 Completed On: {{completion_date}}\n🔗 View Details: {{task_link}}\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'entity', declaredVariables: ['assignee_name', 'task_name', 'completion_date', 'task_link', 'organization_name'],
+    reminderConfig: { triggerType: 'after_completion', offsetMinutes: 0, offsetLabel: 'On completion', eventType: 'task_deadline' },
+  },
+
+  // ── Automations ───────────────────────────────────────────────────────────
+  {
+    name: 'Automation Failed (Email)', category: 'automations', templateType: 'automation_failed', channel: 'email', recipientType: 'internal_alert',
+    subject: 'Alert: Automation Workflow Failed',
+    body: `Hello,\n\nThe automation workflow "{{workflow_name}}" encountered an error and failed to execute successfully.\n\n🔴 Error Details: {{error_message}}\n⏰ Time of Failure: {{failure_time}}\n🔗 Review Workflow: {{workflow_link}}\n\nPlease investigate the issue promptly to ensure operations continue smoothly.\n\n{{organization_name}}`,
+    variableContext: 'common', declaredVariables: ['workflow_name', 'error_message', 'failure_time', 'workflow_link', 'organization_name'],
+  },
+  {
+    name: 'Automation Failed (Push)', category: 'automations', templateType: 'automation_failed', channel: 'push', recipientType: 'internal_alert',
+    body: `Workflow Failed: {{workflow_name}}`,
+    variableContext: 'common', declaredVariables: ['workflow_name'],
+  },
+  {
+    name: 'Automation Completed (In-App)', category: 'automations', templateType: 'automation_completed', channel: 'in_app', recipientType: 'internal_alert',
+    body: `Workflow "{{workflow_name}}" has successfully completed.`,
+    variableContext: 'common', declaredVariables: ['workflow_name'],
+  },
+
+  // ── QR Codes ──────────────────────────────────────────────────────────────
+  {
+    name: 'QR Code Scan Alert (Email)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'email', recipientType: 'internal_alert',
+    subject: 'Notification: New QR Code Scan',
+    body: `Hello,\n\nA new scan has been registered for your QR code.\n\n📱 QR Code: {{qr_name}}\n⏰ Scan Time: {{scan_time}}\n📍 Location: {{scan_location}}\n\n{{organization_name}}`,
+    variableContext: 'common', declaredVariables: ['qr_name', 'scan_time', 'scan_location', 'organization_name'],
+  },
+  {
+    name: 'QR Code Scan Alert (Push)', category: 'qr_codes', templateType: 'qr_scan_alert', channel: 'push', recipientType: 'internal_alert',
+    body: `New scan for {{qr_name}}`,
+    variableContext: 'common', declaredVariables: ['qr_name'],
+  },
+
+  // ── Forms & Surveys (Push/In-App Additions) ───────────────────────────────
+  {
+    name: 'Form Invitation (Push)', category: 'forms', templateType: 'form_invitation', channel: 'push', recipientType: 'respondent',
+    body: 'Action required: Please complete {{form_name}} by {{submission_deadline}}.',
+    variableContext: 'form', declaredVariables: ['form_name', 'submission_deadline'],
+  },
+  {
+    name: 'Form Submission Confirmation (In-App)', category: 'forms', templateType: 'submission_confirmation', channel: 'in_app', recipientType: 'respondent',
+    body: 'Thank you! We have received your submission for {{form_name}}.',
+    variableContext: 'form', declaredVariables: ['form_name'],
+  },
+  {
+    name: 'Survey Invitation (Push)', category: 'surveys', templateType: 'survey_invitation', channel: 'push', recipientType: 'respondent',
+    body: "We'd love your feedback on {{survey_title}}.",
+    variableContext: 'survey', declaredVariables: ['survey_title'],
+  },
+  {
+    name: 'Survey Completion (In-App)', category: 'surveys', templateType: 'survey_completion', channel: 'in_app', recipientType: 'respondent',
+    body: 'Thank you for completing {{survey_title}}!',
+    variableContext: 'survey', declaredVariables: ['survey_title'],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -778,6 +871,10 @@ async function seedTemplates(): Promise<void> {
         updatedAt: NOW,
         createdBy: SEED_ACTOR,
       };
+
+      if (def.recipientType) {
+        template.recipientType = def.recipientType as any;
+      }
 
       console.log(`     Template object created with ID: ${ref.id}`);
       console.log(`     Template data:`, JSON.stringify(template, null, 2));

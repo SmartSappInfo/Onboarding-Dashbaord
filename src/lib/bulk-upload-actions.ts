@@ -20,14 +20,20 @@ interface ResolutionContext {
     users: { id: string; name: string; email: string }[];
     packages: { id: string; [key: string]: any }[];
     modules: { id: string; [key: string]: any }[];
+    regions: { id: string; name: string }[];
+    districts: { id: string; name: string }[];
+    tags: { id: string; name: string }[];
 }
 
-async function getResolutionContext(): Promise<ResolutionContext> {
-    const [zonesSnap, usersSnap, packagesSnap, modulesSnap] = await Promise.all([
+async function getResolutionContext(workspaceId: string): Promise<ResolutionContext> {
+    const [zonesSnap, usersSnap, packagesSnap, modulesSnap, regionsSnap, districtsSnap, tagsSnap] = await Promise.all([
         adminDb.collection('zones').orderBy('name').get(),
         adminDb.collection('users').where('isAuthorized', '==', true).get(),
         adminDb.collection('subscription_packages').where('isActive', '==', true).get(),
         adminDb.collection('modules').orderBy('order').get(),
+        adminDb.collection('regions').get(),
+        adminDb.collection('districts').get(),
+        adminDb.collection('tags').where('workspaceId', '==', workspaceId).get()
     ]);
 
     return {
@@ -35,6 +41,9 @@ async function getResolutionContext(): Promise<ResolutionContext> {
         users: usersSnap.docs.map(d => ({ id: d.id, name: d.data().name, email: d.data().email })),
         packages: packagesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
         modules: modulesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        regions: regionsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
+        districts: districtsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
+        tags: tagsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
     };
 }
 
@@ -96,10 +105,15 @@ export async function ingestBatchAction(
     filename: string,
     workspaceId: string,
     organizationId: string,
-    entityType: string
+    entityType: string,
+    autoCreateTags: boolean = false,
+    defaultValues: Record<string, string> = {},
+    globalTagIds: string[] = [],
+    automationId?: string,
+    manualTagNames: string[] = []
 ): Promise<BatchResult> {
     // 1. Fetch resolution context ONCE for the entire batch
-    const context = await getResolutionContext();
+    const context = await getResolutionContext(workspaceId);
 
     // 2. Fetch workspace industry ONCE
     let workspaceIndustry = 'SaaS';
@@ -110,26 +124,7 @@ export async function ingestBatchAction(
         }
     } catch { /* Non-critical */ }
 
-    // 3. Fetch pipeline/stage ONCE
-    let defaultStage: any = { id: 'welcome', name: 'Welcome', order: 1, color: '#3B5FFF' };
-    let pipelineId = '';
-
-    const pipelinesSnap = await adminDb.collection('pipelines')
-        .where('workspaceId', '==', workspaceId)
-        .limit(1)
-        .get();
-
-    if (!pipelinesSnap.empty) {
-        pipelineId = pipelinesSnap.docs[0].id;
-        const stagesSnap = await adminDb.collection('onboardingStages')
-            .where('pipelineId', '==', pipelineId)
-            .orderBy('order')
-            .limit(1)
-            .get();
-        if (!stagesSnap.empty) {
-            defaultStage = { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage;
-        }
-    }
+    // 3. (Pipeline logic removed as per deal-centric migration)
 
     // 4. Build a set of existing entity names for duplicate detection
     const existingNames = new Set<string>();
@@ -163,10 +158,23 @@ export async function ingestBatchAction(
     for (let i = 0; i < rows.length; i++) {
         try {
             const row = rows[i];
-            const rawName = getValue(row, 'name');
+            const header = mapping['name'];
+            const isMapped = header && header !== 'none';
+            let rawName = isMapped ? row[header] : undefined;
 
             if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
-                throw new Error("Missing required 'Entity Name' field");
+                if (isMapped) {
+                    throw new Error("Entity Name is mapped but empty. Please provide a name in the corrections page.");
+                } else {
+                    const contactHeader = mapping['contact_0_name'];
+                    const contactName = (contactHeader && contactHeader !== 'none') ? row[contactHeader] : undefined;
+                    
+                    if (contactName && typeof contactName === 'string' && contactName.trim()) {
+                        rawName = contactName.trim();
+                    } else {
+                        throw new Error("Missing Entity Name, and no Contact Name was found to use as fallback.");
+                    }
+                }
             }
 
             const name = rawName.trim();
@@ -181,7 +189,8 @@ export async function ingestBatchAction(
             const result = await processRow(
                 row, mapping, name, entityType, context,
                 workspaceIndustry, workspaceId, organizationId, userId,
-                pipelineId, defaultStage, filename
+                filename, autoCreateTags,
+                defaultValues, globalTagIds, automationId, manualTagNames
             );
 
             batchNames.add(normalised);
@@ -223,23 +232,40 @@ async function processRow(
     workspaceId: string,
     organizationId: string,
     userId: string,
-    pipelineId: string,
-    defaultStage: any,
-    filename: string
+    filename: string,
+    autoCreateTags: boolean = false,
+    defaultValues: Record<string, string> = {},
+    globalTagIds: string[] = [],
+    automationId?: string,
+    manualTagNames: string[] = []
 ): Promise<{ entityName: string }> {
     const getValue = (key: string) => {
         const header = mapping[key];
-        if (!header || header === 'none') return undefined;
-        return row[header];
+        const rawVal = (!header || header === 'none') ? undefined : row[header];
+        if (rawVal === undefined || rawVal === null || rawVal === '') {
+            return defaultValues[key];
+        }
+        return rawVal;
     };
 
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const initials = getValue('initials') || name.split(' ').map(w => w[0]).join('').toUpperCase();
-    const location = getValue('location') || '';
+    const companyValue = getValue('company');
+    const sourceForInitials = companyValue ? String(companyValue).trim() : name;
+    const initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
     const lifecycleStatus = getValue('lifecycleStatus') || 'Onboarding';
 
-    // Fuzzy matching
+    // Fuzzy matching Locations
+    const selectedRegion = fuzzyMatch(context.regions, String(getValue('locationRegion') || ''));
+    const selectedDistrict = fuzzyMatch(context.districts, String(getValue('locationDistrict') || ''));
     const selectedZone = fuzzyMatch(context.zones, String(getValue('zone') || ''));
+    
+    const locationObj = {
+        region: selectedRegion ? { id: selectedRegion.id, name: selectedRegion.name } : null,
+        district: selectedDistrict ? { id: selectedDistrict.id, name: selectedDistrict.name } : null,
+        zone: selectedZone ? { id: selectedZone.id, name: selectedZone.name } : null,
+        locationString: String(getValue('locationString') || '')
+    };
+
     const selectedUser = fuzzyMatch(context.users, String(getValue('assignedTo') || ''));
     const selectedPackage = fuzzyMatch(context.packages as any, String(getValue('package') || '')) as any;
 
@@ -251,63 +277,106 @@ async function processRow(
         );
     }).filter(Boolean) as any[] : [];
 
-    // Build EntityContacts
+    // Build EntityContacts from dynamic contact slots (contact_0_*, contact_1_*, ...)
     const entityContacts: EntityContact[] = [];
-
-    if (entityType === 'person') {
-        const email = getValue('contactEmail') || '';
-        const phone = getValue('contactPhone') || '';
+    
+    // Detect how many contact slots are in the mapping
+    const contactSlotIndices = new Set<number>();
+    Object.keys(mapping).forEach(key => {
+        const match = key.match(/^contact_(\d+)_/);
+        if (match) contactSlotIndices.add(parseInt(match[1]));
+    });
+    
+    // Sort indices to ensure contact_0 is processed first (primary)
+    const sortedSlotIndices = Array.from(contactSlotIndices).sort((a, b) => a - b);
+    
+    for (const slotIdx of sortedSlotIndices) {
+        const contactName = getValue(`contact_${slotIdx}_name`);
+        const contactEmail = getValue(`contact_${slotIdx}_email`);
+        const contactPhone = getValue(`contact_${slotIdx}_phone`);
+        const contactRole = getValue(`contact_${slotIdx}_role`);
+        
+        // Skip completely empty slots (no data at all)
+        if (!contactName && !contactEmail && !contactPhone) continue;
+        
+        const isPrimary = slotIdx === 0;
+        const typeLabel = String(contactRole || (entityType === 'family' ? 'Guardian' : entityType === 'person' ? 'Primary' : 'Administrator'));
+        
+        const ec: any = {
+            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+            // Contacts without a name fall back to the entity name
+            name: String(contactName || name),
+            typeKey: normalizeContactType(typeLabel),
+            typeLabel,
+            isPrimary,
+            isSignatory: isPrimary,
+            order: slotIdx,
+            createdAt: new Date().toISOString(),
+        };
+        if (contactEmail) ec.email = String(contactEmail);
+        if (contactPhone) ec.phone = String(contactPhone);
+        entityContacts.push(ec as EntityContact);
+    }
+    
+    // If no contacts were mapped at all, create a minimal primary contact from the entity name
+    if (entityContacts.length === 0) {
         entityContacts.push({
             id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-            name,
-            typeKey: 'primary',
-            typeLabel: 'Primary',
+            name: name,
+            typeKey: entityType === 'family' ? 'guardian' : entityType === 'person' ? 'primary' : 'administrator',
+            typeLabel: entityType === 'family' ? 'Guardian' : entityType === 'person' ? 'Primary' : 'Administrator',
             isPrimary: true,
             isSignatory: true,
             order: 0,
             createdAt: new Date().toISOString(),
-            ...(email && { email: String(email) }),
-            ...(phone && { phone: String(phone) }),
         } as EntityContact);
-    } else if (entityType === 'family') {
-        const guardianName = getValue('contactName') || name;
-        const guardianEmail = getValue('contactEmail') || '';
-        const guardianPhone = getValue('contactPhone') || '';
-        entityContacts.push({
-            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-            name: String(guardianName),
-            typeKey: 'guardian',
-            typeLabel: 'Guardian',
-            isPrimary: true,
-            isSignatory: true,
-            order: 0,
-            createdAt: new Date().toISOString(),
-            ...(guardianEmail && { email: String(guardianEmail) }),
-            ...(guardianPhone && { phone: String(guardianPhone) }),
-        } as EntityContact);
-    } else {
-        const contactName = getValue('contactName');
-        const contactRole = getValue('contactRole');
-        const isSignatoryRaw = getValue('isSignatory');
-        const isSignatory = String(isSignatoryRaw).toLowerCase() === 'yes' || isSignatoryRaw === 'true';
+    }
 
-        if (contactName) {
-            const typeLabel = String(contactRole || 'Administrator');
-            const ec: any = {
-                id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-                name: String(contactName),
-                typeKey: normalizeContactType(typeLabel),
-                typeLabel,
-                isPrimary: true,
-                isSignatory,
-                order: 0,
-                createdAt: new Date().toISOString(),
+    // Tags processing
+    const rawTagsStr = getValue('workspaceTags');
+    const tagIds: string[] = [...globalTagIds];
+    if (rawTagsStr) {
+        const tagNames = String(rawTagsStr).split(',').map(t => t.trim()).filter(Boolean);
+        for (const tagName of tagNames) {
+            let matchedTag = fuzzyMatch(context.tags, tagName);
+            if (matchedTag) {
+                if (!tagIds.includes(matchedTag.id)) tagIds.push(matchedTag.id);
+            } else if (autoCreateTags) {
+                const newTagRef = adminDb.collection('tags').doc();
+                const newTagData = {
+                    name: tagName,
+                    slug: normaliseName(tagName).replace(/\s+/g, '-'),
+                    workspaceId,
+                    organizationId,
+                    color: '#94a3b8',
+                    createdBy: userId,
+                    createdAt: new Date().toISOString()
+                };
+                await newTagRef.set(newTagData);
+                tagIds.push(newTagRef.id);
+                context.tags.push({ id: newTagRef.id, name: tagName });
+            }
+        }
+    }
+
+    for (const tagName of manualTagNames) {
+        let matchedTag = fuzzyMatch(context.tags, tagName);
+        if (matchedTag) {
+            if (!tagIds.includes(matchedTag.id)) tagIds.push(matchedTag.id);
+        } else {
+            const newTagRef = adminDb.collection('tags').doc();
+            const newTagData = {
+                name: tagName,
+                slug: normaliseName(tagName).replace(/\s+/g, '-'),
+                workspaceId,
+                organizationId,
+                color: '#94a3b8',
+                createdBy: userId,
+                createdAt: new Date().toISOString()
             };
-            const email = getValue('contactEmail');
-            const phone = getValue('contactPhone');
-            if (email) ec.email = String(email);
-            if (phone) ec.phone = String(phone);
-            entityContacts.push(ec as EntityContact);
+            await newTagRef.set(newTagData);
+            tagIds.push(newTagRef.id);
+            context.tags.push({ id: newTagRef.id, name: tagName });
         }
     }
 
@@ -321,6 +390,7 @@ async function processRow(
         organizationId,
         entityType,
         globalTags: [],
+        location: locationObj,
         status: 'active',
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -374,7 +444,7 @@ async function processRow(
     if (Object.keys(financeData).length > 0) {
         entityDoc.financeData = { 
             currency: getValue('currency') || 'GHS',
-            billingAddress: getValue('billingAddress') || entityDoc.location || '',
+            billingAddress: getValue('billingAddress') || '',
             subscriptionRate: Number(getValue('subscriptionRate')) || selectedPackage?.ratePerStudent || 0,
             ...financeData 
         };
@@ -413,6 +483,14 @@ async function processRow(
         entityDoc.interests = selectedModules.map((m: any) => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color }));
     }
 
+    // ── Narrative Fields (currentNeeds, currentChallenges, interests text) ────
+    const currentNeeds = getValue('currentNeeds');
+    if (currentNeeds) entityDoc.currentNeeds = String(currentNeeds);
+    const currentChallenges = getValue('currentChallenges');
+    if (currentChallenges) entityDoc.currentChallenges = String(currentChallenges);
+    const interestsText = getValue('interests');
+    if (interestsText) entityDoc.interestsText = String(interestsText);
+
     // Save entity
     await adminDb.collection('entities').doc(entityId).set(entityDoc);
 
@@ -425,12 +503,9 @@ async function processRow(
         workspaceId,
         entityId,
         entityType,
-        pipelineId,
-        stageId: defaultStage.id,
-        currentStageName: defaultStage.name,
         status: 'active',
         assignedTo: selectedUser?.id || null,
-        workspaceTags: [],
+        workspaceTags: tagIds,
         addedAt: timestamp,
         updatedAt: timestamp,
         displayName: name,
@@ -439,8 +514,27 @@ async function processRow(
         primaryPhone: primaryContact?.phone || '',
         entityContacts,
         interests: entityDoc.interests || [],
-        customData: entityDoc.customData || {}
+        customData: entityDoc.customData || {},
+        ...(entityDoc.currentNeeds && { currentNeeds: entityDoc.currentNeeds }),
+        ...(entityDoc.currentChallenges && { currentChallenges: entityDoc.currentChallenges }),
+        ...(entityDoc.interestsText && { interestsText: entityDoc.interestsText }),
     });
+
+    const { triggerAutomationProtocols, runAutomationById } = await import('./automation-processor');
+    const automationPayload = {
+        entityId,
+        workspaceId,
+        organizationId,
+        entityName: name,
+        entityType,
+        assignedTo: selectedUser ? { userId: selectedUser.id, name: selectedUser.name } : null
+    };
+
+    await triggerAutomationProtocols('ENTITY_CREATED', automationPayload);
+
+    if (automationId) {
+        await runAutomationById(automationId, automationPayload);
+    }
 
     return { entityName: name };
 }

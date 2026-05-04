@@ -24,25 +24,30 @@ export async function getModel(params: {
   const { organizationId, provider, modelId } = params;
 
   let apiKey: string | undefined;
+  let aiKeyMode: 'platform' | 'custom' = 'platform';
 
-  // 1. Fetch Organization Key if orgId is provided
+  // 1. Fetch Organization Key and Mode if orgId is provided
   if (organizationId) {
     try {
       const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
       if (orgDoc.exists) {
         const data = orgDoc.data();
-        // For safety during testing: if an environment variable exists, force-override the database value!
-        if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY || data?.geminiApiKey;
-        else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY || data?.openaiApiKey;
-        else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY || data?.openRouterApiKey;
+        aiKeyMode = data?.aiKeyMode || 'platform';
+        
+        if (aiKeyMode === 'custom') {
+          // Strictly use organization keys
+          if (provider === 'googleai') apiKey = data?.geminiApiKey;
+          else if (provider === 'openai') apiKey = data?.openaiApiKey;
+          else if (provider === 'openrouter') apiKey = data?.openRouterApiKey;
+        }
       }
     } catch (error) {
       console.error('Error fetching organization AI key:', error);
     }
   }
 
-  // 2. Fallback explicitly to environment variables if still totally missing
-  if (!apiKey) {
+  // 2. If using platform defaults, strictly use environment variables
+  if (aiKeyMode === 'platform') {
     if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY;
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
     else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY;

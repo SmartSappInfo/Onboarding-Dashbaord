@@ -16,7 +16,7 @@ import type { MessageTemplate, TemplateCategory } from '@/lib/types';
 
 // ── Category display config ────────────────────────────────────────────────
 
-const CATEGORIES: TemplateCategory[] = ['meetings', 'forms', 'surveys', 'agreements', 'campaigns', 'reminders', 'general'];
+const CATEGORIES: TemplateCategory[] = ['meetings', 'forms', 'surveys', 'agreements', 'campaigns', 'reminders', 'tasks', 'automations', 'qr_codes', 'general'];
 
 const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   meetings:   'Meetings',
@@ -25,6 +25,9 @@ const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   agreements: 'Agreements',
   campaigns:  'Campaigns',
   reminders:  'Reminders',
+  tasks:      'Tasks',
+  automations:'Automations',
+  qr_codes:   'QR Codes',
   general:    'General',
 };
 
@@ -37,9 +40,10 @@ export default function MessagingTemplateListClient() {
   const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
-  const [channelFilter, setChannelFilter] = React.useState<'all' | 'email' | 'sms'>('all');
+  const [channelFilter, setChannelFilter] = React.useState<string>('all');
   const [statusFilter, setStatusFilter] = React.useState<'all' | MessageTemplate['status']>('all');
   const [categoryFilter, setCategoryFilter] = React.useState<'all' | TemplateCategory>('all');
+  const [recipientFilter, setRecipientFilter] = React.useState<string>('all');
 
   React.useEffect(() => { load(); }, []);
 
@@ -60,9 +64,10 @@ export default function MessagingTemplateListClient() {
       if (channelFilter !== 'all' && t.channel !== channelFilter) return false;
       if (statusFilter !== 'all' && t.status !== statusFilter) return false;
       if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+      if (recipientFilter !== 'all' && t.recipientType !== recipientFilter) return false;
       return true;
     });
-  }, [templates, search, channelFilter, statusFilter, categoryFilter]);
+  }, [templates, search, channelFilter, statusFilter, categoryFilter, recipientFilter]);
 
   // Group by category
   const grouped = React.useMemo(() => {
@@ -132,14 +137,29 @@ export default function MessagingTemplateListClient() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={channelFilter} onValueChange={(v) => setChannelFilter(v as any)}>
+        <Select value={channelFilter} onValueChange={setChannelFilter}>
           <SelectTrigger className="w-36 h-10 bg-muted/50 border-border text-foreground rounded-xl">
             <SelectValue placeholder="Channel" />
           </SelectTrigger>
           <SelectContent className="bg-muted border-border">
-            <SelectItem value="all">Email / SMS</SelectItem>
+            <SelectItem value="all">All Channels</SelectItem>
             <SelectItem value="email">Email</SelectItem>
             <SelectItem value="sms">SMS</SelectItem>
+            <SelectItem value="in_app">In-App</SelectItem>
+            <SelectItem value="push">Push</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={recipientFilter} onValueChange={setRecipientFilter}>
+          <SelectTrigger className="w-40 h-10 bg-muted/50 border-border text-foreground rounded-xl">
+            <SelectValue placeholder="Recipient" />
+          </SelectTrigger>
+          <SelectContent className="bg-muted border-border">
+            <SelectItem value="all">All Recipients</SelectItem>
+            <SelectItem value="respondent">Respondent</SelectItem>
+            <SelectItem value="internal_alert">Internal Alert</SelectItem>
+            <SelectItem value="assignee">Assignee</SelectItem>
+            <SelectItem value="entity">Entity</SelectItem>
+            <SelectItem value="external_alert">External Alert</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>

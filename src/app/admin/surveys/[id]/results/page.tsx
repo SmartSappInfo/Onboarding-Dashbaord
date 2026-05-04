@@ -178,11 +178,11 @@ export default function SurveyResultsPage() {
                                 Export CSV
                             </Button>
                         ) : (
- <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 font-semibold text-[10px] ">
+                            <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
                                 {isGeneratingSummary ? (
- <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
- <Sparkles className="mr-2 h-4 w-4" />
+                                    <Sparkles className="h-4 w-4" />
                                 )}
                                 {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
                             </RainbowButton>

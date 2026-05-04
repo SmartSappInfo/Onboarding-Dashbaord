@@ -131,20 +131,20 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                 <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
                         size="lg"
- className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl h-14 bg-card/5 hover:bg-card/10 border border-white/10 transition-all group"
+                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl h-14 bg-card/5 hover:bg-card/10 border border-border/50 transition-all group"
                     >
- <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-card text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
+                        <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-card text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
                             {activeOrganization?.logoUrl ? (
- <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
+                                <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
                             ) : (
- <Building className="size-5 text-primary" />
+                                <Building className="size-5 text-primary" />
                             )}
                         </div>
- <div className="grid flex-1 text-left text-sm leading-tight ml-1 group-data-[collapsible=icon]:hidden">
- <span className="truncate font-semibold tracking-tighter text-white text-base">
+                        <div className="grid flex-1 text-left text-sm leading-tight ml-1 group-data-[collapsible=icon]:hidden">
+                            <span className="truncate font-semibold tracking-tighter text-foreground text-base">
                                 {activeOrganization?.name || 'Organization'}
                             </span>
- <span className="truncate text-[10px] font-bold text-white/40 leading-none mt-0.5">
+                            <span className="truncate text-[10px] font-bold text-muted-foreground leading-none mt-0.5">
                                 {activeWorkspace?.name || 'No Workspace selected'}
                             </span>
                         </div>

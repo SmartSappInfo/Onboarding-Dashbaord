@@ -56,6 +56,7 @@ interface QuickTemplateDialogProps {
     onCreated: (templateId: string) => void;
     category: MessageTemplate['category'];
     channel: MessageTemplate['channel'];
+    recipientType?: MessageTemplate['recipientType'];
     fixedSourceId?: string; // If provided, locks the dialog to a specific survey
     templateId?: string; // If provided, loads existing template for editing
 }
@@ -66,6 +67,7 @@ export default function QuickTemplateDialog({
     onCreated, 
     category, 
     channel,
+    recipientType,
     fixedSourceId,
     templateId
 }: QuickTemplateDialogProps) {
@@ -255,6 +257,10 @@ export default function QuickTemplateDialog({
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
+
+        if (recipientType) {
+            templateData.recipientType = recipientType;
+        }
 
         if (channel === 'email') {
             templateData.subject = subject.trim();

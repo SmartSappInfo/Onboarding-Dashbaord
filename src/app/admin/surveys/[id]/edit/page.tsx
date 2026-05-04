@@ -127,8 +127,8 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = [
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Behavior', icon: Zap },
-        { n: 4, label: 'Results', icon: BarChart3 },
+        { n: 3, label: 'Results', icon: BarChart3 },
+        { n: 4, label: 'Automations', icon: Zap },
         { n: 5, label: 'Publish', icon: Share2 }
     ];
 
@@ -335,8 +335,8 @@ export default function EditSurveyPage() {
         let fieldsToValidate: any[] = [];
         if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
         if (step === 2) fieldsToValidate = ['elements'];
-        if (step === 3) fieldsToValidate = ['createEntity', 'entityMapping', 'assignmentEnabled', 'assignedUsers', 'autoTags', 'autoAutomations'];
-        if (step === 4) fieldsToValidate = ['resultRules', 'resultPages'];
+        if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
+        if (step === 4) fieldsToValidate = ['createEntity', 'entityMapping', 'assignmentEnabled', 'assignedUsers', 'autoTags', 'autoAutomations'];
         
         const isStepValid = await trigger(fieldsToValidate);
         if (!isStepValid) {
@@ -374,11 +374,11 @@ export default function EditSurveyPage() {
                         <AnimatePresence mode="wait">
                             {step === 1 && (
  <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+ <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
  <div className={cn("space-y-8")}>
                                             <Step1Details institutions={institutions || []} />
                                         </div>
- <div className={cn("sticky top-0 h-[calc(100vh-250px)]")}>
+ <div className={cn("xl:sticky xl:top-0 h-[700px] xl:h-[calc(100vh-250px)]")}>
                                             <LivePreviewPane />
                                         </div>
                                     </div>
@@ -393,13 +393,13 @@ export default function EditSurveyPage() {
 
                             { step === 3 && (
                                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <SubmissionBehaviorStep />
+                                    <ResultsStep />
                                 </motion.div>
                             )}
 
                             {step === 4 && (
                                 <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <ResultsStep />
+                                    <SubmissionBehaviorStep />
                                 </motion.div>
                             )}
 

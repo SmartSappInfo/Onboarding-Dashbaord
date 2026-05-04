@@ -45,8 +45,8 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
 
     const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
 
-    const emailTemplates = templates?.filter(t => t.channel === 'email');
-    const smsTemplates = templates?.filter(t => t.channel === 'sms');
+    const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive && t.category === category && (t.recipientType === 'external_alert' || t.recipientType === 'entity'));
+    const smsTemplates = templates?.filter(t => t.channel === 'sms' && t.isActive && t.category === category && (t.recipientType === 'external_alert' || t.recipientType === 'entity'));
 
     const contactRoleOptions = CONTACT_ROLE_TYPES.map(type => ({ label: type, value: type }));
 
@@ -266,6 +266,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                     onOpenChange={(o) => !o && setQuickCreateState(null)}
                     channel={quickCreateState.channel}
                     category={category}
+                    recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
                     templateId={quickCreateState.templateId}
                     onCreated={(id) => {
                         if (quickCreateState.channel === 'email') {

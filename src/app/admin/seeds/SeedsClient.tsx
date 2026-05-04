@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { migrateContractsToEntities, rollbackContractsMigration } from '@/lib/entity-migrations';
 import { seedCountriesAction } from '@/lib/seed-countries';
 import { seedGhanaLocationsAction } from '@/lib/seed-ghana';
-import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin } from 'lucide-react';
+import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin, Workflow } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
@@ -37,6 +37,7 @@ import {
   rollbackWorkspaceIndustryMigration,
   type WorkspaceMigrationResult,
 } from '@/app/actions/workspace-industry-migration-actions';
+import { executeDealMigration } from '@/app/actions/deal-migration-actions';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -76,6 +77,10 @@ export default function SeedsClient() {
   const [workspaceRestoreStatus, setWorkspaceRestoreStatus] = useState<SeedingState>('idle');
   const [workspaceRollbackStatus, setWorkspaceRollbackStatus] = useState<SeedingState>('idle');
   const [workspaceMigrationStats, setWorkspaceMigrationStats] = useState<WorkspaceMigrationResult | null>(null);
+
+  // Deal Migration States
+  const [dealMigrationStatus, setDealMigrationStatus] = useState<SeedingState>('idle');
+  const [dealMigrationMessage, setDealMigrationMessage] = useState<string>('');
 
 
   const handleMigration = async () => {
@@ -143,6 +148,26 @@ export default function SeedsClient() {
       toast({ variant: 'destructive', title: 'Rollback Failed', description: error.message });
     } finally {
       setTimeout(() => setRollbackStatus('idle'), 2500);
+    }
+  };
+
+  const handleDealMigration = async () => {
+    setDealMigrationStatus('seeding');
+    try {
+      const orgId = activeOrganizationId || 'smartsapp-hq';
+      const result = await executeDealMigration(activeWorkspaceId!, orgId);
+      
+      if (result.success) {
+        setDealMigrationStatus('success');
+        setDealMigrationMessage(`Migrated ${result.migratedCount} deals`);
+        toast({ title: 'Deals Migrated', description: `Successfully decoupled ${result.migratedCount} deals from entities.` });
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setDealMigrationStatus('error');
+      setDealMigrationMessage(e.message);
+      toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
     }
   };
 
@@ -463,16 +488,27 @@ export default function SeedsClient() {
   };
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-5xl mx-auto space-y-12 pb-32">
+        <div className="h-full overflow-y-auto w-full">
+            <div className="space-y-12 pb-32 w-full">
             
             {/* Header */}
             <div className="flex flex-col items-start text-left">
                 <Badge variant="outline" className="mb-4 bg-primary/5 text-primary border-primary/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1 ring-1 ring-primary/20">System Governance</Badge>
-                <h1 className="text-4xl font-black tracking-tighter mb-2 text-foreground">Infrastructure Seeding</h1>
-                <p className="text-muted-foreground font-medium text-lg mt-1">
+                <h1 className="text-3xl font-bold mb-2 text-foreground">Infrastructure Seeding</h1>
+                <p className="text-muted-foreground text-sm mt-1">
                     Execute core schema enrichments and cross-workspace mappings
                 </p>
+            </div>
+
+            {/* FER Protocol Banner */}
+            <div className="bg-blue-50/50 border border-blue-200 p-4 rounded-xl flex items-start gap-3 mt-6">
+                <ShieldAlert className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                    <h4 className="text-sm font-bold text-blue-900">FER Protocol Active (Fetch, Enrich, Restore)</h4>
+                    <p className="text-xs text-blue-800/80 mt-1 leading-relaxed">
+                        All major migrations on this page utilize the transactional FER protocol to guarantee data integrity. Data is **Fetched**, safely **Enriched** in-memory, and **Restored** (committed) via atomic write-batches. Full **Rollback** capability is maintained for all structural migrations.
+                    </p>
+                </div>
             </div>
 
             
@@ -499,6 +535,15 @@ export default function SeedsClient() {
                     status={ghanaSeedStatus}
                     icon={MapPin}
                     syncLabel={ghanaSeedStatus === 'success' ? (ghanaSeedMessage || 'Done') : 'Seed Ghana Locations'}
+                />
+
+                <SimpleMigrationCard
+                    title="💼 Decouple Entity Deals"
+                    description="Execute the transactional migration of legacy 1:1 entity-pipeline relationships into the new 1:Many Deals collection. This removes stage and pipeline IDs from entities and auto-generates linked deals."
+                    onSync={handleDealMigration}
+                    status={dealMigrationStatus}
+                    icon={Workflow}
+                    syncLabel={dealMigrationStatus === 'success' ? (dealMigrationMessage || 'Done') : 'Execute Deal Migration'}
                 />
             </section>
 

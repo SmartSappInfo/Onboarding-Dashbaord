@@ -62,7 +62,15 @@ export function StagedFileItem({
         <p className="text-sm font-semibold truncate text-foreground">{fileState.file.name}</p>
         
         {fileState.status === 'pending' && (
-            <p className="text-xs font-medium text-muted-foreground">{(fileState.file.size / 1024).toFixed(2)} KB</p>
+            <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                <span>{(fileState.file.size / 1024).toFixed(2)} KB</span>
+                {fileState.dimensions && (
+                    <>
+                        <span>•</span>
+                        <span>{fileState.dimensions.width}×{fileState.dimensions.height}</span>
+                    </>
+                )}
+            </p>
         )}
         
         {fileState.status === 'processing' && (

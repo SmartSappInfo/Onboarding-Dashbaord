@@ -9,14 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode } from 'lucide-react';
+import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode, Eye, RotateCcw } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import WebhookManager from './webhook-manager';
-import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
-import ExternalNotificationConfig from './external-notification-config';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
@@ -122,7 +119,7 @@ export default function Step4Publish() {
                         <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
                     </div>
                 </CardHeader>
- <CardContent className="p-6 space-y-10 bg-background text-left">
+ <CardContent className="p-6 space-y-10 text-left">
  <div className="space-y-4">
  <Label className="text-sm font-semibold flex items-center gap-2">
  <Layout className="h-3 w-3" /> Shared Context (Workspaces)
@@ -174,7 +171,16 @@ export default function Step4Publish() {
  <Label className="text-sm font-semibold">Portal URL Backhalf</Label>
  <div className="flex h-11 border border-border rounded-xl overflow-hidden bg-muted/30 transition-all">
  <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">/surveys/</div>
- <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent" />
+ <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent flex-1" />
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-full w-11 rounded-none border-l hover:bg-primary/5 hover:text-primary shrink-0"
+                                            onClick={() => copyToClipboard(getFullUrl())}
+                                        >
+                                            <Copy className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -202,31 +208,94 @@ export default function Step4Publish() {
                                 control={control}
                                 render={({ field }) => (
                                     <Switch 
-                                        checked={field.value} 
+                                        checked={field.value}
                                         onCheckedChange={field.onChange} 
                                     />
                                 )}
                             />
                         </div>
                     </div>
-
- <div className="h-px bg-border/50" />
-
-                    <WebhookManager />
                 </CardContent>
             </Card>
 
             <div className="space-y-8">
-                {assignmentEnabled && (
-                    <Card className="rounded-2xl border border-border bg-card overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                        <CardHeader className="bg-blue-500/5 border-b py-5 px-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
-                                    <Link2 className="h-5 w-5" />
-                                </div>
-                                <CardTitle className="text-sm font-semibold tracking-tight">Assigned Attribution Links</CardTitle>
+                {/* Cross-Visibility Toggle */}
+                <div className={cn(
+                    "rounded-2xl border-2 transition-all duration-300",
+                    watch('allowCrossVisibility') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
+                )}>
+                    <div className="flex items-center justify-between p-5">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className={cn("p-2 rounded-lg transition-colors", watch('allowCrossVisibility') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                <Eye className="h-4 w-4" />
                             </div>
-                        </CardHeader>
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-semibold tracking-tight">Cross-Visibility</Label>
+                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Allow assigned users to view all team submissions, not just their own</p>
+                            </div>
+                        </div>
+                        <Controller
+                            name="allowCrossVisibility"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch 
+                                    checked={field.value} 
+                                    onCheckedChange={field.onChange} 
+                                />
+                            )}
+                        />
+                    </div>
+                </div>
+
+                {/* Resubmission Toggle */}
+                <div className={cn(
+                    "rounded-2xl border-2 transition-all duration-300",
+                    watch('allowResubmission') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
+                )}>
+                    <div className="flex items-center justify-between p-5">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className={cn("p-2 rounded-lg transition-colors", watch('allowResubmission') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                <RotateCcw className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-semibold tracking-tight">Allow Resubmission</Label>
+                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Permit respondents to submit multiple entries to this survey</p>
+                            </div>
+                        </div>
+                        <Controller
+                            name="allowResubmission"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch 
+                                    checked={!!field.value} 
+                                    onCheckedChange={field.onChange} 
+                                />
+                            )}
+                        />
+                    </div>
+                </div>
+
+                <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <CardHeader className="bg-muted/10 border-b py-5 px-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
+                                <Link2 className="h-5 w-5" />
+                            </div>
+                            <CardTitle className="text-sm font-semibold tracking-tight">Team Assignment & Attribution Links</CardTitle>
+                        </div>
+                        <Controller
+                            name="assignmentEnabled"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch 
+                                    checked={!!field.value} 
+                                    onCheckedChange={field.onChange} 
+                                    className="scale-110"
+                                />
+                            )}
+                        />
+                    </CardHeader>
+                    {assignmentEnabled && (
                         <CardContent className="p-6 space-y-6 max-h-[500px] overflow-y-auto no-scrollbar">
                             <div className="space-y-2">
                                 <Label className="text-sm font-semibold">Assign Team Members</Label>
@@ -290,10 +359,8 @@ export default function Step4Publish() {
                                 </div>
                             )}
                         </CardContent>
-                    </Card>
-                )}
-                <InternalNotificationConfig prefix="adminAlert" category="surveys" />
-                <ExternalNotificationConfig prefix="externalAlert" category="surveys" />
+                    )}
+                </Card>
             </div>
             </div>
 

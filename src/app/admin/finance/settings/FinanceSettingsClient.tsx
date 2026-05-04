@@ -148,15 +148,14 @@ export default function FinanceSettingsClient() {
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-5xl mx-auto space-y-8 pb-32">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="h-full overflow-y-auto w-full">
+            <div className="space-y-8 pb-32 w-full">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground ">
-                            <Settings2 className="h-10 w-10 text-primary" />
+                        <h1 className="text-3xl font-bold text-foreground">
                             Billing Protocols
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">
+                        <p className="text-muted-foreground text-sm mt-1">
                             Define financial templates for institutional remittance
                         </p>
                     </div>

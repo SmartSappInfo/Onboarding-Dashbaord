@@ -91,7 +91,7 @@ const RichTextEditor = ({
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             className={cn(
-                "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
+                "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap [&_*]:!text-inherit",
                 textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
                 className
             )}
@@ -417,7 +417,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
- className="bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+ className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -444,7 +444,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
- className="w-24 bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+ className="w-24 bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -498,7 +498,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         {...field} 
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
- className="bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+ className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -525,7 +525,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
- className="w-24 bg-muted/30 h-11 rounded-xl border border-transparent focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
+ className="w-24 bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -1028,7 +1028,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                 "transition-all duration-500 ease-in-out origin-top",
                 isCollapsed ? "h-0 opacity-0 pointer-events-none scale-95" : "h-auto opacity-100 scale-100"
             )}>
-                <CardContent className="p-6 sm:p-10 space-y-8">
+                <CardContent className="p-8 sm:p-12 space-y-8">
                     {element.type !== 'logic' ? (
                         <div className="space-y-10">
                             {isElementQuestion && (
@@ -1222,7 +1222,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             placeholder="Display Heading" 
                                             textAlign={element.style?.textAlign}
                                             className={cn(
-                                                "font-bold leading-tight tracking-tight text-slate-900",
+                                                "font-bold leading-tight tracking-tight text-foreground",
                                                 element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
@@ -1251,17 +1251,15 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                 </CardContent>
             </div>
         </Card>
-        {!isCollapsed && (
-            <div
-                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-3 bg-background border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-125 shadow-2xl"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    requestAddElement(index);
-                }}
-            >
-                <PlusCircle className="h-8 w-8 text-primary shadow-primary/20" />
-            </div>
-        )}
+        <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-1.5 bg-background border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+            onClick={(e) => {
+                e.stopPropagation();
+                requestAddElement(index);
+            }}
+        >
+            <PlusCircle className="h-5 w-5 text-primary" />
+        </div>
     </div>
   );
 }
@@ -1305,7 +1303,7 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {fields.map((field, index) => (
                         <SortableSurveyElement 
                             key={field.id} 
@@ -1323,6 +1321,17 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                 </div>
             </SortableContext>
         </DndContext>
+        <div className="mt-8 flex justify-center">
+            <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary gap-2 h-12 px-8"
+                onClick={() => requestAddElement(fields.length - 1)}
+            >
+                <PlusCircle className="h-4 w-4" />
+                <span className="font-bold">Add New Block</span>
+            </Button>
+        </div>
         <div className="mt-8">
             {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
                 <FormMessage className="text-sm font-bold bg-destructive/10 p-4 rounded-xl flex items-center gap-3 border border-destructive/20 shadow-sm">

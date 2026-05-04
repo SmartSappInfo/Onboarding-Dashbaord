@@ -26,6 +26,7 @@ import { getDoc, doc } from 'firebase/firestore';
 import AiModelSelector from '@/components/ai/AiModelSelector';
 import type { UserProfile } from '@/lib/types';
 import { createPortal } from 'react-dom';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 import { onSnapshot } from 'firebase/firestore';
 
 interface Message {
@@ -527,21 +528,17 @@ function AiChatPanel() {
             </AnimatePresence>
 
             {/* Fixed Floating Trigger Button */}
-            <motion.button
-                type="button"
-                onClick={isOpen ? () => { setIsOpen(false); setIsFullScreen(false); } : handleOpen}
-                whileHover={{ scale: 1.07 }}
-                whileTap={{ scale: 0.95 }}
- className={cn(
-                    "fixed bottom-6 right-6 z-[9999] flex items-center gap-2.5 px-4",
-                    "h-14 rounded-full shadow-2xl shadow-primary/30",
-                    "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground",
-                    "font-semibold text-xs uppercase ",
-                    "border border-primary/30",
-                    "transition-shadow hover:shadow-primary/50 hover:shadow-2xl"
-                )}
-                aria-label="Toggle AI Design Partner"
+            <RainbowButton
+                asChild
+                className="fixed bottom-6 right-6 z-[9999] flex items-center gap-2.5 px-6 h-14 rounded-full shadow-2xl transition-all active:scale-95 text-white font-semibold text-xs uppercase"
             >
+                <motion.button
+                    type="button"
+                    onClick={isOpen ? () => { setIsOpen(false); setIsFullScreen(false); } : handleOpen}
+                    whileHover={{ scale: 1.07 }}
+                    whileTap={{ scale: 0.95 }}
+                    aria-label="Toggle AI Design Partner"
+                >
                 <AnimatePresence mode="wait">
                     {isOpen ? (
                         <motion.span key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
@@ -566,6 +563,7 @@ function AiChatPanel() {
                     </motion.span>
                 )}
             </motion.button>
+            </RainbowButton>
         </>
     );
 }

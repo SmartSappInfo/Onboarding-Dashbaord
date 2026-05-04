@@ -18,30 +18,21 @@ export function WorkspaceDestinationSelector({
   isSuperAdmin
 }: WorkspaceDestinationSelectorProps) {
   return (
-    <div className="space-y-3 p-5 bg-card/50 rounded-2xl border border-border shadow-sm text-left">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="p-1.5 bg-primary/10 rounded-md">
-            <Layout className="h-4 w-4 text-primary" />
-        </div>
-        <h3 className="text-sm font-bold text-foreground">
-            Targeted Hubs
-            {isSuperAdmin && <span className="text-muted-foreground font-medium ml-2 text-xs">(Optional for Admins)</span>}
-        </h3>
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Layout className="h-4 w-4 text-primary" />
+        <span className="text-sm font-bold text-foreground">
+            Target Workspaces
+        </span>
       </div>
       
       <MultiSelect 
         options={options}
         value={selectedWorkspaces}
         onChange={onChange}
-        placeholder={isSuperAdmin ? "Global Asset (No hubs selected)" : "Select destination hubs..."}
-        className="bg-background border-border rounded-xl shadow-sm h-11"
+        placeholder={isSuperAdmin ? "Global Asset" : "Select destinations..."}
+        className="bg-background border-border rounded-xl shadow-sm h-9 min-w-[250px] text-xs"
       />
-      
-      <p className="text-[11px] font-medium text-muted-foreground mt-1 px-1">
-        {selectedWorkspaces.length > 0 
-            ? "Asset will be securely shared across all selected hubs." 
-            : "Asset will be stored globally and accessible platform-wide."}
-      </p>
     </div>
   );
 }

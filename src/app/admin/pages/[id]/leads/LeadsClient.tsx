@@ -61,7 +61,7 @@ export default function LeadsClient({ page, initialLeads }: LeadsClientProps) {
     });
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-6 w-full">
             {/* Header */}
             <div className="flex flex-col gap-4">
                 <Button asChild variant="ghost" className="w-fit -ml-4 text-muted-foreground">

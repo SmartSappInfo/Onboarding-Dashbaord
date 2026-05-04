@@ -126,3 +126,79 @@ export async function toggleAutomationStatusAction(id: string, active: boolean) 
         return { success: false, error: e.message };
     }
 }
+
+/**
+ * Seeds a default automation for a workspace that auto-creates a Deal when an Entity is created.
+ */
+export async function seedDefaultAutomationsAction(workspaceId: string, organizationId: string, userId: string) {
+    try {
+        const timestamp = new Date().toISOString();
+        
+        // Check if one already exists
+        const existingSnap = await adminDb.collection('automations')
+            .where('workspaceIds', 'array-contains', workspaceId)
+            .where('trigger', '==', 'ENTITY_CREATED')
+            .get();
+            
+        const exists = existingSnap.docs.some(doc => {
+            const data = doc.data();
+            return data.nodes?.some((n: any) => n.data?.actionType === 'CREATE_DEAL');
+        });
+        
+        if (exists) {
+            return { success: true, message: 'Default Deal Automation already exists.' };
+        }
+
+        const newAutomation = {
+            name: 'Auto-Create Initial Deal',
+            description: 'Automatically creates a deal in the default pipeline when a new entity is created.',
+            trigger: 'ENTITY_CREATED',
+            workspaceIds: [workspaceId],
+            organizationId,
+            isActive: true,
+            createdBy: userId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            nodes: [
+                {
+                    id: 'node_trigger',
+                    type: 'triggerNode',
+                    position: { x: 250, y: 100 },
+                    data: {
+                        label: 'Entity Created',
+                        icon: 'Zap',
+                        triggerType: 'ENTITY_CREATED'
+                    }
+                },
+                {
+                    id: 'node_action_deal',
+                    type: 'actionNode',
+                    position: { x: 250, y: 300 },
+                    data: {
+                        label: 'Create Initial Deal',
+                        actionType: 'CREATE_DEAL',
+                        config: {
+                            assignmentStrategy: 'direct'
+                        }
+                    }
+                }
+            ],
+            edges: [
+                {
+                    id: 'edge_trigger_to_deal',
+                    source: 'node_trigger',
+                    target: 'node_action_deal',
+                    sourceHandle: 'true',
+                    targetHandle: null
+                }
+            ]
+        };
+
+        const docRef = await adminDb.collection('automations').add(newAutomation);
+        revalidatePath('/admin/automations');
+        return { success: true, id: docRef.id };
+    } catch (e: any) {
+        console.error(">>> [AUTO:SEED] FAILED:", e.message);
+        return { success: false, error: e.message };
+    }
+}

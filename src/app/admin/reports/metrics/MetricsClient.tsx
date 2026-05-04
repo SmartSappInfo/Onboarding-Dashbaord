@@ -174,16 +174,15 @@ export default function MetricsClient() {
   }
 
   return (
-    <div className="h-full overflow-y-auto text-left">
-      <div className="space-y-12">
+    <div className="h-full overflow-y-auto text-left w-full">
+      <div className="space-y-12 pb-32 w-full">
         {/* Header */}
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
- <h1 className="text-4xl font-semibold tracking-tighter flex items-center gap-4 text-foreground ">
- <TrendingUp className="h-10 w-10 text-primary" />
+            <h1 className="text-3xl font-bold text-foreground">
               Contact Metrics
             </h1>
- <p className="text-muted-foreground font-medium text-lg mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Distinct metrics for entities, workspace memberships, and shared contacts.
             </p>
           </div>

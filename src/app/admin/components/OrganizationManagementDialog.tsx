@@ -60,6 +60,7 @@ export default function OrganizationManagementDialog({
     const [address, setAddress] = React.useState('');
     
     // AI Keys
+    const [aiKeyMode, setAiKeyMode] = React.useState<'platform' | 'custom'>('platform');
     const [geminiApiKey, setGeminiApiKey] = React.useState('');
     const [openRouterApiKey, setOpenRouterApiKey] = React.useState('');
     const [openaiApiKey, setOpenaiApiKey] = React.useState('');
@@ -88,6 +89,7 @@ export default function OrganizationManagementDialog({
             setDefaultTimezone(organization.settings?.defaultTimezone || 'UTC');
             setDefaultLanguage(organization.settings?.defaultLanguage || 'en');
             
+            setAiKeyMode(organization.aiKeyMode || 'platform');
             setGeminiApiKey(organization.geminiApiKey || '');
             setOpenRouterApiKey(organization.openRouterApiKey || '');
             setOpenaiApiKey(organization.openaiApiKey || '');
@@ -107,6 +109,7 @@ export default function OrganizationManagementDialog({
             setDefaultLanguage('en');
             setDefaultRoleId('');
 
+            setAiKeyMode('platform');
             setGeminiApiKey('');
             setOpenRouterApiKey('');
             setOpenaiApiKey('');
@@ -151,6 +154,7 @@ export default function OrganizationManagementDialog({
                     defaultLanguage,
                 },
                 defaultRoleId,
+                aiKeyMode,
                 geminiApiKey: geminiApiKey.trim(),
                 openRouterApiKey: openRouterApiKey.trim(),
                 openaiApiKey: openaiApiKey.trim(),
@@ -367,21 +371,41 @@ export default function OrganizationManagementDialog({
  <div className="flex items-center justify-between">
  <h4 className="text-xs font-semibold text-primary">AI Configuration</h4>
  <div className="flex items-center gap-2">
-                                            <Button 
-                                                type="button" 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                onClick={() => setShowApiKeys(!showApiKeys)}
- className="h-6 text-xs text-muted-foreground hover:text-foreground"
-                                            >
- {showApiKeys ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                                                {showApiKeys ? 'Hide Keys' : 'Show Keys'}
-                                            </Button>
+                                            {aiKeyMode === 'custom' ? (
+                                              <Button 
+                                                  type="button" 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  onClick={() => setShowApiKeys(!showApiKeys)}
+   className="h-6 text-xs text-muted-foreground hover:text-foreground"
+                                              >
+   {showApiKeys ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                                                  {showApiKeys ? 'Hide Keys' : 'Show Keys'}
+                                              </Button>
+                                            ) : null}
  <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">Per Organization</span>
                                         </div>
                                     </div>
+
+  <div className="space-y-2">
+      <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+          API Key Mode
+      </Label>
+      <select 
+          value={aiKeyMode}
+          onChange={e => setAiKeyMode(e.target.value as 'platform' | 'custom')}
+          className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+      >
+          <option value="platform">Platform Defaults (Use System Keys)</option>
+          <option value="custom">Custom Organization Keys</option>
+      </select>
+      <p className="text-[9px] text-muted-foreground ml-1 font-bold">
+          {aiKeyMode === 'platform' ? 'Organization will use the platform\'s configured AI providers.' : 'Organization must explicitly provide its own API keys to use AI features.'}
+      </p>
+  </div>
                                     
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ {aiKeyMode === 'custom' ? (
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-border/50">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Gemini API Key
@@ -435,6 +459,7 @@ export default function OrganizationManagementDialog({
  <p className="text-[9px] text-muted-foreground ml-1 font-bold">Recommended: Use OpenRouter for Claude</p>
                                         </div>
                                     </div>
+                                ) : null}
                                 </div>
                             </div>
                         </ScrollArea>

@@ -31,6 +31,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   agreements: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
   campaigns:  'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
   reminders:  'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
+  tasks:      'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  automations:'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
+  qr_codes:   'bg-rose-500/15 text-rose-400 border-rose-500/20',
   general:    'bg-slate-500/15 text-muted-foreground border-slate-500/20',
 };
 
@@ -41,6 +44,9 @@ const CATEGORIES: { value: TemplateCategory; label: string }[] = [
   { value: 'agreements', label: 'Agreements' },
   { value: 'campaigns', label: 'Campaigns' },
   { value: 'reminders', label: 'Reminders' },
+  { value: 'tasks', label: 'Tasks' },
+  { value: 'automations', label: 'Automations' },
+  { value: 'qr_codes', label: 'QR Codes' },
   { value: 'general', label: 'General' },
 ];
 
@@ -69,8 +75,14 @@ function TemplateCard({ template, onOverride, onEdit, onRevert }: TemplateCardPr
           </Badge>
           
           <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 h-4 bg-muted/50 text-muted-foreground border-border">
-            {template.channel}
+            {template.channel.replace('_', ' ')}
           </Badge>
+
+          {template.recipientType && (
+            <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 h-4 bg-slate-500/15 text-slate-300 border-slate-500/20">
+              {template.recipientType.replace('_', ' ')}
+            </Badge>
+          )}
 
           {isOrgOverride && template.globalTemplateId && (
             <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 h-4 bg-emerald-500/15 text-emerald-400 border-emerald-500/20 flex items-center gap-1">
@@ -134,6 +146,7 @@ export default function OrgTemplateListClient() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
   const [channelFilter, setChannelFilter] = React.useState<string>('all');
+  const [recipientFilter, setRecipientFilter] = React.useState<string>('all');
 
   // Revert confirmation dialog state
   const [revertDialog, setRevertDialog] = React.useState<{ open: boolean; template: MessageTemplate | null }>({
@@ -175,9 +188,10 @@ export default function OrgTemplateListClient() {
                            t.templateType.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
       const matchesChannel = channelFilter === 'all' || t.channel === channelFilter;
-      return matchesSearch && matchesCategory && matchesChannel;
+      const matchesRecipient = recipientFilter === 'all' || t.recipientType === recipientFilter;
+      return matchesSearch && matchesCategory && matchesChannel && matchesRecipient;
     });
-  }, [templates, searchQuery, categoryFilter, channelFilter]);
+  }, [templates, searchQuery, categoryFilter, channelFilter, recipientFilter]);
 
   // Group by category
   const groupedTemplates = React.useMemo(() => {
@@ -274,6 +288,22 @@ export default function OrgTemplateListClient() {
               <SelectItem value="all">All Channels</SelectItem>
               <SelectItem value="email">Email</SelectItem>
               <SelectItem value="sms">SMS</SelectItem>
+              <SelectItem value="in_app">In-App</SelectItem>
+              <SelectItem value="push">Push</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={recipientFilter} onValueChange={setRecipientFilter}>
+            <SelectTrigger className="w-[160px] bg-muted/30 border-border">
+              <SelectValue placeholder="All Recipients" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Recipients</SelectItem>
+              <SelectItem value="respondent">Respondent</SelectItem>
+              <SelectItem value="internal_alert">Internal Alert</SelectItem>
+              <SelectItem value="assignee">Assignee</SelectItem>
+              <SelectItem value="entity">Entity</SelectItem>
+              <SelectItem value="external_alert">External Alert</SelectItem>
             </SelectContent>
           </Select>
         </div>

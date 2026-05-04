@@ -23,6 +23,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   agreements: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
   campaigns:  'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
   reminders:  'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
+  tasks:      'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  automations:'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
+  qr_codes:   'bg-rose-500/15 text-rose-400 border-rose-500/20',
   general:    'bg-slate-500/15 text-muted-foreground border-slate-500/20',
 };
 
@@ -53,9 +56,14 @@ export default function TemplateCard({ template, onEdit, onDelete, onApprove }: 
           {template.category}
         </Badge>
         <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 h-4 shrink-0 bg-muted/50 text-muted-foreground border-border flex items-center gap-1">
-          {template.channel === 'email' ? <Mail className="h-2.5 w-2.5" /> : <Smartphone className="h-2.5 w-2.5" />}
-          {template.channel}
+          {template.channel === 'email' ? <Mail className="h-2.5 w-2.5" /> : template.channel === 'sms' ? <Smartphone className="h-2.5 w-2.5" /> : null}
+          {template.channel.replace('_', ' ')}
         </Badge>
+        {template.recipientType && (
+          <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 h-4 shrink-0 bg-slate-500/15 text-slate-300 border-slate-500/20">
+            {template.recipientType.replace('_', ' ')}
+          </Badge>
+        )}
       </div>
 
       {/* Right: status + actions */}

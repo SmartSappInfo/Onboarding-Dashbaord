@@ -9,6 +9,7 @@ import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, Fo
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import { FormNotificationSettings } from '../../components/form-notification-settings';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -760,39 +761,27 @@ export default function EditFormPage() {
                     </div>
 
                     {/* Notifications */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-xl">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold">Send Confirmation Email to Respondent</Label>
-                        <Switch
-                          checked={formData.actions?.notifications?.sendConfirmationEmail || false}
-                          onCheckedChange={v => {
-                            const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                            const currentNotifications = currentActions.notifications || {} as FormSubmissionActions['notifications'];
-                            updateField('actions', {
-                              ...currentActions,
-                              notifications: { ...currentNotifications, sendConfirmationEmail: v }
-                            });
-                          }}
-                        />
-                      </div>
-                      {formData.actions?.notifications?.sendConfirmationEmail && (
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Email Field Variable</Label>
-                          <Input
-                            value={formData.actions?.notifications?.respondentEmailField || ''}
-                            onChange={e => {
-                              const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                              const currentNotifications = currentActions.notifications || {} as FormSubmissionActions['notifications'];
-                              updateField('actions', {
-                                ...currentActions,
-                                notifications: { ...currentNotifications, respondentEmailField: e.target.value }
-                              });
-                            }}
-                            placeholder="e.g. contact_email"
-                            className="h-11 rounded-xl bg-background border-none"
-                          />
-                        </div>
-                      )}
+                    <div className="space-y-4 pt-4">
+                      <FormNotificationSettings
+                        internalAlerts={formData.actions?.notifications?.internalAlerts}
+                        respondentAlerts={formData.actions?.notifications?.respondentAlerts}
+                        onChangeInternal={(val: any) => {
+                          const currentActions = (formData.actions || {}) as FormSubmissionActions;
+                          const currentNotifications = currentActions.notifications || {};
+                          updateField('actions', {
+                            ...currentActions,
+                            notifications: { ...currentNotifications, internalAlerts: val as any }
+                          });
+                        }}
+                        onChangeRespondent={(val: any) => {
+                          const currentActions = (formData.actions || {}) as FormSubmissionActions;
+                          const currentNotifications = currentActions.notifications || {};
+                          updateField('actions', {
+                            ...currentActions,
+                            notifications: { ...currentNotifications, respondentAlerts: val as any }
+                          });
+                        }}
+                      />
                     </div>
 
                     {/* Entity Handling (only for bound forms) */}

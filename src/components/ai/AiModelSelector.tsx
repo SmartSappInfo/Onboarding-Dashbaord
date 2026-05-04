@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useUser, useFirestore } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { 
     Select, 
@@ -61,12 +62,27 @@ const AI_PROVIDERS = [
 
 export default function AiModelSelector({ className }: { className?: string }) {
     const { user } = useUser();
+    const { activeOrganization } = useTenant();
     const firestore = useFirestore();
     const { toast } = useToast();
     
     const [selectedProvider, setSelectedProvider] = React.useState<string>('openrouter');
     const [selectedModel, setSelectedModel] = React.useState<string>('meta-llama/llama-3.3-70b-instruct:free');
     const [isLoading, setIsLoading] = React.useState(true);
+
+    const availableProviders = React.useMemo(() => {
+        if (!activeOrganization) return AI_PROVIDERS;
+
+        const mode = activeOrganization.aiKeyMode || 'platform';
+        if (mode === 'platform') return AI_PROVIDERS;
+
+        return AI_PROVIDERS.filter(provider => {
+            if (provider.id === 'googleai') return !!activeOrganization.geminiApiKey;
+            if (provider.id === 'openai') return !!activeOrganization.openaiApiKey;
+            if (provider.id === 'openrouter') return !!activeOrganization.openRouterApiKey;
+            return false;
+        });
+    }, [activeOrganization]);
 
     // Initial load of user preferences
     React.useEffect(() => {
@@ -75,13 +91,22 @@ export default function AiModelSelector({ className }: { className?: string }) {
             getDoc(userDoc).then((docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data() as UserProfile;
-                    if (data.preferredAiProvider) setSelectedProvider(data.preferredAiProvider);
-                    if (data.preferredAiModel) setSelectedModel(data.preferredAiModel);
+                    
+                    // Only apply if the preferred model is still available under the active organization's rules
+                    const isAvailable = availableProviders.some(p => p.id === data.preferredAiProvider);
+                    if (isAvailable) {
+                        if (data.preferredAiProvider) setSelectedProvider(data.preferredAiProvider);
+                        if (data.preferredAiModel) setSelectedModel(data.preferredAiModel);
+                    } else if (availableProviders.length > 0) {
+                        // Fallback to first available provider
+                        setSelectedProvider(availableProviders[0].id);
+                        setSelectedModel(availableProviders[0].models[0].id);
+                    }
                 }
                 setIsLoading(false);
             });
         }
-    }, [user, firestore]);
+    }, [user, firestore, availableProviders]);
 
     const handleModelChange = async (value: string) => {
         if (!user) return;
@@ -116,7 +141,21 @@ export default function AiModelSelector({ className }: { className?: string }) {
         return <div className="h-10 w-[240px] bg-muted animate-pulse rounded-xl" />;
     }
 
-    const currentProvider = AI_PROVIDERS.find(p => p.id === selectedProvider) || AI_PROVIDERS[0];
+    if (availableProviders.length === 0) {
+        return (
+            <div className={cn("flex flex-col gap-1.5", className)}>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                    AI Architect Model
+                </label>
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-sm font-medium">
+                    <Shield className="w-4 h-4 shrink-0" />
+                    <span>No AI models available. Please configure API keys in Organization Settings.</span>
+                </div>
+            </div>
+        );
+    }
+
+    const currentProvider = availableProviders.find(p => p.id === selectedProvider) || availableProviders[0];
 
     return (
         <div className={cn("flex flex-col gap-1.5", className)}>
@@ -131,7 +170,7 @@ export default function AiModelSelector({ className }: { className?: string }) {
                         </div>
                         <div className="flex flex-col items-start min-w-0">
                             {(() => {
-                                const allModels = AI_PROVIDERS.flatMap(p => p.models);
+                                const allModels = availableProviders.flatMap(p => p.models);
                                 const found = allModels.find(m => m.id === selectedModel);
                                 return (
                                     <>
@@ -153,7 +192,7 @@ export default function AiModelSelector({ className }: { className?: string }) {
                     className="rounded-[1.5rem] border-none shadow-2xl p-2 bg-background/95 backdrop-blur-xl"
                     style={{ zIndex: 100000 }}
                 >
-                    {AI_PROVIDERS.map((provider) => (
+                    {availableProviders.map((provider) => (
                         <SelectGroup key={provider.id}>
                             <SelectLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
                                 <provider.icon className={cn("h-3 w-3", provider.color)} />
