@@ -12,6 +12,7 @@ import {
   entityContactToFocalPerson,
   normalizeContactType,
 } from './entity-contact-helpers';
+import { findDuplicateEntities } from './entity-duplicate-detection';
 import { canUser } from './workspace-permissions';
 import { getWorkspaceIndustry, invalidateWorkspaceCache } from './industry-cache';
 import { validateIndustryData } from './industry-schemas';
@@ -135,7 +136,8 @@ export async function createEntityAction(
     userId: string,
     workspaceId: string, 
     entityType: EntityType,
-    organizationId: string = 'smartsapp-hq'
+    organizationId: string = 'smartsapp-hq',
+    forceCreate: boolean = false
 ) {
   try {
     // 0. Permission Check (Requirement: Permissions Expansion Layer 2)
@@ -212,6 +214,25 @@ export async function createEntityAction(
 
     // Extract denormalized primary fields
     const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts, contacts: [] });
+
+    // 2.5 Duplicate Detection (Requirement: Strict Duplicate Prevention unless forced)
+    if (!forceCreate) {
+      const duplicates = await findDuplicateEntities(
+        workspaceId,
+        entityType,
+        displayName,
+        primaryEmail,
+        primaryPhone
+      );
+      if (duplicates.length > 0) {
+        return { 
+          success: false, 
+          error: 'Duplicate entity found.', 
+          isDuplicate: true, 
+          duplicates 
+        };
+      }
+    }
 
     // Prepare Base Entity Document
     const entityData: any = {

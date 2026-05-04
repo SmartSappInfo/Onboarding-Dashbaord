@@ -26,7 +26,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 
@@ -61,6 +61,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { LocationCascade } from '@/components/location/LocationCascade';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Required name must be at least 2 characters.' }),
@@ -130,6 +131,10 @@ export default function NewEntityPage() {
   const { activeWorkspace, activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { activeOrganizationId } = useTenant();
   const { singular, termStatus } = useTerminology();
+
+  const [duplicateWarning, setDuplicateWarning] = React.useState<any[] | null>(null);
+  const [pendingFormData, setPendingFormData] = React.useState<any>(null);
+  const [isForceSubmitting, setIsForceSubmitting] = React.useState(false);
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore || !activeOrganizationId) return null;
@@ -252,8 +257,10 @@ export default function NewEntityPage() {
     methods.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
   };
 
-  const onSubmit = async (data: FormData) => {
+  const processSubmission = async (data: FormData, forceCreate = false) => {
     if (!firestore || !user || !users) return;
+
+    if (forceCreate) setIsForceSubmitting(true);
 
     const contactScope = activeWorkspace?.contactScope || 'institution';
     const selectedManager = users.find(u => u.id === data.assignedToId);
@@ -326,12 +333,16 @@ export default function NewEntityPage() {
           user.uid, 
           activeWorkspaceId, 
           contactScope as any, 
-          activeOrganizationId || 'smartsapp-hq'
+          activeOrganizationId || 'smartsapp-hq',
+          forceCreate
       );
       
       if (result.success) {
         toast({ title: 'Record Initialized', description: `${data.name} created successfully.` });
         router.push('/admin/entities');
+      } else if (result.isDuplicate) {
+        setDuplicateWarning(result.duplicates);
+        setPendingFormData(data);
       } else {
         throw new Error(result.error || `Failed to create ${singular.toLowerCase()}`);
       }
@@ -342,7 +353,13 @@ export default function NewEntityPage() {
         variant: 'destructive'
       });
       console.error('Entity creation error:', error);
+    } finally {
+      if (forceCreate) setIsForceSubmitting(false);
     }
+  };
+
+  const onSubmit = async (data: FormData) => {
+    await processSubmission(data, false);
   };
 
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
@@ -774,16 +791,54 @@ export default function NewEntityPage() {
                         )} />
                     </CardContent>
                 </Card>
- <div className="pt-4 sticky top-24 text-left">
- <Button type="submit" className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl gap-3 transition-all active:scale-95 text-left" disabled={methods.formState.isSubmitting || isUsersLoading}>
- {methods.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize {singular}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </FormProvider>
-      </div>
-    </div>
+  <div className="pt-4 sticky top-24 text-left">
+  <Button type="submit" className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl gap-3 transition-all active:scale-95 text-left" disabled={methods.formState.isSubmitting || isUsersLoading || isForceSubmitting}>
+  {(methods.formState.isSubmitting || isForceSubmitting) ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />} Initialize {singular}
+                   </Button>
+                 </div>
+               </div>
+             </div>
+           </form>
+         </FormProvider>
+
+         <AlertDialog open={!!duplicateWarning} onOpenChange={(open) => !open && setDuplicateWarning(null)}>
+           <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+             <AlertDialogHeader>
+               <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
+                 <AlertTriangle className="h-5 w-5" /> Potential Duplicate Found
+               </AlertDialogTitle>
+               <AlertDialogDescription className="space-y-4">
+                 <p>
+                   We found existing records that match the name, email, or phone number of the {singular.toLowerCase()} you are trying to create.
+                 </p>
+                 <div className="bg-muted/50 p-4 rounded-xl max-h-40 overflow-y-auto space-y-2 text-sm text-left">
+                   {duplicateWarning?.map((dup: any) => (
+                     <div key={dup.entityId} className="flex flex-col">
+                       <span className="font-semibold text-foreground">{dup.name}</span>
+                       <span className="text-muted-foreground text-xs font-mono">{dup.reason}</span>
+                     </div>
+                   ))}
+                 </div>
+                 <p className="text-xs font-medium">
+                   Since a contact person can own multiple {singular.toLowerCase()}s, you may proceed if this is intentional. Do you want to ignore this warning and create it anyway?
+                 </p>
+               </AlertDialogDescription>
+             </AlertDialogHeader>
+             <AlertDialogFooter>
+               <AlertDialogCancel className="rounded-xl border-border">Cancel</AlertDialogCancel>
+               <AlertDialogAction 
+                 className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-md"
+                 onClick={() => {
+                   setDuplicateWarning(null);
+                   if (pendingFormData) processSubmission(pendingFormData, true);
+                 }}
+               >
+                 Ignore & Create
+               </AlertDialogAction>
+             </AlertDialogFooter>
+           </AlertDialogContent>
+         </AlertDialog>
+       </div>
+     </div>
   );
 }

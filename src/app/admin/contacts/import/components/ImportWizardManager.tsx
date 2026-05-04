@@ -72,7 +72,7 @@ export function ImportWizardManager() {
       case 'execute':
         return <ExecutionStep state={state} updateState={updateState} onNext={goToNextStep} />;
       case 'review':
-        return <ReviewStep state={state} onReset={() => setState({ ...INITIAL_IMPORT_STATE, workspaceId: activeWorkspaceId, organizationId: activeOrganizationId, userId: user?.uid })} />;
+        return <ReviewStep state={state} updateState={updateState} onReset={() => setState({ ...INITIAL_IMPORT_STATE, workspaceId: activeWorkspaceId, organizationId: activeOrganizationId, userId: user?.uid })} />;
       default:
         return null;
     }

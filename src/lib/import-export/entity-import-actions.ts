@@ -217,7 +217,7 @@ export async function validateImportBatch(
       const existingId = existingNames.get(normalised);
       if (existingId) {
         duplicates.push({ rowNumber: rowNum, entityId: existingId, name: entityName });
-        rowValid = false; // Mark as not importable by default (skip)
+        // rowValid = false; // Intentionally NOT setting false so the user can proceed and override on the review page
       }
     }
 
@@ -264,6 +264,7 @@ export async function executeImportBatch(
     selectedTags?: string[];
     selectedAutomations?: string[];
     globalDefaults?: Record<string, string>;
+    forceImportDuplicates?: boolean;
   }
 ): Promise<ExecutionSummary & { createdIds?: string[] }> {
   const uid = userId || 'system-import';
@@ -369,7 +370,8 @@ export async function executeImportBatch(
         uid,
         wsId,
         entityType,
-        orgId
+        orgId,
+        configuration?.forceImportDuplicates
       );
 
       if (result.success && result.id) {
@@ -385,6 +387,15 @@ export async function executeImportBatch(
             console.error('Failed to apply tags to entity', result.id, tagErr);
           }
         }
+      } else if (result.isDuplicate) {
+        errorCount++;
+        failedRows.push({
+          rowNumber: i + 1,
+          reason: `Duplicate found: ${result.duplicates.map((d: any) => `${d.name} (${d.reason})`).join('; ')}`,
+          originalData: rows[i],
+          isDuplicate: true,
+          duplicateInfo: result.duplicates,
+        });
       } else {
         console.error(`[IMPORT] Row ${i + 1} creation failed:`, result.error, 'Payload name:', payload.name);
         errorCount++;

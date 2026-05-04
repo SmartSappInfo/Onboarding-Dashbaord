@@ -54,6 +54,8 @@ export interface ExecutionSummary {
     rowNumber: number;
     reason: string;
     originalData: Record<string, string>;
+    isDuplicate?: boolean;
+    duplicateInfo?: any[];
   }>;
 }
 
