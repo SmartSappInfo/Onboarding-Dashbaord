@@ -124,7 +124,7 @@ function BasicVariablePicker({ variables, onInsert }: VariablePickerProps) {
 interface TemplateEditorProps {
   value: string;
   onChange: (value: string) => void;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'in_app' | 'push';
   variables?: TemplateVariable[];
   placeholder?: string;
 }

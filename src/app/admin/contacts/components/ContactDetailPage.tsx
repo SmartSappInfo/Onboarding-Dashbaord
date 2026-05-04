@@ -218,7 +218,7 @@ function InstitutionDetailView({ entity, workspaceEntity }: { entity: Entity; wo
  <div className="flex items-center gap-4">
             <div>
  <p className="text-sm text-muted-foreground">Current Stage</p>
-              <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
+              <Badge className="mt-1">{workspaceEntity.lifecycleStatus || 'No stage'}</Badge>
             </div>
  <Separator orientation="vertical" className="h-12" />
             <div>
@@ -328,7 +328,7 @@ function FamilyDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
  <div className="flex items-center gap-4">
             <div>
  <p className="text-sm text-muted-foreground">Current Stage</p>
-              <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
+              <Badge className="mt-1">{workspaceEntity.lifecycleStatus || 'No stage'}</Badge>
             </div>
  <Separator orientation="vertical" className="h-12" />
             <div>
@@ -396,7 +396,7 @@ function PersonDetailView({ entity, workspaceEntity }: { entity: Entity; workspa
  <div className="flex items-center gap-4">
             <div>
  <p className="text-sm text-muted-foreground">Current Stage</p>
-              <Badge className="mt-1">{workspaceEntity.currentStageName || 'No stage'}</Badge>
+              <Badge className="mt-1">{workspaceEntity.lifecycleStatus || 'No stage'}</Badge>
             </div>
  <Separator orientation="vertical" className="h-12" />
             <div>

@@ -31,7 +31,7 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
     const jobData: Omit<MessageJob, 'id'> = {
       templateId,
       senderProfileId,
-      channel: template.channel,
+      channel: (template.channel === 'email' || template.channel === 'sms') ? template.channel : 'email',
       createdBy: userId,
       status: 'queued',
       totalRecipients: recipients.length,

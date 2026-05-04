@@ -184,7 +184,7 @@ export function MultiSelect({
                   <div className="flex h-4 w-4 items-center justify-center rounded-sm border border-primary bg-primary/10">
                     <Check className="h-3.5 w-3.5 opacity-0" />
                   </div>
-                  Create "{inputValue.trim()}"
+                  Create &quot;{inputValue.trim()}&quot;
                 </CommandItem>
               </CommandGroup>
             )}

@@ -18,11 +18,10 @@ export type { ResolvedContact } from './types';
 const contactCache = new Map<string, ResolvedContact>();
 
 export interface ContactFilters {
-  pipelineId?: string;
-  stageId?: string;
   status?: string;
   entityType?: EntityType;
   tags?: string[];
+  lifecycleStatus?: string;
 }
 
 /**
@@ -71,11 +70,8 @@ export async function getWorkspaceContacts(
       .collection('workspace_entities')
       .where('workspaceId', '==', workspaceId);
 
-    if (filters?.pipelineId) {
-      weQuery = weQuery.where('pipelineId', '==', filters.pipelineId);
-    }
-    if (filters?.stageId) {
-      weQuery = weQuery.where('stageId', '==', filters.stageId);
+    if (filters?.lifecycleStatus) {
+      weQuery = weQuery.where('lifecycleStatus', '==', filters.lifecycleStatus);
     }
     if (filters?.status) {
       weQuery = weQuery.where('status', '==', filters.status);
@@ -213,13 +209,6 @@ async function resolveFromEntity(
         workspaceIds: [workspaceId],
         status: (workspaceEntity?.status || 'active') as any,
         schoolStatus: workspaceEntity?.lifecycleStatus || 'Lead',
-        pipelineId: workspaceEntity?.pipelineId || '',
-        stageId: workspaceEntity?.stageId || '',
-        stage: {
-          id: workspaceEntity?.stageId || '',
-          name: workspaceEntity?.currentStageName || '',
-          order: 0
-        },
         focalPersons: legacyContacts, // Derived from entityContacts (FER-01)
         nominalRoll: ind.capacity || (entity as any).institutionData?.nominalRoll || 0,
         subscriptionPackageId: fin.planType || (entity as any).institutionData?.subscriptionPackageId,
@@ -244,9 +233,6 @@ async function resolveFromEntity(
       logoUrl: entity.logoUrl || (entity as any).institutionData?.logoUrl,
       contacts: legacyContacts, // Legacy backward compat
       entityContacts, // Canonical (FER-01)
-      pipelineId: workspaceEntity?.pipelineId,
-      stageId: workspaceEntity?.stageId,
-      stageName: workspaceEntity?.currentStageName,
       assignedTo: workspaceEntity?.assignedTo,
       status: workspaceEntity?.status,
       tags: workspaceEntity?.workspaceTags || [],

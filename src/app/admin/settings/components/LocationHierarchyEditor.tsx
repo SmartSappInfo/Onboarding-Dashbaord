@@ -231,7 +231,7 @@ export default function LocationHierarchyEditor() {
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border min-h-[350px]">
             {/* ── Left: Regions ── */}
             <div className="p-5 space-y-3">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] flex items-center gap-2">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] flex items-center gap-2">
                 <MapPin className="h-3 w-3" />
                 Regions
                 {filteredRegions.length > 0 && (
@@ -239,7 +239,7 @@ export default function LocationHierarchyEditor() {
                     {filteredRegions.length}
                   </Badge>
                 )}
-              </p>
+              </div>
 
               {isLoadingRegions ? (
                 <div className="space-y-2">
@@ -357,7 +357,7 @@ export default function LocationHierarchyEditor() {
 
             {/* ── Right: Districts ── */}
             <div className="p-5 space-y-3">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] flex items-center gap-2">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.15em] flex items-center gap-2">
                 <MapPin className="h-3 w-3" />
                 Districts
                 {selectedRegion && (
@@ -370,7 +370,7 @@ export default function LocationHierarchyEditor() {
                     {districts.length}
                   </Badge>
                 )}
-              </p>
+              </div>
 
               {!selectedRegionId ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center opacity-40">

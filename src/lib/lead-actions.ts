@@ -224,8 +224,6 @@ export async function processLeadCaptureAction(params: {
                 workspaceId,
                 entityId,
                 entityType: 'person',
-                pipelineId: 'default', 
-                stageId: 'new',
                 status: 'active',
                 lifecycleStatus: 'Lead',
                 workspaceTags: [],

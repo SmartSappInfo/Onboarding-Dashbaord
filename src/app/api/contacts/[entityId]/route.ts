@@ -53,9 +53,7 @@ export async function GET(
       const workspaceEntity = workspaceEntityDoc.data() as WorkspaceEntity;
       workspaceData = {
         workspaceId: workspaceEntity.workspaceId,
-        pipelineId: workspaceEntity.pipelineId,
-        stageId: workspaceEntity.stageId,
-        currentStageName: workspaceEntity.currentStageName,
+        lifecycleStatus: workspaceEntity.lifecycleStatus,
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
         lastContactedAt: workspaceEntity.lastContactedAt,
@@ -120,8 +118,6 @@ export async function PATCH(
       familyData,
       personData,
       // Operational fields (go to workspace_entities collection)
-      pipelineId,
-      stageId,
       assignedTo,
       workspaceTags,
       status
@@ -154,13 +150,11 @@ export async function PATCH(
     }
 
     // Update workspace_entity if operational fields provided (Requirement 11.5)
-    const hasOperationalUpdates = pipelineId || stageId || assignedTo || workspaceTags || status;
+    const hasOperationalUpdates = assignedTo || workspaceTags || status;
     if (hasOperationalUpdates) {
       const workspaceEntityResult = await updateWorkspaceEntityAction({
         workspaceEntityId: `${workspaceId}_${entityId}`,
         userId: 'api-user', // TODO: Get from auth token
-        pipelineId,
-        stageId,
         assignedTo,
         workspaceTags,
         status
@@ -188,8 +182,7 @@ export async function PATCH(
       const workspaceEntity = workspaceEntityDoc.data() as WorkspaceEntity;
       workspaceData = {
         workspaceId: workspaceEntity.workspaceId,
-        pipelineId: workspaceEntity.pipelineId,
-        stageId: workspaceEntity.stageId,
+        lifecycleStatus: workspaceEntity.lifecycleStatus,
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
         status: workspaceEntity.status

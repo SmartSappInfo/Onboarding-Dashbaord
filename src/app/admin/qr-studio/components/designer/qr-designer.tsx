@@ -210,6 +210,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
               <AccordionItem value="logo" className="border border-border rounded-xl overflow-hidden bg-card">
                 <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 text-sm font-semibold">
                   <div className="flex items-center gap-2.5">
+                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
                     <Image className="h-4 w-4 text-amber-500" />
                     Logo
                   </div>

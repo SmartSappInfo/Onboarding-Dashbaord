@@ -36,6 +36,7 @@ import type {
   Offer,
   Negotiation,
   Deal,
+  PropertyDeal,
   PropertyDocument,
   Workspace,
   Entity,
@@ -669,7 +670,7 @@ export interface CreateDealParams {
   sellerEntityId?: string;
   dealValue: number;
   closingDate: string; // ISO date string
-  status?: Deal['status'];
+  status?: PropertyDeal['status'];
 }
 
 /**
@@ -677,7 +678,7 @@ export interface CreateDealParams {
  * 
  * @throws Error if workspace is not RealEstate industry
  */
-export async function createDeal(params: CreateDealParams): Promise<Deal> {
+export async function createDeal(params: CreateDealParams): Promise<PropertyDeal> {
   const {
     organizationId,
     workspaceId,
@@ -694,7 +695,7 @@ export async function createDeal(params: CreateDealParams): Promise<Deal> {
 
   const now = new Date().toISOString();
 
-  const dealData: Omit<Deal, 'id'> = {
+  const dealData: Omit<PropertyDeal, 'id'> = {
     organizationId,
     workspaceId,
     propertyId,
@@ -723,7 +724,7 @@ export async function createDeal(params: CreateDealParams): Promise<Deal> {
  */
 export async function updateDeal(
   dealId: string,
-  updates: Partial<Omit<Deal, 'id' | 'createdAt' | 'organizationId' | 'workspaceId' | 'propertyId'>>
+  updates: Partial<Omit<PropertyDeal, 'id' | 'createdAt' | 'organizationId' | 'workspaceId' | 'propertyId'>>
 ): Promise<void> {
   const dealRef = doc(db, 'deals', dealId);
   const dealSnap = await getDoc(dealRef);

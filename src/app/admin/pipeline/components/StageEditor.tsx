@@ -185,16 +185,18 @@ export default function StageEditor({ pipelineId }: StageEditorProps) {
     }
   }, [stages]);
 
+  // TODO: Stage counts need to be refactored for Deal-based pipeline
   // Calculate lead counts per stage
   const stageCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    if (entities) {
-        entities.forEach(s => {
-            if (s.stageId) {
-                counts[s.stageId] = (counts[s.stageId] || 0) + 1;
-            }
-        });
-    }
+    // Commented out - stageId no longer exists on WorkspaceEntity
+    // if (entities) {
+    //     entities.forEach(s => {
+    //         if (s.stageId) {
+    //             counts[s.stageId] = (counts[s.stageId] || 0) + 1;
+    //         }
+    //     });
+    // }
     return counts;
   }, [entities]);
   

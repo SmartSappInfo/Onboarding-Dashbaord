@@ -5,12 +5,9 @@ import {
   collection,
   query,
   where,
-  orderBy,
-  getDocs,
-  limit,
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { WorkspaceEntity, Workspace, Pipeline, OnboardingStage } from '@/lib/types';
+import type { WorkspaceEntity, Workspace } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +29,6 @@ import {
   Share2,
   Plus,
   Building2,
-  Workflow,
   Check,
   Loader2,
   X,
@@ -64,7 +60,6 @@ export default function ManageWorkspacesModal({
   const { activeOrganizationId, accessibleWorkspaces } = useTenant();
 
   const [expandedWorkspaceId, setExpandedWorkspaceId] = React.useState<string | null>(null);
-  const [selectedPipelineId, setSelectedPipelineId] = React.useState<string | null>(null);
   const [removingWeId, setRemovingWeId] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -78,18 +73,6 @@ export default function ManageWorkspacesModal({
   }, [firestore, entityId, open]);
   const { data: memberships, isLoading: isLoadingMemberships } =
     useCollection<WorkspaceEntity>(membershipsQuery);
-
-  // 2. Pipelines for the workspace currently being expanded
-  const pipelinesQuery = useMemoFirebase(() => {
-    if (!firestore || !expandedWorkspaceId) return null;
-    return query(
-      collection(firestore, 'pipelines'),
-      where('workspaceIds', 'array-contains', expandedWorkspaceId),
-      orderBy('name', 'asc'),
-    );
-  }, [firestore, expandedWorkspaceId]);
-  const { data: availablePipelines, isLoading: isLoadingPipelines } =
-    useCollection<Pipeline>(pipelinesQuery);
 
   // Derived: workspace id → name lookup from tenant context (already loaded)
   const workspaceMap = React.useMemo(
@@ -122,39 +105,16 @@ export default function ManageWorkspacesModal({
   );
 
   const handleToggleExpand = (workspaceId: string) => {
-    if (expandedWorkspaceId === workspaceId) {
-      setExpandedWorkspaceId(null);
-      setSelectedPipelineId(null);
-    } else {
-      setExpandedWorkspaceId(workspaceId);
-      setSelectedPipelineId(null);
-    }
+    setExpandedWorkspaceId(prev => prev === workspaceId ? null : workspaceId);
   };
 
   const handleAddToWorkspace = async (targetWorkspace: Workspace) => {
-    if (!user || !selectedPipelineId || isSubmitting) return;
+    if (!user || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      // Resolve first stage of selected pipeline
-      const stagesSnap = await getDocs(
-        query(
-          collection(firestore!, 'onboardingStages'),
-          where('pipelineId', '==', selectedPipelineId),
-          orderBy('order', 'asc'),
-          limit(1),
-        ),
-      );
-      if (stagesSnap.empty) throw new Error('Selected pipeline has no stages.');
-      const firstStage = {
-        id: stagesSnap.docs[0].id,
-        ...stagesSnap.docs[0].data(),
-      } as OnboardingStage;
-
       const result = await linkEntityToWorkspaceAction({
         entityId,
         workspaceId: targetWorkspace.id,
-        pipelineId: selectedPipelineId,
-        stageId: firstStage.id,
         userId: user.uid,
         userName: user.displayName || undefined,
         userEmail: user.email || undefined,
@@ -166,7 +126,6 @@ export default function ManageWorkspacesModal({
           description: `"${entityName}" is now active in ${targetWorkspace.name}.`,
         });
         setExpandedWorkspaceId(null);
-        setSelectedPipelineId(null);
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -256,9 +215,9 @@ export default function ManageWorkspacesModal({
                       <div className="min-w-0">
                         <p className="font-semibold text-sm truncate">{wsName}</p>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          {m.currentStageName && (
+                          {m.lifecycleStatus && (
                             <Badge className="text-[8px] h-4 font-bold bg-primary/10 text-primary border-none px-2 uppercase tracking-wide">
-                              {m.currentStageName}
+                              {m.lifecycleStatus}
                             </Badge>
                           )}
                           {m.assignedTo?.name && (
@@ -362,52 +321,10 @@ export default function ManageWorkspacesModal({
                     {/* Pipeline selector (expanded) */}
                     {isExpanded && (
                       <div className="p-4 pt-3 border-t border-primary/20 bg-muted/20 space-y-3">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                          <Workflow className="h-3 w-3" />
-                          Select Pipeline to enrol into
-                        </p>
-
-                        {isLoadingPipelines ? (
-                          <Skeleton className="h-10 w-full rounded-xl" />
-                        ) : !availablePipelines || availablePipelines.length === 0 ? (
-                          <div className="text-center py-5 text-xs text-muted-foreground italic">
-                            No pipelines configured for this workspace
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {availablePipelines.map(p => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => setSelectedPipelineId(p.id)}
-                                className={cn(
-                                  'w-full flex items-center justify-between px-4 py-3 rounded-xl text-left border-2 transition-all',
-                                  selectedPipelineId === p.id
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-transparent bg-card hover:border-border/80 text-foreground',
-                                )}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Workflow className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="text-xs font-semibold">{p.name}</span>
-                                  {p.description && (
-                                    <span className="text-[10px] text-muted-foreground hidden sm:inline truncate max-w-[140px]">
-                                      — {p.description}
-                                    </span>
-                                  )}
-                                </div>
-                                {selectedPipelineId === p.id && (
-                                  <Check className="h-4 w-4 shrink-0" />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
                         <Button
                           size="sm"
                           className="w-full h-10 rounded-xl font-bold shadow-md mt-1 gap-2"
-                          disabled={!selectedPipelineId || isSubmitting}
+                          disabled={isSubmitting}
                           onClick={() => handleAddToWorkspace(ws)}
                         >
                           {isSubmitting ? (
@@ -415,7 +332,7 @@ export default function ManageWorkspacesModal({
                           ) : (
                             <Plus className="h-4 w-4" />
                           )}
-                          {isSubmitting ? 'Adding…' : `Add to ${ws.name}`}
+                          {isSubmitting ? 'Enrolling…' : `Enrol in ${ws.name}`}
                         </Button>
                       </div>
                     )}

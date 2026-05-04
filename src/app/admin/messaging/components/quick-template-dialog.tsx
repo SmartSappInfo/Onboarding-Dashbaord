@@ -205,7 +205,7 @@ export default function QuickTemplateDialog({
 
             const result = await generateEmailTemplate({
                 prompt: aiPrompt,
-                channel,
+                channel: (channel === 'email' || channel === 'sms') ? channel : 'email',
                 availableVariables: availableKeys
             });
 

@@ -220,11 +220,15 @@ export default function EditTemplateClient({ templateId }: { templateId: string 
       if (found) {
         setTemplate(found);
         setReminderConfig(found.reminderConfig);
+        // Filter category to supported values for the form
+        const supportedCategories = ['forms', 'surveys', 'meetings', 'agreements', 'campaigns', 'reminders', 'general'] as const;
+        const category = supportedCategories.includes(found.category as any) ? found.category : 'general';
+        
         reset({
           name: found.name,
-          category: found.category,
+          category: category as any,
           templateType: found.templateType,
-          channel: found.channel,
+          channel: found.channel as 'email' | 'sms',
           subject: found.subject ?? '',
           body: found.body,
           variableContext: found.variableContext,

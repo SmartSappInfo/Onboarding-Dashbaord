@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Deal, OnboardingStage } from '@/lib/types';
+import type { Deal } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { Workflow } from 'lucide-react';
+import { Workflow, TrendingUp } from 'lucide-react';
 
 interface CurrentStageMetricProps {
     entityId: string;
@@ -27,57 +27,56 @@ export function CurrentStageMetric({ entityId }: CurrentStageMetricProps) {
 
     const { data: deals, isLoading: isDealsLoading } = useCollection<Deal>(dealsQuery);
 
-    const stagesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'onboardingStages'));
-    }, [firestore]);
-
-    const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
-
     if (isDealsLoading) {
         return (
             <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/5 rounded-xl"><Workflow className="h-4 w-4 text-primary/70" /></div>
                     <div className="space-y-0.5 text-left">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Current Stage</p>
-                        <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Active Stage</p>
+                        <div className="h-4 w-24 bg-muted animate-pulse rounded" />
                     </div>
                 </div>
             </div>
         );
     }
 
-    let displayValue = 'Not in Pipeline';
+    const openDeals = deals ?? [];
+    const hasDeals = openDeals.length > 0;
+
+    // For single deal: show its stage name. For multiple: show count + unique stage names.
+    let displayValue = 'No Open Deals';
     let subValue = '';
 
-    if (deals && deals.length > 0 && stages) {
-        if (deals.length === 1) {
-            const deal = deals[0];
-            const stage = stages.find(s => s.id === deal.stageId);
-            displayValue = stage ? stage.name : 'Unknown Stage';
+    if (hasDeals) {
+        if (openDeals.length === 1) {
+            const deal = openDeals[0];
+            displayValue = deal.stageName || 'In Progress';
             subValue = deal.name;
         } else {
-            displayValue = `${deals.length} Active Deals`;
-            const stageNames = deals.map(d => {
-                const s = stages.find(st => st.id === d.stageId);
-                return s ? s.name : 'Unknown';
-            });
-            // Unique stage names
-            subValue = Array.from(new Set(stageNames)).join(', ');
+            displayValue = `${openDeals.length} Open Deals`;
+            const stageNames = Array.from(
+                new Set(openDeals.map(d => d.stageName).filter(Boolean))
+            );
+            subValue = stageNames.length > 0 ? stageNames.join(', ') : 'Multiple Stages';
         }
     }
 
     return (
         <div className="flex items-center justify-between py-2 group">
             <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/5 rounded-xl group-hover:bg-primary/10 transition-colors">
-                    <Workflow className="h-4 w-4 text-primary/70" />
+                <div className={`p-2 rounded-xl group-hover:bg-primary/10 transition-colors ${hasDeals ? 'bg-primary/5' : 'bg-muted'}`}>
+                    {hasDeals
+                        ? <TrendingUp className="h-4 w-4 text-primary/70" />
+                        : <Workflow className="h-4 w-4 text-muted-foreground/40" />
+                    }
                 </div>
                 <div className="space-y-0.5 text-left">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Current Stage</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Active Stage</p>
                     <div className="flex flex-col">
-                        <span className="text-sm font-bold text-foreground">{displayValue}</span>
+                        <span className={`text-sm font-bold ${hasDeals ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {displayValue}
+                        </span>
                         {subValue && (
                             <span className="text-[9px] font-semibold text-muted-foreground/80 truncate max-w-[200px]" title={subValue}>
                                 {subValue}

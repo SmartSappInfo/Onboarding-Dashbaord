@@ -78,7 +78,7 @@ export async function scheduleRemindersForMeeting(
       const { resolveTemplateForOrg } = await import('./template-resolver');
       const tpl = await resolveTemplateForOrg('reminders' as TemplateCategory, reminderType, orgId);
       templateId = tpl.id;
-      channel = tpl.channel;
+      channel = (tpl.channel === 'email' || tpl.channel === 'sms') ? tpl.channel : 'email';
       void template; // used for side-effect validation only
     } catch {
       // No template found for this reminder type — skip
@@ -215,7 +215,7 @@ export async function scheduleFormReminders(
         const { resolveTemplateForOrg } = await import('./template-resolver');
         const tpl = await resolveTemplateForOrg('forms' as TemplateCategory, 'submission_reminder', orgId);
         templateId = tpl.id;
-        channel = tpl.channel;
+        channel = (tpl.channel === 'email' || tpl.channel === 'sms') ? tpl.channel : 'email';
       } catch {
         continue;
       }

@@ -41,8 +41,8 @@ function extractPrimaryContact(entity: Entity): { primaryContactName?: string; p
 interface LinkEntityToWorkspaceInput {
   entityId: string;
   workspaceId: string;
-  pipelineId: string;
-  stageId: string;
+  pipelineId?: string;
+  stageId?: string;
   assignedTo?: {
     userId: string | null;
     name: string | null;
@@ -176,10 +176,9 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       workspaceId: input.workspaceId,
       entityId: input.entityId,
       entityType: entity.entityType,
-      pipelineId: input.pipelineId,
-      stageId: input.stageId,
       assignedTo: input.assignedTo,
       status: 'active',
+      lifecycleStatus: currentStageName, // Use lifecycle status instead of pipeline stage
       workspaceTags: [],
       addedAt: timestamp,
       updatedAt: timestamp,
@@ -187,7 +186,6 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       displayName: entity.name,
       primaryEmail,
       primaryPhone,
-      currentStageName,
       entityContacts: entity.entityContacts || [],
     };
 

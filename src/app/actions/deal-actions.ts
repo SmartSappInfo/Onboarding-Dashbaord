@@ -59,6 +59,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
 
         const stageSnap = await adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1).get();
         const stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
+        const stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
 
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
@@ -66,13 +67,15 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             entityId,
             pipelineId,
             stageId,
+            ...(stageName ? { stageName } : {}),
             name,
             value: value || 0,
             status: 'open',
             assignedTo,
+            expectedCloseDate: rest.expectedCloseDate,
+            customFields: rest.customFields,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            ...rest
         };
 
         const docRef = await adminDb.collection('deals').add(newDeal);

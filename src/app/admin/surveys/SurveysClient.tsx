@@ -477,7 +477,7 @@ export default function SurveysClient() {
                             </div>
                         </div>
                     </TableCell>
-                        <TableCell className="text-center"><Badge variant={getStatusVariant(survey.status)} className="capitalize text-[9px] font-semibold uppercase rounded-full px-2.5">{survey.status}</Badge></TableCell>
+                        <TableCell className="text-center"><Badge variant={getStatusVariant(survey.status)} className="text-[9px] font-semibold uppercase rounded-full px-2.5">{survey.status}</Badge></TableCell>
  <TableCell className="text-center">
  <Button variant="link" asChild className="font-semibold text-sm h-auto p-0 hover:text-primary">
                                 <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>

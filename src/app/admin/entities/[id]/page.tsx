@@ -19,7 +19,6 @@ import {
     Phone, 
     Users, 
     PenSquare, 
-    Workflow, 
     User, 
     Send,
     ShieldCheck,
@@ -34,7 +33,6 @@ import {
     Receipt,
     Camera,
     Loader2,
-    ArrowRightLeft,
     RefreshCw,
     Zap,
     Target,
@@ -67,14 +65,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import ChangeStatusModal from '../components/ChangeStatusModal';
-import TransferPipelineModal from '../components/TransferPipelineModal';
 import ConvertLeadModal from '../components/ConvertLeadModal';
 import ManageWorkspacesModal from '../components/ManageWorkspacesModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
-import PipelineAutomationsTab from '../components/PipelineAutomationsTab';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
@@ -117,8 +113,8 @@ export default function EntityDetailPage() {
     );
     const { 
         singular, 
-        plural, 
-        updateStatus, 
+        plural: _plural, 
+        updateStatus: _updateStatus, 
     } = useTerminology();
     
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
@@ -127,7 +123,6 @@ export default function EntityDetailPage() {
     const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
     
     const [statusModalOpen, setStatusModalOpen] = React.useState(false);
-    const [transferModalOpen, setTransferModalOpen] = React.useState(false);
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
 
@@ -348,9 +343,6 @@ export default function EntityDetailPage() {
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
                         </TabsTrigger>
- <TabsTrigger value="pipeline" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
- <Workflow className="h-3 w-3" /> Pipeline
-                        </TabsTrigger>
  <TabsTrigger value="billing" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
  <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
@@ -362,10 +354,6 @@ export default function EntityDetailPage() {
                         </TabsTrigger>
  <TabsTrigger value="timeline" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Activity Feed</TabsTrigger>
                     </TabsList>
-
- <TabsContent value="pipeline" className="m-0 pt-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <PipelineAutomationsTab weData={weData} onTransferPipeline={() => setTransferModalOpen(true)} />
-                </TabsContent>
 
  <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
@@ -515,10 +503,10 @@ export default function EntityDetailPage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5 text-[11px] text-muted-foreground">
-                                                {m.currentStageName && (
+                                                {m.lifecycleStatus && (
                                                     <div className="flex items-center gap-2">
-                                                        <Workflow className="h-3 w-3 shrink-0" />
-                                                        <span className="font-medium">{m.currentStageName}</span>
+                                                        <Activity className="h-3 w-3 shrink-0" />
+                                                        <span className="font-medium">{m.lifecycleStatus}</span>
                                                     </div>
                                                 )}
                                                 {m.assignedTo?.name && (
@@ -628,7 +616,6 @@ export default function EntityDetailPage() {
 
             <LogActivityModal entity={weData} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
             <ChangeStatusModal entity={weData} open={statusModalOpen} onOpenChange={setStatusModalOpen} />
-            <TransferPipelineModal entity={weData} open={transferModalOpen} onOpenChange={setTransferModalOpen} />
             {entityData && (
                 <ManageWorkspacesModal
                     entityId={entityId}

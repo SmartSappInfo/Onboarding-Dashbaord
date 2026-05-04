@@ -101,13 +101,15 @@ export default function NewTemplateClient() {
     setIsSubmitting(true);
     setError(null);
     try {
+      // Filter channel to only email/sms for template creation
+      const channel = (data.channel === 'email' || data.channel === 'sms') ? data.channel : 'email';
+      
       const template = await createGlobalTemplate({
         name: data.name,
         category: data.category,
         templateType: data.templateType,
-        recipientType: data.recipientType as any,
-        channel: data.channel,
-        subject: data.channel === 'email' ? data.subject : undefined,
+        channel,
+        subject: channel === 'email' ? data.subject : undefined,
         body: data.body,
         variableContext: data.variableContext,
         declaredVariables: [],

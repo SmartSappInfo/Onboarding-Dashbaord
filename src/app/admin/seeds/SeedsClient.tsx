@@ -38,6 +38,13 @@ import {
   type WorkspaceMigrationResult,
 } from '@/app/actions/workspace-industry-migration-actions';
 import { executeDealMigration } from '@/app/actions/deal-migration-actions';
+import {
+  fetchDealsForStageNameBackfill,
+  enrichDealsWithStageName,
+  restoreDealStageNameBackfill,
+  rollbackDealStageNameBackfill,
+  type DealStageBackfillResult,
+} from '@/app/actions/backfill-deal-stagename-action';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -81,6 +88,13 @@ export default function SeedsClient() {
   // Deal Migration States
   const [dealMigrationStatus, setDealMigrationStatus] = useState<SeedingState>('idle');
   const [dealMigrationMessage, setDealMigrationMessage] = useState<string>('');
+
+  // Deal stageName Backfill FER States
+  const [stageBackfillFetchStatus,   setStageBackfillFetchStatus]   = useState<SeedingState>('idle');
+  const [stageBackfillEnrichStatus,  setStageBackfillEnrichStatus]  = useState<SeedingState>('idle');
+  const [stageBackfillRestoreStatus, setStageBackfillRestoreStatus] = useState<SeedingState>('idle');
+  const [stageBackfillRollbackStatus,setStageBackfillRollbackStatus]= useState<SeedingState>('idle');
+  const [stageBackfillStats,         setStageBackfillStats]         = useState<DealStageBackfillResult | null>(null);
 
 
   const handleMigration = async () => {
@@ -169,6 +183,79 @@ export default function SeedsClient() {
       setDealMigrationMessage(e.message);
       toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
     }
+  };
+
+  // ── Deal stageName Backfill handlers ────────────────────────────────────────
+  const stageOrgId = activeOrganizationId || 'smartsapp-hq';
+
+  const handleStageBackfillFetch = async () => {
+    setStageBackfillFetchStatus('seeding');
+    try {
+      const result = await fetchDealsForStageNameBackfill(stageOrgId);
+      if (result.success && result.data) {
+        setStageBackfillStats(result.data);
+        toast({ title: 'Fetch Complete', description: `${result.data.needingEnrichment} deals need backfill, ${result.data.skipped} already enriched.` });
+        setStageBackfillFetchStatus('success');
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setStageBackfillFetchStatus('error');
+      toast({ variant: 'destructive', title: 'Fetch Failed', description: e.message });
+    } finally { setTimeout(() => setStageBackfillFetchStatus('idle'), 2500); }
+  };
+
+  const handleStageBackfillEnrich = async () => {
+    setStageBackfillEnrichStatus('seeding');
+    try {
+      const result = await enrichDealsWithStageName(stageOrgId);
+      if (result.data) {
+        setStageBackfillStats(result.data);
+        if (result.data.failed > 0) {
+          toast({ variant: 'destructive', title: 'Enrichment Partially Failed', description: `Succeeded: ${result.data.succeeded}, Failed: ${result.data.failed}` });
+          setStageBackfillEnrichStatus('error');
+        } else {
+          toast({ title: '✅ Enrichment Complete', description: `Backfilled stageName on ${result.data.succeeded} deals.` });
+          setStageBackfillEnrichStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setStageBackfillEnrichStatus('error');
+      toast({ variant: 'destructive', title: 'Enrichment Failed', description: e.message });
+    } finally { setTimeout(() => setStageBackfillEnrichStatus('idle'), 2500); }
+  };
+
+  const handleStageBackfillRestore = async () => {
+    setStageBackfillRestoreStatus('seeding');
+    try {
+      const result = await restoreDealStageNameBackfill(stageOrgId);
+      if (result.data) {
+        setStageBackfillStats(result.data);
+        if (result.data.failed > 0) {
+          toast({ variant: 'destructive', title: 'Validation Failed', description: `${result.data.failed} deals still missing stageName.` });
+          setStageBackfillRestoreStatus('error');
+        } else {
+          toast({ title: '✅ All Deals Validated', description: `${result.data.succeeded} deals confirmed with stageName.` });
+          setStageBackfillRestoreStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setStageBackfillRestoreStatus('error');
+      toast({ variant: 'destructive', title: 'Restore Failed', description: e.message });
+    } finally { setTimeout(() => setStageBackfillRestoreStatus('idle'), 2500); }
+  };
+
+  const handleStageBackfillRollback = async () => {
+    setStageBackfillRollbackStatus('seeding');
+    try {
+      const result = await rollbackDealStageNameBackfill(stageOrgId);
+      if (result.data) {
+        setStageBackfillStats(result.data);
+        toast({ title: 'Rollback Complete', description: `Stripped stageName from ${result.data.succeeded} deals.` });
+        setStageBackfillRollbackStatus('success');
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setStageBackfillRollbackStatus('error');
+      toast({ variant: 'destructive', title: 'Rollback Failed', description: e.message });
+    } finally { setTimeout(() => setStageBackfillRollbackStatus('idle'), 2500); }
   };
 
   const handlePermissionsMigration = async () => {
@@ -512,6 +599,112 @@ export default function SeedsClient() {
             </div>
 
             
+            {/* ── Deal stageName Backfill (FER) ── */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Deal Stage Backfill</h3>
+                    <p className="text-muted-foreground font-medium">Denormalize <code className="px-1.5 py-0.5 bg-muted rounded text-xs">stageName</code> onto all existing deal documents — eliminates client-side <code className="px-1.5 py-0.5 bg-muted rounded text-xs">onboardingStages</code> lookups.</p>
+                </div>
+
+                <Card className="border-2 border-amber-200 bg-amber-50/50 shadow-lg rounded-2xl overflow-hidden">
+                    <CardContent className="p-8 space-y-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-4 bg-amber-100 rounded-2xl w-fit text-amber-700 ring-2 ring-amber-300">
+                                <Workflow className="h-7 w-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xl font-bold tracking-tight text-foreground mb-2">Backfill <code className="text-amber-700">stageName</code> on Deals</h4>
+                                <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                                    All deals created before the deal-centric migration have a <code className="px-1 py-0.5 bg-muted rounded text-xs">stageId</code> but no
+                                    <code className="px-1 py-0.5 bg-muted rounded text-xs"> stageName</code>. This FER job resolves each <code className="px-1 py-0.5 bg-muted rounded text-xs">stageId</code> via
+                                    the <code className="px-1 py-0.5 bg-muted rounded text-xs">onboardingStages</code> collection and writes the resolved name back onto the deal —
+                                    making the UI stage display work without any additional real-time lookups.
+                                </p>
+
+                                {stageBackfillStats && (
+                                    <div className="mt-5 p-4 bg-background rounded-xl border border-border">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                            {[
+                                                { label: 'Total Deals',  value: stageBackfillStats.total,             color: 'text-foreground' },
+                                                { label: 'Backfilled',   value: stageBackfillStats.succeeded,         color: 'text-green-600' },
+                                                { label: 'Skipped',      value: stageBackfillStats.skipped,           color: 'text-amber-600' },
+                                                { label: 'Failed',       value: stageBackfillStats.failed,            color: 'text-red-600' },
+                                            ].map(m => (
+                                                <div key={m.label}>
+                                                    <div className={`text-2xl font-bold tabular-nums ${m.color}`}>{m.value}</div>
+                                                    <div className="text-xs text-muted-foreground font-medium mt-0.5">{m.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {stageBackfillStats.needingEnrichment > 0 && stageBackfillStats.succeeded === 0 && (
+                                            <div className="mt-3 text-center text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-2">
+                                                {stageBackfillStats.needingEnrichment} deals are ready to be enriched — run Enrich to backfill.
+                                            </div>
+                                        )}
+                                        {stageBackfillStats.errors.length > 0 && (
+                                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                                <div className="flex items-center gap-2 text-red-800 font-semibold text-sm mb-2">
+                                                    <AlertCircle className="h-4 w-4" /> Errors ({stageBackfillStats.errors.length})
+                                                </div>
+                                                <div className="text-xs text-red-700 space-y-1 max-h-28 overflow-y-auto font-mono">
+                                                    {stageBackfillStats.errors.slice(0, 10).map((err, i) => (
+                                                        <div key={i}>{err}</div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* FER action buttons */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 mt-4 border-t border-border/50">
+                            <Button
+                                onClick={handleStageBackfillFetch}
+                                disabled={stageBackfillFetchStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 hover:bg-amber-50 hover:border-amber-300 transition-all"
+                            >
+                                {stageBackfillFetchStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Database className="h-5 w-5 mr-2" />}
+                                Fetch
+                            </Button>
+
+                            <Button
+                                onClick={handleStageBackfillEnrich}
+                                disabled={stageBackfillEnrichStatus === 'seeding'}
+                                className="rounded-xl font-bold h-12 px-6 bg-amber-600 hover:bg-amber-700 text-white shadow-lg active:scale-95 transition-all"
+                            >
+                                {stageBackfillEnrichStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />}
+                                Enrich
+                            </Button>
+
+                            <Button
+                                onClick={handleStageBackfillRestore}
+                                disabled={stageBackfillRestoreStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                            >
+                                {stageBackfillRestoreStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+                                Restore
+                            </Button>
+                        </div>
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={handleStageBackfillRollback}
+                                disabled={stageBackfillRollbackStatus === 'seeding'}
+                                variant="ghost"
+                                className="w-full rounded-xl font-bold border-2 border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 h-12 px-6 shadow-sm active:scale-95 transition-all ring-1 ring-rose-200/50"
+                            >
+                                {stageBackfillRollbackStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <RotateCcw className="h-5 w-5 mr-2" />}
+                                Rollback — Strip stageName from All Deals
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
             {/* Reference Data Section */}
             <section className="space-y-8">
                 <div className="flex flex-col gap-1 items-start">

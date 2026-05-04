@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
-import type { OnboardingStage, EntityContact } from './types';
+import type { EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
@@ -149,7 +149,7 @@ export async function ingestBatchAction(
     let successCount = 0;
     let errorCount = 0;
 
-    const getValue = (row: any, key: string) => {
+    const _getValueOuter = (row: any, key: string) => {
         const header = mapping[key];
         if (!header || header === 'none') return undefined;
         return row[header];
@@ -251,8 +251,8 @@ async function processRow(
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const companyValue = getValue('company');
     const sourceForInitials = companyValue ? String(companyValue).trim() : name;
-    const initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
-    const lifecycleStatus = getValue('lifecycleStatus') || 'Onboarding';
+    const _initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
+    const _lifecycleStatus = getValue('lifecycleStatus') || 'Onboarding';
 
     // Fuzzy matching Locations
     const selectedRegion = fuzzyMatch(context.regions, String(getValue('locationRegion') || ''));

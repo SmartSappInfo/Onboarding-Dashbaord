@@ -834,11 +834,14 @@ export interface Entity {
 
 /**
  * WorkspaceEntity - represents the operational relationship between an entity and a workspace
- * Stores workspace-specific state: pipeline position, assignee, workspace tags
+ * Stores workspace-specific state: assignee, workspace tags, lifecycle status
  * 
  * Tag Storage (Requirement 7):
  * - workspaceTags: Operational tags scoped to this specific workspace (e.g., "hot-lead", "billing-issue")
  *   These tags represent workspace-specific state and are NOT visible in other workspaces.
+ * 
+ * Note: Pipeline tracking has been moved to the Deal model. WorkspaceEntity no longer tracks
+ * pipeline stages directly. Use Deal records for opportunity/pipeline management.
  */
 export interface WorkspaceEntity {
   id: string;
@@ -897,8 +900,10 @@ export interface Deal {
   entityId: string;           // Link back to the Unified Entity
   pipelineId: string;
   stageId: string;
+  stageName?: string;         // Denormalized at creation — avoids client-side stage collection lookups
   name: string;               // e.g., "Lincoln Academy Expansion 2026"
-  value?: number;             // Optional deal value
+  value: number;              // Deal value
+  propertyId?: string;        // Optional property reference for real estate deals
   status: 'open' | 'won' | 'lost';
   assignedTo?: {
     userId: string | null;
@@ -2357,9 +2362,11 @@ export interface FormThemeConfig {
 }
 
 export interface FormSubmissionActions {
-  tags: string[]; // Appled immediately or post-creation
+  tags: string[]; // Applied immediately or post-creation
   automations: string[]; // Triggers 'form_submitted:<formId>' or these explicitly
   notifications?: {
+    internalUserIds?: string[]; // @deprecated - use internalAlerts.userIds instead
+    sendConfirmationEmail?: boolean; // @deprecated - use respondentAlerts instead
     internalAlerts?: {
       enabled: boolean;
       userIds: string[];
@@ -3123,8 +3130,8 @@ export interface Negotiation {
   updatedAt: string;
 }
 
-/** Closed deal / transaction record for a property. */
-export interface Deal {
+/** Closed deal / transaction record for a property (Real Estate specific). */
+export interface PropertyDeal {
   id: string;
   organizationId: string;
   workspaceId: string;

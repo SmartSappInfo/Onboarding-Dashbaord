@@ -68,8 +68,23 @@ export const getMetricStats = async (workspaceId: string) => {
 
 /**
  * Fetch data for the pipeline chart.
+ * TODO: Refactor to use Deal-based pipeline instead of entity-level pipeline
+ * Pipeline tracking has moved from WorkspaceEntity to Deal model
  */
 export const getPipelineStats = async (workspaceId: string) => {
+    // TODO: Query deals collection instead of workspace_entities
+    // const deals = await getWorkspaceDeals(workspaceId);
+    // Group deals by stageId and aggregate
+    
+    return {
+        stages: [],
+        totalCount: 0,
+        totalStudents: 0
+    };
+};
+
+/* DEPRECATED: Entity-level pipeline removed - kept for reference
+export const getPipelineStatsOLD = async (workspaceId: string) => {
     const [entities, stages] = await Promise.all([
         getWorkspaceEntities(workspaceId),
         getOnboardingStages(),
@@ -110,6 +125,7 @@ export const getPipelineStats = async (workspaceId: string) => {
         }))
         .sort((a, b) => a.order - b.order);
 };
+*/
 
 /**
  * Fetch upcoming meetings for the meetings widget.

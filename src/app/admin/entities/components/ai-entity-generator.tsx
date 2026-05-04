@@ -30,14 +30,14 @@ import {
     Info,
     Target
 } from 'lucide-react';
-import { addDoc, collection, query, getDocs, orderBy, limit, where, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
 import { Button as MovingButton } from '@/components/ui/moving-border';
-import type { Module, Zone, OnboardingStage } from '@/lib/types';
+import type { Module, Zone } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -87,25 +87,7 @@ export default function AiEntityGenerator() {
             throw new Error('AI failed to identify the school name.');
         }
 
-        // 1. Resolve Target Pipeline and Initial Stage
-        let targetPipelineId = 'institutional_onboarding';
-        if (data.track === 'prospect') {
-            const pSnap = await getDocs(query(collection(firestore, 'pipelines'), where('targetTrack', '==', 'prospect'), limit(1)));
-            if (!pSnap.empty) targetPipelineId = pSnap.docs[0].id;
-        }
-
-        const stagesQuery = query(
-            collection(firestore, 'onboardingStages'), 
-            where('pipelineId', '==', targetPipelineId),
-            orderBy('order', 'asc'), 
-            limit(1)
-        );
-        const stagesSnap = await getDocs(stagesQuery);
-        const defaultStage = !stagesSnap.empty 
-            ? { id: stagesSnap.docs[0].id, name: stagesSnap.docs[0].data().name, order: stagesSnap.docs[0].data().order, color: stagesSnap.docs[0].data().color }
-            : { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' };
-
-        // 2. Prepare Smart Mapping
+        // 1. Prepare Smart Mapping
         const slug = result.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         
         const mappedModules = (result.suggestedModuleNames || []).map(name => {
@@ -161,9 +143,6 @@ export default function AiEntityGenerator() {
             displayName: result.name,
             status: 'active' as const,
             lifecycleStatus: 'Onboarding' as const,
-            pipelineId: targetPipelineId,
-            stageId: defaultStage.id,
-            currentStageName: defaultStage.name,
             assignedTo: { 
                 userId: user.uid, 
                 name: user.displayName || 'Architect', 

@@ -16,30 +16,29 @@ import {
     AlertCircle,
     Table as TableIcon,
     RefreshCw,
-    Wand2,
     Check,
     Pencil,
-    MapPin,
-    Info,
     ArrowRight,
     Download,
     Zap,
     Plus,
     UserPlus,
     Trash2,
-    Users
+    Users,
+    Map,
+    Settings2,
+    Eye,
+    PartyPopper
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-// AI Mapping removed in favor of exact string matching
-import { ingestBatchAction, type BatchResult } from '@/lib/bulk-upload-actions';
+import { collection, query, where } from 'firebase/firestore';
+import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -259,7 +258,7 @@ export default function BulkUploadClient() {
             ? query(collection(firestore, 'app_fields'), where('workspaceId', '==', activeWorkspace.id), where('status', '==', 'active'))
             : null,
     [firestore, activeWorkspace?.id]);
-    const { data: registryFields } = useCollection<any>(fieldsQuery);
+    const { data: _registryFields } = useCollection<any>(fieldsQuery);
 
     // Fetch Workspace Tags
     const tagsQuery = useMemoFirebase(() => 
@@ -311,7 +310,7 @@ export default function BulkUploadClient() {
     
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
     const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; entityName?: string; error?: string }[]>([]);
-    const [currentRowIdx, setCurrentRowIdx] = React.useState(0);
+    const [_currentRowIdx, _setCurrentRowIdx] = React.useState(0);
     const [failedRowIndices, setFailedRowIndices] = React.useState<number[]>([]);
 
     // ── Dynamic Contact Slots ────────────────────────────────────────────────
@@ -483,118 +482,132 @@ export default function BulkUploadClient() {
             description: `Modifications applied to row #${idx + 1}.` 
         });
     };
-
-    const progress = rawData.length > 0 ? Math.round((executionResults.length / rawData.length) * 100) : 0;
+    const _progress = rawData.length > 0 ? Math.round((executionResults.length / rawData.length) * 100) : 0;
     const stepTransition = { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { type: 'spring' as const, damping: 25, stiffness: 200 } };
 
     const flowSteps = [
-        { id: 'UPLOAD', label: 'Upload Data' },
-        { id: 'MAPPING', label: 'Map Columns' },
-        { id: 'SETTINGS', label: 'Import Settings' },
-        { id: 'PREVIEW', label: 'Preview & Run' },
-        { id: 'COMPLETE', label: 'Finished' },
+        { id: 'UPLOAD',   label: 'Upload',   icon: Upload },
+        { id: 'MAPPING',  label: 'Map',      icon: Map },
+        { id: 'SETTINGS', label: 'Settings', icon: Settings2 },
+        { id: 'PREVIEW',  label: 'Preview',  icon: Eye },
+        { id: 'COMPLETE', label: 'Done',     icon: PartyPopper },
     ];
     
-    // Determine stepper index
-    const activeIdx = currentStep === 'EXECUTING' ? 3 : currentStep === 'CORRECTION' ? 4 : flowSteps.findIndex(s => s.id === currentStep);
+    // Determine stepper index (EXECUTING is still in PREVIEW, CORRECTION is COMPLETE)
+    const activeIdx = currentStep === 'EXECUTING'
+        ? 3
+        : currentStep === 'CORRECTION'
+            ? 4
+            : flowSteps.findIndex(s => s.id === currentStep);
 
     return (
-        <div className="h-full overflow-y-auto text-left relative z-0">
-            {/* Main Background Gradient for the screen */}
-            <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10 -z-10" />
+        <div className="min-h-full py-4 space-y-6 relative">
+            {/* Background Ambient Glow - Standard for QR Studio modules */}
+            <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent pointer-events-none -z-10" />
 
-            <div className="space-y-8 max-w-5xl mx-auto w-full pt-8 pb-20">
-                {/* Stepper UI */}
-                {currentStep !== 'UPLOAD' && currentStep !== 'COMPLETE' && currentStep !== 'CORRECTION' && (
-                    <div className="w-full flex justify-between items-center mb-12 px-4 sm:px-12 relative max-w-4xl mx-auto">
-                        {/* Background Line */}
-                        <div className="absolute top-5 left-16 right-16 h-[2px] bg-muted -z-10" />
-                        {/* Progress Line */}
-                        <div 
-                            className="absolute top-5 left-16 h-[2px] bg-primary transition-all duration-500 ease-in-out -z-10" 
-                            style={{ width: `calc(${(Math.max(0, activeIdx) / (flowSteps.length - 1)) * 100}% - 4rem)` }}
+            <div className="max-w-5xl mx-auto w-full px-4 pb-20 space-y-6">
+
+                {/* ── Premium Stepper (Floating) ───────────────────────────── */}
+                <div className="w-full">
+                    <div className="relative mx-auto max-w-2xl px-4 py-6">
+                        {/* Track line (behind bubbles) - Grid based alignment */}
+                        <div className="absolute top-[48px] left-[10%] right-[10%] h-[1px] bg-primary/20 hidden sm:block" />
+                        <div
+                            className="absolute top-[48px] left-[10%] h-[1px] bg-primary transition-all duration-700 ease-in-out hidden sm:block"
+                            style={{ width: `${(Math.max(0, activeIdx) / (flowSteps.length - 1)) * 80}%` }}
                         />
-                        {flowSteps.map((step, idx) => {
-                            const isPast = idx < activeIdx;
-                            const isCurrent = idx === activeIdx;
-                            return (
-                                <div key={step.id} className="flex flex-col items-center gap-3 w-28">
-                                    <div className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 shadow-sm",
-                                        isPast ? "bg-primary text-white" : 
-                                        isCurrent ? "bg-background border-[3px] border-primary text-primary" : 
-                                        "bg-muted/30 text-muted-foreground border border-border"
-                                    )}>
-                                        {isPast ? <Check size={18} strokeWidth={3} /> : idx + 1}
+                        {/* Steps Grid */}
+                        <div className="relative grid grid-cols-5 gap-0">
+                            {flowSteps.map((step, idx) => {
+                                const StepIcon = step.icon;
+                                const isPast    = idx < activeIdx;
+                                const isCurrent = idx === activeIdx;
+                                return (
+                                    <div key={step.id} className="flex flex-col items-center gap-3">
+                                        <div className={cn(
+                                            "relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm",
+                                            isPast
+                                                ? "bg-primary text-white shadow-primary/20"
+                                                : isCurrent
+                                                    ? "bg-white dark:bg-slate-900 text-primary border-2 border-primary/20 shadow-xl scale-110"
+                                                    : "bg-white/50 dark:bg-slate-900/50 text-muted-foreground border border-border"
+                                        )}>
+                                            {isPast
+                                                ? <Check size={20} strokeWidth={3} />
+                                                : <StepIcon size={20} />}
+                                            {isCurrent && (
+                                                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary border-2 border-white dark:border-slate-900 shadow-sm" />
+                                            )}
+                                        </div>
+                                        <span className={cn(
+                                            "text-[10px] font-bold uppercase tracking-widest transition-colors text-center leading-none hidden sm:block",
+                                            isCurrent ? "text-primary" : "text-muted-foreground/60"
+                                        )}>
+                                            {step.label}
+                                        </span>
                                     </div>
-                                    <span className={cn(
-                                        "text-[9px] font-extrabold uppercase tracking-widest hidden sm:block transition-colors text-center",
-                                        isCurrent ? "text-primary" : "text-muted-foreground"
-                                    )}>
-                                        {step.label}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
-                )}
+                </div>
 
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
-                        <motion.div key="upload" {...stepTransition} className="w-full">
-                            
-                            <div className="flex flex-col sm:flex-row items-center justify-between mb-10 gap-4">
+                        <motion.div key="upload" {...stepTransition} className="space-y-6">
+                            {/* Header - QR Studio Style */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                 <div>
-                                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent pb-2">
-                                        Account Import
-                                    </h1>
-                                    <p className="text-muted-foreground font-medium text-lg">
-                                        Automate onboarding by mapping spreadsheet data instantly.
+                                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Bulk Account Import</h1>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Upload a spreadsheet to onboard records into your workspace instantly.
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Button 
                                         variant="outline" 
                                         onClick={() => handleDownloadTemplate('simple')} 
-                                        className="gap-2 rounded-full font-bold shadow-sm border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all h-12 px-5 bg-background/50 backdrop-blur-md"
+                                        className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card"
                                     >
-                                        <Download size={16} className="text-primary" /> Simple Template
+                                        <Download size={16} className="mr-2 text-primary" /> 
+                                        Simple Template
                                     </Button>
                                     <Button 
                                         variant="outline" 
                                         onClick={() => handleDownloadTemplate('advanced')} 
-                                        className="gap-2 rounded-full font-bold shadow-sm border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5 transition-all h-12 px-5 bg-background/50 backdrop-blur-md text-violet-600 dark:text-violet-400"
+                                        className="rounded-xl h-11 px-4 font-semibold text-sm border-border bg-card text-violet-600 dark:text-violet-400"
                                     >
-                                        <Download size={16} /> Advanced Template
+                                        <Download size={16} className="mr-2" /> 
+                                        Advanced Template
                                     </Button>
                                 </div>
                             </div>
 
-                            <Card className="rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden bg-card/60 backdrop-blur-3xl relative">
-                                {/* Subtle internal glow */}
-                                <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-                                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-                                
-                                <CardContent className="p-8 sm:p-16 relative z-10">
-                                    <label htmlFor="bulk-file" className="w-full mx-auto block cursor-pointer group">
-                                        <div className="border-[3px] border-dashed border-border/40 rounded-[3rem] p-16 sm:p-24 text-center transition-all duration-500 group-hover:border-primary/50 group-hover:bg-primary/[0.03] group-hover:shadow-inner flex flex-col items-center justify-center gap-8 relative overflow-hidden bg-background/30 backdrop-blur-sm">
-                                            
-                                            {/* Hover Glow Effect */}
-                                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                                            
-                                            <div className="p-8 bg-card rounded-3xl shadow-xl shadow-black/5 border border-border/50 group-hover:scale-110 group-hover:shadow-[0_0_40px_-10px] group-hover:shadow-primary/30 transition-all duration-500 relative z-10">
-                                                <FileText size={56} className="text-primary" />
+                            {/* Drop Zone - QR Studio batch-import aesthetic */}
+                            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                <CardContent className="p-8 sm:p-12">
+                                    <label htmlFor="bulk-file" className="w-full block cursor-pointer group">
+                                        <div className={cn(
+                                            "border-2 border-dashed rounded-2xl p-10 sm:p-12 text-center",
+                                            "flex flex-col items-center justify-center gap-4",
+                                            "transition-all duration-300",
+                                            "border-border/50 bg-muted/20",
+                                            "hover:border-primary/50 hover:bg-primary/[0.03]"
+                                        )}>
+                                            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:shadow-primary/20 group-hover:shadow-lg transition-all duration-300">
+                                                <Upload size={24} className="text-primary" />
                                             </div>
-                                            
-                                            <div className="space-y-3 relative z-10">
-                                                <p className="text-3xl font-bold tracking-tight group-hover:text-primary transition-colors duration-300">
-                                                    Drop Document Here
+                                            <div className="space-y-1">
+                                                <p className="text-lg font-bold group-hover:text-primary transition-colors duration-200">
+                                                    Drop your spreadsheet here
                                                 </p>
-                                                <p className="text-muted-foreground font-medium text-base">
-                                                    Supports .csv, .xlsx, .xls files
+                                                <p className="text-xs text-muted-foreground font-medium">
+                                                    Supports <span className="font-bold text-foreground">.csv</span>, <span className="font-bold text-foreground">.xlsx</span>, and <span className="font-bold text-foreground">.xls</span> files
                                                 </p>
                                             </div>
-                                            
+                                            <div className="px-5 py-1.5 rounded-full border border-border bg-background text-[10px] font-bold text-muted-foreground group-hover:border-primary/50 group-hover:text-primary transition-all">
+                                                Click to browse files
+                                            </div>
                                             <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
                                         </div>
                                     </label>
@@ -604,30 +617,35 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'MAPPING' && (
-                        <motion.div key="mapping" {...stepTransition} className="w-full">
-                            <div className="flex items-center justify-between mb-8">
-                                <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="font-bold gap-2">
-                                    <ArrowLeft size={16} /> Change File
-                                </Button>
-                                <Badge className="bg-primary px-4 h-8 uppercase font-semibold">
-                                    {rawData.length} {rawData.length === 1 ? terms.singular : terms.plural} Identified
-                                </Badge>
+                        <motion.div key="mapping" {...stepTransition} className="space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Schema Correlation</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">Map your spreadsheet columns to workspace fields.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="rounded-xl h-11 px-4 font-semibold text-sm hover:bg-primary/5">
+                                        <ArrowLeft size={16} className="mr-2" /> Change File
+                                    </Button>
+                                    <Badge className="bg-primary/10 text-primary border-none px-4 h-11 rounded-xl text-xs font-bold uppercase tracking-widest">
+                                        {rawData.length} {rawData.length === 1 ? terms.singular : terms.plural}
+                                    </Badge>
+                                </div>
                             </div>
-                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
-                                <CardHeader className="bg-card/20 border-b p-8">
+
+                            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                            <TableIcon size={24} />
+                                        <div className="p-2.5 rounded-xl bg-primary/5 text-primary">
+                                            <TableIcon size={22} />
                                         </div>
                                         <div>
-                                            <CardTitle className="text-2xl font-semibold">Schema Correlation</CardTitle>
-                                            <CardDescription className="text-xs font-bold opacity-60">
-                                                Map each column from your file to a {terms.singular.toLowerCase()} field.
-                                            </CardDescription>
+                                            <CardTitle className="text-lg font-bold">Field Mapping</CardTitle>
+                                            <CardDescription className="text-xs font-medium">Verify each column maps to the correct property.</CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-10 space-y-8">
+                                <CardContent className="p-8 space-y-6">
                                     {/* Contact Slots Controls & Explicit Mapping */}
                                     <div className="space-y-6">
                                         <div className="flex items-center justify-between">
@@ -853,35 +871,27 @@ export default function BulkUploadClient() {
                                         </Badge>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
+                                <CardFooter className="bg-primary/5 p-8 border-t flex flex-col gap-6">
                                     {/* Workspace Context Banner */}
-                                    <div className="w-full p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-4">
-                                        <div className="p-2 bg-primary/10 rounded-xl"><Database size={18} className="text-primary" /></div>
+                                    <div className="w-full p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center gap-4">
+                                        <div className="p-2 bg-primary/10 rounded-lg"><Database size={18} className="text-primary" /></div>
                                         <div className="text-left">
-                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Target Workspace</p>
-                                            <p className="text-sm font-semibold">{activeWorkspace?.name || 'Unknown'} · <span className="text-muted-foreground capitalize">{contactScope}</span></p>
+                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider leading-none">Target Workspace</p>
+                                            <p className="text-sm font-bold mt-1">{activeWorkspace?.name || 'Unknown'} · <span className="text-muted-foreground capitalize">{contactScope}</span></p>
                                         </div>
                                     </div>
                                     {rawData.length > 500 && (
-                                        <div className="w-full p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-4">
+                                        <div className="w-full p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-4">
                                             <AlertCircle size={18} className="text-amber-600 shrink-0" />
-                                            <p className="text-[10px] text-amber-700 font-bold">Large dataset detected ({rawData.length} rows). Import may take a few minutes.</p>
-                                        </div>
-                                    )}
-                                    {contactScope === 'institution' && (
-                                        <div className="w-full p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">
-                                            <Zap size={18} className="text-blue-500 mt-0.5 shrink-0" />
-                                            <p className="text-[10px] text-blue-700 font-bold opacity-80 leading-relaxed">
-                                                Zones, Managers, and Packages will be fuzzy-matched from your data during import.
-                                            </p>
+                                            <p className="text-[10px] text-amber-700 font-bold uppercase tracking-wide">Large dataset detected ({rawData.length} rows). Process may take time.</p>
                                         </div>
                                     )}
                                     <Button 
                                         onClick={() => setCurrentStep('SETTINGS')} 
                                         disabled={(!mapping['name'] && !mapping['contact_0_name']) || !activeWorkspace?.id} 
-                                        className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3"
+                                        className="w-full h-14 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 bg-primary text-white gap-2 transition-all active:scale-[0.98]"
                                     >
-                                        Continue to Settings <ArrowRight size={24} />
+                                        Continue to Settings <ArrowRight size={20} />
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -890,16 +900,27 @@ export default function BulkUploadClient() {
 
                     {/* ─── SETTINGS STEP ─── */}
                     {currentStep === 'SETTINGS' && (
-                        <motion.div key="settings" {...stepTransition} className="w-full">
-                            <div className="flex items-center justify-between mb-8">
-                                <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="font-bold gap-2">
-                                    <ArrowLeft size={16} /> Back to Mapping
+                        <motion.div key="settings" {...stepTransition} className="space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Import Settings</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">Configure automation and metadata for this batch.</p>
+                                </div>
+                                <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="rounded-xl h-11 px-4 font-semibold text-sm hover:bg-primary/5">
+                                    <ArrowLeft size={16} className="mr-2" /> Back to Mapping
                                 </Button>
                             </div>
-                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
-                                <CardHeader className="bg-card/20 border-b p-8 flex flex-row items-center justify-between space-y-0">
-                                    <CardTitle className="text-2xl font-semibold">Import Settings</CardTitle>
-                                    <CardDescription className="text-sm font-medium">Configure tags and automations for the imported records.</CardDescription>
+                            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2.5 rounded-xl bg-primary/5 text-primary">
+                                            <Settings2 size={22} />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg font-bold">Configuration</CardTitle>
+                                            <CardDescription className="text-xs font-medium">Set global tags and trigger workflows.</CardDescription>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="p-8 space-y-12">
                                     {/* Global Tags Section */}
@@ -929,7 +950,7 @@ export default function BulkUploadClient() {
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <p className="font-semibold text-sm">Auto-Create Missing Mapped Tags</p>
-                                                    <p className="text-xs text-muted-foreground">If a tag in the CSV doesn't exist, create it automatically.</p>
+                                                    <p className="text-xs text-muted-foreground">If a tag in the CSV doesn&apos;t exist, create it automatically.</p>
                                                 </div>
                                                 <Switch checked={autoCreateTags} onCheckedChange={setAutoCreateTags} />
                                             </div>
@@ -957,13 +978,13 @@ export default function BulkUploadClient() {
                                             </SelectContent>
                                         </Select>
                                         <p className="text-[10px] font-bold text-muted-foreground mt-2">
-                                            Note: The default "Record Created" automations may still run based on your workspace settings.
+                                            Note: The default &quot;Record Created&quot; automations may still run based on your workspace settings.
                                         </p>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="bg-primary/5 p-10 border-t">
-                                    <Button onClick={() => setCurrentStep('PREVIEW')} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3">
-                                        Review & Import <ArrowRight size={24} />
+                                <CardFooter className="bg-primary/5 p-8 border-t">
+                                    <Button onClick={() => setCurrentStep('PREVIEW')} className="w-full h-14 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 bg-primary text-white gap-2 transition-all active:scale-[0.98]">
+                                        Review & Import <ArrowRight size={20} />
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -972,19 +993,32 @@ export default function BulkUploadClient() {
 
                     {/* ─── PREVIEW STEP ─── */}
                     {currentStep === 'PREVIEW' && (
-                        <motion.div key="preview" {...stepTransition}>
-                            <div className="flex items-center justify-between mb-8">
-                                <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="font-bold gap-2">
-                                    <ArrowLeft size={16} /> Adjust Mapping
-                                </Button>
-                                <Badge variant="outline" className="px-4 h-8 font-semibold">{rawData.length} rows ready</Badge>
+                        <motion.div key="preview" {...stepTransition} className="space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold tracking-tight text-foreground">Data Preview</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">Final validation before ingestion.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Button variant="ghost" onClick={() => setCurrentStep('SETTINGS')} className="rounded-xl h-11 px-4 font-semibold text-sm hover:bg-primary/5">
+                                        <ArrowLeft size={16} className="mr-2" /> Adjust Settings
+                                    </Button>
+                                    <Badge className="bg-primary/10 text-primary border-none px-4 h-11 rounded-xl text-xs font-bold uppercase tracking-widest">
+                                        {rawData.length} Rows Ready
+                                    </Badge>
+                                </div>
                             </div>
-                            <Card className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
-                                <CardHeader className="bg-card/20 border-b p-8 flex flex-row items-center justify-between space-y-0">
-                                    <CardTitle className="text-2xl font-semibold">Data Preview</CardTitle>
-                                    <CardDescription className="text-xs font-bold opacity-60">
-                                        Showing first {Math.min(rawData.length, 5)} of {rawData.length} rows. Verify mapped values before importing.
-                                    </CardDescription>
+                            <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+                                <CardHeader className="border-b p-8 flex flex-row items-center justify-between space-y-0">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2.5 rounded-xl bg-primary/5 text-primary">
+                                            <Eye size={22} />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg font-bold">Verification</CardTitle>
+                                            <CardDescription className="text-xs font-medium">Verify mapped values before importing.</CardDescription>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
@@ -1013,8 +1047,8 @@ export default function BulkUploadClient() {
                                     </ScrollArea>
                                 </CardContent>
                                 <CardFooter className="p-8 border-t bg-primary/5">
-                                    <Button onClick={() => startExecution()} className="w-full h-16 rounded-[1.5rem] font-semibold text-xl shadow-2xl bg-primary text-white gap-3">
-                                        <Zap size={24} /> Import {rawData.length} {terms.plural}
+                                    <Button onClick={() => startExecution()} className="w-full h-14 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 bg-primary text-white gap-2 transition-all active:scale-[0.98]">
+                                        <Zap size={20} /> Import {rawData.length} {terms.plural}
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -1037,69 +1071,102 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'COMPLETE' && (
-                        <motion.div key="complete" className="space-y-8">
-                            <Card className="rounded-[2.5rem] border border-border shadow-2xl overflow-hidden bg-card relative">
-                                <CardHeader className={cn("py-16 text-center border-b relative overflow-hidden", failedRowIndices.length === 0 ? "bg-emerald-500/5" : "bg-rose-500/5")}>
-                                    {/* Background Ambient Glow */}
-                                    <div className={cn("absolute inset-0 opacity-20 blur-3xl", failedRowIndices.length === 0 ? "bg-emerald-400" : "bg-rose-400")} />
+                        <motion.div key="complete" className="space-y-6">
+                            <Card className="rounded-2xl border border-border/40 shadow-xl overflow-hidden bg-white dark:bg-[#0f1117] relative">
+                                {/* Status Header Section - Left-Aligned Icon Layout */}
+                                <CardHeader className={cn(
+                                    "py-12 px-10 border-b-0 relative overflow-hidden",
+                                    failedRowIndices.length === 0 ? "bg-emerald-500/[0.02]" : "bg-rose-500/[0.02]"
+                                )}>
+                                    {/* Ambient Glow */}
+                                    <div className={cn(
+                                        "absolute inset-0 blur-[100px] opacity-10",
+                                        failedRowIndices.length === 0 ? "bg-emerald-500" : "bg-rose-500"
+                                    )} />
                                     
-                                    <div className="relative z-10 flex flex-col items-center gap-6">
-                                        <div className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center shadow-xl bg-card border border-white/10 backdrop-blur-sm">
+                                    <div className="relative z-10 flex items-start gap-8">
+                                        <div className={cn(
+                                            "w-20 h-20 rounded-2xl flex items-center justify-center shadow-2xl border shrink-0",
+                                            failedRowIndices.length === 0 
+                                                ? "bg-emerald-500 text-white border-emerald-400/50 shadow-emerald-500/20" 
+                                                : "bg-rose-500 text-white border-rose-400/50 shadow-rose-500/20"
+                                        )}>
                                             {failedRowIndices.length === 0
-                                                ? <CheckCircle2 size={48} className="text-emerald-500" />
-                                                : <AlertCircle size={48} className="text-rose-500" />
+                                                ? <Check size={36} strokeWidth={3} />
+                                                : <AlertCircle size={36} strokeWidth={2.5} />
                                             }
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-4xl font-black tracking-tight">Import Complete</CardTitle>
-                                            <p className="text-muted-foreground font-medium text-base mt-3">
+
+                                        <div className="flex-1 space-y-2 pt-1">
+                                            <CardTitle className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                                {failedRowIndices.length === 0 ? 'Import Successfully Finalized' : 'Import Partially Completed'}
+                                            </CardTitle>
+                                            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm leading-relaxed max-w-2xl">
                                                 {failedRowIndices.length === 0 
-                                                    ? 'All records were successfully processed and ingested.' 
-                                                    : 'Some records encountered validation issues and were skipped.'}
+                                                    ? 'Your data ecosystem has been successfully synchronized. All records are now active within the workspace directory and ready for automation workflows.' 
+                                                    : 'The ingestion process is finished, but some records required manual intervention due to validation discrepancies or duplicate entries.'}
                                             </p>
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="p-12">
-                                    {/* Stats Grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                                        <div className="flex flex-col items-center justify-center p-8 rounded-3xl bg-emerald-500/5 border border-emerald-500/10 shadow-sm">
-                                            <p className="text-5xl font-black text-emerald-600 mb-2">{executionResults.filter(r => r.status === 'success').length}</p>
-                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Created</p>
+
+                                <CardContent className="px-10 pb-10 space-y-10">
+                                    {/* High-Impact Stats Bar */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-emerald-500/30">
+                                            <p className="text-3xl font-black text-emerald-600 mb-0.5">{executionResults.filter(r => r.status === 'success').length}</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Created</p>
                                         </div>
-                                        <div className="flex flex-col items-center justify-center p-8 rounded-3xl bg-rose-500/5 border border-rose-500/10 shadow-sm">
-                                            <p className="text-5xl font-black text-rose-600 mb-2">{failedRowIndices.length}</p>
-                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Failed</p>
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-rose-500/30">
+                                            <p className="text-3xl font-black text-rose-600 mb-0.5">{failedRowIndices.length}</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Discrepancies</p>
                                         </div>
-                                        <div className="flex flex-col items-center justify-center p-8 rounded-3xl bg-primary/5 border border-primary/10 shadow-sm">
-                                            <p className="text-5xl font-black text-primary mb-2">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p>
-                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Success Rate</p>
+                                        <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 shadow-sm transition-all hover:border-indigo-500/30">
+                                            <p className="text-3xl font-black text-indigo-600 mb-0.5">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Efficiency</p>
                                         </div>
                                     </div>
-                                    {/* Error Detail List */}
+
+                                    {/* Integrated Validation Log (Only if errors exist) */}
                                     {failedRowIndices.length > 0 && (
-                                        <div className="mb-10 rounded-2xl border border-rose-200/50 overflow-hidden shadow-sm">
-                                            <div className="px-6 py-4 bg-rose-500/10 border-b border-rose-200/50">
-                                                <p className="text-sm font-bold text-rose-700">Failed Rows — {failedRowIndices.length} issue{failedRowIndices.length > 1 ? 's' : ''}</p>
+                                        <div className="rounded-2xl border border-rose-200/50 overflow-hidden shadow-sm bg-rose-500/[0.01]">
+                                            <div className="px-5 py-3 bg-rose-500/[0.03] border-b border-rose-200/50 flex items-center justify-between">
+                                                <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest flex items-center gap-2">
+                                                    <AlertCircle size={12} /> Validation Discrepancies ({failedRowIndices.length})
+                                                </p>
                                             </div>
-                                            <ScrollArea className="max-h-[200px] bg-card/50">
+                                            <ScrollArea className="max-h-[220px]">
                                                 {executionResults.filter(r => r.status === 'error').map(r => (
-                                                    <div key={r.row} className="px-6 py-4 border-b border-rose-100 last:border-0 flex items-center gap-4">
-                                                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-none text-[10px] shrink-0 font-bold px-3 py-1">Row {r.row + 1}</Badge>
-                                                        <p className="text-sm font-medium text-rose-700 truncate">{r.error}</p>
+                                                    <div key={r.row} className="px-5 py-3 border-b border-rose-100/30 last:border-0 flex items-center gap-4 group">
+                                                        <Badge variant="outline" className="bg-rose-500/5 text-rose-600 border-rose-200 text-[9px] shrink-0 font-bold px-2 py-0.5">ROW {r.row + 1}</Badge>
+                                                        <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate group-hover:text-rose-700 transition-colors">{r.error}</p>
                                                     </div>
                                                 ))}
                                             </ScrollArea>
                                         </div>
                                     )}
-                                    <div className="flex flex-col sm:flex-row gap-4">
+
+                                    {/* Action Footers - Horizontal Layout */}
+                                    <div className="flex items-center gap-4 pt-2">
                                         {failedRowIndices.length > 0 && (
-                                            <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="flex-1 h-16 rounded-2xl font-bold text-lg gap-3 border-rose-200 text-rose-600 hover:bg-rose-50">
-                                                <Pencil size={20} /> Fix & Retry Failures
+                                            <Button 
+                                                onClick={() => setCurrentStep('CORRECTION')} 
+                                                className="flex-1 h-14 rounded-xl font-black text-sm shadow-lg bg-rose-500 hover:bg-rose-600 text-white gap-2 transition-all active:scale-[0.98] uppercase tracking-wider shadow-rose-500/20"
+                                            >
+                                                <RefreshCw size={18} /> Resolve Failures
                                             </Button>
                                         )}
-                                        <Button onClick={() => router.push('/admin/entities')} className="flex-1 h-16 rounded-2xl font-bold text-lg shadow-xl gap-3 bg-primary hover:bg-primary/90 text-white">
-                                            Open Directory <ArrowRight size={20} />
+                                        <Button 
+                                            onClick={() => router.push('/admin/entities')} 
+                                            variant={failedRowIndices.length > 0 ? 'outline' : 'default'}
+                                            className={cn(
+                                                "flex-1 h-14 rounded-xl font-black text-sm transition-all active:scale-[0.98] uppercase tracking-wider gap-2",
+                                                failedRowIndices.length === 0 
+                                                    ? "bg-[#4d69ff] hover:bg-[#3d59ef] text-white shadow-lg shadow-primary/20" 
+                                                    : "border-border hover:bg-slate-50 dark:hover:bg-slate-900"
+                                            )}
+                                        >
+                                            Open Directory <ArrowRight size={18} />
                                         </Button>
                                     </div>
                                 </CardContent>

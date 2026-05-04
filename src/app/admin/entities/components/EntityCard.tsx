@@ -15,7 +15,6 @@ import {
     PlusCircle,
     Send,
     Eye,
-    ArrowRightLeft,
     Users,
     Building,
     MapPin,
@@ -37,7 +36,6 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import ChangeStatusModal from '../../entities/components/ChangeStatusModal';
-import TransferPipelineModal from '../../entities/components/TransferPipelineModal';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
@@ -53,7 +51,6 @@ interface EntityCardProps {
  */
 export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
-  const [transferModalOpen, setTransferModalOpen] = React.useState(false);
   const { activeWorkspace } = useWorkspace();
   const { singular } = useTerminology();
 
@@ -144,10 +141,6 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
  <span className="font-bold text-xs text-left">Lifecycle State</span>
                     </DropdownMenuItem>
 
- <DropdownMenuItem className="rounded-lg p-2 gap-2.5 text-left" onClick={() => setTransferModalOpen(true)}>
- <ArrowRightLeft className="h-3.5 w-3.5 text-blue-600" />
- <span className="font-bold text-xs text-left">Move Track</span>
-                    </DropdownMenuItem>
 
  <DropdownMenuSeparator className="my-1" />
  <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5 text-left">
@@ -242,11 +235,6 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
             entity={entity} 
             open={statusModalOpen} 
             onOpenChange={setStatusModalOpen} 
-        />
-        <TransferPipelineModal 
-            entity={entity} 
-            open={transferModalOpen} 
-            onOpenChange={setTransferModalOpen} 
         />
     </TooltipProvider>
   );

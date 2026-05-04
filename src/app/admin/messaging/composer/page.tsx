@@ -10,18 +10,25 @@ export default function MessageComposerPage() {
     
     // Extract composerContext from URL parameters
     const composerContext = React.useMemo(() => {
-        const category = searchParams?.get('category') as TemplateCategory | null;
+        const categoryParam = searchParams?.get('category');
         const meetingId = searchParams?.get('meetingId') || undefined;
         const formId = searchParams?.get('formId') || undefined;
         const surveyId = searchParams?.get('surveyId') || undefined;
         const agreementId = searchParams?.get('agreementId') || undefined;
         
-        if (!category && !meetingId && !formId && !surveyId && !agreementId) {
+        if (!categoryParam && !meetingId && !formId && !surveyId && !agreementId) {
             return undefined;
         }
         
+        // Filter category to supported values
+        const supportedCategories = ['forms', 'surveys', 'meetings', 'agreements', 'campaigns', 'reminders', 'general'] as const;
+        type SupportedCategory = typeof supportedCategories[number];
+        const category = (categoryParam && supportedCategories.includes(categoryParam as any)) 
+            ? categoryParam as SupportedCategory
+            : undefined;
+        
         return {
-            category: category || undefined,
+            category,
             meetingId,
             formId,
             surveyId,
