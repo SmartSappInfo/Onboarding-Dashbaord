@@ -53,20 +53,24 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
         const industry = workspace.industry as IndustryVertical;
         const industryTerms = INDUSTRY_CONFIG[industry].terminology;
         
+        // Allow workspace-level custom terminology to override industry defaults
+        const s = workspace?.terminology?.singular || industryTerms.entitySingular;
+        const p = workspace?.terminology?.plural || industryTerms.entityPlural;
+        
         return {
-            singular: industryTerms.entitySingular,
-            plural: industryTerms.entityPlural,
+            singular: s,
+            plural: p,
             focalPerson: 'Focal Person',
-            addNew: `Add New ${industryTerms.entitySingular}`,
-            importBulk: `Bulk Import ${industryTerms.entityPlural}`,
-            noFound: `No ${industryTerms.entityPlural.toLowerCase()} found for the active workspace.`,
-            deleteConfirm: `Delete ${industryTerms.entitySingular}?`,
-            deleteLabel: `Delete ${industryTerms.entitySingular}`,
-            updateStatus: `Update ${industryTerms.entitySingular} Status`,
-            termName: `${industryTerms.entitySingular} Name`,
-            termStatus: `${industryTerms.entitySingular} Status`,
-            viewConsole: `View ${industryTerms.entitySingular} Console`,
-            editProfile: `Edit ${industryTerms.entitySingular} Profile`,
+            addNew: `Add New ${s}`,
+            importBulk: `Bulk Import ${p}`,
+            noFound: `No ${p.toLowerCase()} found for the active workspace.`,
+            deleteConfirm: `Delete ${s}?`,
+            deleteLabel: `Delete ${s}`,
+            updateStatus: `Update ${s} Status`,
+            termName: `${s} Name`,
+            termStatus: `${s} Status`,
+            viewConsole: `View ${s} Console`,
+            editProfile: `Edit ${s} Profile`,
             dealSingular: (industryTerms as any).dealSingular || 'Deal',
             dealPlural: (industryTerms as any).dealPlural || 'Deals',
         };
