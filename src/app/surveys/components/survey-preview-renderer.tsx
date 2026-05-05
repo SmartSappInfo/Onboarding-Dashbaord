@@ -52,6 +52,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                         {question.type === 'multiple-choice' && (
                             <RadioGroup disabled className="space-y-2">
                                 {question.options?.map(opt => <div key={opt} className={cn("flex items-start space-x-2", textAlign === 'center' && 'justify-center')}><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}
+                                {question.allowOther && <div className={cn("flex items-start space-x-2 pt-2", textAlign === 'center' && 'justify-center')}><RadioGroupItem value="__other__" disabled /><Input disabled placeholder="Other (please specify)" className="h-8 flex-1" /></div>}
                             </RadioGroup>
                         )}
                         {question.type === 'checkboxes' && (

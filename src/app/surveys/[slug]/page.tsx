@@ -1,19 +1,19 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import type { Survey } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
+import SurveyUnavailable from '../components/survey-unavailable';
 import { notFound } from 'next/navigation';
 
 import { firestore } from '@/firebase/config';
 import { collection, query, where, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 
-const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
+import { cn, stripHtml } from '@/lib/utils';
 
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     try {
         const surveysRef = collection(firestore, 'surveys');
         
         // 1. Try querying by slug field
-        // We use a single-field query to avoid potential composite index requirements
         const q = query(
             surveysRef, 
             where('slug', '==', slug), 
@@ -23,24 +23,15 @@ async function getSurveyBySlug(slug: string): Promise<Survey | null> {
 
         if (!querySnapshot.empty) {
             const surveyDoc = querySnapshot.docs[0];
-            const data = surveyDoc.data();
-            // Ensure the survey is not archived
-            if (data.status !== 'archived') {
-                return { ...data, id: surveyDoc.id } as Survey;
-            }
+            return { ...surveyDoc.data(), id: surveyDoc.id } as Survey;
         }
 
         // 2. Fallback: Try fetching directly by document ID
-        // This handles cases where unique links might use the document ID directly
         const docRef = doc(firestore, 'surveys', slug);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const data = docSnap.data();
-            // Ensure the survey is not archived
-            if (data.status !== 'archived') {
-                return { ...data, id: docSnap.id } as Survey;
-            }
+            return { ...docSnap.data(), id: docSnap.id } as Survey;
         }
         
         return null;
@@ -54,9 +45,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const survey = await getSurveyBySlug(slug);
 
-  if (!survey) {
+  if (!survey || survey.status !== 'published') {
     return {
-      title: 'Survey Not Found',
+      title: 'Survey Unavailable | SmartSapp',
     };
   }
   
@@ -87,16 +78,42 @@ export default async function PublicSurveyPage({
     searchParams 
 }: { 
     params: Promise<{ slug: string }>,
-    searchParams: Promise<{ sourcePageId?: string, ref?: string }>
+    searchParams: Promise<{ sourcePageId?: string, ref?: string, preview?: string }>
 }) {
     const { slug } = await params;
-    const { sourcePageId, ref } = await searchParams;
+    const { sourcePageId, ref, preview } = await searchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
-        notFound();
+        return <SurveyUnavailable status="not_found" />;
+    }
+
+    let organizationLogoUrl: string | null = null;
+    try {
+        // Resolve organizationId: direct field → workspace lookup
+        let orgId = survey.organizationId;
+        if (!orgId && survey.workspaceIds?.length) {
+            const wsDoc = await getDoc(doc(firestore, 'workspaces', survey.workspaceIds[0]));
+            if (wsDoc.exists()) {
+                orgId = wsDoc.data().organizationId;
+            }
+        }
+        if (orgId) {
+            const orgDoc = await getDoc(doc(firestore, 'organizations', orgId));
+            if (orgDoc.exists()) {
+                organizationLogoUrl = orgDoc.data().logoUrl || null;
+            }
+        }
+    } catch (e) {
+        console.error("Error fetching organization logo:", e);
+    }
+
+    // Block non-published surveys unless in preview mode
+    if (survey.status !== 'published' && preview !== 'true') {
+        return <SurveyUnavailable status={survey.status as any || 'draft'} survey={survey} logoUrl={survey.logoUrl || organizationLogoUrl} />;
     }
     
-    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} />;
+    return <SurveyDisplay survey={survey} sourcePageId={sourcePageId} assignedUserId={ref} organizationLogoUrl={organizationLogoUrl} />;
 }
+
 

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
 import { migrateAllPermissions } from '@/lib/permissions-migration';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import {
   fetchEntitiesForSchemaRestructure,
@@ -51,6 +51,13 @@ import {
   validateCustomDataCleanup,
   type CustomDataCleanupResult,
 } from '@/app/actions/cleanup-entity-customdata-action';
+import {
+  fetchUsersForWorkspaceRbacMigration,
+  enrichUsersWithWorkspaceRbac,
+  restoreWorkspaceRbacMigration,
+  rollbackWorkspaceRbacMigration,
+  type WorkspaceRbacMigrationResult
+} from '@/app/actions/rbac-workspace-migration-actions';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -108,6 +115,12 @@ export default function SeedsClient() {
   const [customDataRestoreStatus, setCustomDataRestoreStatus] = useState<SeedingState>('idle');
   const [customDataStats,         setCustomDataStats]         = useState<CustomDataCleanupResult | null>(null);
 
+  // Workspace RBAC Migration FER States
+  const [rbacFetchStatus,   setRbacFetchStatus]   = useState<SeedingState>('idle');
+  const [rbacEnrichStatus,  setRbacEnrichStatus]  = useState<SeedingState>('idle');
+  const [rbacRestoreStatus, setRbacRestoreStatus] = useState<SeedingState>('idle');
+  const [rbacRollbackStatus,setRbacRollbackStatus]= useState<SeedingState>('idle');
+  const [rbacStats,         setRbacStats]         = useState<WorkspaceRbacMigrationResult | null>(null);
 
   const handleMigration = async () => {
     if (!firestore) return;
@@ -324,6 +337,77 @@ export default function SeedsClient() {
       setCustomDataRestoreStatus('error');
       toast({ variant: 'destructive', title: 'Validation Failed', description: e.message });
     } finally { setTimeout(() => setCustomDataRestoreStatus('idle'), 2500); }
+  };
+
+  // ── Workspace RBAC Migration FER Handlers ─────────────────────────────────
+  const handleRbacFetch = async () => {
+    setRbacFetchStatus('seeding');
+    try {
+      const result = await fetchUsersForWorkspaceRbacMigration(stageOrgId);
+      if (result.success && result.data) {
+        setRbacStats(result.data);
+        toast({ title: 'Fetch Complete', description: `${result.data.needingMigration} users need RBAC migration.` });
+        setRbacFetchStatus('success');
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setRbacFetchStatus('error');
+      toast({ variant: 'destructive', title: 'Fetch Failed', description: e.message });
+    } finally { setTimeout(() => setRbacFetchStatus('idle'), 2500); }
+  };
+
+  const handleRbacEnrich = async () => {
+    setRbacEnrichStatus('seeding');
+    try {
+      const result = await enrichUsersWithWorkspaceRbac(stageOrgId);
+      if (result.success && result.data) {
+        setRbacStats(result.data);
+        if (result.data.failed > 0) {
+          toast({ variant: 'destructive', title: 'Migration Partially Failed', description: `Succeeded: ${result.data.succeeded}, Failed: ${result.data.failed}` });
+          setRbacEnrichStatus('error');
+        } else {
+          toast({ title: '\u2705 Migration Complete', description: `Migrated RBAC for ${result.data.succeeded} users.` });
+          setRbacEnrichStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setRbacEnrichStatus('error');
+      toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
+    } finally { setTimeout(() => setRbacEnrichStatus('idle'), 2500); }
+  };
+
+  const handleRbacRestore = async () => {
+    setRbacRestoreStatus('seeding');
+    try {
+      const result = await restoreWorkspaceRbacMigration(stageOrgId);
+      if (result.success && result.data) {
+        setRbacStats(result.data);
+        if (result.data.invalid > 0) {
+          toast({ variant: 'destructive', title: 'Validation Failed', description: `${result.data.invalid} users have invalid RBAC schema.` });
+          setRbacRestoreStatus('error');
+        } else {
+          toast({ title: '\u2705 All Users Validated', description: `${result.data.succeeded} users confirmed with correct RBAC.` });
+          setRbacRestoreStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setRbacRestoreStatus('error');
+      toast({ variant: 'destructive', title: 'Validation Failed', description: e.message });
+    } finally { setTimeout(() => setRbacRestoreStatus('idle'), 2500); }
+  };
+
+  const handleRbacRollback = async () => {
+    setRbacRollbackStatus('seeding');
+    try {
+      const result = await rollbackWorkspaceRbacMigration(stageOrgId);
+      if (result.success && result.data) {
+        setRbacStats(result.data);
+        toast({ title: 'Rollback Complete', description: `Stripped workspaceRoles from ${result.data.succeeded} users.` });
+        setRbacRollbackStatus('success');
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setRbacRollbackStatus('error');
+      toast({ variant: 'destructive', title: 'Rollback Failed', description: e.message });
+    } finally { setTimeout(() => setRbacRollbackStatus('idle'), 2500); }
   };
 
   const handlePermissionsMigration = async () => {
@@ -666,6 +750,111 @@ export default function SeedsClient() {
                 </div>
             </div>
 
+            {/* ── Workspace RBAC Migration (FER) ── */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Workspace-Specific RBAC Migration</h3>
+                    <p className="text-muted-foreground font-medium">Migrate users from legacy global <code className="px-1.5 py-0.5 bg-muted rounded text-xs">roles</code> to strict <code className="px-1.5 py-0.5 bg-muted rounded text-xs">workspaceRoles</code> isolation.</p>
+                </div>
+
+                <Card className="border-2 border-indigo-200 bg-indigo-50/50 shadow-lg rounded-2xl overflow-hidden">
+                    <CardContent className="p-8 space-y-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-4 bg-indigo-100 rounded-2xl w-fit text-indigo-700 ring-2 ring-indigo-300">
+                                <ShieldCheck className="h-7 w-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xl font-bold tracking-tight text-foreground mb-2">Isolate <code className="text-indigo-700">roles</code> per Workspace</h4>
+                                <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                                    Previously, a user assigned the "Finance Officer" role was granted that role across *all* their workspaces. 
+                                    This FER job migrates the legacy <code className="px-1 py-0.5 bg-muted rounded text-xs">roles</code> array into a <code className="px-1 py-0.5 bg-muted rounded text-xs">workspaceRoles</code> mapping. 
+                                    It computes isolated <code className="px-1 py-0.5 bg-muted rounded text-xs">workspacePermissions</code> and hierarchical schemas, 
+                                    enabling admins to assign distinct roles in different workspaces.
+                                </p>
+
+                                {rbacStats && (
+                                    <div className="mt-5 p-4 bg-background rounded-xl border border-border">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                            {[
+                                                { label: 'Total Users',  value: rbacStats.total,             color: 'text-foreground' },
+                                                { label: 'Migrated',     value: rbacStats.succeeded,         color: 'text-green-600' },
+                                                { label: 'Skipped',      value: rbacStats.skipped,           color: 'text-indigo-600' },
+                                                { label: 'Failed',       value: rbacStats.failed,            color: 'text-red-600' },
+                                            ].map(m => (
+                                                <div key={m.label}>
+                                                    <div className={`text-2xl font-bold tabular-nums ${m.color}`}>{m.value}</div>
+                                                    <div className="text-xs text-muted-foreground font-medium mt-0.5">{m.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {rbacStats.needingMigration > 0 && rbacStats.succeeded === 0 && (
+                                            <div className="mt-3 text-center text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg py-2">
+                                                {rbacStats.needingMigration} users are ready to be migrated — run Enrich to isolate roles.
+                                            </div>
+                                        )}
+                                        {rbacStats.errors.length > 0 && (
+                                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                                <div className="flex items-center gap-2 text-red-800 font-semibold text-sm mb-2">
+                                                    <AlertCircle className="h-4 w-4" /> Errors ({rbacStats.errors.length})
+                                                </div>
+                                                <div className="text-xs text-red-700 space-y-1 max-h-28 overflow-y-auto font-mono">
+                                                    {rbacStats.errors.slice(0, 10).map((err, i) => (
+                                                        <div key={i}>{err}</div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* FER action buttons */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 mt-4 border-t border-border/50">
+                            <Button
+                                onClick={handleRbacFetch}
+                                disabled={rbacFetchStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 hover:bg-indigo-50 hover:border-indigo-300 transition-all"
+                            >
+                                {rbacFetchStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Database className="h-5 w-5 mr-2" />}
+                                Fetch
+                            </Button>
+
+                            <Button
+                                onClick={handleRbacEnrich}
+                                disabled={rbacEnrichStatus === 'seeding'}
+                                className="rounded-xl font-bold h-12 px-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg active:scale-95 transition-all"
+                            >
+                                {rbacEnrichStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />}
+                                Enrich
+                            </Button>
+
+                            <Button
+                                onClick={handleRbacRestore}
+                                disabled={rbacRestoreStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                            >
+                                {rbacRestoreStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+                                Restore
+                            </Button>
+                        </div>
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={handleRbacRollback}
+                                disabled={rbacRollbackStatus === 'seeding'}
+                                variant="ghost"
+                                className="w-full rounded-xl font-bold border-2 border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 h-12 px-6 shadow-sm active:scale-95 transition-all ring-1 ring-rose-200/50"
+                            >
+                                {rbacRollbackStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <RotateCcw className="h-5 w-5 mr-2" />}
+                                Rollback — Strip workspaceRoles from All Users
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
             
             {/* ── Deal stageName Backfill (FER) ── */}
             <section className="space-y-8">

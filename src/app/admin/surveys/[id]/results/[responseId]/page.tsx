@@ -61,7 +61,7 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
         }
     }
 
- return <p className="text-base font-medium">{String(answerValue)}</p>;
+ return <p className="text-base font-medium whitespace-pre-wrap">{String(answerValue)}</p>;
 }
 
 export default function ResponseDetailPage() {
@@ -260,7 +260,7 @@ export default function ResponseDetailPage() {
                             return (
  <div key={element.id} className="space-y-3 pb-6 border-b border-border/50 last:border-b-0 last:pb-0 group">
  <div className="flex justify-between items-start gap-4">
- <Label className="text-lg font-bold leading-tight flex-1 text-foreground group-hover:text-primary transition-colors">{element.title}</Label>
+ <Label className="text-lg font-bold leading-tight flex-1 text-foreground group-hover:text-primary transition-colors whitespace-pre-wrap">{element.title}</Label>
                                         {survey.scoringEnabled && element.enableScoring && (
                                             <Badge variant={points > 0 ? "default" : "secondary"} className={cn("shrink-0 h-6 font-semibold tabular-nums border-none", points > 0 ? "bg-emerald-500 text-white" : "opacity-40")}>
                                                 {points > 0 ? `+${points}` : '0'} PTS

@@ -116,8 +116,8 @@ export default function LivePreviewPane() {
 
                             {/* Text Content */}
                             <div className="space-y-4 max-w-2xl mx-auto">
-                                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{stripHtml(title || 'Your Survey Title')}</h1>
-                                <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{stripHtml(description || 'Explain why this audit matters to your community.')}</p>
+                                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tighter text-foreground leading-tight ">{title || 'Your Survey Title'}</h1>
+                                <p className="text-base sm:text-lg text-muted-foreground font-medium leading-relaxed italic">{description || 'Explain why this audit matters to your community.'}</p>
                             </div>
 
                             {/* Conditional Layout based on showIntroAsPage */}

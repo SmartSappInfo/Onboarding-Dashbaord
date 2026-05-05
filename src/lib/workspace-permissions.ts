@@ -97,7 +97,7 @@ export async function checkWorkspaceAccess(
 
     const userRoles = rolesSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() } as Role))
-      .filter((role) => user.roles.includes(role.id));
+      .filter((role) => user.roles?.includes(role.id));
 
     // Check if any role grants access to this workspace
     const hasWorkspaceAccess = userRoles.some((role) =>
@@ -406,7 +406,7 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
 
     const userRoles = rolesSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() } as Role))
-      .filter((role) => user.roles.includes(role.id));
+      .filter((role) => user.roles?.includes(role.id));
 
     // 3. Collect all workspace IDs from user roles
     const workspaceIds = new Set<string>();

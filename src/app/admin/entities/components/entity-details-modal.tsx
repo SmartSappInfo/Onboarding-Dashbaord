@@ -13,17 +13,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus, Send, Layout } from 'lucide-react';
+import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus, Send, Layout, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import LogActivityModal from './LogActivityModal';
 import NotesSection from '../../components/NotesSection';
+import EntityCommsTab from './EntityCommsTab';
 import Link from 'next/link';
 import { getEntityEmail, getEntityPhone, getContactPerson } from '@/lib/entity-helpers';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { useTerminology } from '@/hooks/use-terminology';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface EntityDetailsModalProps {
   entity: WorkspaceEntity | null;
@@ -96,12 +98,28 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
                 {entity.initials && <Badge variant="secondary" className="text-[10px] font-semibold uppercase ">{entity.initials}</Badge>}
               </div>
             </SheetTitle>
- <SheetDescription className="text-left italic font-medium opacity-60">{entity.slogan || `${singular} Context Console`}</SheetDescription>
+ <SheetDescription className="text-left italic font-medium opacity-60">{entity.slogan || `${singular} Details`}</SheetDescription>
           </SheetHeader>
           
  <div className="flex-grow overflow-hidden text-left">
- <ScrollArea className="h-full">
- <div className="p-6 text-left">
+ <Tabs defaultValue="details" className="h-full flex flex-col">
+   <div className="px-6 pt-3 border-b shrink-0">
+     <TabsList className="bg-transparent h-10 p-0 gap-4">
+       <TabsTrigger value="details" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 pb-2 text-xs font-bold gap-1.5">
+         <User className="h-3.5 w-3.5" /> Details
+       </TabsTrigger>
+       <TabsTrigger value="notes" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 pb-2 text-xs font-bold gap-1.5">
+         <PenSquare className="h-3.5 w-3.5" /> Notes
+       </TabsTrigger>
+       <TabsTrigger value="communications" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-1 pb-2 text-xs font-bold gap-1.5">
+         <MessageCircle className="h-3.5 w-3.5" /> Communications
+       </TabsTrigger>
+     </TabsList>
+   </div>
+
+   <TabsContent value="details" className="flex-1 overflow-hidden mt-0">
+     <ScrollArea className="h-full">
+       <div className="p-6 text-left">
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 text-left">
                         {/* Left Column */}
  <div className="space-y-6 text-left">
@@ -160,19 +178,33 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
                           </DetailItem>
                         </div>
                     </div>
-                    
- <div className="mt-12 text-left">
-                        <NotesSection entityId={entity.entityId} />
-                    </div>
                 </div>
             </ScrollArea>
+   </TabsContent>
+
+   <TabsContent value="notes" className="flex-1 overflow-hidden mt-0">
+     <ScrollArea className="h-full">
+       <div className="p-6 text-left">
+         <NotesSection entityId={entity.entityId} />
+       </div>
+     </ScrollArea>
+   </TabsContent>
+
+   <TabsContent value="communications" className="flex-1 overflow-hidden mt-0">
+     <ScrollArea className="h-full">
+       <div className="p-6 text-left">
+         <EntityCommsTab entityId={entity.entityId} />
+       </div>
+     </ScrollArea>
+   </TabsContent>
+ </Tabs>
           </div>
 
  <SheetFooter className="p-6 mt-auto border-t justify-between flex-row gap-2 text-left bg-background">
  <div className="flex gap-2">
  <Button variant="outline" onClick={() => setIsLogActivityModalOpen(true)} className="rounded-xl font-bold h-11 text-left">
  <MessageSquarePlus className="mr-2 h-4 w-4" />
-                    Archive Activity
+                    Log Activity
                 </Button>
  <Button variant="outline" asChild className="rounded-xl font-bold h-11 text-left">
                     <Link href={`/admin/messaging/composer?entityId=${entity.entityId}&recipient=${entity.primaryEmail || ''}&var_entity_name=${encodeURIComponent(entity.displayName)}`}>

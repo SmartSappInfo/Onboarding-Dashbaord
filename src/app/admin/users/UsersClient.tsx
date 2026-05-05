@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis, UserPlus, Key } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis, UserPlus, Key, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -33,7 +33,7 @@ const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).joi
 export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { activeOrganizationId, isSuperAdmin } = useTenant();
+  const { activeOrganizationId, activeWorkspaceId, activeWorkspace, isSuperAdmin } = useTenant();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
 
@@ -61,37 +61,60 @@ export default function UsersClient() {
 
   const isLoading = isLoadingUsers || isLoadingRoles;
 
-  // 2. PERMISSION FLATTENING ENGINE
+  // 2. WORKSPACE-SCOPED PERMISSION FLATTENING ENGINE
   const handleUpdateUser = async (userId: string, updates: Partial<UserProfile>) => {
-    if (!firestore || !roles) return;
+    if (!firestore || !roles || !activeWorkspaceId) return;
     setUpdatingId(userId);
 
     const userDocRef = doc(firestore, 'users', userId);
+    const currentUser = users?.find(u => u.id === userId);
     
-    // If roles changed, we need to flatten the associated permissions AND schemas
+    // If roles changed, flatten permissions for the active workspace
     if (updates.roles) {
         const selectedRoleObjects = roles.filter(r => updates.roles!.includes(r.id));
         
-        // Legacy Flattening
+        // Compute workspace-scoped permissions
         const allPerms = new Set<AppPermissionId>();
         selectedRoleObjects.forEach(r => {
             if (r.permissions) r.permissions.forEach(p => allPerms.add(p));
         });
-        updates.permissions = Array.from(allPerms);
 
-        // Hierarchical Merging
+        // Compute workspace-scoped schema
         const schemas = selectedRoleObjects
             .map(r => r.permissionsSchema)
             .filter((s): s is PermissionsSchema => !!s);
-        
-        if (schemas.length > 0) {
-            updates.permissionsSchema = mergePermissionsSchemas(schemas);
-        }
+        const mergedSchema = schemas.length > 0 ? mergePermissionsSchemas(schemas) : undefined;
+
+        // Build workspace-scoped updates (merge with existing workspace data)
+        const existingWsRoles = currentUser?.workspaceRoles || {};
+        const existingWsPerms = currentUser?.workspacePermissions || {};
+        const existingWsSchemas = currentUser?.workspacePermissionsSchemas || {};
+
+        const newWorkspaceRoles = { ...existingWsRoles, [activeWorkspaceId]: updates.roles };
+        const newWorkspacePermissions = { ...existingWsPerms, [activeWorkspaceId]: Array.from(allPerms) };
+        const newWorkspacePermissionsSchemas = mergedSchema 
+            ? { ...existingWsSchemas, [activeWorkspaceId]: mergedSchema }
+            : existingWsSchemas;
+
+        // Ensure workspaceIds includes the active workspace
+        const workspaceIds = Array.from(new Set([...(currentUser?.workspaceIds || []), activeWorkspaceId]));
+
+        // Also maintain legacy fields for backward compatibility
+        updates.permissions = Array.from(allPerms);
+        if (mergedSchema) updates.permissionsSchema = mergedSchema;
+
+        // Merge workspace-specific fields into the update
+        Object.assign(updates, {
+            workspaceIds,
+            workspaceRoles: newWorkspaceRoles,
+            workspacePermissions: newWorkspacePermissions,
+            workspacePermissionsSchemas: newWorkspacePermissionsSchemas,
+        });
     }
 
     try {
         await updateDoc(userDocRef, { ...updates, updatedAt: new Date().toISOString() });
-        toast({ title: 'Access Synchronized', description: 'Institutional permissions have been updated.' });
+        toast({ title: 'Access Synchronized', description: `Workspace permissions updated for ${activeWorkspace?.name || 'current workspace'}.` });
     } catch (e) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userDocRef.path,
@@ -238,34 +261,40 @@ export default function UsersClient() {
                                         </TableCell>
  <TableCell className="min-w-[250px]">
  <div className="flex flex-col gap-2">
+                                                {activeWorkspace && (
+                                                    <Badge variant="outline" className="w-fit text-[8px] font-bold px-1.5 py-0 bg-indigo-50 text-indigo-700 border-indigo-200 mb-0.5">
+                                                        <Building2 className="h-2.5 w-2.5 mr-0.5" />
+                                                        {activeWorkspace.name}
+                                                    </Badge>
+                                                )}
                                                 <MultiSelect 
                                                     options={roles?.map(r => ({ label: r.name, value: r.id })) || []}
-                                                    value={user.roles || []}
+                                                    value={user.workspaceRoles?.[activeWorkspaceId] || user.roles || []}
                                                     onChange={(vals) => handleUpdateUser(user.id, { roles: vals })}
-                                                    placeholder="Assign Role Architecture..."
+                                                    placeholder="Assign roles for this workspace..."
  className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-xl"
                                                 />
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
  <div className="flex flex-wrap gap-1 px-1">
-                                                                {user.permissions?.slice(0, 3).map(p => (
+                                                                {(user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.slice(0, 3).map(p => (
                                                                     <Badge key={p} variant="secondary" className="h-4 text-[7px] font-semibold uppercase tracking-tighter bg-primary/5 text-primary">
                                                                         {p.replace('_', ' ')}
                                                                     </Badge>
                                                                 ))}
-                                                                {(user.permissions?.length || 0) > 3 && (
+                                                                {((user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.length || 0) > 3 && (
                                                                     <Badge variant="secondary" className="h-4 text-[7px] font-semibold uppercase bg-muted text-muted-foreground">
-                                                                        +{(user.permissions?.length || 0) - 3} more
+                                                                        +{((user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.length || 0) - 3} more
                                                                     </Badge>
                                                                 )}
                                                             </div>
                                                         </TooltipTrigger>
  <TooltipContent className="max-w-xs p-3 rounded-xl border-none shadow-2xl">
  <div className="space-y-2">
- <p className="text-[10px] font-semibold text-primary border-b pb-1.5">Flattened Matrix</p>
+ <p className="text-[10px] font-semibold text-primary border-b pb-1.5">Workspace Permission Matrix</p>
  <div className="flex flex-wrap gap-1.5">
-                                                                    {user.permissions?.map(p => (
+                                                                    {(user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.map(p => (
                                                                         <Badge key={p} className="text-[8px] font-bold uppercase tracking-tight h-5">
                                                                             {p.replace('_', ' ')}
                                                                         </Badge>

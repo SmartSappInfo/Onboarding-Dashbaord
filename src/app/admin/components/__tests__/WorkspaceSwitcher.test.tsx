@@ -79,6 +79,7 @@ describe('WorkspaceSwitcher - Scope Badges', () => {
       availableOrganizations: [],
       isSuperAdmin: false,
       hasPermission: vi.fn().mockReturnValue(true),
+      getPermissionsSchemaForWorkspace: vi.fn().mockReturnValue(undefined),
     });
   });
 

@@ -27,7 +27,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { inviteUserAction } from '@/lib/user-invite-actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
-import { UserPlus, Mail, Phone, Loader2, Sparkles, Eye } from 'lucide-react';
+import { UserPlus, Mail, Phone, Loader2, Sparkles, Eye, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
@@ -49,7 +49,7 @@ interface InviteUserModalProps {
 
 export default function InviteUserModal({ open, onOpenChange, roles }: InviteUserModalProps) {
     const { toast } = useToast();
-    const { activeOrganizationId, activeOrganization } = useTenant();
+    const { activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace } = useTenant();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [previewMode, setPreviewMode] = React.useState(false);
 
@@ -72,11 +72,19 @@ export default function InviteUserModal({ open, onOpenChange, roles }: InviteUse
     }, [activeOrganization?.defaultRoleId, form]);
 
     const onSubmit = async (data: InviteFormData) => {
-        if (!activeOrganizationId) return;
+        if (!activeOrganizationId || !activeWorkspaceId) return;
         setIsSubmitting(true);
         try {
+            // Map the selected roles to the active workspace
+            const workspaceRoles: Record<string, string[]> = {
+                [activeWorkspaceId]: data.roles,
+            };
+
             const result = await inviteUserAction({
-                ...data,
+                fullName: data.fullName,
+                email: data.email,
+                phone: data.phone,
+                workspaceRoles,
                 organizationId: activeOrganizationId,
                 sendMethods: data.sendMethods as ('email' | 'sms')[],
             });
@@ -163,14 +171,25 @@ export default function InviteUserModal({ open, onOpenChange, roles }: InviteUse
                                 name="roles"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Assigned Role Architecture</FormLabel>
+                                        <FormLabel className="flex items-center gap-2">
+                                            Assigned Role Architecture
+                                            {activeWorkspace && (
+                                                <Badge variant="outline" className="text-[10px] font-bold px-2 py-0 bg-indigo-50 text-indigo-700 border-indigo-200">
+                                                    <Building2 className="h-3 w-3 mr-1" />
+                                                    {activeWorkspace.name}
+                                                </Badge>
+                                            )}
+                                        </FormLabel>
                                         <MultiSelect
                                             options={roles.map(r => ({ label: r.name, value: r.id }))}
                                             value={field.value}
                                             onChange={field.onChange}
-                                            placeholder="Select roles..."
+                                            placeholder="Select roles for this workspace..."
                                             className="rounded-xl border-dashed bg-muted/10 min-h-11"
                                         />
+                                        <p className="text-[11px] text-muted-foreground mt-1.5">
+                                            Roles will be assigned to <span className="font-semibold text-foreground">{activeWorkspace?.name || 'the current workspace'}</span>. You can add more workspaces after invitation.
+                                        </p>
                                         <FormMessage />
                                     </FormItem>
                                 )}

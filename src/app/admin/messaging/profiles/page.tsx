@@ -128,7 +128,7 @@ export default function SenderProfilesPage() {
             setIdentifier('');
             setWorkspaceIds([activeWorkspaceId]);
             setIsAdding(false);
-            toast({ title: 'Profile Initialized', description: 'Authorized for ' + workspaceIds.length + ' hubs.' });
+            toast({ title: 'Profile Created', description: 'Available in ' + workspaceIds.length + ' workspace(s).' });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to create profile.' });
         } finally {
@@ -157,7 +157,7 @@ export default function SenderProfilesPage() {
                 updatedAt: new Date().toISOString(),
             });
             setEditingProfile(null);
-            toast({ title: 'Profile Synchronized' });
+            toast({ title: 'Profile Updated' });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
@@ -183,7 +183,7 @@ export default function SenderProfilesPage() {
             await batch.commit();
             toast({ 
                 title: 'Channel Default Updated', 
-                description: `"${profile.name}" is now the primary gateway for ${profile.channel.toUpperCase()} in this hub.` 
+                description: `"${profile.name}" is now the default for ${profile.channel.toUpperCase()}.` 
             });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Error' });
@@ -259,9 +259,9 @@ export default function SenderProfilesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!firestore || !confirm('Permanently purge this sender identity?')) return;
+        if (!firestore || !confirm('Permanently delete this sender profile?')) return;
         await deleteDoc(doc(firestore, 'sender_profiles', id));
-        toast({ title: 'Profile Purged' });
+        toast({ title: 'Profile Deleted' });
     };
 
     const getStatusBadge = (profile: any) => {
@@ -271,7 +271,7 @@ export default function SenderProfilesPage() {
             case 'verified':
                 return <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 gap-1 uppercase tracking-tighter"><ShieldCheck className="h-2.5 w-2.5" /> Approved</Badge>;
             case 'pending':
-                return <Badge variant="secondary" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-orange-200 text-orange-700 bg-orange-50"><Clock className="h-2.5 w-2.5" /> Pending</Badge>;
+                return <Badge variant="secondary" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-orange-500/20 text-orange-700 dark:text-orange-400 bg-orange-500/10"><Clock className="h-2.5 w-2.5" /> Pending</Badge>;
             case 'not_registered':
                 return <Badge variant="outline" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-dashed"><Globe className="h-2.5 w-2.5" /> Unverified</Badge>;
             default:
@@ -285,7 +285,7 @@ export default function SenderProfilesPage() {
  <div className="flex items-center justify-end flex-wrap gap-4">
  <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">
  {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                        {isAdding ? 'Discard' : 'Initialize Identity'}
+                        {isAdding ? 'Discard' : 'Add Sender Profile'}
                     </Button>
                 </div>
 
@@ -295,8 +295,8 @@ export default function SenderProfilesPage() {
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Fingerprint size={24} /></div>
                                 <div>
- <CardTitle className="text-2xl font-semibold tracking-tight">Identity Hub Architect</CardTitle>
- <CardDescription className="text-xs font-bold text-primary/60">Configure sender credentials across institutional tracks.</CardDescription>
+                                    <CardTitle className="text-2xl font-semibold tracking-tight">Sender Profile Setup</CardTitle>
+ <CardDescription className="text-xs font-bold text-primary/60">Configure sender credentials for your workspaces.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -305,16 +305,16 @@ export default function SenderProfilesPage() {
  <div className="space-y-6">
  <div className="space-y-2">
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Friendly Label</Label>
- <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS Uplink" className="h-12 rounded-xl bg-card border-none shadow-inner font-bold" />
+ <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Primary SMS" className="h-12 rounded-xl bg-card border-none shadow-inner font-bold" />
                                     </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Shared Visibility</Label>
-                                        <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} placeholder="Assign to hubs..." />
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspaces</Label>
+                                        <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} placeholder="Assign to workspaces…" />
                                     </div>
                                 </div>
  <div className="space-y-6">
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel Medium</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Channel</Label>
                                         <Select value={channel} onValueChange={(v: any) => setChannel(v)}>
  <SelectTrigger className="h-12 rounded-xl bg-card border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
  <SelectContent className="rounded-xl">
@@ -324,7 +324,7 @@ export default function SenderProfilesPage() {
                                         </Select>
                                     </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID' : 'Verified Endpoint'}</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{channel === 'sms' ? 'Sender ID' : 'Email Address'}</Label>
                                         <Input 
                                             value={identifier} 
                                             onChange={e => setIdentifier(e.target.value)} 
@@ -337,7 +337,7 @@ export default function SenderProfilesPage() {
  <div className="flex justify-end pt-4">
  <Button onClick={handleAdd} disabled={isSubmitting || !name || !identifier || workspaceIds.length === 0} className="h-14 px-12 rounded-2xl font-semibold shadow-2xl text-sm active:scale-95 transition-all">
  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                                    Commit Identity
+                                    Create Profile
                                 </Button>
                             </div>
                         </CardContent>
@@ -348,8 +348,8 @@ export default function SenderProfilesPage() {
                     <Table>
  <TableHeader className="bg-muted/30">
                             <TableRow>
- <TableHead className="text-[10px] font-semibold pl-8 py-5">Corporate Identity</TableHead>
- <TableHead className="text-[10px] font-semibold ">Visibility</TableHead>
+ <TableHead className="text-[10px] font-semibold pl-8 py-5">Sender Name</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Workspaces</TableHead>
  <TableHead className="text-[10px] font-semibold text-center">Status</TableHead>
  <TableHead className="text-[10px] font-semibold text-center">Default</TableHead>
  <TableHead className="text-[10px] font-semibold text-center">Active</TableHead>
@@ -393,7 +393,7 @@ export default function SenderProfilesPage() {
                                                 <button 
                                                     onClick={() => handleSyncStatus(profile)} 
                                                     disabled={syncingId === profile.id}
- className="text-[8px] font-semibold text-primary hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+ className="text-[8px] font-semibold text-primary hover:underline opacity-60 group-hover:opacity-100 transition-opacity"
                                                 >
  {syncingId === profile.id ? <Loader2 size={8} className="animate-spin" /> : 'Sync Status'}
                                                 </button>
@@ -417,14 +417,14 @@ export default function SenderProfilesPage() {
  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl"><MoreVertical size={16} /></Button>
                                                 </DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
- <DropdownMenuLabel className="text-[10px] font-semibold px-3 py-2 text-muted-foreground">Identity Logic</DropdownMenuLabel>
+ <DropdownMenuLabel className="text-[10px] font-semibold px-3 py-2 text-muted-foreground">Actions</DropdownMenuLabel>
  <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleEditClick(profile)}>
  <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Pencil className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">Edit Hierarchy</span>
+ <span className="font-bold text-sm">Edit Profile</span>
                                                     </DropdownMenuItem>
                                                     {profile.channel === 'sms' && (
  <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => handleStartRegistration(profile)}>
- <div className="p-1.5 bg-orange-50 rounded-lg text-orange-600"><Sparkles className="h-3.5 w-3.5" /></div>
+ <div className="p-1.5 bg-orange-500/10 rounded-lg text-orange-600"><Sparkles className="h-3.5 w-3.5" /></div>
  <span className="font-bold text-sm">Register with mNotify</span>
                                                         </DropdownMenuItem>
                                                     )}
@@ -434,7 +434,7 @@ export default function SenderProfilesPage() {
                                                         onClick={() => handleDelete(profile.id)}
                                                     >
  <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-3.5 w-3.5" /></div>
- <span className="font-bold text-sm">Purge Identity</span>
+ <span className="font-bold text-sm">Delete Profile</span>
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -446,7 +446,7 @@ export default function SenderProfilesPage() {
  <TableCell colSpan={6} className="h-64 text-center">
  <div className="flex flex-col items-center justify-center gap-3 opacity-20">
  <Fingerprint className="h-12 w-12" />
- <p className="text-xs font-semibold ">No Authorized Identities</p>
+ <p className="text-xs font-semibold ">No Sender Profiles</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -466,8 +466,8 @@ export default function SenderProfilesPage() {
                                     <Pencil size={24} />
                                 </div>
  <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Sync Identity</DialogTitle>
- <DialogDescription className="text-[10px] font-bold text-muted-foreground">Updating institutional sender protocol</DialogDescription>
+ <DialogTitle className="text-xl font-semibold tracking-tight">Edit Sender Profile</DialogTitle>
+ <DialogDescription className="text-[10px] font-bold text-muted-foreground">Update sender details and workspace access</DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
@@ -477,11 +477,11 @@ export default function SenderProfilesPage() {
  <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
                             </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Shared Visibility</Label>
-                                <MultiSelect options={workspaceOptions} value={editWorkspaceIds} onChange={setEditWorkspaceIds} placeholder="Assign to hubs..." />
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspaces</Label>
+                                <MultiSelect options={workspaceOptions} value={editWorkspaceIds} onChange={setEditWorkspaceIds} placeholder="Assign to workspaces…" />
                             </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Identity Endpoint</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sender ID / Email</Label>
  <Input value={editIdentifier} onChange={e => setEditIdentifier(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-mono font-semibold shadow-inner" required />
                             </div>
                         </div>
@@ -489,7 +489,7 @@ export default function SenderProfilesPage() {
  <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} disabled={isUpdating} className="rounded-xl font-bold h-12 px-8">Cancel</Button>
  <Button type="submit" disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-semibold h-12 px-10 shadow-2xl text-xs">
  {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
- <span className="ml-2">Commit Logic</span>
+ <span className="ml-2">Save Changes</span>
                             </Button>
                         </DialogFooter>
                     </form>
@@ -503,14 +503,14 @@ export default function SenderProfilesPage() {
  <div className="flex items-center gap-4">
  <div className="p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-200"><Smartphone size={24} /></div>
  <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight text-orange-950">Provider Enrollment</DialogTitle>
+ <DialogTitle className="text-xl font-semibold tracking-tight text-orange-950 dark:text-orange-400">Register Sender ID</DialogTitle>
  <DialogDescription className="text-xs font-bold text-orange-700 opacity-70">Registering ID: {registeringProfile?.identifier}</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
  <div className="p-8 pt-0 space-y-6 text-left">
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Operational Purpose</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Purpose</Label>
                             <Textarea 
                                 value={regPurpose} 
                                 onChange={e => setRegPurpose(e.target.value)} 
@@ -518,10 +518,10 @@ export default function SenderProfilesPage() {
  className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium"
                             />
                         </div>
- <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
- <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
- <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter">
-                                mNotify IDs typically require 24-48 hours for institutional verification.
+ <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
+ <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+ <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed tracking-tighter">
+                                mNotify Sender IDs typically require 24-48 hours for verification.
                             </p>
                         </div>
                     </div>

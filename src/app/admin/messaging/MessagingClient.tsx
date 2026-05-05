@@ -23,6 +23,7 @@ import {
     Info,
     Layers,
     Target,
+    MessageSquare,
     ShieldCheck,
     Zap,
     Database
@@ -101,6 +102,15 @@ export default function MessagingClient() {
     }, [loadBalance, loadReports]);
 
     const operations = [
+        {
+            title: 'Conversations',
+            description: 'Unified inbox view of all message threads and contact history.',
+            icon: MessageSquare,
+            href: '/admin/messaging/conversations',
+            color: 'text-indigo-500',
+            bg: 'bg-indigo-500/10',
+            border: 'hover:border-indigo-500/50'
+        },
         {
             title: 'Message Composer',
             description: 'Manually send one-off or bulk messages using your saved templates.',
@@ -211,7 +221,7 @@ export default function MessagingClient() {
                             Messaging Hub
                         </h1>
                         <p className="text-muted-foreground text-sm mt-1">
-                            Omni-channel alerts and campaign management
+                            Send and manage messages across email and SMS
                         </p>
                     </div>
                 </div>
@@ -236,10 +246,10 @@ export default function MessagingClient() {
                                         <Target className="h-7 w-7" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Delivery Efficiency</p>
+                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Delivery Rate</p>
                                         <div className="flex items-baseline gap-2">
                                             <p className="text-4xl font-semibold tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
-                                            <Badge variant="outline" className="text-[8px] font-semibold uppercase bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Optimal</Badge>
+                                            <Badge variant="outline" className={cn("text-[8px] font-semibold uppercase", deliveryEfficiency > 90 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : deliveryEfficiency > 70 ? "bg-orange-500/10 text-orange-500 border-orange-500/20" : "bg-red-500/10 text-red-500 border-red-500/20")}>{deliveryEfficiency > 90 ? 'Good' : deliveryEfficiency > 70 ? 'Fair' : 'Low'}</Badge>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -262,14 +272,14 @@ export default function MessagingClient() {
                                             )}>
                                                 {isLoadingBalance ? '...' : balance !== null ? balance.toLocaleString() : 'N/A'}
                                             </p>
-                                            <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
+                                            <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" aria-label="Refresh SMS balance">
                                                 <RefreshCw className={cn("h-4 w-4", isLoadingBalance && "animate-spin")} />
                                             </button>
                                         </div>
                                     </div>
                                 </CardContent>
                                 {balance !== null && balance < 50 && (
-                                    <div className="bg-red-500 text-white text-[8px] font-semibold py-1 text-center animate-pulse">Low Units Warning</div>
+                                    <div className="bg-red-500 text-white text-[8px] font-semibold py-1 text-center motion-safe:animate-pulse">Low Units Warning</div>
                                 )}
                             </Card>
 
@@ -279,10 +289,10 @@ export default function MessagingClient() {
                                         <ShieldCheck className="h-7 w-7" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Gateway Trust</p>
+                                        <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">Provider Status</p>
                                         <div className="flex items-baseline gap-2">
-                                            <p className="text-4xl font-semibold tabular-nums tracking-tighter">100%</p>
-                                            <span className="text-[10px] font-bold text-emerald-500 tracking-tighter">Verified</span>
+                                            <p className="text-lg font-semibold tracking-tighter">All Systems Active</p>
+                                            <span className="text-[10px] font-bold text-emerald-500 tracking-tighter">Connected</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -290,11 +300,11 @@ export default function MessagingClient() {
                         </div>
 
                         <section>
- <div className="flex items-center gap-3 mb-8">
-                                <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary">Messaging Tasks</Badge>
- <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                            <div className="flex items-center gap-3 mb-8">
+                                <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary">Send Messages</Badge>
+                                <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                             </div>
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {operations.map((mod) => (
                                     <ModuleCard key={mod.title} mod={mod} />
                                 ))}
@@ -302,22 +312,22 @@ export default function MessagingClient() {
                         </section>
 
                         <section>
- <div className="flex items-center gap-3 mb-8">
-                                <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-border text-muted-foreground">Messaging Setup</Badge>
- <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                            <div className="flex items-center gap-3 mb-8">
+                                <Badge variant="outline" className="bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-border text-muted-foreground">Configuration</Badge>
+                                <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                             </div>
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {infrastructure.map((mod) => (
                                     <ModuleCard key={mod.title} mod={mod} />
                                 ))}
                             </div>
                         </section>
 
- <section className="pt-8">
+                        <section className="pt-8">
                             <Card className="bg-primary/5 border border-primary/20 shadow-none rounded-2xl overflow-hidden">
                                 <CardHeader className="p-8 pb-4">
                                     <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
-                                        <Activity className="h-4 w-4" /> Provider Connectivity Audit
+                                        <Activity className="h-4 w-4" /> Provider Status
                                     </CardTitle>
                                 </CardHeader>
                                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
@@ -326,11 +336,11 @@ export default function MessagingClient() {
                                             <Mail className="h-6 w-6" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-foreground tracking-tight">Email Port (Resend)</p>
-                                            <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: High Throughput Enabled</p>
+                                            <p className="font-semibold text-sm text-foreground tracking-tight">Email (Resend)</p>
+                                            <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: Active</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
                                             <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
                                         </div>
                                     </div>
@@ -340,11 +350,11 @@ export default function MessagingClient() {
                                             <Smartphone className="h-6 w-6" />
                                          </div>
                                          <div className="flex-1 min-w-0">
-                                             <p className="font-semibold text-sm text-foreground tracking-tight">SMS Uplink (mNotify)</p>
-                                             <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: Gateway Authorized</p>
+                                             <p className="font-semibold text-sm text-foreground tracking-tight">SMS (mNotify)</p>
+                                             <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">Status: Active</p>
                                          </div>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
                                             <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
                                         </div>
                                     </div>
@@ -353,24 +363,24 @@ export default function MessagingClient() {
                         </section>
                     </TabsContent>
 
- <TabsContent value="jobs" className="animate-in fade-in slide-in-from-bottom-2">
+                    <TabsContent value="jobs" className="animate-in fade-in slide-in-from-bottom-2">
                         <MessageJobsView />
                     </TabsContent>
 
- <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
- <Card className="lg:col-span-2 rounded-2xl overflow-hidden border border-border shadow-sm">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
- <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends (30D)
+                    <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <Card className="lg:col-span-2 rounded-2xl overflow-hidden border border-border shadow-sm">
+                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                    <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                                        <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends (30D)
                                     </CardTitle>
- <CardDescription className="text-xs font-bold ">Global SMS throughput and handset verification.</CardDescription>
+                                    <CardDescription className="text-xs font-bold ">SMS delivery volume over the last 30 days.</CardDescription>
                                 </CardHeader>
- <CardContent className="h-[350px] p-8">
+                                <CardContent className="h-[350px] p-8">
                                     {isLoadingReport ? (
- <Skeleton className="w-full h-full rounded-xl" />
+                                        <Skeleton className="w-full h-full rounded-xl" />
                                     ) : reportData.length > 0 ? (
- <ChartContainer config={chartConfig} className="h-full w-full">
+                                        <ChartContainer config={chartConfig} className="h-full w-full">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={reportData}>
                                                     <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
@@ -396,25 +406,25 @@ export default function MessagingClient() {
                                             </ResponsiveContainer>
                                         </ChartContainer>
                                     ) : (
- <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-background p-8">
- <Info className="h-10 w-10 mb-4 opacity-20" />
- <p className="font-semibold text-xs">No throughput data recorded</p>
- <p className="text-[10px] tracking-tighter mt-1 opacity-60">Campaign metrics will appear here after dispatch</p>
+                                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-background p-8">
+                                            <Info className="h-10 w-10 mb-4 opacity-20" />
+                                            <p className="font-semibold text-xs">No throughput data recorded</p>
+                                            <p className="text-[10px] tracking-tighter mt-1 opacity-60">Delivery metrics will appear here after sending messages.</p>
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
 
- <div className="space-y-6">
+                            <div className="space-y-6">
                                 {/* SMS Summary */}
-  <Card className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-sm">
- <CardContent className="p-6 flex items-center gap-5">
- <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20">
- <Smartphone className="h-6 w-6" />
+                                <Card className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl shadow-sm">
+                                    <CardContent className="p-6 flex items-center gap-5">
+                                        <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20">
+                                            <Smartphone className="h-6 w-6" />
                                         </div>
                                         <div>
- <p className="text-[10px] font-semibold text-emerald-500 leading-none mb-1.5">SMS Delivered (Total)</p>
- <p className="text-4xl font-semibold text-emerald-500 tabular-nums leading-none">
+                                            <p className="text-[10px] font-semibold text-emerald-500 leading-none mb-1.5">SMS Delivered (Total)</p>
+                                            <p className="text-4xl font-semibold text-emerald-500 tabular-nums leading-none">
                                                 {reportData.reduce((acc, curr) => acc + (curr.delivered || 0), 0)}
                                             </p>
                                         </div>
@@ -422,14 +432,14 @@ export default function MessagingClient() {
                                 </Card>
 
                                 {/* Email Summary */}
-  <Card className="bg-blue-500/10 border border-blue-500/20 rounded-2xl shadow-sm">
- <CardContent className="p-6 flex items-center gap-5">
- <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-500/20">
- <Mail className="h-6 w-6" />
+                                <Card className="bg-blue-500/10 border border-blue-500/20 rounded-2xl shadow-sm">
+                                    <CardContent className="p-6 flex items-center gap-5">
+                                        <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-500/20">
+                                            <Mail className="h-6 w-6" />
                                         </div>
                                         <div>
- <p className="text-[10px] font-semibold text-blue-500 leading-none mb-1.5">Email Sent (Resolved)</p>
- <p className="text-4xl font-semibold text-blue-500 tabular-nums leading-none">
+                                            <p className="text-[10px] font-semibold text-blue-500 leading-none mb-1.5">Emails Sent</p>
+                                            <p className="text-4xl font-semibold text-blue-500 tabular-nums leading-none">
                                                 {emailStats.sent}
                                             </p>
                                         </div>
@@ -440,7 +450,7 @@ export default function MessagingClient() {
   <Card className="bg-rose-500/10 border border-rose-500/20 rounded-2xl shadow-sm">
  <CardHeader className="p-6 pb-2">
  <CardTitle className="text-[10px] font-semibold text-rose-500 flex items-center gap-2">
- <XCircle className="h-3.5 w-3.5" /> Termination Report
+ <XCircle className="h-3.5 w-3.5" /> Failed Messages
                                         </CardTitle>
                                     </CardHeader>
  <CardContent className="p-6 pt-0 space-y-4">
@@ -459,7 +469,7 @@ export default function MessagingClient() {
  <CardContent className="p-6 flex items-center gap-4 text-center justify-center h-24">
  <div className="space-y-1">
  <p className="text-[9px] font-semibold text-primary flex items-center gap-2 justify-center">
- <Target className="h-3 w-3" /> Delivery Efficiency
+ <Target className="h-3 w-3" /> Delivery Rate
                                             </p>
  <p className="text-2xl font-semibold text-foreground">
                                                 {deliveryEfficiency}%

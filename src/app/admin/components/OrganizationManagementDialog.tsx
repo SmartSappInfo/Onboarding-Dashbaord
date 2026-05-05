@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import type { Organization } from '@/lib/types';
 import { 
     Building, 
@@ -49,6 +50,7 @@ export default function OrganizationManagementDialog({
     const firestore = useFirestore();
     const { toast } = useToast();
     const { user } = useUser();
+    const { activeWorkspaceId } = useTenant();
     
     const [isSaving, setIsSaving] = React.useState(false);
 
@@ -229,7 +231,7 @@ export default function OrganizationManagementDialog({
                                                 value={logoUrl}
                                                 onSelect={setLogoUrl}
                                                 label="Upload Organization Logo"
-                                                workspaceId="global"
+                                                workspaceId={activeWorkspaceId}
                                             />
                                         </div>
                                     </div>

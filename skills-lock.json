@@ -23,6 +23,12 @@
       "skillPath": "skills/crm-builder/SKILL.md",
       "computedHash": "29d3504a5642c0fe8bd120fc39db0cd919011b313ee75e50b765b62a14d22c03"
     },
+    "designing-surveys": {
+      "source": "refoundai/lenny-skills",
+      "sourceType": "github",
+      "skillPath": "skills/designing-surveys/SKILL.md",
+      "computedHash": "6d988f04fc48420fe734a2d7172a69f9e32bbba12483d855ffffc4abdeab6f05"
+    },
     "dispatching-parallel-agents": {
       "source": "obra/superpowers",
       "sourceType": "github",

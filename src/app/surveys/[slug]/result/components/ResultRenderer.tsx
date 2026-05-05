@@ -123,17 +123,17 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
             );
         }
         case 'text':
-            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)}>{block.content || ''}</div>;
         case 'list':
             return (
                 <div className={containerClasses}>
                     {block.listStyle === 'ordered' ? (
                         <ol className="list-decimal list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
-                            {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
+                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
                         </ol>
                     ) : (
                         <ul className="list-disc list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
-                            {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
+                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
                         </ul>
                     )}
                 </div>
@@ -215,8 +215,14 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
                 <div className="mb-8">
                     <LogoBanner />
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                <p className="text-lg sm:text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                <div className="space-y-6 max-w-2xl mx-auto">
+                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight uppercase whitespace-pre-wrap">
+                        {survey.thankYouTitle || 'Success!'}
+                    </h1>
+                    <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-medium whitespace-pre-wrap">
+                        {survey.thankYouDescription || 'Your submission has been securely processed.'}
+                    </p>
+                </div>
                 <ResubmitButton />
             </div>
         );

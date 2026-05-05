@@ -225,12 +225,13 @@ export default function ScheduledMessagesPage() {
                                                     </p>
                                                 </TableCell>
  <TableCell className="text-right pr-6">
- <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+ <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 
  className="h-8 w-8 rounded-lg"
                                                             onClick={() => handleEditClick(msg)}
+                                                            aria-label="Edit message"
                                                         >
  <Pencil className="h-4 w-4 text-primary" />
                                                         </Button>
@@ -240,6 +241,7 @@ export default function ScheduledMessagesPage() {
  className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
                                                             onClick={() => setMessageToDelete(msg)}
                                                             disabled={isDeletingId === (msg._id || msg.id)}
+                                                            aria-label="Cancel message"
                                                         >
  {isDeletingId === (msg._id || msg.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                         </Button>
@@ -252,10 +254,10 @@ export default function ScheduledMessagesPage() {
                                     <TableRow>
  <TableCell colSpan={6} className="h-64 text-center">
  <div className="flex flex-col items-center justify-center gap-3">
- <div className="p-6 bg-background0 rounded-[2rem] text-muted-foreground/30 shadow-inner">
+ <div className="p-6 bg-muted/10 rounded-[2rem] text-muted-foreground/30 shadow-inner">
  <CalendarClock className="h-12 w-12" />
                                                 </div>
- <p className="text-muted-foreground font-semibold text-xs">Queue Clear</p>
+ <p className="text-muted-foreground font-semibold text-xs">No Scheduled Messages</p>
  <Button asChild variant="link" className="font-bold text-[10px] text-primary">
  <Link href="/admin/messaging/composer">Go to Composer <ArrowRight className="ml-1 h-3 w-3" /></Link>
                                                 </Button>
@@ -273,10 +275,10 @@ export default function ScheduledMessagesPage() {
  <AlertCircle className="h-6 w-6" />
                     </div>
  <div className="space-y-1">
- <p className="text-sm font-semibold tracking-tight text-primary">Operational Oversight</p>
+ <p className="text-sm font-semibold tracking-tight text-primary">How Scheduling Works</p>
  <p className="text-[10px] text-primary/70 leading-relaxed font-bold ">
-                            SMS queue updates are synced directly with mNotify BMS. Email cancellations utilize the Resend logic to prevent delivery. 
-                            Note that Email content modifications must be handled by re-dispatching.
+                            SMS scheduling syncs directly with mNotify. Email cancellations use Resend to prevent delivery. 
+                            Note: email content cannot be edited after scheduling — re-send the message instead.
                         </p>
                     </div>
                 </div>
@@ -285,8 +287,8 @@ export default function ScheduledMessagesPage() {
             <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
  <DialogContent className="sm:max-w-md rounded-[2.5rem]">
                     <DialogHeader>
- <DialogTitle className="text-xl font-semibold ">Reschedule Dispatch</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground ">Modify pending communication payload</DialogDescription>
+ <DialogTitle className="text-xl font-semibold ">Edit Scheduled Message</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground ">Edit message content and delivery time.</DialogDescription>
                     </DialogHeader>
  <div className="space-y-6 py-6">
  <div className="space-y-2">
@@ -296,15 +298,16 @@ export default function ScheduledMessagesPage() {
                                 onChange={e => setEditBody(e.target.value)}
  className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 leading-relaxed"
                                 disabled={editingMessage?.channel === 'email'}
+                                autoComplete="off"
                             />
                             {editingMessage?.channel === 'email' && (
  <p className="text-[9px] font-bold text-orange-600 tracking-tighter px-1 flex items-center gap-1.5">
- <div className="p-0.5 bg-orange-100 rounded-full"><Info className="h-2 w-2" /></div> Branded Email content is immutable in the queue.
+ <span className="p-0.5 bg-orange-500/10 rounded-full"><Info className="h-2 w-2" /></span> Email content cannot be edited after scheduling.
                                 </p>
                             )}
                         </div>
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Delivery Target</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Send Date & Time</Label>
                             <DateTimePicker value={editDate} onChange={setEditDate} disabled={editingMessage?.channel === 'email'} />
                         </div>
                     </div>
@@ -312,7 +315,7 @@ export default function ScheduledMessagesPage() {
  <Button variant="ghost" onClick={() => setEditingMessage(null)} disabled={isUpdating} className="font-bold">Cancel</Button>
  <Button onClick={handleUpdate} disabled={isUpdating || !editBody.trim() || editingMessage?.channel === 'email'} className="rounded-xl font-bold gap-2 px-8 shadow-lg">
  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Update Queue
+                            Save Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -321,15 +324,15 @@ export default function ScheduledMessagesPage() {
             <AlertDialog open={!!messageToDelete} onOpenChange={(o) => !o && setMessageToDelete(null)}>
  <AlertDialogContent className="rounded-[2rem]">
                     <AlertDialogHeader>
- <AlertDialogTitle className="font-semibold text-xl tracking-tight">Stop Dispatch?</AlertDialogTitle>
+ <AlertDialogTitle className="font-semibold text-xl tracking-tight">Cancel Message?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">
  This will permanently remove the message for <span className="font-bold text-foreground">{messageToDelete?.recipient}</span> from the {messageToDelete?.channel === 'email' || messageToDelete?.type === 'email' ? 'Resend' : 'mNotify'} queue.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
  <AlertDialogFooter className="mt-4">
- <AlertDialogCancel className="rounded-xl font-bold">Keep Scheduled</AlertDialogCancel>
+ <AlertDialogCancel className="rounded-xl font-bold">Keep Message</AlertDialogCancel>
  <AlertDialogAction onClick={handleDelete} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">
-                            Terminate Dispatch
+                            Cancel Message
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

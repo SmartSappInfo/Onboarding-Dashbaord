@@ -26,6 +26,8 @@ type TenantContextType = {
   isSuperAdmin: boolean;
   hasPermission: (perm: AppPermissionId) => boolean;
   permissionsSchema?: import('@/lib/types').PermissionsSchema;
+  /** Get the permissions schema for any workspace (used by workspace switcher interception) */
+  getPermissionsSchemaForWorkspace: (workspaceId: string) => import('@/lib/types').PermissionsSchema | undefined;
   isLoading: boolean;
 };
 
@@ -53,8 +55,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, [profile]);
 
   const hasPermission = React.useCallback((perm: AppPermissionId) => {
-    return profile?.permissions?.includes(perm) || profile?.permissions?.includes('system_admin' as any) || false;
-  }, [profile]);
+    // If we have an active workspace, check its specific permissions first. 
+    // Fall back to global permissions for backwards compatibility during migration.
+    const wsPermissions = activeWorkspaceId ? profile?.workspacePermissions?.[activeWorkspaceId] : undefined;
+    const effectivePermissions = wsPermissions || profile?.permissions;
+    return effectivePermissions?.includes(perm) || effectivePermissions?.includes('system_admin' as any) || false;
+  }, [profile, activeWorkspaceId]);
 
   // 2. Fetch Organizations
   const orgsQuery = useMemoFirebase(() => {
@@ -129,9 +135,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     if (isInitialized && accessibleWorkspaces.length > 0) {
         let currentId = activeWorkspaceId;
         
-        // 6.1. If we don't have a valid ID selected in state, pick the first accessible one
+        // 6.1. If we don't have a valid ID selected in state, pick an accessible one
         if (!activeWorkspaceId || !accessibleWorkspaces.find(w => w.id === activeWorkspaceId)) {
-            currentId = accessibleWorkspaces[0].id;
+            // Check if organization has a default workspace and user has access to it
+            if (activeOrganization?.defaultWorkspaceId && accessibleWorkspaces.find(w => w.id === activeOrganization.defaultWorkspaceId)) {
+                currentId = activeOrganization.defaultWorkspaceId;
+            } else {
+                currentId = accessibleWorkspaces[0].id;
+            }
             setActiveWorkspaceIdState(currentId);
             localStorage.setItem('activeWorkspaceId', currentId);
         }
@@ -176,6 +187,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     orgWorkspaces?.find(w => w.id === activeWorkspaceId),
   [orgWorkspaces, activeWorkspaceId]);
 
+  const effectivePermissionsSchema = React.useMemo(() => {
+    const wsSchema = activeWorkspaceId ? profile?.workspacePermissionsSchemas?.[activeWorkspaceId] : undefined;
+    return wsSchema || profile?.permissionsSchema;
+  }, [profile, activeWorkspaceId]);
+
+  const getPermissionsSchemaForWorkspace = React.useCallback((workspaceId: string) => {
+    return profile?.workspacePermissionsSchemas?.[workspaceId] || profile?.permissionsSchema;
+  }, [profile]);
+
   const value = React.useMemo(() => ({
     activeOrganizationId,
     activeOrganization,
@@ -188,12 +208,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     allowedWorkspaces: accessibleWorkspaces,
     isSuperAdmin,
     hasPermission,
-    permissionsSchema: profile?.permissionsSchema,
+    permissionsSchema: effectivePermissionsSchema,
+    getPermissionsSchemaForWorkspace,
     isLoading: !isInitialized || isUserLoading || isProfileLoading || isOrgsLoading || isWorkspacesLoading
   }), [
     activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, 
     setActiveOrganization, setActiveWorkspace, organizations, accessibleWorkspaces, 
-    isSuperAdmin, hasPermission, profile?.permissionsSchema, isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
+    isSuperAdmin, hasPermission, effectivePermissionsSchema, getPermissionsSchemaForWorkspace,
+    isInitialized, isUserLoading, isProfileLoading, isOrgsLoading, isWorkspacesLoading
   ]);
 
   return (

@@ -214,7 +214,7 @@ export default function QuickTemplateDialog({
             setBody(result.body);
             if (result.blocks) setBlocks(result.blocks as any);
             setShowAiInput(false);
-            toast({ title: 'AI Architecture Generated', description: result.explanation });
+            toast({ title: 'Template Draft Created', description: result.explanation });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Generation Failed', description: e.message });
         } finally {
@@ -351,7 +351,7 @@ export default function QuickTemplateDialog({
                 <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
                   {templateId ? 'Template Editor' : 'Quick Template Studio'}
                 </DialogTitle>
-                <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Drafting {channel} protocol for {category}</DialogDescription>
+                <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Creating {channel} template for {category}</DialogDescription>
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <Button 
@@ -391,10 +391,10 @@ export default function QuickTemplateDialog({
  <div className="p-10 rounded-[3rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-8">
  <div className="flex items-center gap-3">
  <div className="p-2 bg-primary text-white rounded-xl shadow-lg"><Wand2 className="h-4 w-4" /></div>
- <Label className="text-base font-semibold tracking-tight text-primary">AI Content Architect</Label>
+ <Label className="text-base font-semibold tracking-tight text-primary">AI Draft Assistant</Label>
                                     </div>
  <div className="space-y-3">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Communication Objective</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Message Description</Label>
                                         <Textarea 
                                             value={aiPrompt} 
                                             onChange={e => setAiPrompt(e.target.value)}
@@ -432,7 +432,7 @@ export default function QuickTemplateDialog({
                                                 ref={subjectRef}
                                                 value={subject} 
                                                 onChange={e => setSubject(e.target.value)} 
-                                                placeholder="Resolved in inbox..." 
+                                                placeholder="Email subject line…" 
  className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6"
                                             />
                                         </div>
@@ -442,7 +442,7 @@ export default function QuickTemplateDialog({
  <div className="space-y-2">
  <div className="flex justify-between items-center px-1">
  <Label className="text-[10px] font-semibold text-muted-foreground">Message Composition</Label>
-                                        {blocks.length > 0 && <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] font-semibold uppercase h-5 px-2">Block Engine Active</Badge>}
+                                        {blocks.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-semibold uppercase h-5 px-2">Using Blocks</Badge>}
                                     </div>
  <div className="relative group">
                                         <Textarea 
@@ -466,18 +466,18 @@ export default function QuickTemplateDialog({
  <div className="space-y-4 shrink-0">
  <div className="flex items-center gap-2">
  <Database className="h-4 w-4 text-primary" />
- <span className="text-[10px] font-semibold text-primary">Contextual Registry</span>
+ <span className="text-[10px] font-semibold text-primary">Available Variables</span>
                             </div>
                             
                             {!fixedSourceId && category === 'surveys' && (
  <div className="space-y-1.5">
- <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Source Survey Filter</Label>
+ <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Filter by Survey</Label>
                                     <Select value={selectedSurveyId || 'none'} onValueChange={setSelectedSurveyId}>
  <SelectTrigger className="h-10 rounded-xl border-primary/10 bg-card font-bold text-xs shadow-sm">
                                             <SelectValue placeholder="All Sources" />
                                         </SelectTrigger>
  <SelectContent className="rounded-xl">
-                                            <SelectItem value="none">Universal Context</SelectItem>
+                                            <SelectItem value="none">All Sources</SelectItem>
                                             {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.internalName || s.title}</SelectItem>)}
                                         </SelectContent>
                                     </Select>

@@ -38,7 +38,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
-  const hasContent = (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email') && activity.metadata?.content;
+  const hasContent = (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email' || activity.type === 'note_added') && (activity.metadata?.content || activity.metadata?.contentPreview);
 
   // Use denormalized entity information if available, fallback to legacy fields (Requirement 4.3, 23.5)
   const contactName = activity.displayName || activity.entityName || (activity as any).schoolName;
@@ -119,7 +119,9 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
           <div className="mt-1">
             <Card className="bg-muted/10 border-none rounded-2xl shadow-inner">
                 <CardContent className="p-4 text-xs font-medium leading-relaxed italic text-muted-foreground/80">
-                    <p className="before:content-['“'] after:content-['”']">{activity.metadata.content}</p>
+                    <p className="before:content-['“'] after:content-['”']">
+                      {activity.metadata?.content || activity.metadata?.contentPreview}
+                    </p>
                 </CardContent>
             </Card>
           </div>

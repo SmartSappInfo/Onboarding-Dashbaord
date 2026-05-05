@@ -57,7 +57,7 @@ export async function syncUserWorkspaceAccess(userId: string): Promise<void> {
     // 3. Filter to roles the user belongs to
     const userRoles = rolesSnap.docs
       .map((doc) => ({ id: doc.id, ...doc.data() } as Role))
-      .filter((role) => user.roles.includes(role.id));
+      .filter((role) => user.roles?.includes(role.id));
 
     // 4. Collect all workspace IDs from user roles
     const workspaceIds = new Set<string>();

@@ -17,6 +17,10 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
+
 import { 
     LayoutDashboard, 
     Layout,
@@ -243,6 +247,11 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
   ];
 
+  const isOperationsPage = coreNavItems.some(item => {
+    const basePath = item.href.split('?')[0];
+    return pathname === basePath || pathname.startsWith(basePath + '/');
+  });
+
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar collapsible="icon" className="bg-card text-foreground border-r border-border shadow-2xl print:hidden">
@@ -389,6 +398,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         <main className="flex-1 flex flex-col overflow-auto relative pt-8 px-8 max-w-7xl mx-auto w-full">
           {children}
         </main>
+        {isOperationsPage && <QuickComposeButton />}
       </SidebarInset>
     </SidebarProvider>
   );

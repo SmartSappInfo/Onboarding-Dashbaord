@@ -79,12 +79,12 @@ export async function inviteUserAction(params: {
     fullName: string;
     email: string;
     phone?: string;
-    roles: string[];
+    workspaceRoles: Record<string, string[]>;
     organizationId: string;
     sendMethods: ('email' | 'sms')[];
 }) {
     try {
-        const { fullName, email, phone, roles, organizationId, sendMethods } = params;
+        const { fullName, email, phone, workspaceRoles, organizationId, sendMethods } = params;
         const auth = getAuth();
         const tempPassword = generateRandomPassword();
         const loginLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login`;
@@ -113,24 +113,47 @@ export async function inviteUserAction(params: {
             }
         }
 
-        // 3. Hydrate Hierarchical Permissions
-        const schemasToMerge: PermissionsSchema[] = [];
+        // 3. Hydrate Hierarchical Permissions per workspace
+        const workspaceIds = Object.keys(workspaceRoles);
+        const workspacePermissionsSchemas: Record<string, PermissionsSchema> = {};
+        const workspacePermissions: Record<string, import('./types').AppPermissionId[]> = {};
+
         try {
-            const rolesSnaps = await Promise.all(
-                roles.map(roleId => adminDb.collection('roles').doc(roleId).get())
-            );
-            
-            rolesSnaps.forEach(snap => {
-                if (snap.exists) {
-                    const rData = snap.data();
-                    schemasToMerge.push(rData?.permissionsSchema || getBlankPermissions());
-                }
+            // First collect all unique roleIds to fetch them efficiently
+            const allRoleIds = new Set<string>();
+            Object.values(workspaceRoles).forEach(roleArray => {
+                roleArray.forEach(r => allRoleIds.add(r));
             });
+
+            // Fetch all roles needed
+            const roleDocs = await Promise.all(
+                Array.from(allRoleIds).map(roleId => adminDb.collection('roles').doc(roleId).get())
+            );
+            const rolesMap = new Map();
+            roleDocs.forEach(snap => {
+                if (snap.exists) rolesMap.set(snap.id, snap.data());
+            });
+
+            // Compute per-workspace schemas
+            for (const wsId of workspaceIds) {
+                const wsRoleIds = workspaceRoles[wsId] || [];
+                const schemasToMerge: PermissionsSchema[] = [];
+                const allPerms = new Set<import('./types').AppPermissionId>();
+
+                wsRoleIds.forEach(roleId => {
+                    const rData = rolesMap.get(roleId);
+                    if (rData) {
+                        schemasToMerge.push(rData.permissionsSchema || getBlankPermissions());
+                        if (rData.permissions) rData.permissions.forEach((p: any) => allPerms.add(p));
+                    }
+                });
+
+                workspacePermissionsSchemas[wsId] = schemasToMerge.length > 0 ? mergePermissionsSchemas(schemasToMerge) : getBlankPermissions();
+                workspacePermissions[wsId] = Array.from(allPerms);
+            }
         } catch (roleErr) {
             console.error('>>> [INVITE] Role hydration warning:', roleErr);
         }
-
-        const permissionsSchema = mergePermissionsSchemas(schemasToMerge);
 
         // 4. Create/Update Firestore Profile
         const userProfile = {
@@ -138,8 +161,10 @@ export async function inviteUserAction(params: {
             name: fullName,
             email,
             phone: phone || '',
-            roles,
-            permissionsSchema,
+            workspaceIds,
+            workspaceRoles,
+            workspacePermissions,
+            workspacePermissionsSchemas,
             organizationId,
             isAuthorized: true,
             requiresPasswordReset: true,

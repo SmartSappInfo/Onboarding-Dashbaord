@@ -114,8 +114,8 @@ export default function TestDispatchDialog({
             }
 
             toast({ 
-                title: 'Test Dispatch Successful', 
-                description: `A sample ${channel} has been sent to ${recipient}.` 
+                title: 'Test Sent Successfully', 
+                description: `A test ${channel} has been sent to ${recipient}.` 
             });
             onOpenChange(false);
             setRecipient('');
@@ -137,8 +137,8 @@ export default function TestDispatchDialog({
               )}>
                 <FlaskConical className="h-6 w-6" aria-hidden="true" />
               </div>
-              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Test Delivery Hub</DialogTitle>
-              <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Populate context and verify resolution.</DialogDescription>
+              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">Send Test Message</DialogTitle>
+              <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Preview and test your message before sending.</DialogDescription>
             </div>
           </DialogHeader>
 
@@ -147,7 +147,7 @@ export default function TestDispatchDialog({
  <div className="p-8 space-y-10">
                             {/* RECIPIENT BLOCK */}
  <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1">1. Target Terminal</Label>
+ <Label className="text-[10px] font-semibold text-primary ml-1">Recipient</Label>
  <div className="relative group">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
  {channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
@@ -155,9 +155,11 @@ export default function TestDispatchDialog({
                                     <Input 
                                         value={recipient} 
                                         onChange={e => setRecipient(e.target.value)}
-                                        placeholder={channel === 'email' ? 'your-email@example.com' : 'e.g. 024XXXXXXX'}
+                                        placeholder={channel === 'email' ? 'your-email@example.com' : 'e.g. 024XXXXXXX…'}
  className="h-14 pl-12 rounded-2xl bg-muted/20 border-none shadow-inner font-semibold text-xl"
                                         autoFocus
+                                        type={channel === 'email' ? 'email' : 'tel'}
+                                        inputMode={channel === 'email' ? 'email' : 'tel'}
                                     />
                                 </div>
                             </div>
@@ -167,9 +169,9 @@ export default function TestDispatchDialog({
  <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
  <div className="flex items-center justify-between px-1">
  <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
- <Database className="h-3 w-3" /> 2. Contextual Resolution
+ <Database className="h-3 w-3" /> Template Variables
                                         </Label>
-                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] font-semibold uppercase h-5">{detectedTags.length} Dynamic Tags</Badge>
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] font-semibold uppercase h-5">{detectedTags.length} Variables</Badge>
                                     </div>
                                     
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 rounded-3xl bg-background border-2 border-dashed border-border shadow-inner">
@@ -191,12 +193,12 @@ export default function TestDispatchDialog({
                                 </div>
                             )}
 
- <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-sm">
- <div className="p-3 bg-card rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
+ <div className="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-5 shadow-sm">
+ <div className="p-3 bg-card rounded-2xl text-blue-600 dark:text-blue-400 shadow-sm border border-blue-500/20"><Zap className="h-6 w-6" /></div>
  <div className="space-y-1">
- <p className="text-sm font-semibold text-blue-900 tracking-tight">Institutional Fidelity</p>
- <p className="text-[10px] text-blue-700 leading-relaxed font-bold opacity-80">
-                                        This test will resolve all tags using the values above. Emails will be delivered with premium Figtree typography and high-density line spacing.
+ <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tracking-tight">Test Environment</p>
+ <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 leading-relaxed font-bold opacity-80">
+                                        This test will resolve all variables using the values above. The message will be delivered exactly as it would appear to a real recipient.
                                     </p>
                                 </div>
                             </div>
@@ -212,7 +214,7 @@ export default function TestDispatchDialog({
               className="rounded-2xl font-semibold h-12 px-12 shadow-lg bg-primary text-white flex-[2] tracking-[0.1em] text-sm gap-3 cursor-pointer active:scale-95 transition-all duration-200"
             >
               {isSending ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" /> : <Send className="h-6 w-6" aria-hidden="true" />}
-              {isSending ? 'Launching Test...' : 'Execute Dispatch'}
+              {isSending ? 'Sending…' : 'Send Test'}
             </Button>
           </DialogFooter>
             </DialogContent>

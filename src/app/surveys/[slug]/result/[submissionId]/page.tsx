@@ -9,7 +9,7 @@ import type { Metadata, ResolvingMetadata } from 'next';
 // Force dynamic rendering - requires Firebase Admin
 export const dynamic = 'force-dynamic';
 
-const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
+import { stripHtml } from '@/lib/utils';
 
 async function getResultData(slug: string, submissionId: string) {
     try {

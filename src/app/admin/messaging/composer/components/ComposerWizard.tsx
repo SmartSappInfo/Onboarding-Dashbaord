@@ -12,7 +12,7 @@ import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
 import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
-import { fetchContextualData, resolveRecipientContacts } from '@/lib/messaging-actions';
+import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt } from '@/lib/messaging-actions';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
@@ -528,7 +528,13 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 recipient, variables: { ...data.variables, channel: data.channel },
                                 workspaceId: activeWorkspace?.id, scheduledAt, entityId,
                             });
-                            if (res.success) { results.totalSent++; if (res.logId) results.logIds.push(res.logId); }
+                            if (res.success) {
+                                results.totalSent++;
+                                if (res.logId) results.logIds.push(res.logId);
+                                if (entityId && activeWorkspace?.id) {
+                                    updateEntityLastContactedAt(entityId, activeWorkspace.id).catch(() => {});
+                                }
+                            }
                             else { results.totalFailed++; results.failedEntities.push({ entityId: `${entityId} (${recipient})`, error: res.error || 'Unknown' }); }
                         }
                     } catch (e: any) { results.totalFailed++; results.failedEntities.push({ entityId, error: e.message }); }
@@ -616,7 +622,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
                             {/* SMS balance hint */}
                             {watchedChannel === 'sms' && smsBalance !== null && (
-                                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-semibold text-blue-800">
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-600 dark:text-blue-400">
                                     <Info className="h-4 w-4 shrink-0" />
                                     SMS Balance: <span className="font-bold">{smsBalance} credits</span>
                                 </div>
@@ -843,7 +849,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         <CardContent className="p-6 space-y-8">
                             {/* Dispatch mode */}
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Dispatch Mode</Label>
+                                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Delivery Mode</Label>
                                 <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
                                     {([['single', 'Targeted', Target], ['bulk', 'Broadcast (CSV)', Layers]] as const).map(([val, label, Icon]) => (
                                         <button key={val} type="button" onClick={() => setValue('mode', val)}
@@ -1016,9 +1022,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 <p className="text-sm font-semibold text-muted-foreground">Tag & automation assignment coming soon.</p>
                                 <p className="text-[10px] text-muted-foreground/60">After sending, you'll be able to auto-tag recipients and trigger workflow automations.</p>
                             </div>
-                            <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
-                                <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                                <p className="text-xs font-semibold text-blue-800">You can skip this step — it's optional. Tags and automations can also be applied manually after sending.</p>
+                            <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">You can skip this step — it's optional. Tags and automations can also be applied manually after sending.</p>
                             </div>
                         </CardContent>
                         <NavFooter onNext={() => setStep(5)} onBack={() => setStep(3)} isSubmitting={isSubmitting} nextLabel="Next: Publish" />
@@ -1167,7 +1173,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 {jobStatus === 'processing' ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Trophy className="h-8 w-8 text-emerald-600" />}
                             </div>
                             <CardTitle className="text-2xl font-bold">Broadcast in Progress</CardTitle>
-                            <CardDescription className="font-semibold text-muted-foreground mt-1">Sending to {csvData.length} recipients via secured gateway.</CardDescription>
+                            <CardDescription className="font-semibold text-muted-foreground mt-1">Sending to {csvData.length} recipients.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
                             <div className="space-y-3 max-w-lg mx-auto">
@@ -1321,7 +1327,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate; 
                     <p className="font-semibold text-sm truncate">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
                 </div>
                 <div className="flex-1 overflow-auto p-6">
-                    <div className="whitespace-pre-wrap font-medium leading-relaxed text-sm text-slate-700 prose prose-sm max-w-none"
+                    <div className="whitespace-pre-wrap font-medium leading-relaxed text-sm text-foreground dark:prose-invert prose prose-sm max-w-none"
                         dangerouslySetInnerHTML={{ __html: resolvedBody }} />
                 </div>
             </div>
@@ -1337,9 +1343,9 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate; 
                 </div>
                 <div className="p-4 bg-card border rounded-2xl relative shadow-md">
                     <div className="absolute -left-2 top-6 w-4 h-4 bg-card border-l border-b rotate-45 rounded-sm" />
-                    <p className="text-sm text-slate-900 leading-relaxed font-medium whitespace-pre-wrap">{resolvedBody}</p>
+                    <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{resolvedBody}</p>
                 </div>
-                <p className="text-center text-[9px] font-semibold text-slate-300">~{Math.ceil(resolvedBody.length / 160)} segment(s)</p>
+                <p className="text-center text-[9px] font-semibold text-muted-foreground">~{Math.ceil(resolvedBody.length / 160)} segment(s)</p>
             </div>
         </div>
     );

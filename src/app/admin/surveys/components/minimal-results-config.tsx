@@ -257,7 +257,7 @@ export function MinimalThankYouPage() {
                     {
                         id: `blk_text_${Date.now()}`,
                         type: 'text',
-                        content: '<p>Your response has been successfully recorded. We appreciate your time.</p>',
+                        content: 'Your response has been successfully recorded. We appreciate your time.',
                         style: { textAlign: 'center' }
                     }
                 ]

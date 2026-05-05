@@ -93,6 +93,22 @@ const generateSchema = (elements: SurveyElement[]) => {
             schema = z.string().url().optional();
         }
 
+        // Multiple choice with allowOther stores an object {option, other} instead of a plain string
+        if (q.type === 'multiple-choice' && q.allowOther) {
+            schema = z.union([
+                z.string(),
+                z.object({ option: z.string(), other: z.string() }),
+            ]);
+        }
+
+        // Checkboxes with allowOther stores {options: string[], other: string}
+        if (q.type === 'checkboxes' && q.allowOther) {
+            schema = z.union([
+                z.array(z.string()),
+                z.object({ options: z.array(z.string()), other: z.string() }),
+            ]);
+        }
+
         acc[q.id] = schema.optional();
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
@@ -100,16 +116,24 @@ const generateSchema = (elements: SurveyElement[]) => {
     return z.object(baseSchemaObject);
 };
 
-const isValueEmpty = (value: any, questionType: string): boolean => {
+const isValueEmpty = (value: any, questionType: string, allowOther?: boolean): boolean => {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
+    // Checkboxes with allowOther: {options: [], other: ''}
     if (questionType === 'checkboxes' && typeof value === 'object') {
         const options = (value as any).options;
         const other = (value as any).other;
         if (options !== undefined || other !== undefined) {
             return (!options || options.length === 0) && !other;
         }
+    }
+    // Multiple-choice with allowOther: {option: '__other__', other: 'some text'}
+    if (questionType === 'multiple-choice' && allowOther && typeof value === 'object') {
+        const option = (value as any).option;
+        const other = (value as any).other;
+        if (option === '__other__') return !other || other.trim() === '';
+        return !option;
     }
     if (value instanceof Date) return !isValid(value);
     if (typeof value === 'object' && value !== null) return Object.keys(value).length === 0;
@@ -292,7 +316,8 @@ const ElementRenderer = ({
     isRequired, 
     surveyId,
     onAutoAdvance,
-    clearError
+    clearError,
+    survey
 }: { 
     element: SurveyElement; 
     control: any, 
@@ -302,6 +327,7 @@ const ElementRenderer = ({
     surveyId: string; 
     onAutoAdvance?: () => void;
     clearError: (id: string) => void;
+    survey: Survey;
 }) => {
 
     if (isLogic(element) || !isVisible) {
@@ -323,8 +349,11 @@ const ElementRenderer = ({
 
         return (
             <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
-                <div className="space-y-2">
-                    <Label className="text-xl font-bold block leading-tight text-foreground tracking-tight">
+                <div className="space-y-4">
+                    <Label className={cn(
+                        "text-xl sm:text-2xl block leading-tight tracking-tight text-foreground/90 whitespace-pre-wrap",
+                        survey.questionTitleBold !== false ? "font-bold" : "font-semibold"
+                    )}>
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1.5">*</span>}
                     </Label>
@@ -370,23 +399,23 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                    <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                        field.value === 'Yes' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
-                                        errors[question.id] && "bg-destructive/5"
-                                    )}>
-                                        <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
-                                        Yes
-                                    </Label>
-                                    <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                        field.value === 'No' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
-                                        errors[question.id] && "bg-destructive/5"
-                                    )}>
-                                        <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
-                                        No
-                                    </Label>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-2", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                        <Label htmlFor={`${question.id}-yes`} className={cn(
+                                            "flex cursor-pointer items-center gap-4 rounded-xl py-2 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                            field.value === 'Yes' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            errors[question.id] && "bg-destructive/5"
+                                        )}>
+                                            <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
+                                            Yes
+                                        </Label>
+                                        <Label htmlFor={`${question.id}-no`} className={cn(
+                                            "flex cursor-pointer items-center gap-4 rounded-xl py-2 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                            field.value === 'No' ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            errors[question.id] && "bg-destructive/5"
+                                        )}>
+                                            <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
+                                            No
+                                        </Label>
                                 </RadioGroup>
                             )}
                         />
@@ -395,20 +424,65 @@ const ElementRenderer = ({
                         <Controller
                             control={control}
                             name={question.id}
-                            render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                            render={({ field }) => {
+                                const selectedOption = question.allowOther ? (field.value?.option ?? field.value) : field.value;
+                                const otherText = question.allowOther ? (field.value?.other ?? '') : '';
+                                const isOtherSelected = selectedOption === '__other__';
+
+                                const handleSelect = (v: string) => {
+                                    if (question.allowOther) {
+                                        handleValueChange({ option: v, other: v === '__other__' ? otherText : '' }, field.onChange);
+                                    } else {
+                                        handleValueChange(v, field.onChange);
+                                    }
+                                };
+
+                                const optionsColumns = survey.optionsColumns || 1;
+                                const gridColsClass = optionsColumns === 1 ? "space-y-1" : cn(
+                                    "grid grid-cols-1 gap-2",
+                                    optionsColumns === 2 && "sm:grid-cols-2",
+                                    optionsColumns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+                                    optionsColumns === 4 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                                );
+
+                                return (
+                                <RadioGroup onValueChange={handleSelect} value={selectedOption} className={cn(gridColsClass, textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
-                                            field.value === opt ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            "flex cursor-pointer items-center gap-4 rounded-xl py-2 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                            selectedOption === opt ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
                                             errors[question.id] && "bg-destructive/5"
                                         )}>
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
                                             <span className="flex-1 leading-tight">{opt}</span>
                                         </Label>
                                     ))}
+                                    {question.allowOther && (
+                                        <div className={cn(
+                                            "flex flex-col rounded-xl transition-all",
+                                            isOtherSelected ? "bg-primary/5 ring-1 ring-primary/20 pb-4" : "bg-muted/30 hover:bg-muted/50",
+                                            errors[question.id] && "bg-destructive/5"
+                                        )}>
+                                            <Label htmlFor={`${question.id}-other`} className="flex items-center gap-4 cursor-pointer py-3 px-4 w-full">
+                                                <RadioGroupItem value="__other__" id={`${question.id}-other`} className="size-5 border-2 shrink-0" />
+                                                <span className="text-base font-medium">Other (please specify)</span>
+                                            </Label>
+                                            {isOtherSelected && (
+                                                <div className="pl-[52px] pr-4">
+                                                    <Input
+                                                        id={`${question.id}-other-input`}
+                                                        autoFocus
+                                                        placeholder="Please specify..."
+                                                        className="h-11 border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
+                                                        value={otherText}
+                                                        onChange={(e) => handleValueChange({ option: '__other__', other: e.target.value }, field.onChange)}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </RadioGroup>
-                            )}
+                            )}}
                         />
                     )}
                     {question.type === 'checkboxes' && (
@@ -416,13 +490,21 @@ const ElementRenderer = ({
                             name={question.id}
                             control={control}
                             render={({ field }) => {
+                                const optionsColumns = survey.optionsColumns || 1;
+                                const gridColsClass = optionsColumns === 1 ? "space-y-1" : cn(
+                                    "grid grid-cols-1 gap-2",
+                                    optionsColumns === 2 && "sm:grid-cols-2",
+                                    optionsColumns === 3 && "sm:grid-cols-2 lg:grid-cols-3",
+                                    optionsColumns === 4 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                                );
+
                                 return (
-                                <div className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <div className={cn(gridColsClass, textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-4 rounded-xl py-2.5 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
+                                                "flex cursor-pointer items-center gap-4 rounded-xl py-2 px-4 text-base font-medium transition-all hover:bg-accent/10 active:scale-[0.98]",
                                                 isChecked ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
                                                 errors[question.id] && "bg-destructive/5"
                                             )}>
@@ -449,29 +531,40 @@ const ElementRenderer = ({
                                     })}
                                     {question.allowOther && (
                                         <div className={cn(
-                                            "flex items-center gap-4 rounded-xl py-2.5 px-4 transition-all active:scale-[0.98]",
-                                            (field.value?.other || '') ? "bg-primary/10 text-primary ring-1 ring-primary/20" : "bg-muted/30",
+                                            "flex flex-col rounded-xl transition-all",
+                                            (field.value?.other || '') ? "bg-primary/5 ring-1 ring-primary/20 pb-4" : "bg-muted/30 hover:bg-muted/50",
                                             errors[question.id] && "bg-destructive/5"
                                         )}>
-                                            <Checkbox
-                                                id={`${question.id}-other-checkbox`}
-                                                checked={!!(field.value?.other || '')}
-                                                onCheckedChange={(checked) => {
-                                                    if (checked) {
-                                                        setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
-                                                    } else {
-                                                        handleValueChange({ ...(field.value || {}), other: '' }, field.onChange);
-                                                    }
-                                                }}
-                                                className="size-5 border-2"
-                                            />
-                                            <Input
-                                                id={`${question.id}-other-input`}
-                                                placeholder="Other (please specify)"
-                                                className="h-9 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 font-medium"
-                                                value={field.value?.other || ''}
-                                                onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
-                                            />
+                                            <Label htmlFor={`${question.id}-other-checkbox`} className="flex items-center gap-4 cursor-pointer py-3 px-4 w-full">
+                                                <Checkbox
+                                                    id={`${question.id}-other-checkbox`}
+                                                    checked={!!(field.value?.other || '')}
+                                                    onCheckedChange={(checked) => {
+                                                        const currentVal = field.value || { options: [], other: '' };
+                                                        const currentOptions = currentVal.options || [];
+                                                        
+                                                        if (checked) {
+                                                            handleValueChange({ options: currentOptions, other: currentVal.other || ' ' }, field.onChange);
+                                                            setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
+                                                        } else {
+                                                            handleValueChange({ options: currentOptions, other: '' }, field.onChange);
+                                                        }
+                                                    }}
+                                                    className="size-5 border-2 shrink-0"
+                                                />
+                                                <span className="text-base font-medium">Other (please specify)</span>
+                                            </Label>
+                                            {!!(field.value?.other || '') && (
+                                                <div className="pl-[52px] pr-4">
+                                                    <Input
+                                                        id={`${question.id}-other-input`}
+                                                        placeholder="Please specify..."
+                                                        className="h-11 border border-input bg-background px-3 py-2 text-base shadow-sm focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-lg w-full"
+                                                        value={field.value?.other || ''}
+                                                        onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -563,9 +656,10 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl font-bold";
+                const fontWeightClass = survey.questionTitleBold !== false ? "font-bold" : "font-semibold";
+                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl" : Tag === 'h3' ? "text-xl" : "text-2xl";
                 return (
-                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
+                    <Tag id={block.id} className={cn(sizeClass, fontWeightClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
                     </Tag>
                 );
@@ -864,7 +958,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                     const state = elementStates[q.id];
                     if (!state?.isVisible || !state?.isRequired) return false;
                     const value = watchedValues[q.id];
-                    return isValueEmpty(value, q.type);
+                    return isValueEmpty(value, q.type, (q as any).allowOther);
                 });
             return { isValid: !hasIncompleteRequired };
         });
@@ -929,7 +1023,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
             if (state?.isVisible && state?.isRequired) {
-                if (isValueEmpty(data[q.id], q.type)) {
+                if (isValueEmpty(data[q.id], q.type, q.allowOther)) {
                     form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanTitle = q.title.replace(/<[^>]*>?/gm, '').trim();
@@ -1205,6 +1299,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             // Route to result page if scoring is enabled OR if there are result rules defined
             if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
                 router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                // Don't reset isSubmitting here — keep loader visible until navigation completes
+                return;
             } else {
                 onSubmitted();
             }
@@ -1246,7 +1342,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             const invalidQuestionsOnPage = questionsOnPage.filter(q => {
                 const state = elementStates[q.id];
                 if (!state?.isVisible || !state?.isRequired) return false;
-                return isValueEmpty(formData[q.id], q.type);
+                return isValueEmpty(formData[q.id], q.type, q.allowOther);
             });
             if (invalidQuestionsOnPage.length > 0) {
                 invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
@@ -1281,7 +1377,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                 const invalidQuestionsOnPage = currentElements.filter(isQuestion).filter(q => {
                     const state = elementStates[q.id];
                     if (!state?.isVisible || !state?.isRequired) return false;
-                    return isValueEmpty(formData[q.id], q.type);
+                    return isValueEmpty(formData[q.id], q.type, q.allowOther);
                 });
                 if (invalidQuestionsOnPage.length > 0) {
                     invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
@@ -1355,12 +1451,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                         />
                                     ) : survey.bannerImageUrl && (
                                         <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
-                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
+                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block object-contain" />
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight uppercase">{survey.title}</h1>
-                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
+                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap">
+                                            {survey.description}
+                                        </div>
                                     </div>
                                 </>
                             )}
@@ -1382,12 +1480,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                         />
                                     ) : survey.bannerImageUrl && (
                                         <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
-                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
+                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block object-contain" />
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight uppercase">{survey.title}</h1>
-                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
+                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap">
+                                            {survey.description}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1396,7 +1496,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
                             {pageSection && (pageSection.showSectionHeader ?? true) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                                     {pageSection.description && (
                                         <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
                                     )}
@@ -1420,6 +1520,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                                     surveyId={survey.id}
                                                     onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
                                                     clearError={(id) => form.clearErrors(id)}
+                                                    survey={survey}
                                                 />
                                             )
                                         })}

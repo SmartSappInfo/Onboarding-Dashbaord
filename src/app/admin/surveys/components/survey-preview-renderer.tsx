@@ -38,13 +38,13 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
             <Card className="overflow-hidden border-2 border-muted/20 shadow-sm transition-all hover:shadow-md">
                 <CardContent className={cn("pt-8 pb-10 px-8", alignmentClass)}>
                     <div className="space-y-2 mb-6">
-                        <Label className="text-xl font-bold block leading-tight tracking-tight text-foreground/90">
+                        <Label className="text-xl font-bold block leading-tight tracking-tight text-foreground/90 whitespace-pre-wrap">
                             <span dangerouslySetInnerHTML={{ __html: question.title }} />
                             {question.isRequired && <span className="text-destructive ml-1.5">*</span>}
                         </Label>
                         {question.description && (
                             <div 
-                                className="text-sm text-muted-foreground font-medium leading-relaxed opacity-70"
+                                className="text-sm text-muted-foreground font-medium leading-relaxed opacity-70 whitespace-pre-wrap"
                                 dangerouslySetInnerHTML={{ __html: question.description }}
                             />
                         )}
@@ -79,6 +79,12 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                                         <Label className="text-base font-medium">{opt}</Label>
                                     </div>
                                 ))}
+                                {question.allowOther && (
+                                    <div className={cn("flex items-center gap-3 pt-2", textAlign === 'center' && 'justify-center')}>
+                                        <RadioGroupItem value="__other__" disabled className="h-5 w-5 opacity-40" />
+                                        <div className="h-10 flex-1 border-b-2 border-dashed border-muted-foreground/20 text-muted-foreground/40 text-sm flex items-center px-2">Other (please specify)</div>
+                                    </div>
+                                )}
                             </RadioGroup>
                         )}
                         {question.type === 'checkboxes' && (
@@ -148,15 +154,15 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         case 'section': 
             return (
                 <div className="my-16 pb-8 border-b-2 border-dashed border-muted/30 text-center">
-                    <h2 id={block.id} className="text-3xl font-black tracking-tight text-foreground/80" dangerouslySetInnerHTML={{ __html: block.title || '' }} />
-                    {block.description && <div className="text-muted-foreground mt-3 text-lg font-medium opacity-60 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: block.description }} />}
+                    <h2 id={block.id} className="text-3xl font-black tracking-tight text-foreground/80 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: block.title || '' }} />
+                    {block.description && <div className="text-muted-foreground mt-3 text-lg font-medium opacity-60 max-w-2xl mx-auto whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: block.description }} />}
                     {block.renderAsPage && <Badge variant="secondary" className="mt-6 px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-full">Separate Page</Badge>}
                 </div>
             );
         case 'heading': {
             const Tag = (block.variant || 'h2') as any;
             const sizeClass = Tag === 'h1' ? "text-4xl font-extrabold" : Tag === 'h3' ? "text-2xl font-bold" : "text-3xl font-bold";
-            return <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-12 mb-6 text-foreground/90 leading-tight")}>
+            return <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-12 mb-6 text-foreground/90 leading-tight whitespace-pre-wrap")}>
                 <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
             </Tag>;
         }

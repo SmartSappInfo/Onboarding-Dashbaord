@@ -1,6 +1,5 @@
 'use client';
 
-import imageCompression from 'browser-image-compression';
 import { Area } from 'react-easy-crop';
 
 export interface ProcessedImage {
@@ -32,16 +31,20 @@ export async function processImage(
   rotation: number = 0
 ): Promise<ProcessedImage & { file: File }> {
   const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  const cropCanvas = document.createElement('canvas');
+  const cropCtx = cropCanvas.getContext('2d');
 
-  if (!ctx) {
+  if (!cropCtx) {
     throw new Error('Could not get canvas context');
   }
 
+  // Fallback to prevent NaN or 0 width errors
+  const safeCropWidth = Math.max(1, pixelCrop.width);
+  const safeCropHeight = Math.max(1, pixelCrop.height);
+
   // The crop box dimensions
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  cropCanvas.width = safeCropWidth;
+  cropCanvas.height = safeCropHeight;
 
   // The origin of the crop box in the natural unrotated coordinate system
   const cropX = pixelCrop.x;
@@ -51,20 +54,16 @@ export async function processImage(
   const centerX = image.naturalWidth / 2;
   const centerY = image.naturalHeight / 2;
 
-  ctx.save();
-
+  cropCtx.save();
   // Move the crop origin to the canvas origin (0,0)
-  ctx.translate(-cropX, -cropY);
-  
+  cropCtx.translate(-cropX, -cropY);
   // Move the origin to the center of the original position to allow for rotating around the center
-  ctx.translate(centerX, centerY);
-  ctx.rotate(rotateRads);
-  
+  cropCtx.translate(centerX, centerY);
+  cropCtx.rotate(rotateRads);
   // Move center back to top left (0,0)
-  ctx.translate(-centerX, -centerY);
-  
+  cropCtx.translate(-centerX, -centerY);
   // Draw the image
-  ctx.drawImage(
+  cropCtx.drawImage(
     image,
     0,
     0,
@@ -75,45 +74,40 @@ export async function processImage(
     image.naturalWidth,
     image.naturalHeight
   );
+  cropCtx.restore();
 
-  ctx.restore();
+  // Create final canvas to apply Output Dimensions (resizing/stretching)
+  const finalWidth = Math.max(1, outputWidth || safeCropWidth);
+  const finalHeight = Math.max(1, outputHeight || Math.round((finalWidth / safeCropWidth) * safeCropHeight));
+
+  const finalCanvas = document.createElement('canvas');
+  const finalCtx = finalCanvas.getContext('2d');
+  if (!finalCtx) throw new Error('Could not get final canvas context');
+
+  finalCanvas.width = finalWidth;
+  finalCanvas.height = finalHeight;
+
+  // Draw the cropped image into the final canvas, stretching it to the exact Output Dimensions
+  finalCtx.drawImage(cropCanvas, 0, 0, safeCropWidth, safeCropHeight, 0, 0, finalWidth, finalHeight);
 
   const mimeType = format === 'jpeg' ? 'image/jpeg' : format === 'png' ? 'image/png' : 'image/webp';
-  const croppedBlob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, mimeType, quality / 100);
+  
+  // Use native canvas toBlob for high-performance, synchronous compression
+  const finalBlob = await new Promise<Blob | null>((resolve) => {
+    finalCanvas.toBlob(resolve, mimeType, Math.max(0.1, quality / 100));
   });
   
-  if (!croppedBlob) {
-    throw new Error('Could not create cropped image blob.');
+  if (!finalBlob) {
+    throw new Error('Could not create final image blob.');
   }
 
-  // Determine scaling
-  let finalWidth = outputWidth;
-  let finalHeight = outputHeight || Math.round((outputWidth / pixelCrop.width) * pixelCrop.height);
-
-  const options = {
-    maxSizeMB: 50, // Let the main uploader handle size limits, we just want to resize
-    maxWidthOrHeight: Math.max(finalWidth, finalHeight),
-    useWebWorker: true,
-    initialQuality: quality / 100,
-    fileType: mimeType,
-    alwaysKeepResolution: true, // We want the exact dimensions requested
-  };
-  
-  const originalFile = new File([croppedBlob], `temp.${format}`, {type: mimeType});
-  const compressedBlob = await imageCompression(originalFile, options);
-
-  const compressedDataUrl = URL.createObjectURL(compressedBlob);
-  const finalImage = await createImage(compressedDataUrl);
-  URL.revokeObjectURL(compressedDataUrl);
-  
-  const finalFile = new File([compressedBlob], `${fileName}.${format}`, { type: mimeType });
+  const finalFile = new File([finalBlob], `${fileName}.${format}`, { type: mimeType });
 
   return {
-    blob: compressedBlob,
+    blob: finalBlob,
     file: finalFile,
-    width: finalImage.width,
-    height: finalImage.height,
+    width: finalWidth,
+    height: finalHeight,
   };
 }
 

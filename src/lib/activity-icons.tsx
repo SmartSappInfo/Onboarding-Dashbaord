@@ -34,6 +34,7 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     pdf_published: FileText,
     pdf_form_submitted: FileText,
     pdf_status_changed: BadgeCheck,
+    note_added: MessageSquare,
     task_created: PlusCircle,
     task_completed: CheckCircle2
   };

@@ -43,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import DOMPurify from 'isomorphic-dompurify';
 
 import { MessageContactDisplay } from '@/components/messaging/MessageContactDisplay';
 
@@ -60,6 +61,9 @@ export default function MessageLogsPage() {
     const [selectedLog, setSelectedLog] = React.useState<MessageLog | null>(null);
     const [isSyncing, setIsSyncing] = React.useState(false);
     const [isGlobalSyncing, setIsGlobalSyncing] = React.useState(false);
+    const [showFilters, setShowFilters] = React.useState(false);
+    const [filterChannel, setFilterChannel] = React.useState<'all' | 'email' | 'sms'>('all');
+    const [filterStatus, setFilterStatus] = React.useState<'all' | 'sent' | 'failed' | 'scheduled'>('all');
 
     // Filtered by active workspace array-contains
     // Support querying by entityId with entityId fallback (Requirement 15.5, 22.1)
@@ -75,28 +79,33 @@ export default function MessageLogsPage() {
 
     const { data: logs, isLoading } = useCollection<MessageLog>(logsQuery);
 
+    const activeFilterCount = (filterChannel !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0);
+
     const filteredLogs = React.useMemo(() => {
         if (!logs) return [];
-        if (!searchTerm) return logs;
+        let result = logs;
+        if (filterChannel !== 'all') result = result.filter(l => l.channel === filterChannel);
+        if (filterStatus !== 'all') result = result.filter(l => l.status === filterStatus);
+        if (!searchTerm) return result;
         const s = searchTerm.toLowerCase();
-        return logs.filter(l => 
+        return result.filter(l => 
             l.recipient.toLowerCase().includes(s) || 
             l.templateName?.toLowerCase().includes(s) ||
             l.subject?.toLowerCase().includes(s) ||
             l.title?.toLowerCase().includes(s)
         );
-    }, [logs, searchTerm]);
+    }, [logs, searchTerm, filterChannel, filterStatus]);
 
     const handleGlobalSync = async () => {
         setIsGlobalSyncing(true);
         const result = await syncAllLogStatuses();
         if (result.success) {
             toast({ 
-                title: 'Gateway Sync Complete', 
-                description: result.count ? `Updated ${result.count} dispatches, including historical schedules.` : 'All communications are synchronized.' 
+                title: 'Status Sync Complete', 
+                description: result.count ? `Updated ${result.count} messages.` : 'All messages are up to date.' 
             });
         } else {
-            toast({ variant: 'destructive', title: 'Universal Sync Failed', description: result.error });
+            toast({ variant: 'destructive', title: 'Status Sync Failed', description: result.error });
         }
         setIsGlobalSyncing(false);
     }
@@ -181,7 +190,7 @@ export default function MessageLogsPage() {
  className="rounded-xl font-bold h-10 gap-2 border-primary/20 hover:bg-primary/5 text-primary shadow-sm"
                     >
  {isGlobalSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                        Universal Status Sync
+                        Sync All Statuses
                     </Button>
                 </div>
 
@@ -195,12 +204,44 @@ export default function MessageLogsPage() {
  className="pl-10 h-10 rounded-xl bg-background border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    autoComplete="off"
                                 />
                             </div>
- <Button variant="outline" className="gap-2 rounded-xl font-bold h-10 shadow-sm border-primary/20 hover:bg-primary/5">
- <Filter className="h-4 w-4 text-primary" /> Filters
+ <Button variant={showFilters ? 'default' : 'outline'} onClick={() => setShowFilters(!showFilters)} className={cn("gap-2 rounded-xl font-bold h-10 shadow-sm transition-all", showFilters ? '' : 'border-primary/20 hover:bg-primary/5')}>
+ <Filter className="h-4 w-4" /> Filters
+                                {activeFilterCount > 0 && <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[9px] font-bold rounded-full">{activeFilterCount}</Badge>}
                             </Button>
                         </div>
+                        {showFilters && (
+                            <div className="flex items-center gap-3 pt-3 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Channel</span>
+                                    <div className="flex gap-1">
+                                        {(['all', 'email', 'sms'] as const).map((ch) => (
+                                            <Button key={ch} variant={filterChannel === ch ? 'default' : 'outline'} size="sm" onClick={() => setFilterChannel(ch)} className={cn("h-7 px-3 text-[10px] font-bold rounded-lg capitalize", filterChannel !== ch && 'border-border/50')}>
+                                                {ch === 'all' ? 'All' : ch === 'email' ? <><Mail className="h-3 w-3 mr-1" /> Email</> : <><Smartphone className="h-3 w-3 mr-1" /> SMS</>}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <Separator orientation="vertical" className="h-6" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</span>
+                                    <div className="flex gap-1">
+                                        {(['all', 'sent', 'failed', 'scheduled'] as const).map((st) => (
+                                            <Button key={st} variant={filterStatus === st ? 'default' : 'outline'} size="sm" onClick={() => setFilterStatus(st)} className={cn("h-7 px-3 text-[10px] font-bold rounded-lg capitalize", filterStatus !== st && 'border-border/50')}>
+                                                {st === 'all' ? 'All' : st}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {activeFilterCount > 0 && (
+                                    <Button variant="ghost" size="sm" onClick={() => { setFilterChannel('all'); setFilterStatus('all'); }} className="h-7 text-[10px] font-bold text-destructive hover:text-destructive/80 hover:bg-destructive/5 rounded-lg">
+                                        Clear All
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </CardHeader>
  <CardContent className="p-0">
                         <Table>
@@ -209,10 +250,10 @@ export default function MessageLogsPage() {
  <TableHead className="text-[10px] font-semibold pl-6">Timestamp</TableHead>
  <TableHead className="text-[10px] font-semibold ">Medium</TableHead>
  <TableHead className="text-[10px] font-semibold ">Contact</TableHead>
- <TableHead className="text-[10px] font-semibold ">Title / Protocol</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Template / Subject</TableHead>
  <TableHead className="text-[10px] font-semibold ">Recipient</TableHead>
  <TableHead className="text-[10px] font-semibold ">Engagement</TableHead>
- <TableHead className="text-[10px] font-semibold ">Gateway Status</TableHead>
+ <TableHead className="text-[10px] font-semibold ">Delivery Status</TableHead>
  <TableHead className="text-right pr-6 text-[10px] font-semibold ">Details</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -281,8 +322,9 @@ export default function MessageLogsPage() {
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
- className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
+ className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity rounded-xl"
                                                     onClick={() => setSelectedLog(log)}
+                                                    aria-label="View message details"
                                                 >
  <Eye className="h-4 w-4 text-primary" />
                                                 </Button>
@@ -292,9 +334,23 @@ export default function MessageLogsPage() {
                                 ) : (
                                     <TableRow>
  <TableCell colSpan={8} className="h-48 text-center">
- <div className="flex flex-col items-center justify-center gap-2 opacity-30">
- <History className="h-10 w-10" />
- <p className="text-xs font-semibold ">No logs recorded</p>
+ <div className="flex flex-col items-center justify-center gap-3 py-8">
+ <div className="h-16 w-16 rounded-full bg-muted/30 flex items-center justify-center">
+   <History className="h-7 w-7 text-muted-foreground/40" />
+ </div>
+ <div className="space-y-1">
+   <p className="text-sm font-bold text-foreground">{searchTerm || activeFilterCount > 0 ? 'No matching messages' : 'No messages sent yet'}</p>
+   <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+     {searchTerm || activeFilterCount > 0
+       ? 'Try adjusting your search or filters to find what you\'re looking for.'
+       : 'Messages you send via the Composer or automations will appear here with full delivery tracking.'}
+   </p>
+ </div>
+ {(searchTerm || activeFilterCount > 0) && (
+   <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold mt-2" onClick={() => { setSearchTerm(''); setFilterChannel('all'); setFilterStatus('all'); }}>
+     Clear Filters
+   </Button>
+ )}
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -314,8 +370,8 @@ export default function MessageLogsPage() {
  {selectedLog?.channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
                                 </div>
                                 <div>
- <DialogTitle className="text-xl font-semibold tracking-tight text-left">Dispatch Overview</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Detailed record of communication context</DialogDescription>
+ <DialogTitle className="text-xl font-semibold tracking-tight text-left">Message Details</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Full message log and delivery status</DialogDescription>
                                 </div>
                             </div>
                             {selectedLog && getStatusBadge(selectedLog)}
@@ -326,12 +382,12 @@ export default function MessageLogsPage() {
  <div className="p-6 space-y-10 pb-20">
                             {/* Error Diagnostics */}
                             {selectedLog?.status === 'failed' && (
- <Card className="bg-red-50 border-red-100 rounded-2xl animate-pulse">
- <CardContent className="p-4 flex items-center gap-4 text-red-800 text-left">
- <AlertCircle className="h-6 w-6 text-red-600" />
+ <Card className="bg-destructive/10 border-destructive/20 rounded-2xl">
+ <CardContent className="p-4 flex items-center gap-4 text-destructive text-left">
+ <AlertCircle className="h-6 w-6" />
  <div className="space-y-1">
- <p className="text-[10px] font-semibold ">Deep Diagnostic Failure</p>
- <p className="text-sm font-bold tracking-tighter">{selectedLog.error || 'Provider rejected the dispatch attempt.'}</p>
+ <p className="text-[10px] font-semibold ">Delivery Error</p>
+ <p className="text-sm font-bold tracking-tighter">{selectedLog.error || 'The message could not be delivered.'}</p>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -342,11 +398,11 @@ export default function MessageLogsPage() {
  <CardContent className="p-6">
  <div className="grid grid-cols-2 gap-8 text-left">
  <div className="space-y-1">
- <Label className="text-[9px] font-semibold text-muted-foreground ">Message Title / Protocol</Label>
+ <Label className="text-[9px] font-semibold text-muted-foreground ">Message Name</Label>
  <p className="font-semibold text-foreground ">{selectedLog?.title || selectedLog?.templateName}</p>
                                         </div>
  <div className="space-y-1 text-right">
- <Label className="text-[9px] font-semibold text-muted-foreground ">Execution Time</Label>
+ <Label className="text-[9px] font-semibold text-muted-foreground ">Sent At</Label>
  <p className="font-bold text-xs ">{selectedLog && format(new Date(selectedLog.sentAt), 'PPPP p')}</p>
                                         </div>
  <div className="space-y-1">
@@ -379,7 +435,7 @@ export default function MessageLogsPage() {
                             {/* Message Content */}
  <div className="space-y-4 text-left">
  <Label className="text-[10px] font-semibold text-primary flex items-center gap-2 ml-1">
- <ShieldCheck className="h-3.5 w-3.5" /> Verified Resolved Content
+ <ShieldCheck className="h-3.5 w-3.5" /> Message Preview
                                 </Label>
                                 
                                 {selectedLog?.channel === 'email' ? (
@@ -390,18 +446,18 @@ export default function MessageLogsPage() {
  <div className="border rounded-3xl bg-card shadow-2xl min-h-[350px] overflow-hidden relative ring-1 ring-border/50 text-left">
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20" />
                                             <div 
- className="p-8 prose prose-sm max-w-none text-slate-700 leading-relaxed font-medium"
-                                                dangerouslySetInnerHTML={{ __html: selectedLog.body }}
+ className="p-8 prose prose-sm max-w-none text-foreground dark:prose-invert leading-relaxed font-medium"
+                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedLog.body, { ADD_ATTR: ['target'] }) }}
                                             />
                                         </div>
                                     </div>
                                 ) : (
- <div className="bg-muted/10 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02] text-left">
- <div className="absolute -left-2.5 top-10 w-4 h-4 bg-muted/10 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
- <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
- <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between text-[8px] font-semibold text-slate-300">
+ <div className="bg-muted/10 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-border group transition-all hover:scale-[1.02] text-left">
+ <div className="absolute -left-2.5 top-10 w-4 h-4 bg-muted/10 rotate-45 rounded-sm border-l border-b border-border group-hover:border-primary/30 transition-colors" />
+ <p className="text-sm text-foreground leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
+ <div className="mt-6 pt-4 border-t border-border flex justify-between text-[8px] font-semibold text-muted-foreground">
                                             <span>Chars: {selectedLog?.body.length}</span>
-                                            <span>Handset Mock-up</span>
+                                            <span>SMS Preview</span>
                                         </div>
                                     </div>
                                 )}
@@ -409,7 +465,7 @@ export default function MessageLogsPage() {
                         </div>
                     </ScrollArea>
  <DialogFooter className="p-4 bg-muted/30 border-t shrink-0">
- <Button onClick={() => setSelectedLog(null)} className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl active:scale-95 transition-all">Close Entry</Button>
+ <Button onClick={() => setSelectedLog(null)} className="w-full h-14 rounded-2xl font-semibold text-lg shadow-xl active:scale-95 transition-all">Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

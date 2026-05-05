@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useTenant } from '@/context/TenantContext';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
     Building, 
     ChevronDown, 
@@ -15,7 +15,9 @@ import {
     User,
     Building2,
     ChevronRight,
-    ExternalLink
+    ExternalLink,
+    ShieldAlert,
+    ArrowRight,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -28,6 +30,15 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +46,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { ContactScope } from '@/lib/types';
+import { 
+    getPermissionForRoute, 
+    canAccessRoute, 
+    getAccessibleRoutes, 
+    getRouteHref 
+} from '@/lib/route-permissions';
 
 interface UnifiedOrgWorkspaceSwitcherProps {
     variant?: 'sidebar' | 'header';
@@ -83,12 +100,23 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         availableOrganizations, 
         accessibleWorkspaces,
         isSuperAdmin,
+        getPermissionsSchemaForWorkspace,
         isLoading 
     } = useTenant();
     const { state } = useSidebar();
     const router = useRouter();
+    const pathname = usePathname();
 
     const [expandedOrgId, setExpandedOrgId] = React.useState<string | null>(null);
+
+    // Access interception state
+    type InterceptState = {
+        targetWorkspaceId: string;
+        targetOrgId?: string;
+        blockedFeatureLabel: string;
+        alternatives: { label: string; href: string }[];
+    };
+    const [interceptState, setInterceptState] = React.useState<InterceptState | null>(null);
 
     if (isLoading) {
         return (
@@ -96,26 +124,69 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         );
     }
 
+    /**
+     * Intercept workspace switch: check if the user can access the current page
+     * in the target workspace. If not, show a permission alert with alternatives.
+     */
+    const handleWorkspaceSwitch = React.useCallback((targetWorkspaceId: string, targetOrgId?: string) => {
+        const routeCheck = getPermissionForRoute(pathname);
+
+        // If we can't determine required permission, just switch
+        if (!routeCheck) {
+            if (targetOrgId) setActiveOrganization(targetOrgId);
+            setActiveWorkspace(targetWorkspaceId);
+            return;
+        }
+
+        // Get schema for the target workspace
+        const targetSchema = getPermissionsSchemaForWorkspace(targetWorkspaceId);
+        const hasAccess = canAccessRoute(targetSchema, routeCheck, isSuperAdmin);
+
+        if (hasAccess) {
+            if (targetOrgId) setActiveOrganization(targetOrgId);
+            setActiveWorkspace(targetWorkspaceId);
+            return;
+        }
+
+        // Build alternatives: find 2 routes the user CAN access in the target workspace
+        const accessibleChecks = getAccessibleRoutes(targetSchema, isSuperAdmin, 2);
+        const alternatives = accessibleChecks.map(check => ({
+            label: check.label,
+            href: getRouteHref(check, targetWorkspaceId),
+        }));
+
+        // Show the interception dialog instead of switching
+        setInterceptState({
+            targetWorkspaceId,
+            targetOrgId,
+            blockedFeatureLabel: routeCheck.label,
+            alternatives,
+        });
+    }, [pathname, getPermissionsSchemaForWorkspace, isSuperAdmin, setActiveOrganization, setActiveWorkspace]);
+
+    const confirmSwitch = React.useCallback(() => {
+        if (!interceptState) return;
+        if (interceptState.targetOrgId) setActiveOrganization(interceptState.targetOrgId);
+        setActiveWorkspace(interceptState.targetWorkspaceId);
+        router.push(`/admin?track=${interceptState.targetWorkspaceId}`);
+        setInterceptState(null);
+    }, [interceptState, setActiveOrganization, setActiveWorkspace, router]);
+
     const handleOrganizationSwitch = (orgId: string) => {
         if (!isSuperAdmin) return;
         
         const org = availableOrganizations.find(o => o.id === orgId);
         if (!org) return;
 
-        setActiveOrganization(orgId);
-        
-        // Find workspaces for this organization
         const orgWorkspaces = accessibleWorkspaces.filter(w => w.organizationId === orgId);
         
         if (orgWorkspaces.length > 0) {
-            // Respect default workspace if it exists and is accessible
             const targetWorkspaceId = org.defaultWorkspaceId && orgWorkspaces.find(w => w.id === org.defaultWorkspaceId)
                 ? org.defaultWorkspaceId
                 : orgWorkspaces[0].id;
-            
-            setActiveWorkspace(targetWorkspaceId);
+            handleWorkspaceSwitch(targetWorkspaceId, orgId);
         } else {
-            // No workspaces: navigate to settings/details page
+            setActiveOrganization(orgId);
             router.push('/admin/settings');
         }
     };
@@ -209,6 +280,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
     );
 
     return (
+        <>
         <DropdownMenu modal={false}>
             {trigger}
             
@@ -289,10 +361,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                             <DropdownMenuItem
                                                                 key={w.id}
                                                                 onClick={() => {
-                                                                    if (!isActiveOrg) {
-                                                                        setActiveOrganization(org.id);
-                                                                    }
-                                                                    setActiveWorkspace(w.id);
+                                                                    handleWorkspaceSwitch(w.id, isActiveOrg ? undefined : org.id);
                                                                 }}
  className={cn(
                                                                     "rounded-lg p-3 gap-3 mb-1 transition-all",
@@ -370,7 +439,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                 return (
                                     <DropdownMenuItem
                                         key={w.id}
-                                        onClick={() => setActiveWorkspace(w.id)}
+                                        onClick={() => handleWorkspaceSwitch(w.id)}
  className={cn(
                                             "rounded-xl p-3 gap-3 mb-1 transition-all",
                                             isActive && "bg-primary text-white shadow-md"
@@ -432,5 +501,66 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                 </div>
             </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Workspace Access Interception Dialog */}
+        <AlertDialog open={!!interceptState} onOpenChange={(open) => { if (!open) setInterceptState(null); }}>
+            <AlertDialogContent className="max-w-md rounded-2xl border-none shadow-2xl bg-background/95 backdrop-blur-xl ring-1 ring-border">
+                <AlertDialogHeader className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-amber-100 text-amber-700 rounded-xl ring-1 ring-amber-200">
+                            <ShieldAlert className="h-5 w-5" />
+                        </div>
+                        <AlertDialogTitle className="text-lg font-black tracking-tight">
+                            Access Restricted
+                        </AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                        You don't have access to{' '}
+                        <span className="font-bold text-foreground">
+                            {interceptState?.blockedFeatureLabel}
+                        </span>{' '}
+                        in this workspace.
+                        {interceptState?.alternatives && interceptState.alternatives.length > 0 && (
+                            <span> Here are pages you can access:</span>
+                        )}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                {/* Alternative navigation options */}
+                {interceptState?.alternatives && interceptState.alternatives.length > 0 && (
+                    <div className="space-y-2 my-1">
+                        {interceptState.alternatives.map((alt) => (
+                            <Link
+                                key={alt.href}
+                                href={alt.href}
+                                onClick={() => {
+                                    if (interceptState.targetOrgId) setActiveOrganization(interceptState.targetOrgId);
+                                    setActiveWorkspace(interceptState.targetWorkspaceId);
+                                    setInterceptState(null);
+                                }}
+                                className="flex items-center justify-between w-full p-3 rounded-xl bg-muted/40 hover:bg-primary/5 hover:text-primary border border-border hover:border-primary/20 transition-all group"
+                            >
+                                <span className="text-sm font-semibold">{alt.label}</span>
+                                <ArrowRight className="h-4 w-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                            </Link>
+                        ))}
+                    </div>
+                )}
+
+                <AlertDialogFooter className="gap-2 mt-2">
+                    <AlertDialogCancel className="rounded-xl">
+                        Cancel
+                    </AlertDialogCancel>
+                    <Button
+                        variant="outline"
+                        onClick={confirmSwitch}
+                        className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300"
+                    >
+                        Switch Anyway
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }

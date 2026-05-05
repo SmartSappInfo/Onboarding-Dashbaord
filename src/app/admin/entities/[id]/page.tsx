@@ -78,7 +78,7 @@ import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
-import { CurrentStageMetric } from './components/CurrentStageMetric';
+import EntityNotesWidget from '../components/EntityNotesWidget';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -114,11 +114,7 @@ export default function EntityDetailPage() {
         () => new Map(accessibleWorkspaces.map(w => [w.id, w.name])),
         [accessibleWorkspaces]
     );
-    const { 
-        singular, 
-        plural: _plural, 
-        updateStatus: _updateStatus, 
-    } = useTerminology();
+    const { singular } = useTerminology();
     
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
@@ -268,17 +264,6 @@ export default function EntityDetailPage() {
         }
     };
 
-    const DetailItem = ({ icon: Icon, label, value, href, children }: { icon: any, label: string, value?: any, href?: string, children?: any }) => (
- <div className="flex items-start gap-4">
- <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50"><Icon className="h-4 w-4 text-muted-foreground" /></div>
- <div className="min-w-0 flex-1">
- <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
- {href ? <a href={href} className="text-base font-bold text-foreground hover:text-primary truncate block underline-offset-4 hover:underline">{String(value)}</a> : value && <p className="text-base font-bold text-foreground leading-tight">{String(value)}</p>}
-                {children}
-            </div>
-        </div>
-    );
-
     const isInstitution = entityData.entityType === 'institution';
     // New schema — read directly from root fields and industryData
     const capacity = (entityData.industryData as any)?.capacity ?? 0;
@@ -294,8 +279,6 @@ export default function EntityDetailPage() {
     const locationZone = entityData.location?.zone?.name;
     const displayLocation = hierachyString || locationZone || 'Unassigned';
 
-    const onlinePresence = entityData.onlinePresence || {} as OnlinePresence;
-    const website = onlinePresence.website || (entityData as any).website;
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
 
@@ -405,6 +388,9 @@ export default function EntityDetailPage() {
  <TabsTrigger value="presence" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Share2 className="h-3 w-3" /> Online Presence
                         </TabsTrigger>
+                        <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <MessageSquarePlus className="h-3 w-3" /> Notes
+                        </TabsTrigger>
                     </TabsList>
 
  <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -445,12 +431,10 @@ export default function EntityDetailPage() {
                                     </div>
                                 </CardContent>
                              </Card>
-                             <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
- <TabsContent value="deals" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
      <EntityDealsTab entityId={entityId} />
-     <EntityNotesTab entityId={entityId} compact />
  </TabsContent>
 
  <TabsContent value="tasks" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -489,12 +473,10 @@ export default function EntityDetailPage() {
                                 </div>
                             )}
                         </div>
-                        <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
- <TabsContent value="billing" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="billing" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
-                        <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
                     {/* Online Presence Tab */}
@@ -580,12 +562,18 @@ export default function EntityDetailPage() {
                                 )}
                             </CardContent>
                         </Card>
-                        <EntityNotesTab entityId={entityId} compact />
+                    </TabsContent>
+                    
+                    <TabsContent value="notes" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <EntityNotesTab entityId={entityId} />
                     </TabsContent>
                 </Tabs>
               </Card>
              </div>
              <div className="lg:col-span-1 space-y-6">
+                 {/* Quick Notes Widget */}
+                 <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
+
                  {/* Workspaces Panel */}
                  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
                      <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left flex flex-row items-center justify-between">
@@ -626,6 +614,9 @@ export default function EntityDetailPage() {
                      </CardHeader>
                      <CardContent className="p-4 text-left">
                          <ActivityTimeline entityId={entityId} limit={8} />
+                         <Button variant="link" size="sm" className="w-full mt-2 text-[10px] font-bold text-muted-foreground hover:text-primary" onClick={() => setIsLogModalOpen(true)}>
+                             View Full Activity Log →
+                         </Button>
                      </CardContent>
                  </Card>
              </div>

@@ -81,6 +81,8 @@ const formSchema = z.object({
   showIntroAsPage: z.boolean().default(true),
   stepperVariant: z.enum(['full', 'simple']).default('full'),
   showSurveyTitles: z.boolean().default(true),
+  questionTitleBold: z.boolean().default(true),
+  optionsColumns: z.number().min(1).max(4).default(1),
   showBranding: z.boolean().default(true),
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
@@ -218,6 +220,8 @@ export default function EditSurveyPage() {
             status: 'draft',
             backgroundPattern: 'none',
             scoringEnabled: false,
+            questionTitleBold: true,
+      optionsColumns: 1,
             adminAlertsEnabled: false,
             workspaceIds: [activeWorkspaceId],
         }

@@ -426,6 +426,15 @@ export interface EntityNote {
   createdByName?: string;
   createdAt: string;
   updatedAt: string;
+  /** Note category for filtering */
+  noteType?: 'general' | 'call' | 'meeting' | 'escalation' | 'followup';
+  /** Pinned notes float to the top */
+  isPinned?: boolean;
+  pinnedAt?: string;
+  pinnedBy?: string;
+  /** Threading support */
+  parentNoteId?: string;
+  replyCount?: number;
 }
 
 export interface FocalPersonAttachment {
@@ -593,10 +602,18 @@ export interface UserProfile {
   phone: string;
   photoURL?: string;
   isAuthorized: boolean;
-  roles: string[];
-  permissions?: AppPermissionId[];
+  roles?: string[]; // Legacy global roles
+  permissions?: AppPermissionId[]; // Legacy global permissions
   /** Hierarchical permission structure (Permissions Expansion) */
-  permissionsSchema?: PermissionsSchema;
+  permissionsSchema?: PermissionsSchema; // Legacy global schema
+  
+  /** Workspace-Specific Roles Mapping (workspaceId -> roleIds) */
+  workspaceRoles?: Record<string, string[]>;
+  /** Flattened permissions scoped per workspace */
+  workspacePermissions?: Record<string, AppPermissionId[]>;
+  /** Hydrated hierarchical schemas scoped per workspace */
+  workspacePermissionsSchemas?: Record<string, PermissionsSchema>;
+
   // AI User Preferences
   preferredAiModel?: string;      // e.g., 'gemini-2.0-flash', 'gpt-4o'
   preferredAiProvider?: string;   // e.g., 'googleai', 'openrouter', 'openai'
@@ -1246,6 +1263,8 @@ export interface Survey {
   showIntroAsPage?: boolean;
   stepperVariant?: 'full' | 'simple';
   showSurveyTitles?: boolean;
+  questionTitleBold?: boolean;
+  optionsColumns?: number;
   showBranding?: boolean;
   backgroundColor?: string;
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
@@ -1360,7 +1379,7 @@ export interface SurveyResultPage {
 
 export interface SurveyResultBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer';
+  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer';
   title?: string;
   content?: string;
   url?: string;
@@ -1961,6 +1980,7 @@ export interface MessageLog {
   attachmentCount?: number;
   openedCount?: number;
   clickedCount?: number;
+  dealId?: string; // Optional deal reference for deal-level message tracking
 }
 
 export interface MessageJob {

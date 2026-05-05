@@ -15,6 +15,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -23,13 +24,14 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
+import { MediaSelect } from '../../entities/components/media-select';
 
 interface BlockSettingsSidebarProps {
     activeBlockId: string | null;
 }
 
 export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSidebarProps) {
-    const { watch, setValue, control } = useFormContext();
+    const { watch, setValue, control, register } = useFormContext();
     const elements = watch('elements') || [];
     
     const activeIndex = elements.findIndex((el: any) => el.id === activeBlockId);
@@ -463,6 +465,46 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
                                 )}
                             />
                         </div>
+
+                        {['image', 'video', 'audio', 'document'].includes(element.type) && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Media Source</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.url`}
+                                        render={({ field }) => (
+                                            <MediaSelect 
+                                                value={field.value} 
+                                                onValueChange={field.onChange}
+                                                filterType={element.type as any}
+                                            />
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                        {element.type === 'image' ? 'Alt Text' : 'Caption'}
+                                    </Label>
+                                    <Input 
+                                        {...register(`elements.${activeIndex}.title`)} 
+                                        placeholder={`Add a descriptive ${element.type === 'image' ? 'alt text' : 'caption'}...`}
+                                        className="h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'embed' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">HTML Embed Code</Label>
+                                <Textarea 
+                                    {...register(`elements.${activeIndex}.html`)} 
+                                    placeholder="Paste iframe or HTML code..."
+                                    className="min-h-[120px] font-mono text-xs bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                />
+                            </div>
+                        )}
 
                         {element.type === 'heading' && (
                             <div className="flex flex-col gap-2">

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useFormContext, Controller } from 'react-hook-form';
+import { useFormContext, Controller, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,6 +32,7 @@ import { format, isValid, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
+import { MediaSelect } from '../../entities/components/media-select';
 import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -368,11 +369,36 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const allowOther = watch(`elements.${questionIndex}.allowOther`);
   const enableScoring = watch(`elements.${questionIndex}.enableScoring`);
 
+  // Track which index to focus after appending a new option
+  const pendingFocusIndexRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (pendingFocusIndexRef.current !== null) {
+      const idx = pendingFocusIndexRef.current;
+      pendingFocusIndexRef.current = null;
+      // Wait for DOM to update, then focus the new input
+      requestAnimationFrame(() => {
+        const input = document.querySelector<HTMLInputElement>(
+          `input[name="elements.${questionIndex}.options.${idx}"]`
+        );
+        input?.focus();
+      });
+    }
+  }, [fields.length, questionIndex]);
+
   const handleAddOption = () => {
+    pendingFocusIndexRef.current = fields.length;
     append('');
     if (enableScoring) {
         const currentScores = getValues(`elements.${questionIndex}.optionScores`) || [];
         setValue(`elements.${questionIndex}.optionScores`, [...currentScores, 0], { shouldDirty: true });
+    }
+  };
+
+  const handleOptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddOption();
     }
   };
 
@@ -418,6 +444,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
  className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+                        onKeyDown={handleOptionKeyDown}
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -499,6 +526,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         value={field.value ?? ''} 
                         placeholder={`Option ${index + 1}`} 
  className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" 
+                        onKeyDown={handleOptionKeyDown}
                         onPaste={(e) => {
                           const pastedText = e.clipboardData.getData('Text');
                           if (pastedText && pastedText.includes('\n')) {
@@ -545,7 +573,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
  <Button type="button" variant="outline" size="sm" onClick={handleAddOption} className="rounded-xl font-bold border-border/50">
  <PlusCircle className="h-4 w-4 mr-2" /> Add Option
       </Button>
-      {questionType === 'checkboxes' && (
+      {(questionType === 'checkboxes' || questionType === 'multiple-choice') && (
  <div className="flex items-center space-x-2 pt-2">
           <Controller
             name={`elements.${questionIndex}.allowOther`}
@@ -556,12 +584,14 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                 checked={!!field.value}
                 onCheckedChange={(isChecked) => {
                   field.onChange(isChecked);
-                  if (isChecked) {
-                    const currentArray = Array.isArray(defaultValue) ? defaultValue : [];
-                    handleDefaultChange({ options: currentArray, other: '' });
-                  } else {
-                    const currentOptions = defaultValue?.options || [];
-                    handleDefaultChange(currentOptions);
+                  if (questionType === 'checkboxes') {
+                    if (isChecked) {
+                      const currentArray = Array.isArray(defaultValue) ? defaultValue : [];
+                      handleDefaultChange({ options: currentArray, other: '' });
+                    } else {
+                      const currentOptions = defaultValue?.options || [];
+                      handleDefaultChange(currentOptions);
+                    }
                   }
                 }}
               />
@@ -912,6 +942,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isElementLayout = isLayoutBlock(element);
   const isElementSection = element.type === 'section';
   const ElementIcon = getElementIcon(element.type);
+  const isTitleBold = useWatch({ name: 'questionTitleBold' }) !== false;
+
   
   return (
     <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(element?.id)}>
@@ -1043,7 +1075,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="The name of your question..." 
                                                     textAlign={element.style?.textAlign}
-                                                    className="text-xl sm:text-2xl font-bold min-h-[1.2em] focus:ring-0 px-0 transition-all text-foreground selection:bg-primary/20"
+                                                    className={cn(
+                                                        "text-xl sm:text-2xl min-h-[1.2em] focus:ring-0 px-0 transition-all text-foreground selection:bg-primary/20",
+                                                        isTitleBold ? "font-bold" : "font-semibold"
+                                                    )}
                                                 />
                                             )} 
                                         />
@@ -1222,7 +1257,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             placeholder="Display Heading" 
                                             textAlign={element.style?.textAlign}
                                             className={cn(
-                                                "font-bold leading-tight tracking-tight text-foreground",
+                                                "leading-tight tracking-tight text-foreground",
+                                                isTitleBold ? "font-bold" : "font-semibold",
                                                 element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
@@ -1243,6 +1279,65 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         />
                                     )} 
                                 />
+                            )}
+                            {['image', 'video', 'audio', 'document'].includes(element.type) && (
+                                <div className="space-y-6 pt-4 border-t border-border/50">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                                {element.type} Source
+                                            </Label>
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-50">
+                                                Supports Library & URL
+                                            </Badge>
+                                        </div>
+                                        <Controller
+                                            name={`elements.${index}.url`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <MediaSelect 
+                                                    value={field.value} 
+                                                    onValueChange={field.onChange}
+                                                    filterType={element.type as any}
+                                                />
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                            {element.type === 'image' ? 'Alt Text' : 'Caption'}
+                                        </Label>
+                                        <Controller 
+                                            name={`elements.${index}.title`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Input 
+                                                    {...field} 
+                                                    value={field.value || ''} 
+                                                    placeholder={`Add a descriptive ${element.type === 'image' ? 'alt text' : 'caption'}...`}
+                                                    className="h-12 bg-card border border-border/50 rounded-xl px-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                />
+                                            )} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {element.type === 'embed' && (
+                                <div className="space-y-4 pt-4 border-t border-border/50">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">HTML Embed Code</Label>
+                                    <Controller 
+                                        name={`elements.${index}.html`} 
+                                        control={control} 
+                                        render={({ field }) => (
+                                            <Textarea 
+                                                {...field} 
+                                                value={field.value || ''} 
+                                                placeholder="Paste your iframe or HTML code here..."
+                                                className="min-h-[150px] font-mono text-xs bg-card border border-border/50 rounded-xl p-6 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                            />
+                                        )} 
+                                    />
+                                </div>
                             )}
                         </div>
                     ) : (

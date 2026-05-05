@@ -10,8 +10,11 @@ import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns } from 'lucide-react';
+import { useUser, useDoc, useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
 import AddElementModal from './add-element-modal';
@@ -20,7 +23,6 @@ import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
 import { autoSaveSurveyAction } from '@/lib/survey-actions';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -90,6 +92,30 @@ export default function SurveyFormBuilder() {
         toast({ title: newState ? 'Strict validation enabled' : 'Validation disabled' });
     };
 
+    const toggleQuestionBolding = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentBold = watch('questionTitleBold') !== false;
+        const newState = !currentBold;
+        setValue('questionTitleBold', newState, { shouldDirty: true });
+        toast({ 
+            title: newState ? 'Titles set to Bold' : 'Titles set to Semibold',
+            description: newState ? 'All question titles will appear bold.' : 'All question titles will appear less heavy.'
+        });
+    };
+
+    const toggleColumns = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const current = watch('optionsColumns') || 1;
+        const next = current >= 4 ? 1 : current + 1;
+        setValue('optionsColumns', next, { shouldDirty: true });
+        toast({ 
+            title: `Options Layout: ${next} ${next > 1 ? 'Columns' : 'Column'}`,
+            description: next > 1 ? `Questions with many options will now use a ${next}-column grid.` : 'All options will appear in a single list.'
+        });
+    };
+
     const requestAddElement = (index: number) => {
         setInsertionIndex(index + 1);
         setIsAddElementModalOpen(true);
@@ -125,7 +151,21 @@ export default function SurveyFormBuilder() {
     };
 
     const watchedForm = watch();
-    const debouncedForm = useDebounce(watchedForm, 1000);
+    const firestore = useFirestore();
+    const { activeOrganization } = useWorkspace();
+
+    // Logo resolution chain for Preview consistency
+    const entityDocRef = React.useMemo(() => {
+        if (!firestore || !watchedForm.entityId) return null;
+        return doc(firestore, 'entities', watchedForm.entityId);
+    }, [firestore, watchedForm.entityId]);
+    const { data: entity } = useDoc<any>(entityDocRef);
+
+    const displayLogoUrl = watchedForm.showBranding === false 
+        ? 'none' 
+        : (watchedForm.logoUrl || entity?.institutionData?.logoUrl || entity?.logoUrl || activeOrganization?.logoUrl || null);
+
+    const debouncedForm = useDebounce(watchedForm, 30000);
 
     const {
         state: historyState,
@@ -139,20 +179,27 @@ export default function SurveyFormBuilder() {
 
     const isProgrammaticChange = React.useRef(false);
     const lastSavedRef = React.useRef<string>(JSON.stringify(getValues()));
+    const activeSurveyIdRef = React.useRef<string>(surveyId);
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+
+    // Keep the ref in sync if the URL-based surveyId changes (e.g. after navigation)
+    React.useEffect(() => { activeSurveyIdRef.current = surveyId; }, [surveyId]);
 
     const triggerSave = React.useCallback(async (data: any) => {
         if (!user || !isDirty) return;
         const currentString = JSON.stringify(data);
         if (currentString === lastSavedRef.current) return;
 
+        const idToSave = activeSurveyIdRef.current;
         setAutosaveStatus('saving');
         try {
-            const result = await autoSaveSurveyAction(surveyId, data, user.uid);
+            const result = await autoSaveSurveyAction(idToSave, data, user.uid);
             if (result.success) {
                 lastSavedRef.current = currentString;
                 setAutosaveStatus('saved');
-                if (surveyId === 'new-survey' && result.id) {
+                if (idToSave === 'new-survey' && result.id) {
+                    // Immediately lock the ref so subsequent saves target the new doc
+                    activeSurveyIdRef.current = result.id;
                     router.replace(`/admin/surveys/${result.id}/edit`);
                 }
                 setTimeout(() => setAutosaveStatus('idle'), 3000);
@@ -161,10 +208,9 @@ export default function SurveyFormBuilder() {
             console.error("Autosave failed:", error);
             setAutosaveStatus('idle');
         }
-    }, [user, isDirty, surveyId, router]);
+    }, [user, isDirty, router]);
 
     React.useEffect(() => { triggerSave(debouncedForm); }, [debouncedForm, triggerSave]);
-    React.useEffect(() => { if (activeBlockId) triggerSave(getValues()); }, [activeBlockId, triggerSave, getValues]);
 
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
@@ -212,7 +258,7 @@ export default function SurveyFormBuilder() {
                                             } as any} 
                                             onSubmitted={() => setIsPreviewMode(false)}
                                             isPreview
-                                            resolvedLogoUrl={watchedForm.logoUrl || null}
+                                            resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
                                         />
                                     </div>
                                     <div className="mt-8 text-center">
@@ -374,6 +420,19 @@ export default function SurveyFormBuilder() {
                                 <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Strict Section Validation</TooltipContent>
                             </Tooltip>
                             
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", watch('questionTitleBold') !== false ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleQuestionBolding}><Bold className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Question Title Weight</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", watch('optionsColumns') > 1 ? "bg-indigo-500/10 text-indigo-500" : "text-muted-foreground hover:text-foreground")} onClick={toggleColumns}><Columns className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Options Layout: {watch('optionsColumns') || 1} Col</TooltipContent>
+                            </Tooltip>
                             <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
                             
                             <AiChatEditor variant="icon" />

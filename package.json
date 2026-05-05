@@ -73,6 +73,7 @@
     "genkit": "^1.20.0",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "isomorphic-dompurify": "^3.12.0",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "libphonenumber-js": "^1.12.42",

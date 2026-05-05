@@ -153,7 +153,7 @@ export function TemplateGallery({
  <div className="relative flex-grow w-full">
  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                     <Input 
-                        placeholder="Filter template blueprints..." 
+                        placeholder="Search templates..." 
  className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold shadow-none focus:ring-1 focus:ring-primary/20" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
@@ -227,7 +227,7 @@ export function TemplateGallery({
                     {filteredTemplates.length === 0 && (
  <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
  <FileType className="h-16 w-16 text-muted-foreground" />
- <p className="font-semibold text-sm">No template blueprints found.</p>
+ <p className="font-semibold text-sm">No templates found.</p>
                         </div>
                     )}
                 </div>

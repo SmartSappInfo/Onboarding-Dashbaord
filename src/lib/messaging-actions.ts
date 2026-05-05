@@ -581,3 +581,32 @@ export async function resolveRecipientContacts(params: {
     return [''];
   }
 }
+
+/**
+ * Updates the lastContactedAt timestamp on a workspace entity.
+ * Called automatically after a message is successfully sent to track CRM activity.
+ */
+export async function updateEntityLastContactedAt(entityId: string, workspaceId: string) {
+  try {
+    const weSnap = await adminDb
+      .collection('workspace_entities')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .limit(1)
+      .get();
+
+    if (weSnap.empty) {
+      console.warn(`[LAST_CONTACTED] No workspace_entity found for ${entityId} in ${workspaceId}`);
+      return { success: false, error: 'Entity not found in workspace' };
+    }
+
+    await weSnap.docs[0].ref.update({
+      lastContactedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[LAST_CONTACTED] Update failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}

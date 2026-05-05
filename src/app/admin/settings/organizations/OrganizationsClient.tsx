@@ -129,10 +129,14 @@ export default function OrganizationsClient() {
                                             <img 
                                                 src={org.logoUrl} 
                                                 alt={org.name}
-                                                className="h-14 w-14 rounded-2xl object-cover ring-1 ring-border shadow-sm shrink-0"
+                                                className="h-14 w-14 rounded-2xl object-cover ring-1 ring-border shadow-sm shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => handleOpenEdit(org)}
                                             />
                                         ) : (
-                                            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+                                            <div 
+                                                className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20 cursor-pointer hover:bg-primary/20 transition-all"
+                                                onClick={() => handleOpenEdit(org)}
+                                            >
                                                 <Building className="h-7 w-7 text-primary" />
                                             </div>
                                         )}

@@ -54,8 +54,8 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
         const industryTerms = INDUSTRY_CONFIG[industry].terminology;
         
         // Allow workspace-level custom terminology to override industry defaults
-        const s = workspace?.terminology?.singular || industryTerms.entitySingular;
-        const p = workspace?.terminology?.plural || industryTerms.entityPlural;
+        const s = workspace?.terminology?.singular?.trim() || industryTerms.entitySingular;
+        const p = workspace?.terminology?.plural?.trim() || industryTerms.entityPlural;
         
         return {
             singular: s,

@@ -88,5 +88,5 @@ export function getContrastColor(hex: string): string {
  */
 export function stripHtml(html: string): string {
   if (!html) return '';
-  return html.replace(/<[^>]*>?/gm, '').trim();
+  return html.replace(/<[a-zA-Z\/][^>]*>/g, '').trim();
 }

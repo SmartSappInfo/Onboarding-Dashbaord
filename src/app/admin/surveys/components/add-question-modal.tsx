@@ -31,6 +31,8 @@ import {
     FileText,
     Code,
     PlusSquare,
+    Mail,
+    Phone,
 } from 'lucide-react';
 import type { SurveyElement } from '@/lib/types';
 
@@ -50,6 +52,8 @@ const questionTypes: { type: SurveyElement['type']; label: string; icon: React.E
     { type: 'rating', label: 'Rating (1-5)', icon: Star },
     { type: 'date', label: 'Date', icon: Calendar },
     { type: 'time', label: 'Time', icon: Clock },
+    { type: 'email', label: 'Email', icon: Mail },
+    { type: 'phone', label: 'Phone Number', icon: Phone },
     { type: 'file-upload', label: 'File Upload', icon: Upload },
 ];
 

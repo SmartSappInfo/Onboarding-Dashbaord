@@ -159,9 +159,9 @@ export default function MessageTemplatesPage() {
             setIsAdding(true);
             setIsAiModalOpen(false);
             setAiPrompt('');
-            toast({ title: 'AI Architecture Generated', description: result.explanation });
+            toast({ title: 'Template Draft Created', description: result.explanation });
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Architect Failure', description: e.message });
+            toast({ variant: 'destructive', title: 'Generation Failed', description: e.message });
         } finally {
             setIsAiProcessing(false);
         }
@@ -198,7 +198,7 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
-            toast({ title: 'Template Protocol Saved' });
+            toast({ title: 'Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
         } catch (e: any) {
@@ -261,7 +261,7 @@ export default function MessageTemplatesPage() {
                                     <RainbowButton 
                                         onClick={() => setIsAiModalOpen(true)} 
                                     >
- <Sparkles className="h-4 w-4" /> AI Architect
+ <Sparkles className="h-4 w-4" /> AI Template Generator
                                     </RainbowButton>
                                     <Button 
                                         onClick={() => { setEditingTemplate(null); setIsAdding(true); }} 
@@ -294,14 +294,14 @@ export default function MessageTemplatesPage() {
  <Wand2 className="h-6 w-6" />
                             </div>
                             <div>
- <DialogTitle className="text-2xl font-semibold tracking-tight">AI Template Architect</DialogTitle>
- <DialogDescription className="text-xs font-bold text-primary/60">Generate a high-fidelity communication blueprint.</DialogDescription>
+ <DialogTitle className="text-2xl font-semibold tracking-tight">AI Template Generator</DialogTitle>
+ <DialogDescription className="text-xs font-bold text-primary/60">Create a template using AI.</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
  <div className="p-8 space-y-6">
  <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Communication Goal</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Describe Your Message</Label>
                             <Textarea 
                                 value={aiPrompt} 
                                 onChange={e => setAiPrompt(e.target.value)} 
@@ -310,12 +310,12 @@ export default function MessageTemplatesPage() {
                                 autoFocus
                             />
                         </div>
- <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
- <Zap className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+ <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-4">
+ <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
  <div className="space-y-1">
- <p className="text-sm font-semibold text-blue-900 tracking-tighter">Institutional Track Context</p>
- <p className="text-[10px] text-blue-700 leading-relaxed font-bold opacity-80">
-                                    The AI will bind the new template to the **{activeWorkspaceId}** hub and automatically scan for relevant dynamic tags.
+ <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 tracking-tighter">Workspace Context</p>
+ <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 leading-relaxed font-bold opacity-80">
+                                    The AI will create a template for your workspace and automatically scan for relevant dynamic variables.
                                 </p>
                             </div>
                         </div>
@@ -328,7 +328,7 @@ export default function MessageTemplatesPage() {
  className="h-12 px-12 font-semibold shadow-2xl text-sm"
                         >
  {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                            {isAiProcessing ? 'Architecting...' : 'Generate Blueprint'}
+                            {isAiProcessing ? 'Generating…' : 'Generate Template'}
                         </RainbowButton>
                     </DialogFooter>
                 </DialogContent>
@@ -339,11 +339,11 @@ export default function MessageTemplatesPage() {
                     <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold text-xl tracking-tight">Remove Template?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">
- Deleting <span className="font-bold text-foreground">"{templateToDelete?.name}"</span> will permanently remove it from the institutional repository.
+ Deleting <span className="font-bold text-foreground">"{templateToDelete?.name}"</span> will permanently remove it from your template library.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
  <AlertDialogFooter className="mt-4">
- <AlertDialogCancel className="rounded-xl font-bold">Retain Blueprint</AlertDialogCancel>
+ <AlertDialogCancel className="rounded-xl font-bold">Keep Template</AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={handleDelete} 
                             disabled={isDeleting}

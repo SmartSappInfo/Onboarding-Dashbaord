@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Communications Center',
-  description: 'Centralized messaging infrastructure for multi-channel SMS and Email dispatches across the school network.',
+  description: 'Send and manage email and SMS messages.',
 };
 
 export default function MessagingHubPage() {

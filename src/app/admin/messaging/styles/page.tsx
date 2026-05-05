@@ -99,7 +99,7 @@ export default function MessageStylesPage() {
             setName('');
             setWorkspaceIds([activeWorkspaceId]);
             setIsAdding(false);
-            toast({ title: 'Style Protocol Initialized' });
+            toast({ title: 'Style Created' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         } finally {
@@ -162,7 +162,7 @@ export default function MessageStylesPage() {
             });
 
             setGeneratedHtml(result.htmlWrapper);
-            toast({ title: 'AI Architect Complete', description: result.explanation });
+            toast({ title: 'AI Style Generated', description: result.explanation });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'AI Generation Failed', description: e.message });
         } finally {
@@ -183,7 +183,7 @@ export default function MessageStylesPage() {
             });
             setGeneratedHtml(null);
             setIsAiGenerating(false);
-            toast({ title: 'AI Architecture Initialized' });
+            toast({ title: 'AI Style Created' });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         } finally {
@@ -203,11 +203,11 @@ export default function MessageStylesPage() {
  <div className="flex items-center justify-end flex-wrap gap-4">
  <div className="flex items-center gap-2">
  <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl">
- <Sparkles className="h-4 w-4" /> AI Style Architect
+ <Sparkles className="h-4 w-4" /> AI Style Generator
                         </RainbowButton>
  <Button onClick={() => setIsAdding(!isAdding)} variant="outline" className="h-11 rounded-xl font-bold border-primary/20 text-primary">
  {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                            {isAdding ? 'Discard' : 'Manual Blueprint'}
+                            {isAdding ? 'Discard' : 'Manual Create'}
                         </Button>
                     </div>
                 </div>
@@ -231,7 +231,7 @@ export default function MessageStylesPage() {
                             </div>
  <div className="space-y-2">
  <div className="flex justify-between items-center px-1">
- <Label className="text-[10px] font-semibold text-muted-foreground">HTML Gateway Blueprint</Label>
+ <Label className="text-[10px] font-semibold text-muted-foreground">HTML Template</Label>
                                     <Badge className="bg-orange-500/10 text-orange-600 border-none text-[8px] font-semibold uppercase h-5 px-2">Must include &#123;&#123;content&#125;&#125;</Badge>
                                 </div>
                                 <Textarea 
@@ -299,8 +299,8 @@ export default function MessageStylesPage() {
  <div className="flex items-center gap-4">
  <div className="p-3 bg-primary text-white rounded-2xl shadow-xl"><Pencil size={24} /></div>
  <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Modify Style Architecture</DialogTitle>
- <DialogDescription className="text-xs font-bold opacity-60">Updating shared layout protocol</DialogDescription>
+ <DialogTitle className="text-xl font-semibold tracking-tight">Edit Style</DialogTitle>
+ <DialogDescription className="text-xs font-bold opacity-60">Edit the email style template</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
@@ -346,7 +346,7 @@ export default function MessageStylesPage() {
  <Button variant="ghost" onClick={() => setEditingStyle(null)} disabled={isUpdating} className="font-bold rounded-xl h-12 px-8">Discard Changes</Button>
  <Button onClick={handleUpdate} disabled={isUpdating || !editName.trim() || editWorkspaceIds.length === 0} className="rounded-xl font-semibold px-12 shadow-2xl h-12 text-sm transition-all active:scale-95">
  {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Sync Architecture
+                            Save Changes
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -359,7 +359,7 @@ export default function MessageStylesPage() {
  <div className="flex items-center gap-3">
  <div className="p-3 bg-primary/10 rounded-xl"><Sparkles size={24} className="text-primary" /></div>
  <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">AI Style Architect</DialogTitle>
+ <DialogTitle className="text-xl font-semibold tracking-tight">AI Style Generator</DialogTitle>
  <DialogDescription className="text-xs font-bold opacity-60">Generate responsive brand wrappers via AI</DialogDescription>
                             </div>
                         </div>
@@ -381,7 +381,7 @@ export default function MessageStylesPage() {
                             </div>
  <RainbowButton onClick={handleAiGenerate} disabled={isAiProcessing} className="h-14 w-full font-semibold text-lg gap-2 shadow-2xl">
  {isAiProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                                {isAiProcessing ? 'Architecting...' : 'Generate Protocol'}
+                                {isAiProcessing ? 'Generating…' : 'Generate Style'}
                             </RainbowButton>
                         </div>
 
