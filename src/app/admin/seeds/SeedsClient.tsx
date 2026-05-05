@@ -45,6 +45,12 @@ import {
   rollbackDealStageNameBackfill,
   type DealStageBackfillResult,
 } from '@/app/actions/backfill-deal-stagename-action';
+import {
+  fetchEntitiesWithCustomData,
+  cleanupEntityCustomData,
+  validateCustomDataCleanup,
+  type CustomDataCleanupResult,
+} from '@/app/actions/cleanup-entity-customdata-action';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -95,6 +101,12 @@ export default function SeedsClient() {
   const [stageBackfillRestoreStatus, setStageBackfillRestoreStatus] = useState<SeedingState>('idle');
   const [stageBackfillRollbackStatus,setStageBackfillRollbackStatus]= useState<SeedingState>('idle');
   const [stageBackfillStats,         setStageBackfillStats]         = useState<DealStageBackfillResult | null>(null);
+
+  // CustomData Cleanup FER States
+  const [customDataFetchStatus,   setCustomDataFetchStatus]   = useState<SeedingState>('idle');
+  const [customDataEnrichStatus,  setCustomDataEnrichStatus]  = useState<SeedingState>('idle');
+  const [customDataRestoreStatus, setCustomDataRestoreStatus] = useState<SeedingState>('idle');
+  const [customDataStats,         setCustomDataStats]         = useState<CustomDataCleanupResult | null>(null);
 
 
   const handleMigration = async () => {
@@ -256,6 +268,62 @@ export default function SeedsClient() {
       setStageBackfillRollbackStatus('error');
       toast({ variant: 'destructive', title: 'Rollback Failed', description: e.message });
     } finally { setTimeout(() => setStageBackfillRollbackStatus('idle'), 2500); }
+  };
+
+  // ── CustomData Cleanup FER Handlers ──────────────────────────────────────
+  const handleCustomDataFetch = async () => {
+    setCustomDataFetchStatus('seeding');
+    try {
+      const result = await fetchEntitiesWithCustomData(stageOrgId);
+      if (result.success && result.data) {
+        setCustomDataStats(result.data);
+        toast({ title: 'Fetch Complete', description: `${result.data.withCustomData} entities have redundant customData, ${result.data.skipped} are clean.` });
+        setCustomDataFetchStatus('success');
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setCustomDataFetchStatus('error');
+      toast({ variant: 'destructive', title: 'Fetch Failed', description: e.message });
+    } finally { setTimeout(() => setCustomDataFetchStatus('idle'), 2500); }
+  };
+
+  const handleCustomDataEnrich = async () => {
+    setCustomDataEnrichStatus('seeding');
+    try {
+      const result = await cleanupEntityCustomData(stageOrgId);
+      if (result.data) {
+        setCustomDataStats(result.data);
+        if (result.data.failed > 0) {
+          toast({ variant: 'destructive', title: 'Cleanup Partially Failed', description: `Succeeded: ${result.data.succeeded}, Failed: ${result.data.failed}` });
+          setCustomDataEnrichStatus('error');
+        } else {
+          toast({ title: '\u2705 Cleanup Complete', description: `Removed customData from ${result.data.succeeded} entities.` });
+          setCustomDataEnrichStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setCustomDataEnrichStatus('error');
+      toast({ variant: 'destructive', title: 'Cleanup Failed', description: e.message });
+    } finally { setTimeout(() => setCustomDataEnrichStatus('idle'), 2500); }
+  };
+
+  const handleCustomDataRestore = async () => {
+    setCustomDataRestoreStatus('seeding');
+    try {
+      const result = await validateCustomDataCleanup(stageOrgId);
+      if (result.data) {
+        setCustomDataStats(result.data);
+        if (result.data.failed > 0) {
+          toast({ variant: 'destructive', title: 'Validation Failed', description: `${result.data.failed} entities still have customData.` });
+          setCustomDataRestoreStatus('error');
+        } else {
+          toast({ title: '\u2705 All Entities Clean', description: `${result.data.succeeded} entities confirmed without customData.` });
+          setCustomDataRestoreStatus('success');
+        }
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      setCustomDataRestoreStatus('error');
+      toast({ variant: 'destructive', title: 'Validation Failed', description: e.message });
+    } finally { setTimeout(() => setCustomDataRestoreStatus('idle'), 2500); }
   };
 
   const handlePermissionsMigration = async () => {
@@ -699,6 +767,101 @@ export default function SeedsClient() {
                             >
                                 {stageBackfillRollbackStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <RotateCcw className="h-5 w-5 mr-2" />}
                                 Rollback — Strip stageName from All Deals
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* ── CustomData Cleanup (FER) ── */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">Entity CustomData Cleanup</h3>
+                    <p className="text-muted-foreground font-medium">Strip redundant <code className="px-1.5 py-0.5 bg-muted rounded text-xs">customData</code> maps from entity documents — contact data already lives in <code className="px-1.5 py-0.5 bg-muted rounded text-xs">entityContacts</code>.</p>
+                </div>
+
+                <Card className="border-2 border-rose-200 bg-rose-50/50 shadow-lg rounded-2xl overflow-hidden">
+                    <CardContent className="p-8 space-y-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-4 bg-rose-100 rounded-2xl w-fit text-rose-700 ring-2 ring-rose-300">
+                                <Database className="h-7 w-7" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-xl font-bold tracking-tight text-foreground mb-2">Remove Redundant <code className="text-rose-700">customData</code></h4>
+                                <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                                    The legacy bulk-upload system duplicated contact fields (<code className="px-1 py-0.5 bg-muted rounded text-xs">contact_0_name</code>,{' '}
+                                    <code className="px-1 py-0.5 bg-muted rounded text-xs">contact_0_email</code>, etc.) into{' '}
+                                    <code className="px-1 py-0.5 bg-muted rounded text-xs">customData</code> even though they were already stored in{' '}
+                                    <code className="px-1 py-0.5 bg-muted rounded text-xs">entityContacts</code>. This FER job removes the redundant map to keep documents clean.
+                                    The root cause has been patched — new imports no longer populate customData with contact fields.
+                                </p>
+
+                                {customDataStats && (
+                                    <div className="mt-5 p-4 bg-background rounded-xl border border-border">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                            {[
+                                                { label: 'Total Entities', value: customDataStats.total,          color: 'text-foreground' },
+                                                { label: 'With customData', value: customDataStats.withCustomData, color: 'text-rose-600' },
+                                                { label: 'Cleaned',         value: customDataStats.succeeded,      color: 'text-green-600' },
+                                                { label: 'Failed',          value: customDataStats.failed,         color: 'text-red-600' },
+                                            ].map(m => (
+                                                <div key={m.label}>
+                                                    <div className={`text-2xl font-bold tabular-nums ${m.color}`}>{m.value}</div>
+                                                    <div className="text-xs text-muted-foreground font-medium mt-0.5">{m.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {customDataStats.withCustomData > 0 && customDataStats.succeeded === 0 && (
+                                            <div className="mt-3 text-center text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg py-2">
+                                                {customDataStats.withCustomData} entities have redundant customData — run Enrich to clean up.
+                                            </div>
+                                        )}
+                                        {customDataStats.errors.length > 0 && (
+                                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                                <div className="flex items-center gap-2 text-red-800 font-semibold text-sm mb-2">
+                                                    <AlertCircle className="h-4 w-4" /> Errors ({customDataStats.errors.length})
+                                                </div>
+                                                <div className="text-xs text-red-700 space-y-1 max-h-28 overflow-y-auto font-mono">
+                                                    {customDataStats.errors.slice(0, 10).map((err, i) => (
+                                                        <div key={i}>{err}</div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* FER action buttons */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 mt-4 border-t border-border/50">
+                            <Button
+                                onClick={handleCustomDataFetch}
+                                disabled={customDataFetchStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 hover:bg-rose-50 hover:border-rose-300 transition-all"
+                            >
+                                {customDataFetchStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Database className="h-5 w-5 mr-2" />}
+                                Fetch
+                            </Button>
+
+                            <Button
+                                onClick={handleCustomDataEnrich}
+                                disabled={customDataEnrichStatus === 'seeding'}
+                                className="rounded-xl font-bold h-12 px-6 bg-rose-600 hover:bg-rose-700 text-white shadow-lg active:scale-95 transition-all"
+                            >
+                                {customDataEnrichStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />}
+                                Enrich (Clean)
+                            </Button>
+
+                            <Button
+                                onClick={handleCustomDataRestore}
+                                disabled={customDataRestoreStatus === 'seeding'}
+                                variant="outline"
+                                className="rounded-xl font-bold h-12 px-6 border-2 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all"
+                            >
+                                {customDataRestoreStatus === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+                                Restore (Validate)
                             </Button>
                         </div>
                     </CardContent>

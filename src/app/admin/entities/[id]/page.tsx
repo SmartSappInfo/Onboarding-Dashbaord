@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
-import type { WorkspaceEntity, Entity, FocalPerson, Task, Tag, TagAuditLog } from '@/lib/types';
+import type { WorkspaceEntity, Entity, FocalPerson, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,10 @@ import {
     Network,
     Building2,
     X,
+    ExternalLink,
+    Pencil,
+    Save,
+    Hash,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +78,6 @@ import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
-import EntityNotesWidget from '../components/EntityNotesWidget';
 import { CurrentStageMetric } from './components/CurrentStageMetric';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
@@ -126,12 +129,48 @@ export default function EntityDetailPage() {
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
 
+    // Inline Online Presence editing
+    const [isEditingPresence, setIsEditingPresence] = React.useState(false);
+    const [presenceForm, setPresenceForm] = React.useState<OnlinePresence>({});
+    const [isSavingPresence, setIsSavingPresence] = React.useState(false);
+
     // 1. Subscribe to Global Entity (Identity)
     const entityDocRef = useMemoFirebase(() => {
         if (!firestore || !entityId) return null;
         return doc(firestore, 'entities', entityId);
     }, [firestore, entityId]);
     const { data: entityData, isLoading: isLoadingEntity } = useDoc<Entity>(entityDocRef);
+
+    React.useEffect(() => {
+        if (entityData?.onlinePresence) {
+            setPresenceForm(entityData.onlinePresence);
+        } else if (entityData) {
+            // Migrate legacy website field
+            setPresenceForm({ website: (entityData as any).website || '' });
+        }
+    }, [entityData]);
+
+    const handleSavePresence = async () => {
+        if (!firestore || !entityId || isSavingPresence) return;
+        setIsSavingPresence(true);
+        try {
+            // Clean empty strings
+            const cleaned: Record<string, string> = {};
+            for (const [k, v] of Object.entries(presenceForm)) {
+                if (v && typeof v === 'string' && v.trim()) cleaned[k] = v.trim();
+            }
+            await updateDoc(doc(firestore, 'entities', entityId), {
+                onlinePresence: cleaned,
+                updatedAt: new Date().toISOString(),
+            });
+            toast({ title: 'Online Presence Updated' });
+            setIsEditingPresence(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } finally {
+            setIsSavingPresence(false);
+        }
+    };
 
     // 2. Subscribe to Workspace Entity (Operational State)
     const workspaceEntityId = `${activeWorkspaceId}_${entityId}`;
@@ -255,7 +294,8 @@ export default function EntityDetailPage() {
     const locationZone = entityData.location?.zone?.name;
     const displayLocation = hierachyString || locationZone || 'Unassigned';
 
-    const website = (entityData as any).website;
+    const onlinePresence = entityData.onlinePresence || {} as OnlinePresence;
+    const website = onlinePresence.website || (entityData as any).website;
     const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
 
@@ -314,6 +354,23 @@ export default function EntityDetailPage() {
                             <div className="pt-2 flex flex-wrap items-center gap-2">
                                 <TagSelector contactId={workspaceEntityId} contactType="workspace_entity" currentTagIds={weData.workspaceTags || []} />
                             </div>
+                            {/* Summary Metrics Row */}
+                            <div className="pt-3 flex flex-wrap items-center gap-3">
+                                {capacity > 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-xl">
+                                        <Users className="h-3.5 w-3.5 text-primary" />
+                                        <span className="text-xs font-bold text-primary tabular-nums">{capacity.toLocaleString()}</span>
+                                        <span className="text-[10px] font-semibold text-primary/60">Capacity</span>
+                                    </div>
+                                )}
+                                {activeMembershipsCount > 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/5 border border-sky-500/15 rounded-xl">
+                                        <Network className="h-3.5 w-3.5 text-sky-600" />
+                                        <span className="text-xs font-bold text-sky-600 tabular-nums">{activeMembershipsCount}</span>
+                                        <span className="text-[10px] font-semibold text-sky-600/60">{activeMembershipsCount === 1 ? 'Workspace' : 'Workspaces'}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -336,7 +393,6 @@ export default function EntityDetailPage() {
  <TabsList className="w-full justify-start bg-muted/30 rounded-none border-b border-border p-0 h-12 overflow-x-auto hide-scrollbar flex-nowrap">
  <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Insights</TabsTrigger>
  <TabsTrigger value="deals" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Deals</TabsTrigger>
- <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Notes</TabsTrigger>
  <TabsTrigger value="tasks" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             Tasks
                             {tasks && tasks.length > 0 && (
@@ -346,13 +402,9 @@ export default function EntityDetailPage() {
  <TabsTrigger value="billing" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
  <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
-                        <TabsTrigger value="workspaces" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
-                            <Network className="h-3 w-3" /> Workspaces
-                            {activeMembershipsCount > 0 && (
-                                <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-sky-500 text-[8px] border-none text-white">{activeMembershipsCount}</Badge>
-                            )}
+ <TabsTrigger value="presence" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <Share2 className="h-3 w-3" /> Online Presence
                         </TabsTrigger>
- <TabsTrigger value="timeline" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Activity Feed</TabsTrigger>
                     </TabsList>
 
  <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -393,14 +445,12 @@ export default function EntityDetailPage() {
                                     </div>
                                 </CardContent>
                              </Card>
+                             <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
- <TabsContent value="notes" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-     <EntityNotesTab entityId={entityId} />
- </TabsContent>
-
- <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="deals" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
      <EntityDealsTab entityId={entityId} />
+     <EntityNotesTab entityId={entityId} compact />
  </TabsContent>
 
  <TabsContent value="tasks" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -439,145 +489,145 @@ export default function EntityDetailPage() {
                                 </div>
                             )}
                         </div>
+                        <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
- <TabsContent value="billing" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+ <TabsContent value="billing" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
+                        <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
 
-                    {/* Workspaces Tab */}
-                    <TabsContent value="workspaces" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-xl font-bold tracking-tight">Workspace Memberships</h3>
-                                    <p className="text-sm text-muted-foreground mt-0.5">
-                                        {displayName} is active in <span className="font-bold text-foreground">{activeMembershipsCount}</span> workspace{activeMembershipsCount !== 1 ? 's' : ''}
-                                    </p>
-                                </div>
+                    {/* Online Presence Tab */}
+                    <TabsContent value="presence" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                            <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 flex flex-row items-center justify-between">
+                                <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Share2 className="h-4 w-4" /> Digital Presence & Social Media</CardTitle>
                                 <Button
-                                    onClick={() => setIsManageWorkspacesOpen(true)}
-                                    className="rounded-xl font-bold h-11 px-6 gap-2 shadow-md"
+                                    variant={isEditingPresence ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="rounded-xl font-bold h-8 px-4 text-xs"
+                                    onClick={() => {
+                                        if (isEditingPresence) {
+                                            handleSavePresence();
+                                        } else {
+                                            setIsEditingPresence(true);
+                                        }
+                                    }}
+                                    disabled={isSavingPresence}
                                 >
-                                    <Share2 className="h-4 w-4" />
-                                    Manage Workspaces
+                                    {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : isEditingPresence ? <Save className="h-3 w-3 mr-1.5" /> : <Pencil className="h-3 w-3 mr-1.5" />}
+                                    {isEditingPresence ? 'Save' : 'Edit'}
                                 </Button>
-                            </div>
-
-                            {/* Membership cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {(allMemberships || []).length === 0 ? (
-                                    <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl bg-background/20 opacity-40 flex flex-col items-center gap-3">
-                                        <Network className="h-8 w-8 text-muted-foreground" />
-                                        <p className="text-sm font-semibold text-muted-foreground">Not linked to any workspace</p>
-                                        <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setIsManageWorkspacesOpen(true)}>
-                                            <Plus className="h-4 w-4 mr-2" /> Add to a Workspace
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    (allMemberships || []).map(m => (
-                                        <div
-                                            key={m.id}
-                                            className={cn(
-                                                'rounded-2xl border p-5 flex flex-col gap-3 bg-card shadow-sm transition-all hover:shadow-md',
-                                                m.status === 'archived' && 'opacity-50 grayscale'
-                                            )}
-                                        >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-2.5">
-                                                    <div className={cn(
-                                                        'p-2 rounded-xl shrink-0',
-                                                        m.status === 'active' ? 'bg-sky-500/10 text-sky-500' : 'bg-muted text-muted-foreground'
-                                                    )}>
-                                                        <Building2 className="h-4 w-4" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-sm truncate">{workspaceNameMap.get(m.workspaceId) ?? m.workspaceId}</p>
-                                                        <Badge
-                                                            variant={m.status === 'active' ? 'default' : 'outline'}
-                                                            className="text-[8px] h-4 uppercase font-bold mt-0.5"
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {([
+                                        { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
+                                        { key: 'digitalAddress', label: 'Digital Address', icon: MapPin, placeholder: 'GA-XXX-XXXX' },
+                                        { key: 'googleMapLocation', label: 'Google Map', icon: MapPin, placeholder: 'https://maps.google.com/...' },
+                                        { key: 'googleBusinessProfile', label: 'Google Business', icon: Building2, placeholder: 'https://business.google.com/...' },
+                                        { key: 'facebook', label: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/...' },
+                                        { key: 'whatsapp', label: 'WhatsApp', icon: Phone, placeholder: '+233...' },
+                                        { key: 'linkedin', label: 'LinkedIn', icon: Network, placeholder: 'https://linkedin.com/in/...' },
+                                        { key: 'pinterest', label: 'Pinterest', icon: Share2, placeholder: 'https://pinterest.com/...' },
+                                        { key: 'instagram', label: 'Instagram', icon: Camera, placeholder: '@username' },
+                                        { key: 'tiktok', label: 'TikTok', icon: Zap, placeholder: '@username' },
+                                        { key: 'youtube', label: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/...' },
+                                        { key: 'x', label: 'X (Twitter)', icon: Hash, placeholder: '@username' },
+                                    ] as const).map(({ key, label, icon: FieldIcon, placeholder }) => {
+                                        const value = presenceForm[key as keyof OnlinePresence] || '';
+                                        return (
+                                            <div key={key} className={cn("flex items-start gap-3 p-4 rounded-xl border border-border/50 transition-all", isEditingPresence ? 'bg-muted/20' : 'bg-card hover:bg-muted/10')}>
+                                                <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50">
+                                                    <FieldIcon className="h-4 w-4 text-muted-foreground" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
+                                                    {isEditingPresence ? (
+                                                        <input
+                                                            type="text"
+                                                            value={value}
+                                                            onChange={e => setPresenceForm(prev => ({ ...prev, [key]: e.target.value }))}
+                                                            placeholder={placeholder}
+                                                            className="w-full text-sm font-medium bg-transparent border-b border-primary/20 focus:border-primary outline-none py-1 transition-colors placeholder:text-muted-foreground/40"
+                                                        />
+                                                    ) : value ? (
+                                                        <a
+                                                            href={value.startsWith('http') || value.startsWith('+') ? value : `https://${value}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm font-bold text-foreground hover:text-primary flex items-center gap-1.5 truncate underline-offset-4 hover:underline"
                                                         >
-                                                            {m.status}
-                                                        </Badge>
-                                                    </div>
+                                                            {value}
+                                                            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                                        </a>
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground/50 italic">Not set</p>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="space-y-1.5 text-[11px] text-muted-foreground">
-                                                {m.lifecycleStatus && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Activity className="h-3 w-3 shrink-0" />
-                                                        <span className="font-medium">{m.lifecycleStatus}</span>
-                                                    </div>
-                                                )}
-                                                {m.assignedTo?.name && (
-                                                    <div className="flex items-center gap-2">
-                                                        <UserCheck className="h-3 w-3 shrink-0" />
-                                                        <span className="font-medium">{m.assignedTo.name}</span>
-                                                    </div>
-                                                )}
-                                                {m.addedAt && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-3 w-3 shrink-0" />
-                                                        <span>Added {(() => { try { const d = (m.addedAt as any)?.toDate?.() ?? new Date(m.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMM d, yyyy'); } catch { return '—'; } })()}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </TabsContent>
-
- <TabsContent value="timeline" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
- <div className="bg-card rounded-2xl p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px] text-left">
- <div className="mb-10 flex items-center gap-3 text-left">
- <div className="flex flex-col text-left">
-                                    <Badge variant="outline" className="w-fit bg-background font-semibold text-[10px] uppercase  px-3 py-1 border-primary/20 text-primary mb-1">Audit Trail</Badge>
- <h3 className="text-2xl font-semibold tracking-tight ">Operational Logs</h3>
+                                        );
+                                    })}
                                 </div>
- <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
-                            </div>
-                            <ActivityTimeline entityId={entityId} limit={20} />
-                        </div>
+                                {isEditingPresence && (
+                                    <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-border/50">
+                                        <Button variant="ghost" size="sm" className="rounded-xl font-bold" onClick={() => { setIsEditingPresence(false); setPresenceForm(entityData?.onlinePresence || {}); }}>Cancel</Button>
+                                        <Button size="sm" className="rounded-xl font-bold" onClick={handleSavePresence} disabled={isSavingPresence}>
+                                            {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
+                                            Save Changes
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                        <EntityNotesTab entityId={entityId} compact />
                     </TabsContent>
                 </Tabs>
               </Card>
              </div>
              <div className="lg:col-span-1 space-y-6">
-                 {/* 
-                  * TODO: Dynamic Right Column 
-                  * This column holds critical information and should be dynamic for each entity type and industry.
-                  * As new features are added (especially for other entity types like 'person' or 'family'), 
-                  * restructure this panel to show the most relevant metrics and widgets depending on the 
-                  * current industry and workspace.
-                  */}
+                 {/* Workspaces Panel */}
                  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                     <CardHeader className="border-b bg-card/20 pb-5 px-6 pt-6 text-left">
-                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
+                     <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left flex flex-row items-center justify-between">
+                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Network className="h-4 w-4" /> Workspaces</CardTitle>
+                         <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] font-bold text-primary" onClick={() => setIsManageWorkspacesOpen(true)}>
+                             <Plus className="h-3 w-3 mr-1" /> Manage
+                         </Button>
                      </CardHeader>
-                     <CardContent className="p-6 space-y-8 text-left">
-                         <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 shadow-inner">
-                             <div className="space-y-1 text-left">
-                                 <p className="text-[10px] font-semibold text-primary/60 ">Nominal Strength</p>
-                                 <p className="text-3xl font-semibold tabular-nums tracking-tighter text-primary">{capacity?.toLocaleString() || '0'}</p>
+                     <CardContent className="p-4 space-y-3 text-left max-h-[320px] overflow-y-auto">
+                         {(allMemberships || []).length === 0 ? (
+                             <div className="py-8 text-center opacity-40 flex flex-col items-center gap-2">
+                                 <Network className="h-6 w-6 text-muted-foreground" />
+                                 <p className="text-[10px] font-semibold text-muted-foreground">No workspaces</p>
                              </div>
-                             <div className="p-3 bg-card rounded-2xl shadow-sm border border-primary/20"><Users className="h-6 w-6 text-primary" /></div>
-                         </div>
-                         <div className="space-y-6 text-left">
-                             <DetailItem icon={UserCheck} label="Account Manager" value={weData.assignedTo?.name || 'Unassigned'} />
-                             <CurrentStageMetric entityId={entityId} />
-                             <DetailItem icon={Calendar} label="Added To Workspace" value={(() => { try { const d = (weData.addedAt as any)?.toDate?.() ?? new Date(weData.addedAt); return isNaN(d.getTime()) ? '—' : format(d, 'MMMM d, yyyy'); } catch { return '—'; } })()} />
-                             <Separator />
-                             <div className="space-y-3">
-                                 <p className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">System Information</p>
-                                 <DetailItem icon={Globe} label="Website" value={website || '—'} href={website ? (website.startsWith('http') ? website : `https://${website}`) : undefined} />
-                             </div>
-                         </div>
+                         ) : (
+                             (allMemberships || []).map(m => (
+                                 <div key={m.id} className={cn("rounded-xl border p-3 flex items-center gap-3 bg-card/50 transition-all hover:bg-muted/20", m.status === 'archived' && 'opacity-40 grayscale')}>
+                                     <div className={cn("p-1.5 rounded-lg shrink-0", m.status === 'active' ? "bg-sky-500/10 text-sky-500" : "bg-muted text-muted-foreground")}>
+                                         <Building2 className="h-3.5 w-3.5" />
+                                     </div>
+                                     <div className="min-w-0 flex-1">
+                                         <p className="font-bold text-xs truncate">{workspaceNameMap.get(m.workspaceId) ?? m.workspaceId}</p>
+                                         <div className="flex items-center gap-2 mt-0.5">
+                                             <Badge variant={m.status === 'active' ? 'default' : 'outline'} className="text-[7px] h-3.5 uppercase font-bold">{m.status}</Badge>
+                                             {m.lifecycleStatus && <span className="text-[9px] text-muted-foreground font-medium">{m.lifecycleStatus}</span>}
+                                         </div>
+                                     </div>
+                                 </div>
+                             ))
+                         )}
                      </CardContent>
                  </Card>
 
-                 <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
+                 {/* Activity Log */}
+                 <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                     <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left">
+                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Activity className="h-4 w-4" /> Activity Log</CardTitle>
+                     </CardHeader>
+                     <CardContent className="p-4 text-left">
+                         <ActivityTimeline entityId={entityId} limit={8} />
+                     </CardContent>
+                 </Card>
              </div>
          </div>
             </div>

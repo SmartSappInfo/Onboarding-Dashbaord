@@ -408,6 +408,9 @@ async function processRow(
         const value = getValue(variableName);
         if (value === undefined || value === null || value === '') return;
 
+        // Skip contact slot fields — already handled by the entityContacts builder above
+        if (/^contact_\d+_/.test(variableName)) return;
+
         const bucket = resolveFieldStorageBucket(variableName, entityType as any, workspaceIndustry as any);
         
         switch (bucket) {

@@ -15,9 +15,11 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface EntityNotesTabProps {
     entityId: string;
+    /** When true, hide the text area until "Add Note" is clicked */
+    compact?: boolean;
 }
 
-export default function EntityNotesTab({ entityId }: EntityNotesTabProps) {
+export default function EntityNotesTab({ entityId, compact = false }: EntityNotesTabProps) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { activeWorkspaceId } = useWorkspace();
@@ -25,6 +27,7 @@ export default function EntityNotesTab({ entityId }: EntityNotesTabProps) {
 
     const [newNote, setNewNote] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [showAddNote, setShowAddNote] = React.useState(!compact);
     
     const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
     const [editContent, setEditContent] = React.useState('');
@@ -57,6 +60,7 @@ export default function EntityNotesTab({ entityId }: EntityNotesTabProps) {
                 updatedAt: new Date().toISOString(),
             });
             setNewNote('');
+            if (compact) setShowAddNote(false);
             toast({ title: 'Note added successfully' });
         } catch (error: any) {
             console.error('Error adding note:', error);
@@ -97,31 +101,47 @@ export default function EntityNotesTab({ entityId }: EntityNotesTabProps) {
 
     return (
         <div className="space-y-6 text-left">
-            <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm">
-                <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/10 rounded-xl shrink-0">
-                        <MessageSquare className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 space-y-3">
-                        <Textarea 
-                            placeholder="Type a new note..."
-                            value={newNote}
-                            onChange={(e) => setNewNote(e.target.value)}
-                            className="min-h-[100px] resize-y rounded-xl border-border/50 bg-background/50 focus-visible:ring-1 focus-visible:ring-primary/20"
-                        />
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleAddNote} 
-                                disabled={!newNote.trim() || isSubmitting}
-                                className="rounded-xl shadow-sm gap-2 font-bold"
-                            >
-                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Add Note
-                            </Button>
+            {showAddNote ? (
+                <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-primary/10 rounded-xl shrink-0">
+                            <MessageSquare className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            <Textarea 
+                                placeholder="Type a new note..."
+                                value={newNote}
+                                onChange={(e) => setNewNote(e.target.value)}
+                                className="min-h-[100px] resize-y rounded-xl border-border/50 bg-background/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+                                autoFocus={compact}
+                            />
+                            <div className="flex justify-end gap-2">
+                                {compact && (
+                                    <Button variant="ghost" size="sm" className="rounded-xl font-bold" onClick={() => { setShowAddNote(false); setNewNote(''); }}>
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button 
+                                    onClick={handleAddNote} 
+                                    disabled={!newNote.trim() || isSubmitting}
+                                    className="rounded-xl shadow-sm gap-2 font-bold"
+                                >
+                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    Add Note
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <Button 
+                    variant="outline" 
+                    className="w-full rounded-xl font-bold h-10 border-dashed border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 gap-2"
+                    onClick={() => setShowAddNote(true)}
+                >
+                    <MessageSquare className="h-4 w-4" /> Add Note
+                </Button>
+            )}
 
             <div className="space-y-4">
                 {isLoading ? (

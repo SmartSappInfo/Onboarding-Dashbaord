@@ -258,6 +258,8 @@ export interface Organization {
   industry?: IndustryVertical;
   /** Default country for new entities in this org. Falls back to 'GH' (Ghana) if unset. */
   defaultCountryId?: string;
+  /** ISO 3166-1 alpha-2 country code (e.g. 'GH', 'US') used for phone number parsing fallback. */
+  defaultCountryCode?: string;
   /** Features enabled for this organization. Missing keys = use defaultEnabled from APP_FEATURES. */
   enabledFeatures?: FeatureToggleMap;
   /** Global default values applied when entities are created via survey submissions */
@@ -451,7 +453,9 @@ export interface EntityContact {
   id: string;
   name: string;
   email?: string;
-  phone?: string;
+  phone?: string; // Stored natively in E.164 format (e.g., +233242737120)
+  countryCode?: string; // ISO 3166-1 alpha-2 (e.g. 'GH')
+  callingCode?: string; // Phone prefix (e.g. '233')
   typeKey: string;
   typeLabel?: string;
   isPrimary: boolean;
@@ -830,6 +834,28 @@ export interface Entity {
 
   // Dynamic custom data bucket (Requirement: Phase 6)
   customData?: Record<string, any>;
+
+  // Online Presence & Social Media
+  onlinePresence?: OnlinePresence;
+}
+
+/**
+ * Online Presence — digital address, social media, and web presence for an entity.
+ * Lives as a flat sub-object on the Entity document.
+ */
+export interface OnlinePresence {
+  website?: string;
+  digitalAddress?: string;
+  googleMapLocation?: string;
+  googleBusinessProfile?: string;
+  facebook?: string;
+  whatsapp?: string;
+  linkedin?: string;
+  pinterest?: string;
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  x?: string; // formerly Twitter
 }
 
 /**

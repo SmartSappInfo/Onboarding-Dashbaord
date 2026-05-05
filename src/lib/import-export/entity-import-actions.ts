@@ -22,6 +22,7 @@ import type {
   ValidationSummary,
   ExecutionSummary,
 } from '@/app/admin/contacts/import/types';
+import { normalizePhoneNumber } from '../phone-utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,13 +62,6 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/**
- * Basic phone validation – allow digits, spaces, dashes, parens, plus sign.
- */
-function isValidPhone(phone: string): boolean {
-  return /^[+\d\s\-()]{7,20}$/.test(phone);
-}
-
 // ─── Validate Import Batch ────────────────────────────────────────────────────
 
 /**
@@ -89,8 +83,18 @@ export async function validateImportBatch(
   const previewRows: any[] = [];
   let validRows = 0;
 
-  // 1. ScopeGuard – make sure workspace accepts this entity type & read contact policy
+  // 1. ScopeGuard & Org Config
   let contactPolicy: ContactIdentifierPolicy = 'phone_or_email';
+  let defaultCountryCode = 'GH';
+  
+  const orgId = organizationId || 'smartsapp-hq';
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgSnap.exists) {
+      defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+    }
+  } catch (err) {}
+
   if (workspaceId) {
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (wsSnap.exists) {
@@ -119,7 +123,6 @@ export async function validateImportBatch(
   }
 
   // 2. Build a Set of existing entity names for duplicate checking (batched)
-  const orgId = organizationId || 'smartsapp-hq';
   const existingNames = new Map<string, string>(); // normalised name → entityId
 
   const existingSnap = await adminDb
@@ -202,10 +205,36 @@ export async function validateImportBatch(
       errors.push({ rowNumber: rowNum, reason: `Invalid guardian email: "${mapped.guardian1_email}"` });
       rowValid = false;
     }
-    if (mapped.phone && !isValidPhone(mapped.phone)) {
-      errors.push({ rowNumber: rowNum, reason: `Invalid phone format: "${mapped.phone}"` });
-      rowValid = false;
+    
+    // Phone validation & normalization
+    if (mapped.phone) {
+      const parsed = normalizePhoneNumber(mapped.phone, defaultCountryCode);
+      if (!parsed.isValid) {
+        errors.push({ rowNumber: rowNum, reason: `Invalid phone format: "${mapped.phone}"` });
+        rowValid = false;
+      } else {
+        mapped.phone = parsed.e164 || mapped.phone;
+      }
     }
+    if (mapped.focalPerson_phone) {
+      const parsed = normalizePhoneNumber(mapped.focalPerson_phone, defaultCountryCode);
+      if (!parsed.isValid) {
+        errors.push({ rowNumber: rowNum, reason: `Invalid focal person phone format: "${mapped.focalPerson_phone}"` });
+        rowValid = false;
+      } else {
+        mapped.focalPerson_phone = parsed.e164 || mapped.focalPerson_phone;
+      }
+    }
+    if (mapped.guardian1_phone) {
+      const parsed = normalizePhoneNumber(mapped.guardian1_phone, defaultCountryCode);
+      if (!parsed.isValid) {
+        errors.push({ rowNumber: rowNum, reason: `Invalid guardian phone format: "${mapped.guardian1_phone}"` });
+        rowValid = false;
+      } else {
+        mapped.guardian1_phone = parsed.e164 || mapped.guardian1_phone;
+      }
+    }
+
     if (mapped.nominalRoll && isNaN(Number(mapped.nominalRoll))) {
       errors.push({ rowNumber: rowNum, reason: `nominalRoll must be a number, got "${mapped.nominalRoll}"` });
       rowValid = false;
@@ -270,6 +299,14 @@ export async function executeImportBatch(
   const uid = userId || 'system-import';
   const wsId = workspaceId || '';
   const orgId = organizationId || 'smartsapp-hq';
+
+  let defaultCountryCode = 'GH';
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgSnap.exists) {
+      defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+    }
+  } catch (err) {}
 
   let successCount = 0;
   let errorCount = 0;
@@ -351,7 +388,7 @@ export async function executeImportBatch(
 
     try {
       // Build the entity payload based on type
-      const payload = buildEntityPayload(mapped, entityType, pipelineId, stageId);
+      const payload = buildEntityPayload(mapped, entityType, defaultCountryCode, pipelineId, stageId);
 
       if (!payload) {
         console.error(`[IMPORT] Row ${i + 1} skipped — buildEntityPayload returned null. Mapped keys: ${Object.keys(mapped).join(', ')}. Mapped values:`, JSON.stringify(mapped));
@@ -447,6 +484,7 @@ export async function executeImportBatch(
 function buildEntityPayload(
   mapped: Record<string, string>,
   entityType: EntityType,
+  defaultCountryCode: string,
   pipelineId?: string,
   stageId?: string
 ): any | null {
@@ -471,9 +509,12 @@ function buildEntityPayload(
 
     const contacts: any[] = [];
     if (mapped.email || mapped.phone || displayName) {
+      const parsedPhone = mapped.phone ? normalizePhoneNumber(mapped.phone, defaultCountryCode) : null;
       contacts.push({
         name: mapped.contactName || displayName,
-        phone: mapped.phone || '',
+        phone: parsedPhone?.e164 || mapped.phone || '',
+        countryCode: parsedPhone?.countryCode,
+        callingCode: parsedPhone?.callingCode,
         email: mapped.email || '',
         typeKey: 'primary',
         typeLabel: 'Primary',
@@ -514,9 +555,13 @@ function buildEntityPayload(
 
     const contacts: any[] = [];
     if (gName || mapped.guardian1_email || mapped.guardian1_phone || mapped.email || mapped.phone) {
+      const rawPhone = mapped.guardian1_phone || mapped.phone || '';
+      const parsedPhone = rawPhone ? normalizePhoneNumber(rawPhone, defaultCountryCode) : null;
       contacts.push({
         name: gName,
-        phone: mapped.guardian1_phone || mapped.phone || '',
+        phone: parsedPhone?.e164 || rawPhone,
+        countryCode: parsedPhone?.countryCode,
+        callingCode: parsedPhone?.callingCode,
         email: mapped.guardian1_email || mapped.email || '',
         typeKey: 'guardian',
         typeLabel: 'Guardian',
@@ -527,9 +572,13 @@ function buildEntityPayload(
 
     const guardians: any[] = [];
     if (gName) {
+      const rawPhone = mapped.guardian1_phone || mapped.phone || '';
+      const parsedPhone = rawPhone ? normalizePhoneNumber(rawPhone, defaultCountryCode) : null;
       guardians.push({
         name: gName,
-        phone: mapped.guardian1_phone || mapped.phone || '',
+        phone: parsedPhone?.e164 || rawPhone,
+        countryCode: parsedPhone?.countryCode,
+        callingCode: parsedPhone?.callingCode,
         email: mapped.guardian1_email || mapped.email || '',
         relationship: mapped.guardian1_relationship || 'Guardian',
         isPrimary: true,
@@ -572,9 +621,13 @@ function buildEntityPayload(
 
     const contacts: any[] = [];
     if (fpName || mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone) {
+      const rawPhone = mapped.focalPerson_phone || mapped.phone || '';
+      const parsedPhone = rawPhone ? normalizePhoneNumber(rawPhone, defaultCountryCode) : null;
       contacts.push({
         name: fpName,
-        phone: mapped.focalPerson_phone || mapped.phone || '',
+        phone: parsedPhone?.e164 || rawPhone,
+        countryCode: parsedPhone?.countryCode,
+        callingCode: parsedPhone?.callingCode,
         email: mapped.focalPerson_email || mapped.email || '',
         typeKey: mapped.focalPerson_type?.toLowerCase() || 'focal_person',
         typeLabel: mapped.focalPerson_type || 'Focal Person',

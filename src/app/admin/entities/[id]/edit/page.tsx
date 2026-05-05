@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Layout, Camera } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Layout, Camera, Share2, Globe, Hash, Network, Phone as PhoneIcon } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
@@ -55,7 +55,7 @@ const entityEditSchema = z.object({
     name: z.string(),
   }, { required_error: 'Please assign a geographic zone.' }),
   locationString: z.string().optional(),
-  nominalRoll: z.coerce.number().optional(),
+  capacity: z.coerce.number().optional(),
   entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.').optional().or(z.literal('')),
@@ -82,6 +82,19 @@ const entityEditSchema = z.object({
   discountPercentage: z.coerce.number().min(0).max(100).default(0),
   arrearsBalance: z.coerce.number().default(0),
   creditBalance: z.coerce.number().default(0),
+  // Online Presence
+  op_website: z.string().optional(),
+  op_digitalAddress: z.string().optional(),
+  op_googleMapLocation: z.string().optional(),
+  op_googleBusinessProfile: z.string().optional(),
+  op_facebook: z.string().optional(),
+  op_whatsapp: z.string().optional(),
+  op_linkedin: z.string().optional(),
+  op_pinterest: z.string().optional(),
+  op_instagram: z.string().optional(),
+  op_tiktok: z.string().optional(),
+  op_youtube: z.string().optional(),
+  op_x: z.string().optional(),
 });
 
 type EntityEditValues = z.infer<typeof entityEditSchema>;
@@ -147,7 +160,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
     resolver: zodResolver(entityEditSchema),
     defaultValues: {
       name: '', initials: '', slogan: '', status: 'active', lifecycleStatus: 'Onboarding',
-      nominalRoll: 0, entityContacts: [], modules: [],
+      capacity: 0, entityContacts: [], modules: [],
       assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
       subscriptionPackageId: 'none'
@@ -172,7 +185,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         heroImageUrl: (entityData as any).heroImageUrl || '',
         zone: entityData.location?.zone || undefined,
         locationString: entityData.location?.locationString || '',
-        nominalRoll: industryData.capacity ?? 0,
+        capacity: industryData.capacity ?? 0,
         entityContacts: (entityData.entityContacts && entityData.entityContacts.length > 0)
           ? entityData.entityContacts
           : (entityData.contacts?.map((c: any, i: number) => ({
@@ -193,6 +206,19 @@ function EditEntityForm({ entityId }: EditFormProps) {
         discountPercentage: financeData.discountPercentage ?? 0,
         arrearsBalance: financeData.arrearsBalance ?? 0,
         creditBalance: financeData.creditBalance ?? 0,
+        // Online Presence
+        op_website: entityData.onlinePresence?.website || (entityData as any).website || '',
+        op_digitalAddress: entityData.onlinePresence?.digitalAddress || '',
+        op_googleMapLocation: entityData.onlinePresence?.googleMapLocation || '',
+        op_googleBusinessProfile: entityData.onlinePresence?.googleBusinessProfile || '',
+        op_facebook: entityData.onlinePresence?.facebook || '',
+        op_whatsapp: entityData.onlinePresence?.whatsapp || '',
+        op_linkedin: entityData.onlinePresence?.linkedin || '',
+        op_pinterest: entityData.onlinePresence?.pinterest || '',
+        op_instagram: entityData.onlinePresence?.instagram || '',
+        op_tiktok: entityData.onlinePresence?.tiktok || '',
+        op_youtube: entityData.onlinePresence?.youtube || '',
+        op_x: entityData.onlinePresence?.x || '',
       });
       // Set location cascade values from entity
       setLocationValue({
@@ -261,6 +287,26 @@ function EditEntityForm({ entityId }: EditFormProps) {
             discountPercentage: data.discountPercentage,
             arrearsBalance: data.arrearsBalance,
             creditBalance: data.creditBalance,
+        },
+        // Industry data (capacity)
+        industryData: {
+            ...(entityData?.industryData || {}),
+            capacity: data.capacity ?? 0,
+        },
+        // Online Presence
+        onlinePresence: {
+            ...(data.op_website ? { website: data.op_website } : {}),
+            ...(data.op_digitalAddress ? { digitalAddress: data.op_digitalAddress } : {}),
+            ...(data.op_googleMapLocation ? { googleMapLocation: data.op_googleMapLocation } : {}),
+            ...(data.op_googleBusinessProfile ? { googleBusinessProfile: data.op_googleBusinessProfile } : {}),
+            ...(data.op_facebook ? { facebook: data.op_facebook } : {}),
+            ...(data.op_whatsapp ? { whatsapp: data.op_whatsapp } : {}),
+            ...(data.op_linkedin ? { linkedin: data.op_linkedin } : {}),
+            ...(data.op_pinterest ? { pinterest: data.op_pinterest } : {}),
+            ...(data.op_instagram ? { instagram: data.op_instagram } : {}),
+            ...(data.op_tiktok ? { tiktok: data.op_tiktok } : {}),
+            ...(data.op_youtube ? { youtube: data.op_youtube } : {}),
+            ...(data.op_x ? { x: data.op_x } : {}),
         },
     };
 
@@ -663,15 +709,58 @@ function EditEntityForm({ entityId }: EditFormProps) {
                             <FormMessage />
                         </FormItem>
                     )} /> 
-                    <FormField control={methods.control} name="nominalRoll" render={({ field }) => (
+                    <FormField control={methods.control} name="capacity" render={({ field }) => (
  <FormItem className="text-left">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Nominal Strength</FormLabel>
+ <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">Capacity</FormLabel>
                             <FormControl>
  <Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
+                </CardContent>
+            </Card>
+
+            {/* Online Presence Card */}
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <div className="flex items-center gap-3 text-left">
+                        <div className="p-2 bg-primary/10 rounded-xl text-left"><Share2 className="h-5 w-5 text-primary" /></div>
+                        <div className="text-left">
+                            <CardTitle className="text-lg font-semibold tracking-tight text-left">Online Presence</CardTitle>
+                            <CardDescription className="text-xs font-medium text-left">Digital address, social media, and web presence.</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4 text-left">
+                    <div className="grid grid-cols-1 gap-4">
+                        {([
+                            { name: 'op_website' as const, label: 'Website', icon: Globe, placeholder: 'https://example.com' },
+                            { name: 'op_digitalAddress' as const, label: 'Digital Address', icon: MapPin, placeholder: 'GA-XXX-XXXX' },
+                            { name: 'op_googleMapLocation' as const, label: 'Google Map Location', icon: MapPin, placeholder: 'https://maps.google.com/...' },
+                            { name: 'op_googleBusinessProfile' as const, label: 'Google Business Profile', icon: Globe, placeholder: 'https://business.google.com/...' },
+                            { name: 'op_facebook' as const, label: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/...' },
+                            { name: 'op_whatsapp' as const, label: 'WhatsApp', icon: PhoneIcon, placeholder: '+233...' },
+                            { name: 'op_linkedin' as const, label: 'LinkedIn', icon: Network, placeholder: 'https://linkedin.com/in/...' },
+                            { name: 'op_pinterest' as const, label: 'Pinterest', icon: Share2, placeholder: 'https://pinterest.com/...' },
+                            { name: 'op_instagram' as const, label: 'Instagram', icon: Globe, placeholder: '@username' },
+                            { name: 'op_tiktok' as const, label: 'TikTok', icon: Zap, placeholder: '@username' },
+                            { name: 'op_youtube' as const, label: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/...' },
+                            { name: 'op_x' as const, label: 'X (Twitter)', icon: Hash, placeholder: '@username' },
+                        ]).map(({ name, label, icon: FieldIcon, placeholder }) => (
+                            <FormField key={name} control={methods.control} name={name} render={({ field }) => (
+                                <FormItem className="text-left">
+                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left flex items-center gap-1.5">
+                                        <FieldIcon className="h-3 w-3" /> {label}
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input {...field} placeholder={placeholder} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium text-sm" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        ))}
+                    </div>
                 </CardContent>
             </Card>
 

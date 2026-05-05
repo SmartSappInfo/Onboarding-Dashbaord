@@ -16,6 +16,7 @@ import { findDuplicateEntities } from './entity-duplicate-detection';
 import { canUser } from './workspace-permissions';
 import { getWorkspaceIndustry, invalidateWorkspaceCache } from './industry-cache';
 import { validateIndustryData } from './industry-schemas';
+import { normalizePhoneNumber } from './phone-utils';
 
 /**
  * @fileOverview Server actions for entity lifecycle management.
@@ -170,6 +171,14 @@ export async function createEntityAction(
       validateIndustryData(data.industryData, workspaceIndustry);
     }
 
+    let defaultCountryCode = 'GH';
+    try {
+      const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+      if (orgSnap.exists) {
+        defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+      }
+    } catch (err) {}
+
     const timestamp = new Date().toISOString();
     const entityId = `entity_${crypto.randomUUID()}`;
     
@@ -184,6 +193,17 @@ export async function createEntityAction(
     // FER-01: Convert incoming contacts to EntityContact format
     const rawContacts: EntityContact[] = (data.contacts || data.entityContacts || []).map(
       (c: any, i: number) => {
+        let phone = c.phone;
+        let countryCode = c.countryCode;
+        let callingCode = c.callingCode;
+
+        if (phone) {
+           const parsed = normalizePhoneNumber(phone, defaultCountryCode);
+           phone = parsed.e164 || phone;
+           if (!countryCode) countryCode = parsed.countryCode;
+           if (!callingCode) callingCode = parsed.callingCode;
+        }
+
         // If already EntityContact-shaped (has typeKey), use directly
         if (c.typeKey) {
           const contact: any = {
@@ -198,14 +218,24 @@ export async function createEntityAction(
             updatedAt: timestamp,
           };
           if (c.email) contact.email = c.email;
-          if (c.phone) contact.phone = c.phone;
+          if (phone) {
+             contact.phone = phone;
+             if (countryCode) contact.countryCode = countryCode;
+             if (callingCode) contact.callingCode = callingCode;
+          }
           if (c.notes !== undefined) contact.notes = c.notes;
           if (c.attachments !== undefined) contact.attachments = c.attachments;
           
           return contact as EntityContact;
         }
         // Legacy FocalPerson shape — convert
-        return focalPersonToEntityContact(c, i);
+        const legacyContact = focalPersonToEntityContact(c, i);
+        if (phone) {
+            legacyContact.phone = phone;
+            legacyContact.countryCode = countryCode;
+            legacyContact.callingCode = callingCode;
+        }
+        return legacyContact;
       }
     );
 
@@ -514,6 +544,11 @@ export async function updateEntityAction(
            entityUpdate[`customData.${key}`] = data.customData[key];
          }
       }
+    }
+
+    // Online Presence
+    if (data.onlinePresence) {
+      entityUpdate.onlinePresence = data.onlinePresence;
     }
 
     // 3. Update Universal Identity Collection

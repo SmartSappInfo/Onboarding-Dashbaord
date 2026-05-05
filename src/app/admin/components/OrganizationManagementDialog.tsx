@@ -19,6 +19,7 @@ import {
     Eye,
     EyeOff
 } from 'lucide-react';
+import { getCountries } from 'libphonenumber-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,6 +76,7 @@ export default function OrganizationManagementDialog({
     const [defaultCurrency, setDefaultCurrency] = React.useState('USD');
     const [defaultTimezone, setDefaultTimezone] = React.useState('UTC');
     const [defaultLanguage, setDefaultLanguage] = React.useState('en');
+    const [defaultCountryCode, setDefaultCountryCode] = React.useState('GH');
 
     React.useEffect(() => {
         if (organization) {
@@ -88,6 +90,7 @@ export default function OrganizationManagementDialog({
             setDefaultCurrency(organization.settings?.defaultCurrency || 'USD');
             setDefaultTimezone(organization.settings?.defaultTimezone || 'UTC');
             setDefaultLanguage(organization.settings?.defaultLanguage || 'en');
+            setDefaultCountryCode(organization.defaultCountryCode || 'GH');
             
             setAiKeyMode(organization.aiKeyMode || 'platform');
             setGeminiApiKey(organization.geminiApiKey || '');
@@ -107,6 +110,7 @@ export default function OrganizationManagementDialog({
             setDefaultCurrency('USD');
             setDefaultTimezone('UTC');
             setDefaultLanguage('en');
+            setDefaultCountryCode('GH');
             setDefaultRoleId('');
 
             setAiKeyMode('platform');
@@ -153,6 +157,7 @@ export default function OrganizationManagementDialog({
                     defaultTimezone,
                     defaultLanguage,
                 },
+                defaultCountryCode,
                 defaultRoleId,
                 aiKeyMode,
                 geminiApiKey: geminiApiKey.trim(),
@@ -343,6 +348,21 @@ export default function OrganizationManagementDialog({
                                                 placeholder="en" 
                                                 className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
                                             />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                Default Country
+                                            </Label>
+                                            <select 
+                                                value={defaultCountryCode}
+                                                onChange={e => setDefaultCountryCode(e.target.value)}
+                                                className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                                            >
+                                                {getCountries().map(c => (
+                                                    <option key={c} value={c}>{c}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
 
