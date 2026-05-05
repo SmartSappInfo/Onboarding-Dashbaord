@@ -118,12 +118,6 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
     };
     const [interceptState, setInterceptState] = React.useState<InterceptState | null>(null);
 
-    if (isLoading) {
-        return (
- <div className="h-12 w-64 animate-pulse bg-muted rounded-xl border border-border/50" />
-        );
-    }
-
     /**
      * Intercept workspace switch: check if the user can access the current page
      * in the target workspace. If not, show a permission alert with alternatives.
@@ -195,6 +189,12 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
     const ScopeIcon = activeWorkspace?.contactScope 
         ? ENTITY_TYPE_ICONS[activeWorkspace.contactScope] 
         : Zap;
+
+    if (isLoading) {
+        return (
+            <div className="h-12 w-64 animate-pulse bg-muted rounded-xl border border-border/50" />
+        );
+    }
 
     const trigger = variant === 'sidebar' ? (
         <SidebarMenu>
