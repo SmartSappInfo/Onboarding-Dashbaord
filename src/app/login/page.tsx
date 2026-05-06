@@ -61,6 +61,54 @@ export default function LoginPage() {
     document.title = 'Login - Onboarding Workspace';
   }, []);
 
+  /** Full sovereignty permissions for super admin accounts. */
+  const SUPER_ADMIN_PERMISSIONS = [
+    'schools_view', 'schools_edit', 'prospects_view', 'prospects_edit',
+    'finance_view', 'finance_manage', 'contracts_delete',
+    'studios_view', 'studios_edit', 'system_admin', 'system_user_switch',
+    'meetings_manage', 'tasks_manage', 'activities_view',
+  ];
+
+  /**
+   * Checks if the given email is a designated super admin.
+   * Reads from `system_config/super_admins` — seeded by FirebaseBootstrap.
+   */
+  const isSuperAdminEmail = React.useCallback(async (email: string): Promise<boolean> => {
+    if (!firestore) return false;
+    try {
+      const configSnap = await getDoc(doc(firestore, 'system_config', 'super_admins'));
+      if (!configSnap.exists()) return false;
+      const emails: string[] = configSnap.data()?.emails || [];
+      return emails.includes(email.toLowerCase());
+    } catch {
+      return false;
+    }
+  }, [firestore]);
+
+  /**
+   * Ensures a user document has full super admin permissions.
+   * Creates the doc if it doesn't exist, or upgrades if it does.
+   */
+  const ensureSuperAdminProfile = React.useCallback(async (
+    uid: string,
+    profile: { name: string | null; email: string | null; phone: string | null }
+  ) => {
+    if (!firestore) return;
+    const userDocRef = doc(firestore, 'users', uid);
+    await setDoc(userDocRef, {
+      name: profile.name || 'Super Admin',
+      email: profile.email,
+      phone: profile.phone || '',
+      isAuthorized: true,
+      organizationId: 'smartsapp-hq',
+      workspaceIds: ['onboarding', 'prospect'],
+      roles: ['administrator'],
+      permissions: SUPER_ADMIN_PERMISSIONS,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    console.log(`>>> [AUTH] Super admin profile enforced for ${profile.email}`);
+  }, [firestore]);
+
   const handleAuthorizedGoogleUser = React.useCallback(
     async (uid: string, profile: { name: string | null; email: string | null; phone: string | null }) => {
       if (!auth || !firestore) return;
@@ -68,10 +116,22 @@ export default function LoginPage() {
       const userDocRef = doc(firestore, 'users', uid);
       const docSnap = await getDoc(userDocRef);
 
+      // Check if this email is a designated super admin
+      const isSuperAdmin = profile.email ? await isSuperAdminEmail(profile.email) : false;
+
       if (docSnap.exists()) {
-        if (docSnap.data().isAuthorized === true) {
+        const data = docSnap.data();
+
+        // Super admin auto-upgrade: ensure permissions are always current
+        if (isSuperAdmin && (!data.isAuthorized || !data.permissions?.includes('system_admin'))) {
+          await ensureSuperAdminProfile(uid, profile);
+          toast({ title: 'Login Successful', description: 'Super admin access granted.' });
+          router.push('/admin/settings/organizations');
+          return;
+        }
+
+        if (data.isAuthorized === true) {
           toast({ title: 'Login Successful', description: 'Welcome back!' });
-          const data = docSnap.data();
           if (data.permissions?.includes('system_admin')) {
             router.push('/admin/settings/organizations');
           } else {
@@ -89,6 +149,15 @@ export default function LoginPage() {
         return;
       }
 
+      // New user — check if they are a super admin
+      if (isSuperAdmin) {
+        await ensureSuperAdminProfile(uid, profile);
+        toast({ title: 'Login Successful', description: 'Super admin account activated.' });
+        router.push('/admin/settings/organizations');
+        return;
+      }
+
+      // Regular new user — create with pending authorization
       await setDoc(userDocRef, {
         name: profile.name,
         email: profile.email,
@@ -103,7 +172,7 @@ export default function LoginPage() {
         duration: 5000,
       });
     },
-    [auth, firestore, router, toast]
+    [auth, firestore, router, toast, isSuperAdminEmail, ensureSuperAdminProfile]
   );
 
   React.useEffect(() => {
@@ -159,21 +228,48 @@ export default function LoginPage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       const docSnap = await getDoc(userDocRef);
 
-      if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-        toast({ title: 'Login Successful', description: 'Welcome back!' });
+      // Check if this email is a designated super admin
+      const isSuperAdmin = user.email ? await isSuperAdminEmail(user.email) : false;
+
+      if (docSnap.exists()) {
         const data = docSnap.data();
 
-        // 1. Mandatory Password Reset Wall
-        if (data.requiresPasswordReset) {
-            router.push('/force-password-reset');
-            return;
+        // Super admin auto-upgrade on email/password login
+        if (isSuperAdmin && (!data.isAuthorized || !data.permissions?.includes('system_admin'))) {
+          await ensureSuperAdminProfile(user.uid, { name: data.name || user.displayName, email: user.email, phone: data.phone || '' });
+          toast({ title: 'Login Successful', description: 'Super admin access granted.' });
+          router.push('/admin/settings/organizations');
+          return;
         }
 
-        if (data.permissions?.includes('system_admin')) {
-          router.push('/admin/settings/organizations');
+        if (data.isAuthorized === true) {
+          toast({ title: 'Login Successful', description: 'Welcome back!' });
+
+          // 1. Mandatory Password Reset Wall
+          if (data.requiresPasswordReset) {
+              router.push('/force-password-reset');
+              return;
+          }
+
+          if (data.permissions?.includes('system_admin')) {
+            router.push('/admin/settings/organizations');
+          } else {
+            router.push('/admin');
+          }
         } else {
-          router.push('/admin');
+          await auth.signOut();
+          toast({
+            variant: 'destructive',
+            title: 'Authorization Required',
+            description: 'Your account is not authorized. Please contact an administrator.',
+            duration: 5000,
+          });
         }
+      } else if (isSuperAdmin) {
+        // New user via email/password who is a super admin
+        await ensureSuperAdminProfile(user.uid, { name: user.displayName, email: user.email, phone: '' });
+        toast({ title: 'Login Successful', description: 'Super admin account activated.' });
+        router.push('/admin/settings/organizations');
       } else {
         await auth.signOut();
         toast({
