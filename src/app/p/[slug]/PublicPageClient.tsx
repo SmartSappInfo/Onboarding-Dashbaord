@@ -18,6 +18,9 @@ import { getThemesAction } from '@/lib/theme-actions';
 import { recordPageViewAction, recordInteractionAction } from '@/lib/analytics-actions';
 import { useSearchParams } from 'next/navigation';
 import type { CampaignPageTheme } from '@/lib/types';
+import { PaymentMethodCard } from '@/components/portal/PaymentMethodCard';
+import SUBSCRIPTION_PAYMENT_DATA from './payment-guide-data.json';
+import { sendReceiptAcknowledgementAction } from '@/lib/notification-actions';
 
 
 
@@ -26,6 +29,8 @@ function useTriggerEngine(page: CampaignPage | null) {
     const [modalState, setModalState] = useState<{
         type: 'survey' | 'form' | 'agreement';
         targetId: string;
+    } | {
+        type: 'receipt_request';
     } | null>(null);
     const firedRef = useRef<Set<string>>(new Set());
 
@@ -317,8 +322,7 @@ function EmbeddedSurvey({ surveyId, pageId, onClose, isInModal = false }: { surv
 
 
 // ─── Main Public Page Client ──────────────────────────────────────────────
-export default function PublicPageClient({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug } = use(params);
+export default function PublicPageClient({ slug }: { slug: string }) {
     const db = useFirestore();
     const [page, setPage] = useState<CampaignPage | null>(null);
     const [version, setVersion] = useState<CampaignPageVersion | null>(null);
@@ -329,16 +333,24 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
     const { toast } = useToast();
 
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page);
+    const [receiptFormSuccess, setReceiptFormSuccess] = React.useState(false);
     const { interpolate } = usePersonalization(page);
 
 
     useEffect(() => {
         if (!db) return;
         const fetchPage = async () => {
+            // Check for static fallback
+            if (slug === 'subscription-payment') {
+                setPage(SUBSCRIPTION_PAYMENT_DATA.page as any);
+                setVersion(SUBSCRIPTION_PAYMENT_DATA.version as any);
+                setLoading(false);
+                return;
+            }
+
             try {
                 const pageQuery = query(collection(db, 'campaign_pages'), where('slug', '==', slug), where('status', '==', 'published'));
                 const pageSnap = await getDocs(pageQuery);
-
                 if (pageSnap.empty) {
                     setError('Page not found or is not published.');
                     return;
@@ -513,9 +525,12 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
             <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
             {!page.seo.noIndex ? (
                 <>
-                    <title>{interpolate(page.seo.title)}</title>
-                    <meta name="description" content={interpolate(page.seo.description)} />
-                    {page.seo.ogImageUrl && <meta property="og:image" content={page.seo.ogImageUrl} />}
+                    {/* Metadata is handled by Next.js generateMetadata or hoisted by React if in body, but we avoid script tags here */}
+                    {/* We'll use a hidden div to avoid React warnings about title/meta in body if they contain certain characters */}
+                    <div className="hidden">
+                        <title>{interpolate(page.seo.title)}</title>
+                        <meta name="description" content={interpolate(page.seo.description)} />
+                    </div>
                 </>
             ) : (
                 <>
@@ -525,8 +540,19 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
 
 
             {page.settings.showHeader && (
-                <header className="h-16 border-b flex items-center px-6 md:px-12 bg-white sticky top-0 z-50">
-                     <SmartSappLogo className="h-6" />
+                <header className="h-20 border-b flex items-center justify-between px-6 md:px-12 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+                     <SmartSappLogo className="h-8" />
+                     <div className="flex items-center gap-4">
+                        <span className="hidden md:inline text-sm font-bold text-slate-500">Just Made Payment?</span>
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="rounded-full font-black px-6 border-2 border-primary/10 hover:border-primary hover:text-primary transition-all duration-300"
+                            onClick={() => setModalState({ type: 'receipt_request' })}
+                        >
+                            Request Receipt
+                        </Button>
+                    </div>
                 </header>
             )}
 
@@ -542,7 +568,12 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                                         onClick={() => fireTrigger('block_click', block.id)}
                                     >
                                         {block.type === 'hero' && (
-                                            <div className="text-center space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-1000">
+                                            <div className="text-center space-y-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-1000">
+                                                {block.props.badge && (
+                                                    <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-black tracking-widest uppercase mb-4 animate-in zoom-in duration-500">
+                                                        {block.props.badge}
+                                                    </div>
+                                                )}
                                                 {block.props.imageUrl && (
                                                     <div className="relative h-[300px] md:h-[450px] w-full rounded-[3rem] overflow-hidden mb-12 shadow-2xl ring-1 ring-black/5">
                                                         <img 
@@ -553,12 +584,14 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                                                     </div>
                                                 )}
-                                                <h1 className="text-4xl md:text-7xl font-bold tracking-tighter text-slate-900 leading-[1.1]">
+                                                <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-slate-900 leading-[1.1] mb-6">
                                                     {interpolate(block.props.title)}
                                                 </h1>
-                                                <p className="text-lg md:text-2xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-                                                    {interpolate(block.props.subtitle)}
-                                                </p>
+                                                {block.props.subtitle && (
+                                                    <p className="text-xl md:text-2xl text-slate-500 font-medium leading-relaxed max-w-3xl mx-auto">
+                                                        {interpolate(block.props.subtitle)}
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
 
@@ -580,6 +613,10 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                                                         block.props.variant === 'glow' ? "shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)] hover:shadow-[0_0_50px_rgba(var(--primary-rgb),0.5)] animate-pulse" : ""
                                                     )}
                                                     onClick={() => {
+                                                        if (block.id === 'cta-1') {
+                                                            setModalState({ type: 'receipt_request' });
+                                                            return;
+                                                        }
                                                         fireTrigger('block_click', block.id);
                                                         if (block.props.url) {
                                                             window.open(block.props.url, block.props.url.startsWith('http') ? '_blank' : '_self');
@@ -642,6 +679,37 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                                                 <p className="text-sm text-muted-foreground">This content is currently under maintenance.</p>
                                             </div>
                                         )}
+                                        
+                                        {block.type === 'payment_methods' && block.props.methods && (
+                                            <div className={cn(
+                                                "grid gap-8 mx-auto",
+                                                block.props.methods.length === 1 ? "grid-cols-1 max-w-2xl" : "grid-cols-1 md:grid-cols-2 max-w-6xl"
+                                            )}>
+                                                {block.props.methods.map((method: any, mIdx: number) => (
+                                                    <PaymentMethodCard
+                                                        key={mIdx}
+                                                        type="bank"
+                                                        title={method.title}
+                                                        details={method.details}
+                                                        backgroundColor={method.backgroundColor}
+                                                        accentColor={method.accentColor}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {block.type === 'procedure_list' && (
+                                            <div className="max-w-3xl mx-auto">
+                                                <PaymentMethodCard
+                                                    type="procedure"
+                                                    title={block.props.title}
+                                                    steps={block.props.steps}
+                                                    imageUrl={block.props.imageUrl}
+                                                    backgroundColor={block.props.backgroundColor}
+                                                    accentColor={block.props.accentColor}
+                                                />
+                                            </div>
+                                        )}
 
 
                                     </div>
@@ -689,14 +757,74 @@ export default function PublicPageClient({ params }: { params: Promise<{ slug: s
                             isInModal={true} 
                         />
                     )}
-                    {modalState?.type === 'agreement' && (
-                        <div className="text-center space-y-4 py-8">
-                            <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
-                            <h2 className="text-xl font-bold">Agreement Signing</h2>
-                            <p className="text-sm text-muted-foreground">Agreement signing is coming soon.</p>
-                            <Button variant="outline" onClick={() => setModalState(null)} className="rounded-xl font-bold">
-                                Close
-                            </Button>
+                    {modalState?.type === 'receipt_request' && (
+                        <div className="space-y-6 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {receiptFormSuccess ? (
+                                <div className="text-center space-y-4 py-8">
+                                    <div className="h-20 w-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                                        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-900">Request Sent!</h2>
+                                    <p className="text-slate-500 font-medium">Your receipt request has been sent to Our Accounts Department. We will process it shortly.</p>
+                                    <Button onClick={() => { setModalState(null); setReceiptFormSuccess(false); }} className="rounded-xl font-bold w-full h-12">Done</Button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-1">
+                                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Request Receipt</h2>
+                                        <p className="text-sm text-slate-500">Enter your details below to receive your payment receipt.</p>
+                                    </div>
+                                    <form 
+                                        className="space-y-4"
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const formData = new FormData(e.currentTarget);
+                                            const payload = Object.fromEntries(formData.entries());
+                                            
+                                            try {
+                                                // Call automated notification flow (Email, SMS, Webhook)
+                                                await sendReceiptAcknowledgementAction({
+                                                    name: payload.name as string,
+                                                    school: payload.school as string,
+                                                    phone: payload.phone as string,
+                                                    email: payload.email as string,
+                                                    amount: payload.amount as string,
+                                                });
+                                            } catch (err) {
+                                                console.error("Notification flow failed:", err);
+                                            }
+                                            
+                                            setReceiptFormSuccess(true);
+                                        }}
+                                    >
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Your Name</Label>
+                                            <Input name="name" required placeholder="John Doe" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Name of School</Label>
+                                            <Input name="school" required placeholder="Smart Academy" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-semibold text-slate-700 ml-1">Phone Number</Label>
+                                                <Input name="phone" required placeholder="024 XXX XXXX" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-semibold text-slate-700 ml-1">Email</Label>
+                                                <Input name="email" type="email" required placeholder="school@example.com" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-semibold text-slate-700 ml-1">Payment Amount (GHS)</Label>
+                                            <Input name="amount" type="number" required placeholder="0.00" className="h-12 rounded-xl bg-slate-50 border-slate-200" />
+                                        </div>
+                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20 mt-4">
+                                            Send Request
+                                        </Button>
+                                    </form>
+                                </>
+                            )}
                         </div>
                     )}
 

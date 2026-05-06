@@ -23,7 +23,8 @@ import {
     CheckCircle2,
     Target,
     GraduationCap,
-    BarChart3
+    BarChart3,
+    Smartphone
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -251,6 +252,7 @@ export default function PortalsClient() {
                                             <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
                                             <PortalCard title="Campaign Stats" path="/campaign/school-comparison/statistics" icon={BarChart3} color="bg-emerald-600" />
                                             <PortalCard title="Choice Selection Page" path="/campaign/school-comparison" icon={GraduationCap} color="bg-orange-500" />
+                                            <PortalCard title="Subscription Payment" path="/p/subscription-payment" icon={Smartphone} color="bg-yellow-500" />
                                             <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
                                             <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />
                                         </>

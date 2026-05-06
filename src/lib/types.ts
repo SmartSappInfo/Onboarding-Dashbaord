@@ -2142,7 +2142,7 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list';
 
 export interface PageBlock {
   id: string;

@@ -54,6 +54,36 @@ export default function QRDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [showDownload, setShowDownload] = React.useState(false);
 
+  // Inline rename state
+  const [isRenaming, setIsRenaming] = React.useState(false);
+  const [renameValue, setRenameValue] = React.useState('');
+  const [isSavingRename, setIsSavingRename] = React.useState(false);
+  const renameInputRef = React.useRef<HTMLInputElement>(null);
+
+  const startRename = () => {
+    if (!qr) return;
+    setRenameValue(qr.name);
+    setIsRenaming(true);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  };
+
+  const commitRename = async () => {
+    if (!qr || !activeOrganizationId || !activeWorkspaceId) { setIsRenaming(false); return; }
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === qr.name) { setIsRenaming(false); return; }
+    setIsSavingRename(true);
+    try {
+      await updateQRCode(activeOrganizationId, activeWorkspaceId, qr.id, { name: trimmed });
+      setQr(prev => prev ? { ...prev, name: trimmed } : prev);
+      toast({ title: 'Renamed', description: `Renamed to "${trimmed}".` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to rename.' });
+    } finally {
+      setIsSavingRename(false);
+      setIsRenaming(false);
+    }
+  };
+
   const fetchQR = React.useCallback(async () => {
     if (!activeOrganizationId || !activeWorkspaceId || !qrId) return;
     setLoading(true);
@@ -130,8 +160,37 @@ export default function QRDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold tracking-tight text-foreground truncate">{qr.name}</h1>
+            <div className="flex items-center gap-2">
+              {isRenaming ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    ref={renameInputRef}
+                    value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitRename();
+                      if (e.key === 'Escape') setIsRenaming(false);
+                    }}
+                    onBlur={commitRename}
+                    disabled={isSavingRename}
+                    className="text-xl font-bold tracking-tight bg-transparent border-b-2 border-primary focus:outline-none min-w-0 w-[280px] max-w-full"
+                    autoFocus
+                  />
+                  {isSavingRename && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                </div>
+              ) : (
+                <div className="group/title flex items-center gap-2 min-w-0">
+                  <h1 className="text-xl font-bold tracking-tight text-foreground truncate">{qr.name}</h1>
+                  <button
+                    type="button"
+                    onClick={startRename}
+                    className="opacity-0 group-hover/title:opacity-100 transition-opacity h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                    title="Rename"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <Badge
                 variant="outline"
                 className={`text-[9px] uppercase font-bold tracking-wider rounded-lg shrink-0 ${

@@ -1,0 +1,127 @@
+{
+    "page": {
+        "name": "SmartSapp Subscription Payment Guide",
+        "slug": "subscription-payment",
+        "status": "published",
+        "pageGoal": "payment",
+        "seo": {
+            "title": "Simple Guide - SmartSapp Subscription Payment",
+            "description": "Your prompt payments help us to provide better services for your school. All the options on this page are available for you to pay conveniently.",
+            "ogImageUrl": "https://d11n7da8rpqbjy.cloudfront.net/minex360/43166741753Admin_happy_office.png",
+            "noIndex": false
+        },
+        "settings": {
+            "showHeader": true,
+            "showFooter": true,
+            "themeOverrides": {
+                "primary": "#3A86FF",
+                "typography": {
+                    "primaryFont": "Montserrat"
+                }
+            }
+        }
+    },
+    "version": {
+        "structureJson": {
+            "sections": [
+                {
+                    "id": "hero-section",
+                    "type": "section",
+                    "props": { "background": "default" },
+                    "blocks": [
+                        {
+                            "id": "hero-1",
+                            "type": "hero",
+                            "props": {
+                                "title": "Simple Guide - SmartSapp Subscription Payment",
+                                "subtitle": "Your prompt payments help us to provide better services for your school. All the options on this page are available for you to pay conveniently."
+                            }
+                        },
+                        {
+                            "id": "text-1",
+                            "type": "text",
+                            "props": {
+                                "content": "<div class='text-center'><p style='font-size: 1.4rem;'>Please <strong style='color: #FF3B3B;'>Pay Now</strong>, through any of the following channels</p></div>"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "payment-methods-section",
+                    "type": "section",
+                    "props": { "background": "slate-50" },
+                    "blocks": [
+                        {
+                            "id": "bank-details",
+                            "type": "payment_methods",
+                            "props": {
+                                "methods": [
+                                    {
+                                        "title": "Bank Transfer to:",
+                                        "backgroundColor": "bg-white",
+                                        "accentColor": "text-[#3A86FF]",
+                                        "details": [
+                                            { "label": "Account Name", "value": "Minex 360 Services Ltd." },
+                                            { "label": "Account No.", "value": "1050456314114" },
+                                            { "label": "Bank", "value": "Fidelity Bank" },
+                                            { "label": "Branch", "value": "East Legon Branch" }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "procedure-section",
+                    "type": "section",
+                    "props": { "background": "default" },
+                    "blocks": [
+                        {
+                            "id": "fidelity-procedure",
+                            "type": "procedure_list",
+                            "props": {
+                                "title": "Fidelity USSD Payment Procedure",
+                                "backgroundColor": "bg-[#E6F0FF]",
+                                "accentColor": "text-[#3A86FF]",
+                                "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2FFidelityPaymentProcedure.png?alt=media&token=49e1848d-2cf6-46bc-a0fc-6f27ac0fd78d",
+                                "steps": [
+                                    "Dial <strong>*776*105#</strong> on any mobile number (normal subscriber or Merchant line)",
+                                    "Enter <strong>3231347927</strong> as Terminal ID",
+                                    "Confirm <strong>“MineX 360 Services Ltd”</strong> as Institution Name",
+                                    "Select Payment mode <strong>(1. From a Mobile Money Account; 2. From Fidelity Bank Account)</strong>",
+                                    "Enter the <strong>Amount</strong> to be transferred",
+                                    "Enter your <strong>School's Name</strong> as reference",
+                                    "Enter <strong>1 to Confirm Amount & Name of Recipient</strong> (i.e. MineX 360 Services Ltd) or 2 to decline",
+                                    "Enter your <strong>Mobile Money PIN</strong> into the pop up message from your Telco to complete your transaction."
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "cta-section",
+                    "type": "section",
+                    "props": { "background": "slate-50" },
+                    "blocks": [
+                        {
+                            "id": "cta-text",
+                            "type": "text",
+                            "props": {
+                                "content": "<div class='text-center mb-6'><p class='text-lg font-medium text-slate-600'>Kindly click the button below when you're done paying.</p></div>"
+                            }
+                        },
+                        {
+                            "id": "cta-1",
+                            "type": "cta",
+                            "props": {
+                                "label": "Request Receipt",
+                                "variant": "primary"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

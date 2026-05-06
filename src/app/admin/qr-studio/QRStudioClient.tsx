@@ -21,6 +21,9 @@ import {
   ScanLine,
   AlertTriangle,
   Upload,
+  Pencil,
+  X,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -69,6 +72,7 @@ import {
   duplicateQRCode,
   getQRStudioStats,
   bulkQRAction,
+  updateQRCode,
 } from '@/lib/qr-actions';
 import type { QRCode as QRCodeType, QRStatus, QRCodeMode, QRCodeType as QRCodeTypeEnum } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,6 +133,12 @@ export default function QRStudioClient() {
 
   // Archive confirmation dialog state
   const [archiveTarget, setArchiveTarget] = React.useState<QRCodeType | null>(null);
+
+  // Rename state
+  const [renameId, setRenameId] = React.useState<string | null>(null);
+  const [renameValue, setRenameValue] = React.useState('');
+  const [isSavingRename, setIsSavingRename] = React.useState(false);
+  const renameInputRef = React.useRef<HTMLInputElement>(null);
 
   // Debounced search for performance
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -230,6 +240,37 @@ export default function QRStudioClient() {
   const filteredCodes = qrCodes.filter((qr) =>
     qr.name.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
+
+  const startRename = (qr: QRCodeType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenameId(qr.id);
+    setRenameValue(qr.name);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  };
+
+  const cancelRename = () => {
+    setRenameId(null);
+    setRenameValue('');
+  };
+
+  const commitRename = async (qr: QRCodeType) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === qr.name || !activeOrganizationId || !activeWorkspaceId) {
+      cancelRename();
+      return;
+    }
+    setIsSavingRename(true);
+    try {
+      await updateQRCode(activeOrganizationId, activeWorkspaceId, qr.id, { name: trimmed });
+      setQrCodes(prev => prev.map(c => c.id === qr.id ? { ...c, name: trimmed } : c));
+      toast({ title: 'Renamed', description: `QR code renamed to "${trimmed}".` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to rename.' });
+    } finally {
+      setIsSavingRename(false);
+      cancelRename();
+    }
+  };
 
   const statCards = [
     { label: 'Total QR Codes', value: stats.totalCodes, icon: QrCode, color: 'text-primary' },
@@ -459,8 +500,41 @@ export default function QRStudioClient() {
                           <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center shrink-0">
                             <QrCode className="h-4 w-4 text-primary" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate">{qr.name}</p>
+                          <div className="min-w-0 flex-1">
+                            {renameId === qr.id ? (
+                              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                <input
+                                  ref={renameInputRef}
+                                  value={renameValue}
+                                  onChange={e => setRenameValue(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') commitRename(qr);
+                                    if (e.key === 'Escape') cancelRename();
+                                  }}
+                                  onBlur={() => commitRename(qr)}
+                                  disabled={isSavingRename}
+                                  className="flex-1 min-w-0 h-7 px-2 text-sm font-semibold rounded-lg border border-primary/50 bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                  autoFocus
+                                />
+                                <button type="button" onClick={() => commitRename(qr)} className="h-6 w-6 flex items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-500/10">
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" onClick={cancelRename} className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="group/name flex items-center gap-1.5">
+                                <p className="font-semibold text-sm truncate">{qr.name}</p>
+                                <button
+                                  type="button"
+                                  onClick={e => startRename(qr, e)}
+                                  className="opacity-0 group-hover/name:opacity-100 transition-opacity h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
                             {qr.description && <p className="text-[10px] text-muted-foreground truncate">{qr.description}</p>}
                           </div>
                         </div>
@@ -505,6 +579,9 @@ export default function QRStudioClient() {
                           <DropdownMenuContent align="end" className="rounded-xl w-48">
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/admin/qr-studio/${qr.id}`); }} className="rounded-lg cursor-pointer">
                               <Eye className="h-4 w-4 mr-2" /> View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => startRename(qr, e)} className="rounded-lg cursor-pointer">
+                              <Pencil className="h-4 w-4 mr-2" /> Rename
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(qr); }} className="rounded-lg cursor-pointer">
                               <Copy className="h-4 w-4 mr-2" /> Duplicate
