@@ -878,7 +878,21 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isNavigatingToResults, setIsNavigatingToResults] = React.useState(false);
     const [lastSubmissionId, setLastSubmissionId] = React.useState<string | null>(null);
+
+    // Ref to the stepper element for smart scrolling
+    const stepperRef = React.useRef<HTMLDivElement>(null);
+
+    // Scroll to stepper (used on Next/Prev), or top (used on initial load/cover page)
+    const scrollToStepper = React.useCallback((toTop = false) => {
+        if (toTop || !stepperRef.current) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        const offset = stepperRef.current.getBoundingClientRect().top + window.scrollY - 16;
+        window.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+    }, []);
 
     // Drop-off Analytics Session State
     const [sessionId] = React.useState(() => {
@@ -1298,8 +1312,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             // Always route directly after submission — no intermediate modal
             // Route to result page if scoring is enabled OR if there are result rules defined
             if (survey.scoringEnabled || (survey.resultRules && survey.resultRules.length > 0)) {
+                setIsNavigatingToResults(true);
                 router.push(`/surveys/${survey.slug}/result/${submissionId}`);
-                // Don't reset isSubmitting here — keep loader visible until navigation completes
+                // Don't reset isSubmitting — keep loader visible until navigation completes
                 return;
             } else {
                 onSubmitted();
@@ -1326,14 +1341,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                 });
             }
             setIsSubmitting(false);
-        } finally { 
-            setIsSubmitting(false);
         }
     };
 
     const handleNext = async () => {
         const currentElements = pages[currentPageIndex];
-        if (currentElements.length === 0) { setCurrentPageIndex(1); window.scrollTo(0, 0); return; }
+        if (currentElements.length === 0) { setCurrentPageIndex(1); scrollToStepper(false); return; }
         const formData = form.getValues();
         const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
         if (pageSection?.validateBeforeNext) {
@@ -1362,10 +1375,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             }
             if (jumpAction) break;
         }
-        if (nextPageIndex < pages.length) { setCurrentPageIndex(nextPageIndex); window.scrollTo(0, 0); }
+        if (nextPageIndex < pages.length) { setCurrentPageIndex(nextPageIndex); scrollToStepper(false); }
     };
 
-    const handlePrev = () => { setCurrentPageIndex(prev => prev - 1); window.scrollTo(0, 0); };
+    const handlePrev = () => { setCurrentPageIndex(prev => prev - 1); scrollToStepper(false); };
 
     const handleStepClick = (targetIndex: number) => {
         if (targetIndex === currentPageIndex) return;
@@ -1387,7 +1400,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             }
         }
         setCurrentPageIndex(targetIndex);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollToStepper(false);
     }
 
     const handleOkMissingFields = () => {
@@ -1414,7 +1427,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
     return (
         <div className="pb-24">
             <AnimatePresence>
-                {isSubmitting && (
+                {(isSubmitting || isNavigatingToResults) && (
                     <SurveyLoader 
                         label="We're Analysing Your Inputs..." 
                         logoUrl={survey.showBranding !== false ? (resolvedLogoUrl ?? survey.logoUrl ?? null) : 'none'} 
@@ -1436,7 +1449,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                 </div>
             )}
 
-            <div className={cn("transition-all duration-500", isSubmitting && "opacity-0 pointer-events-none invisible h-0 overflow-hidden")}>
+            <div className={cn("transition-all duration-500", (isSubmitting || isNavigatingToResults) && "opacity-0 pointer-events-none invisible h-0 overflow-hidden")}>
                 <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
                     {isCoverPage ? (
                         <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -1492,7 +1505,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                                 </div>
                             )}
 
-                            <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} />
+                            <div ref={stepperRef}>
+                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} />
+                            </div>
 
                             {pageSection && (pageSection.showSectionHeader ?? true) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">

@@ -548,7 +548,7 @@ export async function deleteQRCode(orgId: string, wsId: string, qrId: string): P
 export async function saveQRTemplate(
   orgId: string,
   wsId: string,
-  data: { name: string; category: string; design: QRDesign; createdBy: string }
+  data: { name: string; category: string; design: QRDesign; createdBy: string; sourceTemplateId?: string }
 ): Promise<{ id: string }> {
   const col = qrTemplatesCollection(orgId, wsId);
   const id = nanoid(12);
@@ -562,6 +562,7 @@ export async function saveQRTemplate(
     name: data.name,
     category: data.category,
     design: data.design,
+    sourceTemplateId: data.sourceTemplateId,
     createdBy: data.createdBy,
     createdAt: now,
     updatedAt: now,
@@ -569,6 +570,21 @@ export async function saveQRTemplate(
 
   await col.doc(id).set(stripUndefined(template));
   return { id };
+}
+
+export async function updateQRTemplate(
+  orgId: string,
+  wsId: string,
+  templateId: string,
+  updates: { name?: string; category?: string; design?: QRDesign }
+): Promise<void> {
+  const col = qrTemplatesCollection(orgId, wsId);
+  await col.doc(templateId).update(
+    stripUndefined({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    })
+  );
 }
 
 export async function listQRTemplates(

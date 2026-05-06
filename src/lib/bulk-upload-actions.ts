@@ -6,6 +6,7 @@ import type { EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { normalizeContactType } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
+import { cleanBatch, type CleaningStats } from './import-data-cleaner';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -92,6 +93,7 @@ export interface BatchResult {
     successCount: number;
     errorCount: number;
     results: { row: number; status: 'success' | 'error'; entityName?: string; error?: string }[];
+    cleaningStats?: CleaningStats;
 }
 
 /**
@@ -115,18 +117,31 @@ export async function ingestBatchAction(
     // 1. Fetch resolution context ONCE for the entire batch
     const context = await getResolutionContext(workspaceId);
 
-    // 2. Fetch workspace industry ONCE
+    // 2. Fetch workspace industry and default country code ONCE
     let workspaceIndustry = 'SaaS';
+    let defaultCountryCode = 'GH';
     try {
-        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        const [wsSnap, orgSnap] = await Promise.all([
+            adminDb.collection('workspaces').doc(workspaceId).get(),
+            adminDb.collection('organizations').doc(organizationId).get()
+        ]);
         if (wsSnap.exists) {
             workspaceIndustry = (wsSnap.data() as any)?.industry || 'SaaS';
         }
+        if (orgSnap.exists) {
+            defaultCountryCode = (orgSnap.data() as any)?.defaultCountryCode || 'GH';
+        }
     } catch { /* Non-critical */ }
 
-    // 3. (Pipeline logic removed as per deal-centric migration)
+    // 3. DATA CLEANING — Run the cleaning pipeline over ALL rows before processing.
+    //    This normalises names (Title Case), phones (E.164), emails (lowercase),
+    //    dates (ISO), numbers (strip currency), whitespace, and encoding artifacts.
+    const { stats: cleaningStats } = cleanBatch(rows, mapping, defaultCountryCode);
+    console.log('[BULK] Data cleaning stats:', cleaningStats);
 
-    // 4. Build a set of existing entity names for duplicate detection
+    // 4. (Pipeline logic removed as per deal-centric migration)
+
+    // 5. Build a set of existing entity names for duplicate detection
     const existingNames = new Set<string>();
     try {
         const existingSnap = await adminDb.collection('workspace_entities')
@@ -144,7 +159,7 @@ export async function ingestBatchAction(
     // Track names added in THIS batch to catch intra-batch duplicates
     const batchNames = new Set<string>();
 
-    // 5. Process each row
+    // 6. Process each row
     const results: BatchResult['results'] = [];
     let successCount = 0;
     let errorCount = 0;
@@ -203,7 +218,7 @@ export async function ingestBatchAction(
         }
     }
 
-    // 6. Log aggregate activity
+    // 7. Log aggregate activity
     await logActivity({
         organizationId,
         workspaceId,
@@ -211,13 +226,13 @@ export async function ingestBatchAction(
         type: 'contacts_imported',
         source: 'system',
         description: `Bulk import: ${successCount} created, ${errorCount} errors from "${filename}"`,
-        metadata: { entityType, successCount, errorCount, batchSize: rows.length },
+        metadata: { entityType, successCount, errorCount, batchSize: rows.length, cleaningStats },
     });
 
     revalidatePath('/admin/entities');
     revalidatePath('/admin/pipeline');
 
-    return { successCount, errorCount, results };
+    return { successCount, errorCount, results, cleaningStats };
 }
 
 // ─── Per-Row Processing (Internal) ───────────────────────────────────────────

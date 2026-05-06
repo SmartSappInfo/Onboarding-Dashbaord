@@ -216,12 +216,13 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
                     <LogoBanner />
                 </div>
                 <div className="space-y-6 max-w-2xl mx-auto">
-                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight uppercase whitespace-pre-wrap">
-                        {survey.thankYouTitle || 'Success!'}
+                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight whitespace-pre-wrap">
+                        {survey.thankYouTitle || 'Thank you!'}
                     </h1>
-                    <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-medium whitespace-pre-wrap">
-                        {survey.thankYouDescription || 'Your submission has been securely processed.'}
-                    </p>
+                    <div 
+                        className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-medium whitespace-pre-wrap prose prose-slate max-w-none" 
+                        dangerouslySetInnerHTML={{ __html: survey.thankYouDescription || 'Your submission has been securely processed.' }} 
+                    />
                 </div>
                 <ResubmitButton />
             </div>

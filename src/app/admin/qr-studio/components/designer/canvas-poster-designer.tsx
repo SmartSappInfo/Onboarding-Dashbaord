@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Type, Square, Circle, Minus, Image as ImageIcon, Palette, Download, Move, ChevronDown } from 'lucide-react';
+import { Type, Square, Circle, Minus, Image as ImageIcon, Palette, Move, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import type { QRDesign, MediaAsset } from '@/lib/types';
+import type { QRDesign, QRCodeTemplate, MediaAsset } from '@/lib/types';
 import { SYSTEM_POSTER_TEMPLATES, type PosterTemplate } from '@/lib/poster-templates';
+import { listQRTemplates } from '@/lib/qr-actions';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import QRPreview from '../qr-preview';
 
@@ -28,9 +29,11 @@ interface CanvasPosterDesignerProps {
   orgId: string;
   wsId: string;
   onPosterDataChange?: (posterData: CanvasState) => void;
+  onSaveAsTemplate?: () => void;
+  onDownload?: (format: 'png' | 'jpg' | 'pdf') => void;
 }
 
-export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, onPosterDataChange }: CanvasPosterDesignerProps) {
+export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, onPosterDataChange, onSaveAsTemplate, onDownload }: CanvasPosterDesignerProps) {
   const { toast } = useToast();
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const [showTemplates, setShowTemplates] = React.useState(true);
@@ -38,6 +41,15 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
   const [showMediaDialog, setShowMediaDialog] = React.useState(false);
   const [lastInsertType, setLastInsertType] = React.useState<'text' | 'rect' | 'circle' | 'line' | 'image'>('text');
   const [editingElementId, setEditingElementId] = React.useState<string | null>(null);
+  const [workspaceTemplates, setWorkspaceTemplates] = React.useState<QRCodeTemplate[]>([]);
+
+  // Load workspace poster templates
+  React.useEffect(() => {
+    listQRTemplates(orgId, wsId).then(setWorkspaceTemplates).catch(() => {});
+    const reload = () => listQRTemplates(orgId, wsId).then(setWorkspaceTemplates).catch(() => {});
+    window.addEventListener('qr-template-saved', reload);
+    return () => window.removeEventListener('qr-template-saved', reload);
+  }, [orgId, wsId]);
 
   const [canvas, setCanvas] = React.useState<CanvasState>(() => {
     if (qrDesign.posterData) return qrDesign.posterData;
@@ -170,39 +182,86 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
             Start Blank
           </Button>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {SYSTEM_POSTER_TEMPLATES.map(tpl => (
-            <button
-              key={tpl.id}
-              onClick={() => applyTemplate(tpl)}
-              className="group text-left p-3 border border-border rounded-2xl bg-card hover:border-primary/50 hover:shadow-md transition-all"
-            >
-              <div
-                className="w-full aspect-[3/4] rounded-xl overflow-hidden mb-3 relative"
-                style={{ backgroundColor: tpl.backgroundColor }}
-              >
-                {tpl.elements.filter(el => el.type === 'text').slice(0, 2).map(el => (
+
+        {/* Scrollable template gallery */}
+        <div className="max-h-[60vh] overflow-y-auto space-y-5 pr-1">
+          {/* System Poster Templates */}
+          <div>
+            <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground px-1 mb-2">System Templates</p>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {SYSTEM_POSTER_TEMPLATES.map(tpl => (
+                <button
+                  key={tpl.id}
+                  onClick={() => applyTemplate(tpl)}
+                  className="group text-left p-3 border border-border rounded-2xl bg-card hover:border-primary/50 hover:shadow-md transition-all"
+                >
                   <div
-                    key={el.id}
-                    className="absolute truncate"
-                    style={{
-                      left: `${el.x}%`, top: `${el.y}%`, width: `${el.width}%`,
-                      fontSize: `${Math.max(6, (el.fontSize || 14) * 0.35)}px`,
-                      fontWeight: el.fontWeight, color: el.fill, textAlign: el.textAlign as any,
-                      fontFamily: el.fontFamily, fontStyle: el.fontStyle,
-                    }}
+                    className="w-full aspect-[3/4] rounded-xl overflow-hidden mb-3 relative"
+                    style={{ backgroundColor: tpl.backgroundColor }}
                   >
-                    {el.text?.split('\n')[0]}
+                    {tpl.elements.filter(el => el.type === 'text').slice(0, 2).map(el => (
+                      <div
+                        key={el.id}
+                        className="absolute truncate"
+                        style={{
+                          left: `${el.x}%`, top: `${el.y}%`, width: `${el.width}%`,
+                          fontSize: `${Math.max(6, (el.fontSize || 14) * 0.35)}px`,
+                          fontWeight: el.fontWeight, color: el.fill, textAlign: el.textAlign as any,
+                          fontFamily: el.fontFamily, fontStyle: el.fontStyle,
+                        }}
+                      >
+                        {el.text?.split('\n')[0]}
+                      </div>
+                    ))}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-60">
+                      <div className="w-[40%] aspect-square bg-black/10 rounded-lg" />
+                    </div>
                   </div>
+                  <p className="text-xs font-bold text-foreground truncate">{tpl.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{tpl.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Workspace Saved Templates */}
+          {workspaceTemplates.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground px-1 mb-2">My Saved Templates</p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {workspaceTemplates.map(tpl => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => {
+                      // Apply posterData if present, or just use design colors
+                      if (tpl.design.posterData) {
+                        setCanvas(tpl.design.posterData);
+                        setActiveTemplate(tpl.id);
+                        setShowTemplates(false);
+                      } else {
+                        // It's a simple QR style template — apply what we can
+                        setShowTemplates(false);
+                      }
+                    }}
+                    className="group text-left p-3 border border-primary/30 rounded-2xl bg-primary/5 hover:border-primary/60 hover:shadow-md transition-all"
+                  >
+                    <div className="w-full aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-muted/20 flex items-center justify-center">
+                      {tpl.design.posterData ? (
+                        <div className="text-[10px] text-muted-foreground text-center p-2">
+                          <div className="font-bold text-foreground text-xs mb-1 truncate">{tpl.name}</div>
+                          Poster Layout
+                        </div>
+                      ) : (
+                        <QRPreview data="https://smartsapp.com" design={tpl.design} size={60} />
+                      )}
+                    </div>
+                    <p className="text-xs font-bold text-foreground truncate">{tpl.name}</p>
+                    <p className="text-[10px] text-primary/70 truncate">Custom</p>
+                  </button>
                 ))}
-                <div className="absolute inset-0 flex items-center justify-center opacity-60">
-                  <div className="w-[40%] aspect-square bg-black/10 rounded-lg" />
-                </div>
               </div>
-              <p className="text-xs font-bold text-foreground truncate">{tpl.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{tpl.description}</p>
-            </button>
-          ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -275,7 +334,7 @@ export default function CanvasPosterDesigner({ qrData, qrDesign, orgId, wsId, on
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" className="rounded-lg h-8 text-xs shadow-lg shadow-primary/20">
-              <Download className="h-3.5 w-3.5 mr-1.5" /> Download <ChevronDown className="h-3.5 w-3.5 ml-1" />
+              Export <ChevronDown className="h-3.5 w-3.5 ml-1" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

@@ -2554,6 +2554,7 @@ export interface QRCodeTemplate {
   category: string;
   design: QRDesign;
   previewImageUrl?: string;
+  sourceTemplateId?: string; // tracks which system/native template this was derived from
   createdBy: string;
   createdAt: string;
   updatedAt: string;

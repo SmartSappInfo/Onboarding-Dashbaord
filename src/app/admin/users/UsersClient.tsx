@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, Target, Eye, ShieldEllipsis, UserPlus, Key, Building2 } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, Zap, Info, Loader2, ShieldEllipsis, UserPlus, Key, Building2, Search, Filter, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -22,13 +23,24 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { useTenant } from '@/context/TenantContext';
 import InviteUserModal from './components/InviteUserModal';
+import WorkspaceAccessDialog from './components/WorkspaceAccessDialog';
 import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
 
-const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
+// Extracted outside component per rerender-no-inline-components
+const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+
+// Memoized role lookup map (js-index-maps)
+function useRoleLookup(roles: Role[] | null | undefined) {
+  return React.useMemo(() => {
+    const map = new Map<string, Role>();
+    roles?.forEach(r => map.set(r.id, r));
+    return map;
+  }, [roles]);
+}
 
 /**
- * @fileOverview Institutional Identity Hub.
- * Features permission flattening logic and role-based access management.
+ * @fileOverview Identity Hub — Workspace-scoped user management.
+ * Features permission flattening, workspace access management, and role assignment.
  */
 export default function UsersClient() {
   const firestore = useFirestore();
@@ -36,6 +48,8 @@ export default function UsersClient() {
   const { activeOrganizationId, activeWorkspaceId, activeWorkspace, isSuperAdmin } = useTenant();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
+  const [accessDialogUser, setAccessDialogUser] = React.useState<UserProfile | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // 1. DATA SUBSCRIPTIONS - ORG SCOPED
   const usersQuery = useMemoFirebase(() => {
@@ -58,11 +72,22 @@ export default function UsersClient() {
 
   const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile>(usersQuery);
   const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
+  const roleMap = useRoleLookup(roles);
 
   const isLoading = isLoadingUsers || isLoadingRoles;
 
+  // Filtered users (rerender-derived-state-no-effect: derive during render)
+  const filteredUsers = React.useMemo(() => {
+    if (!users || !searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(u => 
+      u.name?.toLowerCase().includes(q) || 
+      u.email?.toLowerCase().includes(q)
+    );
+  }, [users, searchQuery]);
+
   // 2. WORKSPACE-SCOPED PERMISSION FLATTENING ENGINE
-  const handleUpdateUser = async (userId: string, updates: Partial<UserProfile>) => {
+  const handleUpdateUser = React.useCallback(async (userId: string, updates: Partial<UserProfile>) => {
     if (!firestore || !roles || !activeWorkspaceId) return;
     setUpdatingId(userId);
 
@@ -125,9 +150,9 @@ export default function UsersClient() {
     } finally {
         setUpdatingId(null);
     }
-  };
+  }, [firestore, roles, activeWorkspaceId, users, activeWorkspace, toast]);
 
-  const handleResetPassword = async (userId: string, userName: string) => {
+  const handleResetPassword = React.useCallback(async (userId: string, userName: string) => {
       if (!confirm(`Are you sure you want to reset the password for ${userName}? A new temporary password will be sent via Email/SMS.`)) return;
       
       setUpdatingId(userId);
@@ -143,204 +168,261 @@ export default function UsersClient() {
       } finally {
           setUpdatingId(null);
       }
-  };
+  }, [toast]);
 
- if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
+  // Helper: get human-readable role names for workspace
+  const getUserRoleNames = React.useCallback((user: UserProfile): string[] => {
+    const roleIds = user.workspaceRoles?.[activeWorkspaceId] || user.roles || [];
+    return roleIds
+      .map(id => roleMap.get(id)?.name)
+      .filter((n): n is string => !!n);
+  }, [activeWorkspaceId, roleMap]);
+
+  if (error) return <div className="text-destructive p-8 text-left">Error loading registry: {error.message}</div>;
 
     return (
         <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-6 pb-32 w-full">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
-                            Identity Hub
+                        <h1 className="text-2xl font-black tracking-tight text-foreground">
+                            Team Members
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Institutional access levels and flattened permissions
+                        <p className="text-muted-foreground text-xs mt-0.5">
+                            Manage access, roles, and workspace permissions
                         </p>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <Button 
-                            onClick={() => setIsInviteModalOpen(true)}
-                            className="rounded-xl font-bold h-11 px-6 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
-                        >
-                            <UserPlus className="h-4 w-4 mr-2" /> Invite Member
-                        </Button>
-                        <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-border hover:bg-primary/5 hover:text-primary transition-all active:scale-95 text-foreground bg-transparent ring-1 ring-border shadow-sm">
-                            <Link href="/admin/users/roles" className="flex items-center gap-2">
-                                <ShieldEllipsis className="h-4 w-4" /> Role Architecture
+                    <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-border font-semibold px-3 h-9 rounded-lg flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-xs tabular-nums">{users?.length || 0} members</span>
+                        </Badge>
+                        <Button asChild variant="outline" className="rounded-lg font-semibold h-9 px-4 border-border hover:bg-muted/50 transition-all text-foreground bg-transparent text-xs">
+                            <Link href="/admin/users/roles" className="flex items-center gap-1.5">
+                                <ShieldEllipsis className="h-3.5 w-3.5" /> Roles
                             </Link>
                         </Button>
-                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-semibold px-4 h-11 rounded-xl flex items-center gap-2 ">
-                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                            <span className="uppercase tracking-widest text-[10px]">{users?.length || 0} Members</span>
-                        </Badge>
+                        <Button 
+                            onClick={() => setIsInviteModalOpen(true)}
+                            className="rounded-lg font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.98] text-xs"
+                        >
+                            <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Invite
+                        </Button>
                     </div>
                 </div>
 
- <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Permission Matrix Preview */}
-  <div className="lg:col-span-1 space-y-6">
-  <Card className="rounded-2xl border border-border bg-transparent ring-1 ring-border overflow-hidden shadow-sm">
- <CardHeader className="bg-primary/5 border-b pb-4">
- <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
- <Zap className="h-3 w-3" /> Collective Logic
+ <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Role Sidebar */}
+  <div className="lg:col-span-1 space-y-4">
+  <Card className="rounded-xl border border-border bg-card/50 overflow-hidden shadow-sm">
+ <CardHeader className="bg-muted/30 border-b px-4 py-3">
+ <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+ <Zap className="h-3 w-3 text-primary" /> Roles
                         </CardTitle>
                     </CardHeader>
- <CardContent className="p-6 space-y-6">
+ <CardContent className="p-3 space-y-1">
                         {isLoadingRoles ? (
- Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)
+ Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)
                         ) : roles?.map(r => (
- <div key={r.id} className="space-y-1.5 group cursor-help text-left">
- <div className="flex items-center gap-2">
- <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: r.color }} />
- <span className="text-xs font-semibold tracking-tight">{r.name}</span>
-                                </div>
- <p className="text-[9px] text-muted-foreground font-medium leading-relaxed pl-4 line-clamp-2 opacity-60 group-hover:opacity-100 transition-opacity">
+ <div key={r.id} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/40 transition-colors group cursor-default text-left">
+ <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+ <div className="min-w-0 flex-1">
+   <span className="text-xs font-semibold tracking-tight block truncate">{r.name}</span>
+   <p className="text-[9px] text-muted-foreground leading-snug line-clamp-1 opacity-0 group-hover:opacity-70 transition-opacity">
                                     {r.description}
                                 </p>
+ </div>
                             </div>
                         ))}
- <Separator className="opacity-50" />
- <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 shadow-inner">
- <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
- <div className="space-y-1">
- <p className="text-[9px] font-semibold text-blue-900 ">Additive Access</p>
- <p className="text-[9px] font-bold text-blue-800 leading-relaxed tracking-tighter text-left">
-                                    Permissions are flattened across all assigned roles. Users gain the union of all capabilities.
+ <Separator className="opacity-40 my-2" />
+ <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-2">
+ <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+ <p className="text-[9px] text-muted-foreground leading-relaxed">
+                                    Permissions are <span className="font-semibold text-foreground">additive</span> — users gain the union of all assigned role capabilities.
                                 </p>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* User Registry */}
- <div className="lg:col-span-3">
- <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden">
+            {/* User Table */}
+ <div className="lg:col-span-3 space-y-3">
+                {/* Search & Workspace Context Bar */}
+                <div className="flex items-center gap-3">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 h-9 rounded-lg bg-muted/30 border-border text-xs focus-visible:ring-1 focus-visible:ring-primary/20"
+                        />
+                    </div>
+                    {activeWorkspace && (
+                        <Badge variant="outline" className="h-9 px-3 rounded-lg bg-indigo-50 text-indigo-600 border-indigo-200 text-xs font-semibold flex items-center gap-1.5 shrink-0">
+                            <Building2 className="h-3 w-3" />
+                            {activeWorkspace.name}
+                        </Badge>
+                    )}
+                </div>
+
+ <div className="rounded-xl border border-border bg-card/50 shadow-sm overflow-hidden">
                     <Table>
- <TableHeader className="bg-muted/30">
+ <TableHeader className="bg-muted/20">
                             <TableRow>
- <TableHead className="w-16 pl-8 text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Profile</TableHead>
- <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Corporate Identity</TableHead>
- <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Architecture</TableHead>
- <TableHead className="w-[180px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-semibold py-5">Access & Security</TableHead>
+ <TableHead className="w-[280px] pl-5 text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-3">Member</TableHead>
+ <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-3">Roles & Permissions</TableHead>
+ <TableHead className="w-[140px] text-center text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-3">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i}>
- <TableCell className="pl-8"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
- <TableCell><Skeleton className="h-5 w-48 rounded" /></TableCell>
- <TableCell><Skeleton className="h-9 w-48 rounded-xl" /></TableCell>
- <TableCell className="text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
+ <TableCell className="pl-5"><Skeleton className="h-10 w-48 rounded-lg" /></TableCell>
+ <TableCell><Skeleton className="h-9 w-48 rounded-lg" /></TableCell>
+ <TableCell className="text-center"><Skeleton className="h-6 w-16 mx-auto rounded-full" /></TableCell>
                                     </TableRow>
                                 ))
-                            ) : users?.length ? (
-                                users.map((user) => (
- <TableRow key={user.id} className={cn("group hover:bg-muted/30 transition-colors", updatingId === user.id && "opacity-50")}>
- <TableCell className="pl-8 py-6">
- <div className="relative">
- <Avatar className="h-11 w-11 ring-4 ring-border/50 shadow-xl">
+                            ) : filteredUsers?.length ? (
+                                filteredUsers.map((user) => {
+                                    const wsPermissions = user.workspacePermissions?.[activeWorkspaceId] || user.permissions;
+                                    const wsCount = user.workspaceIds?.length || 0;
+
+                                    return (
+ <TableRow key={user.id} className={cn("group hover:bg-muted/20 transition-colors", updatingId === user.id && "opacity-50")}>
+ {/* Member Column — Merged Profile + Identity */}
+ <TableCell className="pl-5 py-4">
+   <div className="flex items-center gap-3">
+     <div className="relative shrink-0">
+       <Avatar className="h-9 w-9 ring-2 ring-border/30 shadow-sm">
                                                     <AvatarImage src={user.photoURL} alt={user.name} />
- <AvatarFallback className="font-semibold text-xs">{getInitials(user.name)}</AvatarFallback>
+       <AvatarFallback className="font-bold text-[10px] bg-muted">{getInitials(user.name)}</AvatarFallback>
                                                 </Avatar>
                                                 {updatingId === user.id && (
- <div className="absolute inset-0 bg-card/60 rounded-full flex items-center justify-center">
- <Loader2 className="h-4 w-4 animate-spin text-primary" />
+       <div className="absolute inset-0 bg-card/70 rounded-full flex items-center justify-center">
+       <Loader2 className="h-3 w-3 animate-spin text-primary" />
                                                     </div>
                                                 )}
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
- <div className="flex flex-col text-left">
- <span className="font-semibold text-sm tracking-tight text-foreground">{user.name}</span>
- <span className="text-[10px] font-bold text-muted-foreground opacity-60 tabular-nums mt-0.5">{user.email}</span>
-                                            </div>
-                                        </TableCell>
- <TableCell className="min-w-[250px]">
- <div className="flex flex-col gap-2">
-                                                {activeWorkspace && (
-                                                    <Badge variant="outline" className="w-fit text-[8px] font-bold px-1.5 py-0 bg-indigo-50 text-indigo-700 border-indigo-200 mb-0.5">
-                                                        <Building2 className="h-2.5 w-2.5 mr-0.5" />
-                                                        {activeWorkspace.name}
-                                                    </Badge>
+                                            <div className="min-w-0">
+       <span className="font-semibold text-sm tracking-tight text-foreground block truncate">{user.name}</span>
+       <span className="text-[10px] text-muted-foreground block truncate">{user.email}</span>
+                                                {wsCount > 0 && (
+                                                    <button
+                                                        onClick={() => setAccessDialogUser(user)}
+                                                        className="mt-1 inline-flex items-center gap-1 text-[9px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                                                    >
+                                                        <Building2 className="h-2.5 w-2.5" />
+                                                        {wsCount} workspace{wsCount !== 1 ? 's' : ''}
+                                                        <ChevronDown className="h-2 w-2 opacity-50" />
+                                                    </button>
                                                 )}
+                                            </div>
+                                        </div>
+                                        </TableCell>
+
+                                        {/* Roles & Permissions Column */}
+ <TableCell>
+ <div className="flex flex-col gap-1.5">
                                                 <MultiSelect 
                                                     options={roles?.map(r => ({ label: r.name, value: r.id })) || []}
                                                     value={user.workspaceRoles?.[activeWorkspaceId] || user.roles || []}
                                                     onChange={(vals) => handleUpdateUser(user.id, { roles: vals })}
-                                                    placeholder="Assign roles for this workspace..."
- className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-xl"
+                                                    placeholder="Assign roles..."
+ className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-lg"
                                                 />
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
- <div className="flex flex-wrap gap-1 px-1">
-                                                                {(user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.slice(0, 3).map(p => (
-                                                                    <Badge key={p} variant="secondary" className="h-4 text-[7px] font-semibold uppercase tracking-tighter bg-primary/5 text-primary">
-                                                                        {p.replace('_', ' ')}
-                                                                    </Badge>
-                                                                ))}
-                                                                {((user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.length || 0) > 3 && (
-                                                                    <Badge variant="secondary" className="h-4 text-[7px] font-semibold uppercase bg-muted text-muted-foreground">
-                                                                        +{((user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.length || 0) - 3} more
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                        </TooltipTrigger>
- <TooltipContent className="max-w-xs p-3 rounded-xl border-none shadow-2xl">
- <div className="space-y-2">
- <p className="text-[10px] font-semibold text-primary border-b pb-1.5">Workspace Permission Matrix</p>
- <div className="flex flex-wrap gap-1.5">
-                                                                    {(user.workspacePermissions?.[activeWorkspaceId] || user.permissions)?.map(p => (
-                                                                        <Badge key={p} className="text-[8px] font-bold uppercase tracking-tight h-5">
-                                                                            {p.replace('_', ' ')}
+                                                {wsPermissions && wsPermissions.length > 0 && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+ <div className="flex flex-wrap gap-1 px-0.5">
+                                                                    {wsPermissions.slice(0, 4).map(p => (
+                                                                        <Badge key={p} variant="secondary" className="h-[18px] text-[7px] font-semibold uppercase tracking-tight bg-muted/60 text-muted-foreground border-0 rounded-md px-1.5">
+                                                                            {p.replace(/_/g, ' ')}
                                                                         </Badge>
                                                                     ))}
+                                                                    {wsPermissions.length > 4 && (
+                                                                        <Badge variant="secondary" className="h-[18px] text-[7px] font-semibold bg-muted/40 text-muted-foreground/70 border-0 rounded-md px-1.5">
+                                                                            +{wsPermissions.length - 4}
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
-                                                            </div>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                            </TooltipTrigger>
+ <TooltipContent className="max-w-xs p-3 rounded-xl border-none shadow-2xl">
+ <div className="space-y-2">
+ <p className="text-[10px] font-bold text-primary border-b pb-1.5">Effective Permissions</p>
+ <div className="flex flex-wrap gap-1">
+                                                                        {wsPermissions.map(p => (
+                                                                            <Badge key={p} className="text-[8px] font-bold uppercase tracking-tight h-5">
+                                                                                {p.replace(/_/g, ' ')}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
                                             </div>
                                         </TableCell>
+
+                                        {/* Actions Column */}
  <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-4">
+                                            <div className="flex items-center justify-center gap-2">
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="icon" 
-                                                                className="h-8 w-8 rounded-lg hover:bg-warning/10 hover:text-warning text-muted-foreground"
+                                                                className="h-7 w-7 rounded-md hover:bg-amber-500/10 hover:text-amber-600 text-muted-foreground"
                                                                 onClick={() => handleResetPassword(user.id, user.name || 'User')}
                                                                 disabled={updatingId === user.id}
                                                             >
-                                                                <Key className="h-4 w-4" />
+                                                                <Key className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </TooltipTrigger>
-                                                        <TooltipContent>Reset Password</TooltipContent>
+                                                        <TooltipContent className="text-xs">Reset Password</TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
 
-                                                <Switch
-                                                    checked={user.isAuthorized}
-                                                    onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
-                                                    className="scale-90"
-                                                    disabled={updatingId === user.id}
-                                                />
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="flex items-center">
+                                                                <Switch
+                                                                    checked={user.isAuthorized}
+                                                                    onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
+                                                                    className="scale-[0.8]"
+                                                                    disabled={updatingId === user.id}
+                                                                />
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent className="text-xs">
+                                                            {user.isAuthorized ? 'Access Enabled' : 'Access Disabled'}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <TableRow>
- <TableCell colSpan={4} className="h-64 text-center">
- <div className="flex flex-col items-center justify-center gap-3 opacity-20">
- <UserIcon className="h-12 w-12" />
- <p className="text-xs font-semibold ">No identities found</p>
+ <TableCell colSpan={3} className="h-48 text-center">
+ <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground/30">
+ <UserIcon className="h-10 w-10" />
+ <p className="text-xs font-semibold">
+                                            {searchQuery ? 'No matching members' : 'No team members yet'}
+                                        </p>
+                                        {searchQuery && (
+                                            <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')} className="text-xs text-muted-foreground">
+                                                Clear search
+                                            </Button>
+                                        )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -356,6 +438,15 @@ export default function UsersClient() {
                 onOpenChange={setIsInviteModalOpen} 
                 roles={roles || []} 
             />
+
+            {accessDialogUser && (
+                <WorkspaceAccessDialog
+                    open={!!accessDialogUser}
+                    onOpenChange={(open) => { if (!open) setAccessDialogUser(null); }}
+                    user={accessDialogUser}
+                    roles={roles || []}
+                />
+            )}
         </div>
     </div>
   );

@@ -104,8 +104,8 @@ export default async function SurveyResultPage({ params }: { params: Promise<{ s
     if (!data) notFound();
 
     return (
-        <div className="light min-h-screen bg-slate-100 selection:bg-primary/20">
-            <main className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:py-24">
+        <div className="light min-h-screen flex flex-col bg-slate-100 selection:bg-primary/20">
+            <main className="flex-grow max-w-3xl w-full mx-auto py-12 px-4 sm:px-6 lg:py-24">
                 <ResultRenderer 
                     survey={data.survey} 
                     response={data.response} 
@@ -114,7 +114,7 @@ export default async function SurveyResultPage({ params }: { params: Promise<{ s
                     allowResubmission={data.survey.allowResubmission}
                 />
             </main>
-            <footer className="py-12 border-t bg-white/50 text-center">
+            <footer className="py-12 border-t bg-white/50 text-center mt-auto">
                 <div className="flex flex-col items-center gap-4">
                     {data.logoUrl ? (
                         <div className="relative h-8 w-32 grayscale opacity-50">

@@ -12,6 +12,7 @@ import { TagFilter } from '@/components/tags/TagFilter';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
 import { deleteEntityPermanentlyAction } from '@/lib/workspace-entity-actions';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -318,14 +319,27 @@ export default function EntitiesClient() {
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                             {selectedEntityIds.length > 0 && (
-                                <Button
-                                    variant="outline"
-                                    className="rounded-xl font-bold h-12 px-6 border-primary/20 text-primary hover:bg-primary/5 gap-2"
-                                    onClick={() => setIsBulkTagOpen(true)}
-                                >
-                                    <TagIcon className="h-4 w-4" />
-                                    Tag {selectedEntityIds.length} Selected
-                                </Button>
+                                <div className="flex items-center gap-3 animate-in fade-in zoom-in-95 duration-200">
+                                    <span className="text-xs font-bold text-muted-foreground tabular-nums">
+                                        {selectedEntityIds.length} of {sortedEntities.length} selected
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        className="rounded-xl font-bold h-10 px-5 border-primary/20 text-primary hover:bg-primary/5 gap-2"
+                                        onClick={() => setIsBulkTagOpen(true)}
+                                    >
+                                        <TagIcon className="h-4 w-4" />
+                                        Tag Selected
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 text-muted-foreground hover:text-foreground gap-1 rounded-lg"
+                                        onClick={() => setSelectedEntityIds([])}
+                                    >
+                                        <X className="h-3 w-3" /> Clear
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -454,7 +468,26 @@ export default function EntitiesClient() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
-                                    <TableHead className="w-[80px]" />
+                                    <TableHead className="w-[80px] pl-6">
+                                        <Checkbox
+                                            checked={
+                                                sortedEntities.length > 0 && selectedEntityIds.length > 0
+                                                    ? sortedEntities.every(e => selectedEntityIds.includes(e.id))
+                                                        ? true
+                                                        : 'indeterminate'
+                                                    : false
+                                            }
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedEntityIds(sortedEntities.map(e => e.id));
+                                                } else {
+                                                    setSelectedEntityIds([]);
+                                                }
+                                            }}
+                                            aria-label={`Select all ${sortedEntities.length} visible entities`}
+                                            className="rounded"
+                                        />
+                                    </TableHead>
                                     <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
                                         <Button variant="ghost" onClick={() => handleSort('displayName')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent">
                                             {termName} <ArrowUpDown className="ml-2 h-3 w-3" />
@@ -486,12 +519,11 @@ export default function EntitiesClient() {
                                         <TableRow key={entity.id} className={cn("border-border hover:bg-accent/20 transition-colors", assigningEntity?.id === entity.id && "bg-primary/5")}>
                                             <TableCell className="pl-6">
                                                 <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
+                                                    <Checkbox
                                                         checked={selectedEntityIds.includes(entity.id)}
-                                                        onChange={() => toggleEntitySelection(entity.id)}
-                                                        className="h-4 w-4 rounded border-border cursor-pointer"
+                                                        onCheckedChange={() => toggleEntitySelection(entity.id)}
                                                         aria-label={`Select ${entity.displayName}`}
+                                                        className="rounded"
                                                     />
                                                     <AsyncEntityAvatar 
                                                         entityId={entity.entityId}
@@ -508,13 +540,6 @@ export default function EntitiesClient() {
                                                     <span className="text-[9px] font-bold text-muted-foreground opacity-60 flex items-center gap-1">
                                                         <User className="h-2 w-2" /> <PrimaryContactName entityId={entity.entityId} fallback={entity.primaryEmail} />
                                                     </span>
-                                                    {entity.workspaceTags && entity.workspaceTags.length > 0 && allTags && (
-                                                        <TagBadges
-                                                            tagIds={entity.workspaceTags}
-                                                            allTags={allTags}
-                                                            maxVisible={3}
-                                                        />
-                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
@@ -539,6 +564,31 @@ export default function EntitiesClient() {
                                                         </TooltipTrigger>
                                                         <TooltipContent>Assign User</TooltipContent>
                                                     </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className={cn(
+                                                                    "h-8 w-8",
+                                                                    entity.workspaceTags?.length ? "text-violet-500 hover:text-violet-600" : "text-muted-foreground/40 hover:text-violet-500"
+                                                                )}
+                                                                onClick={() => setTaggingEntity(entity)}
+                                                            >
+                                                                <TagIcon className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="p-3 max-w-[240px]">
+                                                            {entity.workspaceTags?.length && allTags ? (
+                                                                <div className="space-y-1.5">
+                                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Tags</p>
+                                                                    <TagBadges tagIds={entity.workspaceTags} allTags={allTags} maxVisible={8} size="xs" />
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-[10px] font-bold text-muted-foreground italic">No tags — click to add</p>
+                                                            )}
+                                                        </TooltipContent>
+                                                    </Tooltip>
                                                     <DropdownMenu modal={false}>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
@@ -553,10 +603,7 @@ export default function EntitiesClient() {
                                                                 <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck className="h-3.5 w-3.5" /></div>
                                                                 <span className="font-bold text-sm">{updateStatus}</span>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTaggingEntity(entity)}>
-                                                                <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-500"><TagIcon className="h-3.5 w-3.5" /></div>
-                                                                <span className="font-bold text-sm">Manage Tags</span>
-                                                            </DropdownMenuItem>
+
 
                                                             <DropdownMenuSeparator className="my-2" />
                                                             

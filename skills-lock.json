@@ -12,6 +12,12 @@
       "skillPath": "skills/brainstorming/SKILL.md",
       "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
     },
+    "clean-data-xls": {
+      "source": "anthropics/financial-services-plugins",
+      "sourceType": "github",
+      "skillPath": "plugins/vertical-plugins/financial-analysis/skills/clean-data-xls/SKILL.md",
+      "computedHash": "a8cd312f1c7d91022f61f1a3be8c0e82d04d63c584e681bd934f36a679c139b6"
+    },
     "code-refactoring": {
       "source": "supercent-io/skills-template",
       "sourceType": "github",

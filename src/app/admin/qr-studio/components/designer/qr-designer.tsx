@@ -159,6 +159,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
             orgId={orgId}
             wsId={wsId}
             onPosterDataChange={(posterData) => updateDesign({ posterData })}
+            onSaveAsTemplate={() => setSaveModalOpen(true)}
           />
         </React.Suspense>
       )}
@@ -178,7 +179,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4 bg-muted/5">
-                    <TemplateControls orgId={orgId} wsId={wsId} updateDesign={updateDesign} />
+                    <TemplateControls orgId={orgId} wsId={wsId} currentDesign={design} updateDesign={updateDesign} />
                   </AccordionContent>
                 </AccordionItem>
               )}

@@ -115,7 +115,7 @@ export default function AttributionQRSheet({
                     name,
                     description: `Attribution QR for ${userName} on "${surveyTitle}"`,
                     mode,
-                    type: 'url',
+                    type: 'survey',
                     destination: { url },
                     design,
                     tracking: { enabled: mode === 'dynamic' },

@@ -207,12 +207,27 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
         if (value === undefined || value === null) return '-';
         if (Array.isArray(value)) return value.join(', ');
         if (typeof value === 'object') {
-            if (value.options) {
-                let text = value.options.join(', ');
-                if (value.other) text += `, Other: ${value.other}`;
-                return text;
+            // Checkboxes with allowOther: { options: string[], other: string }
+            if (Array.isArray(value.options)) {
+                const parts = [...value.options];
+                if (value.other && value.other.trim()) parts.push(`Other: ${value.other.trim()}`);
+                return parts.length > 0 ? parts.join(', ') : '-';
             }
-            return JSON.stringify(value);
+            // Multiple-choice with allowOther: { option: string, other: string }
+            if (value.option !== undefined) {
+                if (value.option === '__other__') {
+                    return value.other?.trim() ? `Other: ${value.other.trim()}` : 'Other (not specified)';
+                }
+                // Regular option selected
+                const parts = [value.option];
+                if (value.other?.trim()) parts.push(`Other: ${value.other.trim()}`);
+                return parts.join(', ');
+            }
+            // Fallback for unknown object shapes
+            return Object.entries(value)
+                .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ') || '-';
         }
         return String(value);
     }

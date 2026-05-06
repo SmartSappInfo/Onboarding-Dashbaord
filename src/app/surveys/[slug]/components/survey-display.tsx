@@ -60,9 +60,9 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
+            <div className="flex flex-col relative" style={{ backgroundColor: bgColor, minHeight: '100dvh' }}>
                  <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
-                 <main className="flex-grow flex items-center justify-center p-4 relative z-10 py-12">
+                 <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
                         <div className="flex justify-center mb-6">
                             {displayLogoUrl !== 'none' && (
@@ -88,7 +88,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
                         )}
                         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
                         <div 
-                            className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap" 
+                            className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap prose prose-slate max-w-none mx-auto" 
                             dangerouslySetInnerHTML={{ __html: survey.thankYouDescription || 'Your response has been recorded.' }} 
                         />
                         
@@ -110,7 +110,7 @@ export default function SurveyDisplay({ survey, sourcePageId, assignedUserId, or
                         )}
                     </div>
                 </main>
-                 <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
+                 <footer className="mt-auto py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10 border-t border-black/5">
                     <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
                     <p>&copy; {new Date().getFullYear()} SmartSapp</p>
                 </footer>
