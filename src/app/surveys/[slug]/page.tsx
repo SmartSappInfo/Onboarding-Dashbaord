@@ -4,39 +4,44 @@ import SurveyDisplay from './components/survey-display';
 import SurveyUnavailable from '../components/survey-unavailable';
 import { notFound } from 'next/navigation';
 
-import { firestore } from '@/firebase/config';
-import { collection, query, where, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 import { cn, stripHtml } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
+    const trimmedSlug = slug?.trim();
+    console.log(`[PublicSurveyPage] Fetching survey for slug: "${trimmedSlug}"`);
+    
     try {
-        const surveysRef = collection(firestore, 'surveys');
+        const surveysRef = adminDb.collection('surveys');
         
         // 1. Try querying by slug field
-        const q = query(
-            surveysRef, 
-            where('slug', '==', slug), 
-            limit(1)
-        );
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await surveysRef.where('slug', '==', trimmedSlug).limit(1).get();
 
         if (!querySnapshot.empty) {
             const surveyDoc = querySnapshot.docs[0];
-            return { ...surveyDoc.data(), id: surveyDoc.id } as Survey;
+            const data = surveyDoc.data();
+            console.log(`[PublicSurveyPage] Found survey by slug field. ID: ${surveyDoc.id}, Status: ${data?.status}`);
+            return { ...data, id: surveyDoc.id } as Survey;
         }
 
         // 2. Fallback: Try fetching directly by document ID
-        const docRef = doc(firestore, 'surveys', slug);
-        const docSnap = await getDoc(docRef);
+        console.log(`[PublicSurveyPage] No match for slug field. Trying fallback to document ID: "${trimmedSlug}"`);
+        const docSnap = await surveysRef.doc(trimmedSlug).get();
 
-        if (docSnap.exists()) {
-            return { ...docSnap.data(), id: docSnap.id } as Survey;
+        if (docSnap.exists) {
+            const data = docSnap.data();
+            console.log(`[PublicSurveyPage] Found survey by document ID fallback. ID: ${docSnap.id}, Status: ${data?.status}`);
+            return { ...data, id: docSnap.id } as Survey;
         }
         
+        console.warn(`[PublicSurveyPage] Survey NOT FOUND for slug/id: "${trimmedSlug}"`);
         return null;
     } catch (error) {
-        console.error("Error fetching survey by slug/id:", error);
+        console.error(`[PublicSurveyPage] Error fetching survey for "${trimmedSlug}":`, error);
         return null;
     }
 }
@@ -93,15 +98,15 @@ export default async function PublicSurveyPage({
         // Resolve organizationId: direct field → workspace lookup
         let orgId = survey.organizationId;
         if (!orgId && survey.workspaceIds?.length) {
-            const wsDoc = await getDoc(doc(firestore, 'workspaces', survey.workspaceIds[0]));
-            if (wsDoc.exists()) {
-                orgId = wsDoc.data().organizationId;
+            const wsSnap = await adminDb.collection('workspaces').doc(survey.workspaceIds[0]).get();
+            if (wsSnap.exists) {
+                orgId = wsSnap.data()?.organizationId;
             }
         }
         if (orgId) {
-            const orgDoc = await getDoc(doc(firestore, 'organizations', orgId));
-            if (orgDoc.exists()) {
-                organizationLogoUrl = orgDoc.data().logoUrl || null;
+            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+            if (orgSnap.exists) {
+                organizationLogoUrl = orgSnap.data()?.logoUrl || null;
             }
         }
     } catch (e) {

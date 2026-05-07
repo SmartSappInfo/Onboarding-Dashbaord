@@ -3,7 +3,6 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
-import { linkEntityToWorkspaceAction } from './workspace-entity-actions';
 import type { FocalPerson, InstitutionData, EntityContact } from './types';
 
 /**
@@ -115,33 +114,18 @@ export async function handleSignupAction(input: SignupInput) {
     
     const createdEntityId = createResult.id;
     
-    // Step 2: Link entity to workspace (Requirement 10.2)
-    const linkResult = await linkEntityToWorkspaceAction({
-      entityId: createdEntityId,
-      workspaceId: input.workspaceId,
-      pipelineId: input.pipelineId,
-      stageId: input.stageId,
-      userId: input.userId || 'system',
-    });
+    // Note: createEntityAction already creates the workspace_entity record,
+    // so we do NOT call linkEntityToWorkspaceAction here (that would double-link
+    // and fail on contactScope validation for public routes).
     
-    if (!linkResult.success) {
-      // Rollback: Delete the entity we just created
-      await adminDb.collection('entities').doc(createdEntityId).delete();
-      
-      return {
-        success: false,
-        error: `Failed to link entity to workspace: ${linkResult.error}`,
-      };
-    }
-    
-    // Step 3: Log signup completion activity with entityId (Requirement 10.5)
+    // Step 2: Log signup completion activity with entityId (Requirement 10.5)
     await logActivity({
       organizationId: input.organizationId,
       workspaceId: input.workspaceId,
       entityId: createdEntityId,
       entityType: 'institution',
       displayName: input.name,
-      userId: input.userId || 'system',
+      userId: input.userId || 'system-signup',
       type: 'signup_completed',
       source: 'signup_form',
       description: `New institution "${input.name}" signed up`,
@@ -158,7 +142,6 @@ export async function handleSignupAction(input: SignupInput) {
     return {
       success: true,
       entityId: createdEntityId,
-      workspaceEntityId: linkResult.workspaceEntityId,
     };
   } catch (e: any) {
     console.error('>>> [SIGNUP:ACTION] Failed:', e.message);

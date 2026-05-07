@@ -224,6 +224,53 @@ export function VisualBlock({
                     </Card>
                 </div>
             );
+        case 'logo': {
+            const logoUrl = resolveVariables(block.url || '{{org_logo_url}}', simulationVars);
+            return (
+                <div className={cn("w-full py-4", alignmentClass)}>
+                    {logoUrl && !logoUrl.includes('{{') ? (
+                        <img src={logoUrl} alt="Organization Logo" style={{ height: '48px', width: 'auto', display: 'block', ...(align === 'center' ? { margin: '0 auto' } : align === 'right' ? { marginLeft: 'auto' } : {}) }} width={120} height={48} />
+                    ) : (
+                        <div className={cn("inline-flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5", align === 'center' ? 'mx-auto' : '')}>
+                            <ImageIcon className="h-5 w-5 text-primary/40" />
+                            <span className="text-[10px] font-bold text-primary/60">{'{{org_logo_url}}'}</span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        case 'header': {
+            const headerLogo = resolveVariables(block.url || '{{org_logo_url}}', simulationVars);
+            const orgName = resolveVariables('{{org_name}}', simulationVars);
+            return (
+                <div className="w-full py-6 border-b border-border/30">
+                    <div className="flex items-center gap-4">
+                        {headerLogo && !headerLogo.includes('{{') ? (
+                            <img src={headerLogo} alt="Logo" style={{ height: '40px', width: 'auto' }} width={100} height={40} />
+                        ) : (
+                            <div className="p-2 rounded-lg border border-dashed border-primary/20 bg-primary/5">
+                                <ImageIcon className="h-5 w-5 text-primary/40" />
+                            </div>
+                        )}
+                        <span className="text-lg font-bold text-foreground/80">{orgName.includes('{{') ? 'Organization Name' : orgName}</span>
+                    </div>
+                </div>
+            );
+        }
+        case 'footer': {
+            const fName = resolveVariables('{{org_name}}', simulationVars);
+            const fEmail = resolveVariables('{{org_email}}', simulationVars);
+            const fPhone = resolveVariables('{{org_phone}}', simulationVars);
+            const fAddr = resolveVariables('{{org_address}}', simulationVars);
+            return (
+                <div className="w-full pt-6 mt-6 border-t border-border/30 text-center space-y-1.5">
+                    <p className="text-xs font-bold text-muted-foreground/80">{fName.includes('{{') ? 'Organization Name' : fName}</p>
+                    <p className="text-[10px] text-muted-foreground/60">{fAddr.includes('{{') ? '123 Street, City' : fAddr}</p>
+                    <p className="text-[10px] text-muted-foreground/60">{fEmail.includes('{{') ? 'email@org.com' : fEmail} | {fPhone.includes('{{') ? '+1 234 567 890' : fPhone}</p>
+                    <p className="text-[9px] text-muted-foreground/40">&copy; {new Date().getFullYear()} {fName.includes('{{') ? 'Organization' : fName}</p>
+                </div>
+            );
+        }
         default:
  return <div className="p-4 border border-dashed rounded text-[10px] text-muted-foreground text-center">{block.type} Block Content</div>;
     }

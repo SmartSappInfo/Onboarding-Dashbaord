@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { MessageTemplate } from '@/lib/types';
+import type { MessageTemplate, TemplateStatus, TemplateTarget, ContentMode } from '@/lib/types';
 import { 
     Search, 
     FileType, 
@@ -94,7 +94,12 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
                             </TooltipProvider>
                         )}
                     </div>
- <p className="text-[8px] font-bold text-muted-foreground opacity-60">{template.category}</p>
+ <p className="text-[8px] font-bold text-muted-foreground opacity-60">{template.category?.replace('_', ' ')}</p>
+                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        <Badge variant={template.status === 'active' ? 'default' : template.status === 'archived' ? 'secondary' : 'outline'} className="rounded-full h-4 px-1.5 text-[7px] font-bold">{template.status || 'draft'}</Badge>
+                        <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[7px] font-bold">{template.contentMode === 'html_code' ? 'HTML' : template.contentMode === 'rich_builder' ? 'Builder' : 'Text'}</Badge>
+                        <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[7px] font-bold">{template.target === 'internal_team' ? 'Team' : 'Client'}</Badge>
+                    </div>
                 </div>
             </CardHeader>
         </Card>
@@ -123,15 +128,19 @@ export function TemplateGallery({
     const [searchTerm, setSearchTerm] = React.useState('');
     const [channelFilter, setChannelFilter] = React.useState('all');
     const [categoryFilter, setCategoryFilter] = React.useState('all');
+    const [statusFilter, setStatusFilter] = React.useState<TemplateStatus | 'all'>('all');
+    const [targetFilter, setTargetFilter] = React.useState<TemplateTarget | 'all'>('all');
     const [groupBy, setGroupBy] = React.useState<'none' | 'channel' | 'category'>('none');
 
     const filteredTemplates = React.useMemo(() => {
         return templates.filter(t => 
             (channelFilter === 'all' || t.channel === channelFilter) &&
             (categoryFilter === 'all' || t.category === categoryFilter) &&
+            (statusFilter === 'all' || t.status === statusFilter) &&
+            (targetFilter === 'all' || t.target === targetFilter) &&
             (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [templates, searchTerm, channelFilter, categoryFilter]);
+    }, [templates, searchTerm, channelFilter, categoryFilter, statusFilter, targetFilter]);
 
     const groupedTemplates = React.useMemo(() => {
         if (groupBy === 'none') return { 'All Templates': filteredTemplates };
@@ -176,7 +185,7 @@ export function TemplateGallery({
                         </SelectTrigger>
  <SelectContent className="rounded-xl">
                             <SelectItem value="all">All Types</SelectItem>
- {['general', 'meetings', 'surveys', 'forms', 'finance'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
+                            {['general', 'surveys', 'meetings', 'forms', 'agreements', 'campaigns', 'reminders', 'tasks', 'automations', 'qr_codes'].map(c => <SelectItem key={c} value={c} className="capitalize">{c.replace('_', ' ')}</SelectItem>)}
                         </SelectContent>
                     </Select>
  <div className="h-12 w-px bg-border mx-1 hidden md:block" />
@@ -188,6 +197,27 @@ export function TemplateGallery({
                             <SelectItem value="none">Flat List</SelectItem>
                             <SelectItem value="channel">By Channel</SelectItem>
                             <SelectItem value="category">By Category</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                        <SelectTrigger className="h-12 w-full md:w-[130px] rounded-2xl bg-muted/20 border-none font-semibold text-[10px]">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={targetFilter} onValueChange={(v: any) => setTargetFilter(v)}>
+                        <SelectTrigger className="h-12 w-full md:w-[130px] rounded-2xl bg-muted/20 border-none font-semibold text-[10px]">
+                            <SelectValue placeholder="Target" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Targets</SelectItem>
+                            <SelectItem value="external_client">External Client</SelectItem>
+                            <SelectItem value="internal_team">Team / Staff</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

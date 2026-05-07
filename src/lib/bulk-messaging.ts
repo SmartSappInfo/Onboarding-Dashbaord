@@ -11,7 +11,7 @@ const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 interface BulkJobInput {
   templateId: string;
   senderProfileId: string;
-  recipients: { recipient: string; variables: Record<string, any> }[];
+  recipients: { recipient: string; variables: Record<string, any>; entityId?: string; displayName?: string }[];
   userId: string;
 }
 
@@ -56,7 +56,9 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
         const taskData: Omit<MessageTask, 'id'> = {
           recipient: item.recipient,
           variables: item.variables,
-          status: 'pending'
+          status: 'pending',
+          ...(item.entityId && { entityId: item.entityId }),
+          ...(item.displayName && { displayName: item.displayName }),
         };
         batch.set(taskRef, taskData);
       }
@@ -149,7 +151,11 @@ export async function processBulkJobChunk(jobId: string) {
             let html = '';
             let subject = resolveVariables(template.subject || '', mergedVars);
 
-            if (template.blocks?.length) {
+            // contentMode-aware routing (matches messaging-engine.ts)
+            const useBlocks = template.contentMode === 'rich_builder'
+                || (!template.contentMode && template.blocks?.length);
+
+            if (useBlocks && template.blocks?.length) {
                 html = renderBlocksToHtml(template.blocks, mergedVars, {
                     wrapper: styleWrapper || undefined
                 });
@@ -221,6 +227,37 @@ export async function processBulkJobChunk(jobId: string) {
         failed: newFailed,
         status: isFinished ? 'completed' : 'processing'
     });
+
+    // R1 fix: Fire campaign completion hooks when job finishes
+    if (isFinished && job.campaignId) {
+        // Fire-and-forget: don't block the chunk return
+        Promise.resolve().then(async () => {
+            try {
+                const { applyCampaignPostSendTags } = await import('./campaign-post-send');
+                const { syncCampaignStats } = await import('./campaign-analytics');
+
+                // Update campaign status to 'sent'
+                await adminDb.collection('message_campaigns').doc(job.campaignId!).update({
+                    status: 'sent',
+                    updatedAt: new Date().toISOString(),
+                });
+
+                // Sync denormalized stats
+                await syncCampaignStats(job.campaignId!);
+
+                // Apply post-send tag rules
+                await applyCampaignPostSendTags(job.campaignId!);
+
+                // Emit campaign events for automation triggers (Story 3)
+                const { emitCampaignEvents } = await import('./campaign-events');
+                await emitCampaignEvents(job.campaignId!);
+
+                console.log(`>>> [BULK] Campaign ${job.campaignId} completion hooks fired`);
+            } catch (hookErr) {
+                console.error('>>> [BULK] Completion hook error:', (hookErr as Error).message);
+            }
+        });
+    }
 
     const progress = Math.round((newProcessed / job.totalRecipients) * 100);
     return { 

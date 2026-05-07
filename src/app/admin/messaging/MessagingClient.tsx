@@ -26,7 +26,8 @@ import {
     MessageSquare,
     ShieldCheck,
     Zap,
-    Database
+    Database,
+    Users
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -103,6 +104,15 @@ export default function MessagingClient() {
 
     const operations = [
         {
+            title: 'Campaigns',
+            description: 'Create, schedule, and track targeted outreach campaigns.',
+            icon: Target,
+            href: '/admin/messaging/campaigns',
+            color: 'text-rose-500',
+            bg: 'bg-rose-500/10',
+            border: 'hover:border-rose-500/50'
+        },
+        {
             title: 'Conversations',
             description: 'Unified inbox view of all message threads and contact history.',
             icon: MessageSquare,
@@ -176,6 +186,15 @@ export default function MessagingClient() {
             color: 'text-blue-600',
             bg: 'bg-blue-600/10',
             border: 'hover:border-blue-600/50'
+        },
+        {
+            title: 'Saved Audiences',
+            description: 'Build reusable audience segments for targeted campaign outreach.',
+            icon: Users,
+            href: '/admin/messaging/audiences',
+            color: 'text-cyan-600',
+            bg: 'bg-cyan-600/10',
+            border: 'hover:border-cyan-600/50'
         }
     ];
 

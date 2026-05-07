@@ -427,16 +427,26 @@ export async function resolveTagVariables(
 }
 
 /**
- * Previews the audience for a campaign with tag-based filtering.
- * Returns contact count, a preview list, and tag distribution.
+ * Previews the audience for a campaign.
+ * 
+ * Tiered query strategy (R1/R2 fix):
+ *   Tier 1: Firestore-native (array-contains-any + equality) — fast, server-side
+ *   Tier 2: Hybrid (Tier 1 fetch + JS filter) — for AND across arrays
+ *   Preview always capped at 500 docs. Count uses subset estimation.
+ *
+ * Backward-compatible: accepts both legacy tag params and Phase 4 AudienceFilter[].
  *
  * Requirements: FR5.1.2, FR5.1.3
  */
 export async function previewCampaignAudience(params: {
   workspaceId: string;
+  // Legacy tag params (Phase 3 compat)
   includeTagIds?: string[];
   excludeTagIds?: string[];
   includeLogic?: 'AND' | 'OR';
+  // Phase 4 advanced filters
+  filters?: Array<{ id: string; field: string; operator: string; value: any }>;
+  filterLogic?: 'AND' | 'OR';
   limit?: number;
 }): Promise<{
   success: boolean;
@@ -446,81 +456,161 @@ export async function previewCampaignAudience(params: {
   error?: string;
 }> {
   try {
-    const { workspaceId, includeTagIds = [], excludeTagIds = [], includeLogic = 'OR', limit: previewLimit = 10 } = params;
+    const { workspaceId, limit: previewLimit = 10 } = params;
 
-    // Step 1: Get all contacts in workspace
-    const entitiesSnap = await adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).get();
+    // ── Normalize legacy params into filters ──────────────────────────────
+    let filters = params.filters || [];
+    let filterLogic = params.filterLogic || 'AND';
 
-    interface ContactEntry {
-      id: string;
-      name: string;
-      tags: string[];
+    if (filters.length === 0 && params.includeTagIds && params.includeTagIds.length > 0) {
+      filters = [{
+        id: '_legacy_include',
+        field: 'tags',
+        operator: params.includeLogic === 'AND' ? 'all_of' : 'any_of',
+        value: params.includeTagIds,
+      }];
+      if (params.excludeTagIds && params.excludeTagIds.length > 0) {
+        filters.push({
+          id: '_legacy_exclude',
+          field: 'tags',
+          operator: 'is_not',
+          value: params.excludeTagIds,
+        });
+      }
+      filterLogic = 'AND';
     }
 
-    const allContacts: ContactEntry[] = entitiesSnap.docs.map(d => ({ 
-      id: d.data().entityId || d.id, 
-      name: d.data().displayName || d.data().name || '', 
-      tags: d.data().workspaceTags || [] 
+    // ── Build Firestore query (Tier 1: server-side) ───────────────────────
+    let baseQuery: FirebaseFirestore.Query = adminDb
+      .collection('workspace_entities')
+      .where('workspaceId', '==', workspaceId);
+
+    // Separate tag filters from equality filters
+    const tagFilters = filters.filter(f => f.field === 'tags');
+    const equalityFilters = filters.filter(f => f.field !== 'tags' && f.operator !== 'is_empty' && f.operator !== 'is_not_empty');
+    const emptyFilters = filters.filter(f => f.operator === 'is_empty' || f.operator === 'is_not_empty');
+
+    // Apply equality filters server-side (Firestore supports multiple == on different fields)
+    const fieldMap: Record<string, string> = {
+      status: 'status',
+      entityType: 'entityType',
+      assignedTo: 'assignedTo.userId',
+      locationCountry: 'locationCountryId',
+      locationRegion: 'locationRegionId',
+      locationDistrict: 'locationDistrictId',
+      lifecycleStatus: 'lifecycleStatus',
+    };
+
+    for (const f of equalityFilters) {
+      const fsField = fieldMap[f.field];
+      if (!fsField) continue;
+      if (f.operator === 'is') {
+        baseQuery = baseQuery.where(fsField, '==', f.value);
+      } else if (f.operator === 'is_not') {
+        baseQuery = baseQuery.where(fsField, '!=', f.value);
+      }
+    }
+
+    // Apply ONE tag filter server-side (Firestore constraint: one array-contains-any per query)
+    const includeTagFilter = tagFilters.find(f => f.operator === 'any_of' || f.operator === 'all_of');
+    if (includeTagFilter && Array.isArray(includeTagFilter.value) && includeTagFilter.value.length > 0) {
+      if (includeTagFilter.operator === 'any_of') {
+        // OR: use array-contains-any (chunked at 10)
+        const firstChunk = includeTagFilter.value.slice(0, 10);
+        baseQuery = baseQuery.where('workspaceTags', 'array-contains-any', firstChunk);
+      } else if (includeTagFilter.operator === 'all_of') {
+        // AND: use array-contains for first tag, JS-filter remaining (Tier 2)
+        baseQuery = baseQuery.where('workspaceTags', 'array-contains', includeTagFilter.value[0]);
+      }
+    }
+
+    // ── Execute query (capped at 500 docs — R2 fix) ───────────────────────
+    const snap = await baseQuery.limit(500).get();
+
+    interface ContactEntry { id: string; name: string; tags: string[]; data: any; }
+    let results: ContactEntry[] = snap.docs.map(d => ({
+      id: d.data().entityId || d.id,
+      name: d.data().displayName || d.data().name || '',
+      tags: d.data().workspaceTags || [],
+      data: d.data(),
     }));
 
-    // Step 2: Apply include filter
-    let filtered = allContacts;
+    // ── Tier 2: JS-filter for conditions Firestore can't handle ───────────
 
-    if (includeTagIds.length > 0) {
-      filtered = filtered.filter(contact => {
-        if (includeLogic === 'AND') {
-          return includeTagIds.every(tagId => contact.tags.includes(tagId));
-        }
-        return includeTagIds.some(tagId => contact.tags.includes(tagId));
-      });
+    // AND-logic remaining tags
+    if (includeTagFilter?.operator === 'all_of' && includeTagFilter.value.length > 1) {
+      const remaining = includeTagFilter.value.slice(1);
+      results = results.filter(c => remaining.every((t: string) => c.tags.includes(t)));
     }
 
-    // Step 3: Apply exclude filter
-    if (excludeTagIds.length > 0) {
-      filtered = filtered.filter(contact =>
-        !excludeTagIds.some(tagId => contact.tags.includes(tagId))
-      );
+    // OR with >10 tags: additional chunks
+    if (includeTagFilter?.operator === 'any_of' && includeTagFilter.value.length > 10) {
+      const additionalTags = includeTagFilter.value.slice(10);
+      // Already have results for first 10; add results for remaining chunks
+      for (let i = 0; i < additionalTags.length; i += 10) {
+        const chunk = additionalTags.slice(i, i + 10);
+        let chunkQuery: FirebaseFirestore.Query = adminDb
+          .collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('workspaceTags', 'array-contains-any', chunk)
+          .limit(500);
+        const chunkSnap = await chunkQuery.get();
+        const existingIds = new Set(results.map(r => r.id));
+        chunkSnap.docs.forEach(d => {
+          const eid = d.data().entityId || d.id;
+          if (!existingIds.has(eid)) {
+            results.push({ id: eid, name: d.data().displayName || '', tags: d.data().workspaceTags || [], data: d.data() });
+          }
+        });
+      }
     }
 
-    // Step 4: Resolve tag names for distribution
+    // Exclude tags (JS filter)
+    const excludeTagFilter = tagFilters.find(f => f.operator === 'is_not');
+    if (excludeTagFilter && Array.isArray(excludeTagFilter.value) && excludeTagFilter.value.length > 0) {
+      results = results.filter(c => !excludeTagFilter.value.some((t: string) => c.tags.includes(t)));
+    }
+
+    // Empty/not-empty filters (JS filter)
+    for (const f of emptyFilters) {
+      const fsField = fieldMap[f.field] || f.field;
+      if (f.operator === 'is_empty') {
+        results = results.filter(c => !c.data[fsField]);
+      } else {
+        results = results.filter(c => !!c.data[fsField]);
+      }
+    }
+
+    // ── Build response ────────────────────────────────────────────────────
     const allTagIds = new Set<string>();
-    filtered.forEach(c => c.tags.forEach(t => allTagIds.add(t)));
+    results.forEach(c => c.tags.forEach(t => allTagIds.add(t)));
 
     const tagNameMap = new Map<string, string>();
     const tagIdArray = Array.from(allTagIds);
     for (let i = 0; i < tagIdArray.length; i += 10) {
       const chunk = tagIdArray.slice(i, i + 10);
       if (chunk.length === 0) continue;
-      const snap = await adminDb.collection('tags').where('__name__', 'in', chunk).get();
-      snap.docs.forEach(d => tagNameMap.set(d.id, d.data().name as string));
+      const tagSnap = await adminDb.collection('tags').where('__name__', 'in', chunk).get();
+      tagSnap.docs.forEach(d => tagNameMap.set(d.id, d.data().name as string));
     }
 
-    // Step 5: Build tag distribution
     const tagCounts = new Map<string, number>();
-    filtered.forEach(contact => {
-      contact.tags.forEach(tagId => {
-        tagCounts.set(tagId, (tagCounts.get(tagId) || 0) + 1);
-      });
-    });
+    results.forEach(c => c.tags.forEach(tagId => {
+      tagCounts.set(tagId, (tagCounts.get(tagId) || 0) + 1);
+    }));
 
     const tagDistribution = Array.from(tagCounts.entries())
       .map(([tagId, count]) => ({ tagId, tagName: tagNameMap.get(tagId) || tagId, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
 
-    // Step 6: Build preview list with resolved tag names
-    const preview = filtered.slice(0, previewLimit).map(contact => ({
-      id: contact.id,
-      name: contact.name,
-      tags: contact.tags.map(id => tagNameMap.get(id) || id),
+    const preview = results.slice(0, previewLimit).map(c => ({
+      id: c.id,
+      name: c.name,
+      tags: c.tags.map(id => tagNameMap.get(id) || id),
     }));
 
-    return {
-      success: true,
-      count: filtered.length,
-      preview,
-      tagDistribution,
-    };
+    return { success: true, count: results.length, preview, tagDistribution };
   } catch (error: any) {
     console.error('previewCampaignAudience error:', error.message);
     return { success: false, error: error.message };

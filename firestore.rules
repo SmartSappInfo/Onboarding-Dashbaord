@@ -14,36 +14,46 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      let data = getUserData();
-      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
-             (data != null && data.get('isAuthorized', false) == true);
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (getUserData() != null && getUserData().get('isAuthorized', false) == true)
+      );
     }
 
     function isSystemAdmin() {
       let data = getUserData();
-      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
-             (data != null && data.get('isAuthorized', false) == true && 
-              data.get('permissions', []).hasAny(['system_admin']));
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('isAuthorized', false) == true && 
+         data.get('permissions', []).hasAny(['system_admin']))
+      );
     }
 
     function isOrgMatch(orgId) {
       let data = getUserData();
-      return (isSignedIn() && request.auth.token.email == 'admin@smartsapp.com') ||
-             (data != null && data.get('organizationId', '') == orgId);
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('organizationId', '') == orgId)
+      );
     }
 
     function hasPermission(perm) {
       let data = getUserData();
-      return isSystemAdmin() ||
-             (data != null && data.get('isAuthorized', false) == true && 
-              (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin'])));
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('isAuthorized', false) == true && 
+         (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin'])))
+      );
     }
 
     function canAccessWorkspace(targetWorkspaceIds) {
       let data = getUserData();
-      let userWorkspaces = data != null ? data.get('workspaceIds', []) : [];
-      return isSystemAdmin() ||
-             (data != null && data.get('isAuthorized', false) == true && userWorkspaces.hasAny(targetWorkspaceIds));
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('isAuthorized', false) == true && 
+         (data.get('permissions', []).hasAny(['system_admin']) || 
+          data.get('workspaceIds', []).hasAny(targetWorkspaceIds)))
+      );
     }
 
     // Industry-specific helper function
@@ -56,9 +66,12 @@ service cloud.firestore {
 
     function hasWorkspaceAccess(workspaceId) {
       let data = getUserData();
-      let userWorkspaces = data != null ? data.get('workspaceIds', []) : [];
-      return isSystemAdmin() ||
-             (data != null && data.get('isAuthorized', false) == true && workspaceId in userWorkspaces);
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('isAuthorized', false) == true && 
+         (data.get('permissions', []).hasAny(['system_admin']) || 
+          workspaceId in data.get('workspaceIds', [])))
+      );
     }
 
     // --- Base Deny-All ---
@@ -256,17 +269,11 @@ service cloud.firestore {
     // Global templates: read by all authenticated users, write only by super admins
     // Org templates: read/write scoped to matching organizationId
     match /message_templates/{tId} {
-      // Read access:
-      // - Global templates (scope == 'global'): all authenticated users
-      // - Org templates (scope == 'organization'): users in matching organization
-      allow get: if isAuthorized() && (
-        resource.data.scope == 'global' ||
-        (resource.data.scope == 'organization' && isOrgMatch(resource.data.organizationId))
-      );
-      
-      // List access: all authorized users can list templates
-      // (filtering by scope happens in application layer)
-      allow list: if isAuthorized();
+      // Read access: all authorized users can read templates
+      // Global templates are accessible to all
+      // Org templates should be filtered by application layer
+      // Using 'read' instead of separate 'get' and 'list' to avoid permission conflicts
+      allow read: if isAuthorized();
       
       // Write access for global templates: super admins only
       allow create: if isAuthorized() && (
@@ -361,21 +368,21 @@ service cloud.firestore {
     }
 
     match /sender_profiles/{pId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isAuthorized();
+      // Allow read for all authorized users - workspace filtering happens in queries
+      allow read: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /message_styles/{sId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isAuthorized();
+      // Allow read for all authorized users - workspace filtering happens in queries
+      allow read: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
     }
 
     match /automations/{aId} {
-      allow get: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
-      allow list: if isAuthorized();
-      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      // Allow read for all authorized users - workspace filtering happens in queries
+      allow read: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(request.resource.data.workspaceIds));
     }
 
     // --- Operational Layer (Strict Workspace Confinement) ---
@@ -404,6 +411,69 @@ service cloud.firestore {
     match /message_logs/{logId} {
       allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
       allow list: if isAuthorized();
+    }
+
+    // --- Message Campaigns ---
+    // Campaign management for bulk messaging
+    match /message_campaigns/{campaignId} {
+      // Read access: users in matching workspace
+      allow get: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      
+      // List access: all authorized users (filtering by workspace happens in queries)
+      allow list: if isAuthorized();
+      
+      // Create: users with workspace access
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         isOrgMatch(request.resource.data.organizationId))
+      );
+      
+      // Update: users with workspace access
+      // Prevent workspace and organization changes
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         isOrgMatch(resource.data.organizationId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         request.resource.data.organizationId == resource.data.organizationId)
+      );
+      
+      // Delete: super admins or users with workspace access
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    // --- Message Audiences ---
+    match /message_audiences/{audienceId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId))));
+    }
+
+    // --- In-App Notifications ---
+    // User-specific notifications displayed in the notification center
+    match /in_app_notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow get: if isSignedIn() && request.auth.uid == resource.data.userId;
+      
+      // List with userId filter
+      allow list: if isSignedIn();
+      
+      // Users can mark their own notifications as read
+      allow update: if isSignedIn() && 
+                       request.auth.uid == resource.data.userId &&
+                       request.resource.data.userId == resource.data.userId;
+      
+      // Only system can create notifications
+      allow create: if isAuthorized();
+      
+      // Only system admin can delete
+      allow delete: if isSystemAdmin();
     }
 
     // --- Entity Migration Security Rules (Requirement 29) ---

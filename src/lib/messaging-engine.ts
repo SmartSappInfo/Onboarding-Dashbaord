@@ -266,16 +266,22 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
-    // 7. Render Content
+    // 7. Render Content (contentMode-aware routing)
+    // - 'rich_builder': Render blocks array into HTML with optional style wrapper
+    // - 'plain_text' / 'html_code': Resolve variables in body, apply style wrapper if present
+    // Fallback: if contentMode is missing (legacy), use blocks?.length heuristic
     let resolvedBody = '';
-    if (template.channel === 'email' && template.blocks?.length) {
+    const useBlocks = template.contentMode === 'rich_builder'
+        || (!template.contentMode && template.channel === 'email' && template.blocks?.length);
+
+    if (useBlocks && template.blocks?.length) {
         resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
             wrapper: styleWrapper || undefined
         });
     } else {
         resolvedBody = resolveVariables(template.body, finalVariables);
         if (template.channel === 'email' && styleWrapper && styleWrapper.includes('{{content}}')) {
-            resolvedBody = styleWrapper.replace('{{content}}', resolvedBody);
+            resolvedBody = resolveVariables(styleWrapper, finalVariables).replace('{{content}}', resolvedBody);
         }
     }
 

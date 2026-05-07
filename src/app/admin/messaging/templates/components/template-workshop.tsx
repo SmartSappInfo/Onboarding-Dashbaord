@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { 
     Layout, 
     Settings2, 
@@ -20,7 +21,9 @@ import {
     Sparkles,
     ChevronRight,
     FlaskConical,
-    Share2
+    Share2,
+    FileText,
+    UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,13 +36,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables } from '@/lib/messaging-utils';
 import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
+import { PlainTextEditor } from './PlainTextEditor';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
 import TestDispatchDialog from '../../components/TestDispatchDialog';
@@ -47,6 +62,12 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon } from 'lucide-react';
+
+// Dynamic import for HtmlCodeEditor (bundle-dynamic-imports)
+const HtmlCodeEditor = dynamic(
+    () => import('./HtmlCodeEditor'),
+    { ssr: false, loading: () => <Skeleton className="h-[600px] rounded-2xl" /> }
+);
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -89,12 +110,17 @@ export function TemplateWorkshop({
     const [name, setName] = React.useState(initialTemplate?.name || '');
     const [category, setCategory] = React.useState(initialTemplate?.category || 'general');
     const [channel, setChannel] = React.useState(initialTemplate?.channel || 'email');
+    const [contentMode, setContentMode] = React.useState<ContentMode>(
+        initialTemplate?.contentMode || (initialTemplate?.channel === 'sms' ? 'plain_text' : 'rich_builder')
+    );
+    const [target, setTarget] = React.useState<TemplateTarget>(initialTemplate?.target || 'external_client');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
     const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
     const [styleId, setStyleId] = React.useState(initialTemplate?.styleId || 'none');
+    const [pendingContentMode, setPendingContentMode] = React.useState<ContentMode | null>(null);
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -106,13 +132,13 @@ export function TemplateWorkshop({
 
     const sensors = useSensors(useSensor(PointerSensor));
 
-    // Sync Designers
+    // Sync Designers — only for rich_builder mode (Risk Analysis: Improvement 3)
     React.useEffect(() => {
-        if (channel === 'email' && editorMode === 'designer') {
+        if (channel === 'email' && contentMode === 'rich_builder' && editorMode === 'designer') {
             const html = renderBlocksToHtml(blocks, {});
             if (html !== body) setBody(html);
         }
-    }, [blocks, channel, editorMode, body]);
+    }, [blocks, channel, contentMode, editorMode, body]);
 
     const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1'|'h2'|'h3') => {
         const id = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -142,19 +168,71 @@ export function TemplateWorkshop({
         return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop); };
     }, [isResizing]);
 
+    // Content mode switch handler with data integrity
+    const handleContentModeSwitch = React.useCallback((newMode: ContentMode) => {
+        if (newMode === contentMode) return;
+        // Check if there's content that could be lost
+        const hasContent = contentMode === 'rich_builder' ? blocks.length > 0 : body.length > 0;
+        if (hasContent) {
+            setPendingContentMode(newMode);
+        } else {
+            setContentMode(newMode);
+        }
+    }, [contentMode, blocks.length, body.length]);
+
+    const confirmContentModeSwitch = React.useCallback(() => {
+        if (!pendingContentMode) return;
+        // Clear stale data for the old mode (Risk Analysis: Improvement 2)
+        if (contentMode === 'rich_builder') {
+            // Moving away from blocks → preserve rendered body, clear blocks
+            setBlocks([]);
+        } else {
+            // Moving to rich_builder → clear body, start fresh blocks
+            if (pendingContentMode === 'rich_builder') {
+                setBody('');
+            }
+        }
+        setContentMode(pendingContentMode);
+        setPendingContentMode(null);
+    }, [pendingContentMode, contentMode]);
+
     const handleCommit = () => {
-        onSave({ name, category, channel, workspaceIds, subject, previewText, body, blocks, styleId });
+        // Clear irrelevant data on save (Risk Analysis: Improvement 2)
+        const saveData: any = {
+            name, category, channel, contentMode, target, workspaceIds,
+            subject, previewText, body, blocks, styleId
+        };
+        if (contentMode === 'rich_builder') {
+            // blocks is source of truth — body is auto-generated
+        } else {
+            // body is source of truth — clear blocks
+            saveData.blocks = [];
+        }
+        // SMS is always plain_text
+        if (channel === 'sms') {
+            saveData.contentMode = 'plain_text';
+            saveData.blocks = [];
+        }
+        onSave(saveData);
     };
 
+    // contentMode-aware preview (Risk Analysis: Risk 3 fix)
     const resolvedPreviewHtml = React.useMemo(() => {
-        if (channel === 'email') {
-            const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+        const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+
+        if (effectiveMode === 'rich_builder') {
             return renderBlocksToHtml(blocks, simVariables, {
                 wrapper: activeStyle?.htmlWrapper
             });
         }
-        return resolveVariables(body, simVariables);
-    }, [channel, blocks, simVariables, styleId, styles, body]);
+        // plain_text and html_code both use body
+        let resolved = resolveVariables(body, simVariables);
+        if (effectiveMode === 'html_code' && activeStyle?.htmlWrapper?.includes('{{content}}')) {
+            resolved = resolveVariables(activeStyle.htmlWrapper, simVariables).replace('{{content}}', resolved);
+        }
+        return resolved;
+    }, [channel, contentMode, blocks, simVariables, styleId, styles, body]);
 
     const filteredVars = React.useMemo(() => {
         return variables.filter(v => (
@@ -254,34 +332,58 @@ export function TemplateWorkshop({
  <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Shared templates are available for logic and manual dispatch across selected hubs.</p>
                                         </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1">Channel Logic</Label>
- <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
- <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'email' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
- <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-semibold text-primary ml-1">Channel Logic</Label>
+                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                                                    <button type="button" onClick={() => { setChannel('email'); }} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'email' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
+                                                    <button type="button" onClick={() => { setChannel('sms'); setContentMode('plain_text'); }} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
                                                 </div>
                                             </div>
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1">Category</Label>
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-semibold text-primary ml-1">Category</Label>
                                                 <Select value={category} onValueChange={(v: any) => setCategory(v)}>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
- <SelectContent className="rounded-xl">
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
                                                         <SelectItem value="general">General</SelectItem>
-                                                        <SelectItem value="finance">Finance Hub</SelectItem>
-                                                        <SelectItem value="contracts">Legal Contracts</SelectItem>
-                                                        <SelectItem value="meetings">Meetings</SelectItem>
                                                         <SelectItem value="surveys">Surveys</SelectItem>
+                                                        <SelectItem value="meetings">Meetings</SelectItem>
                                                         <SelectItem value="forms">Forms</SelectItem>
+                                                        <SelectItem value="agreements">Agreements</SelectItem>
+                                                        <SelectItem value="campaigns">Campaigns</SelectItem>
+                                                        <SelectItem value="reminders">Reminders</SelectItem>
+                                                        <SelectItem value="tasks">Tasks</SelectItem>
+                                                        <SelectItem value="automations">Automations</SelectItem>
+                                                        <SelectItem value="qr_codes">QR Codes</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                         </div>
+                                        {/* Target Audience (Story 4) */}
+                                        <div className="space-y-4 pt-4 border-t border-dashed">
+                                            <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><UserCog className="h-3 w-3" /> Target Audience</Label>
+                                            <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                                                <button type="button" onClick={() => setTarget('external_client')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", target === 'external_client' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>External Client</button>
+                                                <button type="button" onClick={() => setTarget('internal_team')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", target === 'internal_team' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Team / Staff</button>
+                                            </div>
+                                        </div>
+                                        {/* Content Mode (Story 3) */}
                                         {channel === 'email' && (
- <div className="space-y-8 pt-8 border-t border-dashed">
- <div className="space-y-6">
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label><Input value={subject} onChange={e => setSubject(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6" /></div>
- <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Preview Text</Label><Input value={previewText} onChange={e => setPreviewText(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-medium text-sm px-6" /></div>
+                                            <div className="space-y-4 pt-4 border-t border-dashed">
+                                                <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><FileText className="h-3 w-3" /> Content Mode</Label>
+                                                <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                                                    <button type="button" onClick={() => handleContentModeSwitch('plain_text')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'plain_text' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Plain Text</button>
+                                                    <button type="button" onClick={() => handleContentModeSwitch('html_code')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'html_code' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>HTML Code</button>
+                                                    <button type="button" onClick={() => handleContentModeSwitch('rich_builder')} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", contentMode === 'rich_builder' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>Rich Builder</button>
+                                                </div>
+                                                <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">{contentMode === 'plain_text' ? 'Simple text with {{variable}} placeholders. Best for transactional alerts.' : contentMode === 'html_code' ? 'Raw HTML/CSS editor with live preview. Full control over markup.' : 'Visual drag-and-drop block editor. No coding required.'}</p>
+                                            </div>
+                                        )}
+                                        {channel === 'email' && (
+                                            <div className="space-y-8 pt-8 border-t border-dashed">
+                                                <div className="space-y-6">
+                                                    <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label><Input value={subject} onChange={e => setSubject(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6" autoComplete="off" /></div>
+                                                    <div className="space-y-2"><Label className="text-[10px] font-semibold text-muted-foreground ml-1">Preview Text</Label><Input value={previewText} onChange={e => setPreviewText(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none font-medium text-sm px-6" autoComplete="off" /></div>
                                                 </div>
                                             </div>
                                         )}
@@ -421,50 +523,56 @@ export function TemplateWorkshop({
  <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
                             </div>
 
- <div className="flex-1 flex flex-col bg-background min-w-0">
- <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
- <div className="flex items-center gap-4">
-                                        {channel === 'email' && (
+                            <div className="flex-1 flex flex-col bg-background min-w-0">
+                                <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        {/* Designer/Code toggle only for rich_builder (Improvement 5) */}
+                                        {channel === 'email' && contentMode === 'rich_builder' && (
                                             <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)}>
- <TabsList className="bg-background0 p-1 rounded-xl h-9 border">
- <TabsTrigger value="designer" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
- <TabsTrigger value="code" className="text-[9px] font-semibold gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
+                                                <TabsList className="bg-background0 p-1 rounded-xl h-9 border">
+                                                    <TabsTrigger value="designer" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
+                                                    <TabsTrigger value="code" className="text-[9px] font-semibold gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
                                                 </TabsList>
                                             </Tabs>
                                         )}
                                     </div>
- <div className="flex items-center gap-2">
-                                        {channel === 'email' && (
- <div className="flex items-center gap-2 mr-2">
- <Label className="text-[10px] font-semibold text-muted-foreground">Style Wrapper:</Label>
+                                    <div className="flex items-center gap-2">
+                                        {channel === 'email' && contentMode !== 'plain_text' && (
+                                            <div className="flex items-center gap-2 mr-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground">Style Wrapper:</Label>
                                                 <Select value={styleId} onValueChange={setStyleId}>
- <SelectTrigger className="h-9 w-40 rounded-xl bg-muted/20 border-none font-bold text-xs"><SelectValue /></SelectTrigger>
- <SelectContent className="rounded-xl">
+                                                    <SelectTrigger className="h-9 w-40 rounded-xl bg-muted/20 border-none font-bold text-xs"><SelectValue /></SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
                                                         <SelectItem value="none">No Wrapper (Raw)</SelectItem>
                                                         {styles.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                         )}
- <Button variant="ghost" size="sm" onClick={() => setIsFullScreen(!isFullScreen)} className="h-9 rounded-xl font-bold gap-2 text-xs border border-border/50">
- {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                        <Button variant="ghost" size="sm" onClick={() => setIsFullScreen(!isFullScreen)} className="h-9 rounded-xl font-bold gap-2 text-xs border border-border/50">
+                                            {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                                             {isFullScreen ? 'Exit Zen' : 'Zen Mode'}
                                         </Button>
- <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary">
- <Eye className="h-4 w-4" /> Simulation Studio
+                                        <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary">
+                                            <Eye className="h-4 w-4" /> Simulation Studio
                                         </Button>
                                     </div>
                                 </div>
 
- <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
- <div className="max-w-4xl mx-auto p-8 pb-64">
-                                        {channel === 'email' && editorMode === 'designer' ? (
- <div className="max-w-[600px] mx-auto bg-card shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden text-left">
- <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
- <div className="p-12 space-y-2">
+                                <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
+                                    <div className="max-w-4xl mx-auto p-8 pb-64">
+                                        {/* contentMode-aware editor routing */}
+                                        {channel === 'sms' || contentMode === 'plain_text' ? (
+                                            <PlainTextEditor value={body} onChange={setBody} variables={filteredVars} channel={channel as 'email' | 'sms'} />
+                                        ) : contentMode === 'html_code' ? (
+                                            <HtmlCodeEditor value={body} onChange={setBody} variables={filteredVars} />
+                                        ) : editorMode === 'designer' ? (
+                                            <div className="max-w-[600px] mx-auto bg-card shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden text-left">
+                                                <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+                                                <div className="p-12 space-y-2">
                                                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                                         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
- <div className="space-y-4">
+                                                            <div className="space-y-4">
                                                                 {blocks.map((block, idx) => (
                                                                     <SortableBlockItem 
                                                                         key={block.id} 
@@ -474,10 +582,7 @@ export function TemplateWorkshop({
                                                                         isSelected={selectedBlockId === block.id} 
                                                                         simulationVars={simVariables}
                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
-                                                                        onRemove={() => {
-                                                                            setBlocks(prev => prev.filter(b => b.id !== block.id));
-                                                                            if (selectedBlockId === block.id) setSelectedBlockId(null);
-                                                                        }}
+                                                                        onRemove={() => { setBlocks(prev => prev.filter(b => b.id !== block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
                                                                         onDuplicate={() => { const next = [...blocks]; next.splice(idx + 1, 0, { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }); setBlocks(next); }}
                                                                         onSwap={(a, b) => setBlocks(p => arrayMove(p, a, b))}
                                                                         totalCount={blocks.length}
@@ -490,10 +595,10 @@ export function TemplateWorkshop({
                                                 </div>
                                             </div>
                                         ) : (
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Manual Logic Editor</Label>
- <div className="p-1 rounded-[2.5rem] shadow-2xl bg-slate-900 overflow-hidden">
- <Textarea value={body} onChange={e => setBody(e.target.value)} className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 border-none shadow-none focus-visible:ring-0 bg-slate-900 text-blue-400" />
+                                            <div className="space-y-2 text-left">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Raw Block Code</Label>
+                                                <div className="p-1 rounded-[2.5rem] shadow-2xl bg-slate-900 overflow-hidden">
+                                                    <Textarea value={body} onChange={e => setBody(e.target.value)} className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 border-none shadow-none focus-visible:ring-0 bg-slate-900 text-blue-400" />
                                                 </div>
                                             </div>
                                         )}
@@ -512,13 +617,16 @@ export function TemplateWorkshop({
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId} 
                             entities={entities} meetings={meetings} surveys={surveys} pdfs={pdfs}
                             resolvedPreview={(tmpl, vars) => {
-                                if (channel === 'email') {
-                                    const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
-                                    return renderBlocksToHtml(blocks, vars, {
-                                        wrapper: activeStyle?.htmlWrapper
-                                    });
+                                const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+                                const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+                                if (effectiveMode === 'rich_builder') {
+                                    return renderBlocksToHtml(blocks, vars, { wrapper: activeStyle?.htmlWrapper });
                                 }
-                                return resolveVariables(body, vars);
+                                let resolved = resolveVariables(body, vars);
+                                if (effectiveMode === 'html_code' && activeStyle?.htmlWrapper?.includes('{{content}}')) {
+                                    resolved = resolveVariables(activeStyle.htmlWrapper, vars).replace('{{content}}', resolved);
+                                }
+                                return resolved;
                             }}
                         />
                     )}
@@ -534,6 +642,22 @@ export function TemplateWorkshop({
                 variables={simVariables}
                 entityId={simEntity === 'School' ? simRecordId : undefined}
             />
+
+            {/* Content Mode Switch Confirmation Dialog */}
+            <AlertDialog open={!!pendingContentMode} onOpenChange={(open) => { if (!open) setPendingContentMode(null); }}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Switch Content Mode?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Switching content mode may reset your current content. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmContentModeSwitch} className="rounded-xl">Switch Mode</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

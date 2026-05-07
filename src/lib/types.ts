@@ -186,7 +186,13 @@ export type AutomationTrigger =
   | 'TAG_REMOVED'
   | 'CAMPAIGN_PAGE_SUBMITTED'
   | 'FORM_SUBMITTED'
-  | 'ENTITY_CREATED';
+  | 'ENTITY_CREATED'
+  // Phase 6: Campaign engagement triggers
+  | 'CAMPAIGN_DELIVERED'
+  | 'CAMPAIGN_FAILED'
+  | 'CAMPAIGN_OPENED'
+  | 'CAMPAIGN_CLICKED'
+  | 'CAMPAIGN_NOT_DELIVERED';
 
 /**
  * Configuration for tag-based automation triggers (TAG_ADDED / TAG_REMOVED).
@@ -1790,7 +1796,7 @@ export type TemplateTarget = 'external_client' | 'internal_team';
  * - 'rich_builder': Visual drag-and-drop block editor
  * SMS templates always use 'plain_text'.
  */
-export type ContentMode = 'plain_text' | 'html_code' | 'rich_builder';
+export type ContentMode = 'plain_text' | 'html_code' | 'rich_builder' | 'template';
 
 /**
  * Simplified template lifecycle status.
@@ -1967,6 +1973,185 @@ export interface MessageStyle {
   updatedAt: string;
 }
 
+// ─── Campaign Entity & Management (Phase 3) ──────────────────────────────────
+
+/**
+ * Campaign lifecycle status.
+ * Linear progression: draft → scheduled → sending → sent | failed
+ * Manual transitions: any → archived
+ */
+export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'archived';
+
+/**
+ * Defines how a campaign's audience is selected.
+ * Supports tag-based, manual, all-entities, and saved audience modes.
+ */
+export interface AudienceDefinition {
+  /** Selection mode */
+  mode: 'all' | 'tags' | 'manual' | 'saved' | 'advanced';
+  /** Tag IDs for tag-based targeting (Phase 3 simple mode) */
+  tagIds?: string[];
+  /** Tag matching logic: 'any' = OR, 'all' = AND */
+  tagLogic?: 'any' | 'all';
+  /** Excluded tag IDs */
+  excludeTagIds?: string[];
+  /** Manually selected entity IDs */
+  entityIds?: string[];
+  /** Contact scope within entities */
+  contactScope?: 'primary' | 'signatories' | 'all';
+  /** Optional contact type filter (e.g. 'father', 'mother') */
+  contactTypeFilter?: string | null;
+  /** Reference to a saved audience definition (Phase 4) */
+  savedAudienceId?: string;
+  /** Advanced filters (Phase 4) — used when mode = 'advanced' or 'saved' */
+  filters?: AudienceFilter[];
+  /** Logic for combining advanced filters */
+  filterLogic?: 'AND' | 'OR';
+}
+
+/**
+ * Typed filter field options for the audience builder.
+ * MVP set: tags, status, entityType, assignedTo, location.
+ * Phase 5-6 expansion: dealStage, surveyCompletion, messageActivity.
+ */
+export type AudienceFilterField =
+  | 'tags'
+  | 'status'
+  | 'entityType'
+  | 'assignedTo'
+  | 'locationCountry'
+  | 'locationRegion'
+  | 'locationDistrict'
+  | 'lifecycleStatus'
+  | 'lastContactedAt'
+  | (string & {}); // Backward-compatible escape hatch
+
+/**
+ * Audience filter condition for advanced filtering.
+ * Each row in the visual filter builder maps to one AudienceFilter.
+ */
+export interface AudienceFilter {
+  /** Unique ID per filter row (for React keying) */
+  id: string;
+  field: AudienceFilterField;
+  operator: 'is' | 'is_not' | 'contains' | 'not_contains' | 'any_of' | 'all_of' | 'is_empty' | 'is_not_empty';
+  value: any;
+}
+
+/**
+ * Saved audience segment — reusable filter definition.
+ * Stored in the `message_audiences` Firestore collection.
+ */
+export interface MessageAudience {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  filters: AudienceFilter[];
+  filterLogic: 'AND' | 'OR';
+  estimatedCount?: number;
+  lastEstimatedAt?: string;
+  lastUsedAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Campaign entity — the core unit for scheduling, analytics, retries, and cloning.
+ *
+ * Content is **snapshotted at creation time** (R5 fix):
+ * - templateId references the source template for attribution
+ * - customSubject/customBody/customBlocks hold the actual content used at send time
+ * - The campaign is self-contained and does NOT re-fetch the template at send time
+ */
+
+/**
+ * Phase 6: Rule for applying a tag to entities based on campaign delivery outcome.
+ * Each rule targets a specific cohort (e.g., all delivered, all failed).
+ */
+export interface PostSendTagRule {
+  tagId: string;
+  tagName: string;
+  /** Which cohort of recipients should receive this tag */
+  appliesTo: 'all_targeted' | 'delivered' | 'failed' | 'not_delivered';
+  /** Optional delay in minutes before applying (for 'not_delivered': wait, then check) */
+  delayMinutes?: number;
+}
+
+/**
+ * Phase 6: Hook that triggers an automation when a campaign engagement event occurs.
+ */
+export interface CampaignAutomationHook {
+  event: 'campaign_delivered' | 'campaign_failed' | 'campaign_not_delivered';
+  automationId: string;
+  automationName: string;
+  /** Optional delay in minutes before triggering */
+  delayMinutes?: number;
+}
+
+export interface MessageCampaign {
+  id: string;
+
+  // Scope
+  workspaceId: string;
+  organizationId: string;
+
+  // Identity
+  internalName: string;
+  channel: MessageChannel;
+  target: TemplateTarget;
+
+  // Content (snapshotted — self-contained)
+  templateId?: string;
+  templateName?: string;
+  contentMode: ContentMode;
+  customSubject?: string;
+  customBody?: string;
+  customBlocks?: MessageBlock[];
+  /** Style wrapper ID applied at send time */
+  styleId?: string | null;
+
+  // Audience
+  audienceDefinition: AudienceDefinition;
+  /** Estimated recipient count at creation/last-edit time */
+  estimatedRecipientCount?: number;
+
+  // Sender
+  senderProfileId?: string;
+
+  // Lifecycle
+  status: CampaignStatus;
+  scheduledAt?: string;
+  sentAt?: string;
+  /** Tracks the last completed wizard step for draft resume (1-5) */
+  lastCompletedStep?: number;
+
+  // Bulk job linkage (R3 fix — two-phase commit)
+  /** Linked bulk message job ID for send tracking and error recovery */
+  jobId?: string;
+
+  // Post-send behavior (Phase 6)
+  /** Conditional tag rules applied after campaign completes */
+  postSendTagRules?: PostSendTagRule[];
+  /** Automation hooks triggered by campaign engagement events */
+  automationHooks?: CampaignAutomationHook[];
+
+  // Stats (denormalized for list view)
+  stats: {
+    totalTargeted: number;
+    totalSent: number;
+    totalFailed: number;
+    totalOpened: number;
+    totalClicked: number;
+  };
+
+  // Metadata
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SenderProfile {
   id: string;
   name: string;
@@ -2027,6 +2212,15 @@ export interface MessageJob {
   failed: number;
   createdBy: string;
   createdAt: string;
+  /** Campaign linkage for analytics aggregation */
+  campaignId?: string;
+  /** Snapshotted content for campaign-aware jobs (R2 fix — no templateId required) */
+  customSubject?: string;
+  customBody?: string;
+  /** Organization ID for branding resolution */
+  organizationId?: string;
+  /** Workspace ID for scoping */
+  workspaceId?: string;
 }
 
 export interface MessageTask {
@@ -2037,6 +2231,10 @@ export interface MessageTask {
   providerId?: string;
   sentAt?: string;
   error?: string;
+  /** Entity display name for analytics recipient table */
+  displayName?: string;
+  /** Entity ID for post-send tagging */
+  entityId?: string;
 }
 
 

@@ -254,6 +254,43 @@ export function renderBlocksToHtml(
         break;
       }
 
+      case 'header': {
+        const headerLogo = resolveVariables(block.url || '{{org_logo_url}}', variables);
+        const headerName = resolveVariables('{{org_name}}', variables);
+        blockHtml = `
+          <div style="${wrapperStyle} padding: 24px 0; border-bottom: 1px solid #e2e8f0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
+              <tr>
+                <td style="vertical-align: middle;">
+                  <img src="${headerLogo}" alt="${headerName}" style="height: 40px; width: auto; display: block;" width="100" height="40" />
+                </td>
+                <td style="vertical-align: middle; text-align: right;">
+                  <span style="${baseStyle} font-size: 16px; font-weight: 800; color: #1e293b;">${headerName}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+        break;
+      }
+
+      case 'footer': {
+        const fName = resolveVariables('{{org_name}}', variables);
+        const fEmail = resolveVariables('{{org_email}}', variables);
+        const fPhone = resolveVariables('{{org_phone}}', variables);
+        const fAddr = resolveVariables('{{org_address}}', variables);
+        const fYear = resolveVariables('{{current_year}}', variables) || new Date().getFullYear().toString();
+        blockHtml = `
+          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-family: 'Figtree', sans-serif;">
+            <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #475569;">${fName}</p>
+            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: #94a3b8;">${fAddr}</p>
+            <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: #94a3b8;">${fEmail} | ${fPhone}</p>
+            <p style="margin: 0; font-size: 10px; font-weight: 600; color: #cbd5e1;">&copy; ${fYear} ${fName}. All rights reserved.</p>
+          </div>
+        `;
+        break;
+      }
+
       default:
         blockHtml = '';
     }

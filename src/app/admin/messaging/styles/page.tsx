@@ -26,7 +26,8 @@ import {
     Share2,
     Layout,
     AlertCircle,
-    ShieldCheck
+    ShieldCheck,
+    ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -56,7 +57,7 @@ export default function MessageStylesPage() {
 
     const [name, setName] = React.useState('');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([activeWorkspaceId]);
-    const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px;">\n    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">\n      {{content}}\n    </div>\n  </body>\n</html>');
+    const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">\n    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">\n      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">\n        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />\n      </div>\n      <div style="padding: 32px;">\n        {{content}}\n      </div>\n      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">\n        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>\n        <p style="margin: 4px 0 0;">{{org_address}}</p>\n      </div>\n    </div>\n  </body>\n</html>');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const [aiName, setAiName] = React.useState('');
@@ -240,6 +241,41 @@ export default function MessageStylesPage() {
  className="min-h-[300px] font-mono text-xs bg-slate-900 text-blue-400 p-8 rounded-[2rem] border-none shadow-2xl" 
                                 />
                             </div>
+                            {/* Org Variables Reference Panel (Story 6) */}
+                            <details className="group rounded-2xl border bg-card overflow-hidden">
+                                <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-muted/30 transition-colors">
+                                    <span className="text-[10px] font-bold text-primary flex items-center gap-2"><Sparkles className="h-3 w-3" /> Organization Variables Reference</span>
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div className="px-4 pb-4 pt-0 border-t">
+                                    <p className="text-[9px] font-semibold text-muted-foreground mb-3 mt-3">Use these in your HTML wrapper. They auto-resolve from each workspace&apos;s org settings at send time.</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {[
+                                            { key: 'org_name', desc: 'Organization name' },
+                                            { key: 'org_logo_url', desc: 'Logo image URL' },
+                                            { key: 'org_email', desc: 'Contact email' },
+                                            { key: 'org_phone', desc: 'Contact phone' },
+                                            { key: 'org_address', desc: 'Physical address' },
+                                            { key: 'org_website', desc: 'Website URL' },
+                                            { key: 'current_year', desc: 'Current year (auto)' },
+                                            { key: 'content', desc: 'Email body injection point' },
+                                        ].map(v => (
+                                            <button
+                                                key={v.key}
+                                                type="button"
+                                                onClick={() => {
+                                                    const tag = `{{${v.key}}}`;
+                                                    setHtmlWrapper(prev => prev + tag);
+                                                }}
+                                                className="flex flex-col items-start p-2.5 rounded-xl border bg-muted/20 hover:bg-primary/5 hover:border-primary/20 transition-colors text-left"
+                                            >
+                                                <span className="text-[9px] font-bold font-mono text-primary">{`{{${v.key}}}`}</span>
+                                                <span className="text-[8px] font-semibold text-muted-foreground mt-0.5">{v.desc}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </details>
  <div className="flex justify-end">
  <Button onClick={handleAdd} disabled={isSubmitting || !name || !htmlWrapper.includes('{{content}}')} className="rounded-xl h-12 px-12 font-semibold text-[10px] shadow-xl">
  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
@@ -261,6 +297,7 @@ export default function MessageStylesPage() {
                                         srcDoc={style.htmlWrapper.replace('{{content}}', '<div style="height: 100px; background: #f1f5f9; border: 2px dashed #cbd5e1; padding: 40px; text-align: center; color: #64748b; font-family: sans-serif; font-size: 12px; color: #94a3b8; border-radius: 12px; margin: 20px;">[ Content Gateway ]</div>')}
  className="w-[800px] h-[600px] origin-top-left scale-[0.45] pointer-events-none border-none"
                                         title={`Preview of ${style.name}`}
+                                        loading="lazy"
                                     />
  <div className="absolute inset-0 bg-transparent" />
                                     {style.workspaceIds?.length > 1 && (
