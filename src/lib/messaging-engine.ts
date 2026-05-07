@@ -24,8 +24,9 @@ interface SendMessageInput {
   workspaceId?: string; // Workspace context for message (Requirement 11)
   scheduledAt?: string; // ISO string
   // Task 15.1: Allow overriding template content
-  subject?: string; // Override template subject
   body?: string; // Override template body
+  tags?: { name: string; value: string }[]; // Optional provider-specific tags (Requirement 7)
+  trackLinks?: boolean; // Phase 7: Whether to track URLs in the body
 }
 
 /**
@@ -39,7 +40,7 @@ interface SendMessageInput {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt } = input;
+  const { templateId, senderProfileId, recipient, variables, attachments, entityId, entityType, workspaceId, scheduledAt, tags, trackLinks } = input;
 
   try {
     // 1. Fetch Template
@@ -257,6 +258,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         finalVariables.current_year = new Date().getFullYear().toString();
     }
 
+    // Phase 7: Inject Unsubscribe Link
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+    const unsubId = resolvedEntityId || recipient;
+    finalVariables.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${resolvedWorkspaceId}&c=${template.channel}`;
+
     // 6. Resolve Style Wrapper (styleId is optional — null/undefined/'' means no wrapper)
     let styleWrapper = '';
     if (template.styleId && template.styleId !== 'none') {
@@ -285,9 +291,37 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
+    // Phase 7: Branded Link Tracking
+    if (trackLinks) {
+        const { transformBodyWithTracking } = await import('./link-tracking');
+        // Find jobId and taskId from tags to associate the link
+        const jobId = tags?.find(t => t.name === 'jobId')?.value || 'manual';
+        const taskId = tags?.find(t => t.name === 'taskId')?.value || 'manual';
+        
+        resolvedBody = await transformBodyWithTracking({
+            body: resolvedBody,
+            campaignId: variables.campaignId || 'manual',
+            jobId,
+            taskId
+        });
+    }
+
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
     let resolvedLogTitle = resolveVariables(template.name, finalVariables);
+
+    // Phase 7: Suppression Check (Unsubscribe compliance)
+    const { isSuppressed } = await import('./suppression-service');
+    const suppressed = await isSuppressed({
+        recipient,
+        workspaceId: resolvedWorkspaceId,
+        channel: template.channel as 'email' | 'sms'
+    });
+
+    if (suppressed) {
+        console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for ${template.channel} in workspace ${resolvedWorkspaceId}`);
+        return { success: false, error: 'Recipient unsubscribed' };
+    }
 
     // 8. Gateway Delivery
     let providerId = null;
@@ -331,7 +365,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             subject: resolvedSubject || 'SmartSapp Notification',
             html: resolvedBody,
             attachments: attachments,
-            scheduledAt: scheduledAt
+            scheduledAt: scheduledAt,
+            tags: tags
         });
         providerId = providerResponse?.id;
     }

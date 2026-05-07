@@ -15,6 +15,7 @@ import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
 
 const CONTACT_ROLE_TYPES = [
     'Champion',
@@ -38,35 +39,25 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
 
     const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean, templateId?: string } | null>(null);
 
-    const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'), where('isActive', '==', true));
-    }, [firestore]);
-
-    const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
-
-    const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive && t.category === category && (t.recipientType === 'external_alert' || t.recipientType === 'entity'));
-    const smsTemplates = templates?.filter(t => t.channel === 'sms' && t.isActive && t.category === category && (t.recipientType === 'external_alert' || t.recipientType === 'entity'));
-
     const contactRoleOptions = CONTACT_ROLE_TYPES.map(type => ({ label: type, value: type }));
 
     return (
- <div className="space-y-4">
- <div className={cn(
+        <div className="space-y-4">
+            <div className={cn(
                 "rounded-[2rem] border-2 transition-all duration-500",
                 enabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-background grayscale opacity-60"
             )}>
- <div className="flex items-center justify-between p-6">
- <div className="flex items-center gap-4 text-left">
- <div className={cn(
+                <div className="flex items-center justify-between p-6">
+                    <div className="flex items-center gap-4 text-left">
+                        <div className={cn(
                             "p-3 rounded-2xl transition-all duration-500", 
                             enabled ? "bg-primary text-white shadow-lg shadow-primary/20 -rotate-3" : "bg-muted text-muted-foreground"
                         )}>
- <Users className="h-6 w-6" />
+                            <Users className="h-6 w-6" />
                         </div>
- <div className="space-y-0.5">
- <Label className="text-base font-semibold tracking-tight">External Contact Alerts</Label>
- <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Notify stakeholders at the campus level</p>
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-semibold tracking-tight">External Contact Alerts</Label>
+                            <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Notify stakeholders at the campus level</p>
                         </div>
                     </div>
                     <Controller
@@ -76,27 +67,25 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                             <Switch 
                                 checked={!!field.value} 
                                 onCheckedChange={field.onChange} 
- className="scale-125"
+                                className="scale-125"
                             />
                         )}
                     />
                 </div>
 
-                {/* Warning removed */}
-
                 {enabled && (
- <div className="p-6 pt-0 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
- <Separator className="bg-primary/10" />
+                    <div className="p-6 pt-0 space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <Separator className="bg-primary/10" />
                         
                         {/* Routing Logic */}
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1">1. Stakeholder Filtering</Label>
- <div className="space-y-4">
- <div className="space-y-2">
- <div className="flex items-center gap-2 mb-1">
- <Filter className="h-3 w-3 text-muted-foreground" />
- <span className="text-[10px] font-semibold text-muted-foreground">Contact Roles to Notify</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-semibold text-primary ml-1">1. Stakeholder Filtering</Label>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Filter className="h-3 w-3 text-muted-foreground" />
+                                            <span className="text-[10px] font-semibold text-muted-foreground">Contact Roles to Notify</span>
                                         </div>
                                         <Controller
                                             name={`${prefix}ContactTypes`}
@@ -109,26 +98,26 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                 />
                                             )}
                                         />
- <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
+                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
                                             Add comma or semicolon-separated custom contacts or workspace roles.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1">2. Delivery Medium</Label>
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-semibold text-primary ml-1">2. Delivery Medium</Label>
                                 <Controller
                                     name={`${prefix}Channel`}
                                     control={control}
                                     render={({ field }) => (
- <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                        <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
                                             {(['email', 'sms', 'both'] as const).map(c => (
                                                 <button
                                                     key={c}
                                                     type="button"
                                                     onClick={() => field.onChange(c)}
- className={cn(
+                                                    className={cn(
                                                         "h-10 rounded-xl font-semibold uppercase text-[9px]  transition-all",
                                                         field.value === c ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
                                                     )}
@@ -139,9 +128,9 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                         </div>
                                     )}
                                 />
- <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 flex items-start gap-3">
- <Info className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
- <p className="text-[9px] font-bold text-purple-800 leading-relaxed tracking-tighter">
+                                <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 flex items-start gap-3">
+                                    <Info className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
+                                    <p className="text-[9px] font-bold text-purple-800 leading-relaxed tracking-tighter">
                                         External alerts use public-facing templates. Ensure the tone is appropriate for your customers.
                                     </p>
                                 </div>
@@ -149,14 +138,14 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                         </div>
 
                         {/* Template Selection */}
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-primary/10 text-left">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-primary/10 text-left">
                             {(channel === 'email' || channel === 'both') && (
- <div className="space-y-2">
- <div className="flex justify-between items-center px-1">
- <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
- <Mail className="h-3 w-3" /> External Email Template
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
+                                            <Mail className="h-3 w-3" /> External Email Template
                                         </Label>
- <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1">
                                             <Controller
                                                 name={`${prefix}EmailTemplateId`}
                                                 control={control}
@@ -166,10 +155,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                             <Button 
                                                                 type="button" 
                                                                 variant="ghost" 
- className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
+                                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
                                                                 onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
                                                             >
- <Pencil className="h-3 w-3" /> Edit
+                                                                <Pencil className="h-3 w-3" /> Edit
                                                             </Button>
                                                         ) : null}
                                                     </>
@@ -178,10 +167,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             <Button 
                                                 type="button" 
                                                 variant="ghost" 
- className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
                                                 onClick={() => setQuickCreateState({ channel: 'email', open: true })}
                                             >
- <PlusCircle className="h-3 w-3" /> New
+                                                <PlusCircle className="h-3 w-3" /> New
                                             </Button>
                                         </div>
                                     </div>
@@ -189,27 +178,27 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                         name={`${prefix}EmailTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all">
-                                                    <SelectValue placeholder="Select template..." />
-                                                </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none">Choose template...</SelectItem>
-                                                    {emailTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
+                                            <SmartTemplateDropdown 
+                                                category={category}
+                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
+                                                channel="email"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Select email blueprint..."
+                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all"
+                                            />
                                         )}
                                     />
                                 </div>
                             )}
 
                             {(channel === 'sms' || channel === 'both') && (
- <div className="space-y-2">
- <div className="flex justify-between items-center px-1">
- <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
- <Smartphone className="h-3 w-3" /> External SMS Template
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
+                                            <Smartphone className="h-3 w-3" /> External SMS Template
                                         </Label>
- <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1">
                                             <Controller
                                                 name={`${prefix}SmsTemplateId`}
                                                 control={control}
@@ -219,10 +208,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                                             <Button 
                                                                 type="button" 
                                                                 variant="ghost" 
- className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
+                                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
                                                                 onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
                                                             >
- <Pencil className="h-3 w-3" /> Edit
+                                                                <Pencil className="h-3 w-3" /> Edit
                                                             </Button>
                                                         ) : null}
                                                     </>
@@ -231,10 +220,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                             <Button 
                                                 type="button" 
                                                 variant="ghost" 
- className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg"
                                                 onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
                                             >
- <PlusCircle className="h-3 w-3" /> New
+                                                <PlusCircle className="h-3 w-3" /> New
                                             </Button>
                                         </div>
                                     </div>
@@ -242,15 +231,15 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                         name={`${prefix}SmsTemplateId`}
                                         control={control}
                                         render={({ field }) => (
-                                            <Select value={field.value || 'none'} onValueChange={field.onChange}>
- <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all">
-                                                    <SelectValue placeholder="Select template..." />
-                                                </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none">Choose template...</SelectItem>
-                                                    {smsTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
+                                            <SmartTemplateDropdown 
+                                                category={category}
+                                                recipientType={prefix === 'externalAlert' ? 'external_alert' : 'internal_alert'}
+                                                channel="sms"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Select SMS blueprint..."
+                                                className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all"
+                                            />
                                         )}
                                     />
                                 </div>
@@ -279,25 +268,4 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
             )}
         </div>
     );
-}
-
-function AlertCircle(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-    )
 }

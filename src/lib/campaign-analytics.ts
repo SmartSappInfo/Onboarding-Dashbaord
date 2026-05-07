@@ -169,3 +169,82 @@ export async function syncCampaignStats(campaignId: string): Promise<{ success: 
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Increment a specific campaign stat in real-time.
+ * Used by webhooks to avoid full sync overhead and race conditions.
+ */
+export async function updateCampaignRealtimeStat(
+  campaignId: string, 
+  stat: 'totalOpened' | 'totalClicked' | 'totalSent' | 'totalFailed'
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { FieldValue } = await import('./firebase-admin');
+    const fieldPath = `stats.${stat}`;
+    
+    await adminDb.collection('message_campaigns').doc(campaignId).update({
+      [fieldPath]: FieldValue.increment(1),
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`[ANALYTICS] Failed to update ${stat}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Gets engagement timeline data for charts.
+ * Groups tasks by hour/day based on their sentAt, openedAt, and clickedAt timestamps.
+ */
+export async function getCampaignEngagementTimeline(campaignId: string): Promise<{
+  success: boolean;
+  timeline?: { timestamp: string; sent: number; opened: number; clicked: number }[];
+  error?: string;
+}> {
+  try {
+    const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
+    if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };
+    const campaign = campaignSnap.data() as MessageCampaign;
+    if (!campaign.jobId) return { success: true, timeline: [] };
+
+    // Fetch up to 1000 tasks for timeline analysis (Phase 7 limit)
+    const tasksSnap = await adminDb
+      .collection('message_jobs').doc(campaign.jobId)
+      .collection('tasks')
+      .where('status', 'in', ['sent', 'delivered', 'opened', 'clicked'])
+      .limit(1000)
+      .get();
+
+    const timelineMap: Record<string, { sent: number; opened: number; clicked: number }> = {};
+
+    tasksSnap.docs.forEach(doc => {
+      const task = doc.data() as MessageTask;
+      
+      const processEvent = (isoStr: string | undefined, type: 'sent' | 'opened' | 'clicked') => {
+        if (!isoStr) return;
+        // Group by hour: "YYYY-MM-DDTHH:00"
+        const hour = isoStr.substring(0, 13) + ':00';
+        if (!timelineMap[hour]) timelineMap[hour] = { sent: 0, opened: 0, clicked: 0 };
+        timelineMap[hour][type]++;
+      };
+
+      processEvent(task.sentAt || task.deliveredAt, 'sent');
+      processEvent(task.openedAt, 'opened');
+      processEvent(task.clickedAt, 'clicked');
+    });
+
+    const timeline = Object.entries(timelineMap)
+      .map(([timestamp, counts]) => ({
+        timestamp,
+        ...counts
+      }))
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+    return { success: true, timeline };
+  } catch (error: any) {
+    console.error('getCampaignEngagementTimeline error:', error.message);
+    return { success: false, error: error.message };
+  }
+}

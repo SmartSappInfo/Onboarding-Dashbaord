@@ -1,7 +1,7 @@
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
-import type { MessageTemplate, TemplateCategory, VariableContext, ReminderConfig } from '@/lib/types';
+import { seedGlobalMessagingBlueprint } from '@/lib/seed-messaging-blueprint';
+import { TemplateCategory, VariableContext, ReminderConfig } from '@/lib/types';
 
 interface TemplateDef {
   name: string;
@@ -345,66 +345,24 @@ export interface SeedGlobalTemplatesResult {
   errors: Array<{ name: string; error: string }>;
 }
 
-export async function seedGlobalTemplatesAction(): Promise<SeedGlobalTemplatesResult> {
-  const now = new Date().toISOString();
-  const result: SeedGlobalTemplatesResult = {
-    total: TEMPLATES.length,
-    created: 0,
-    skipped: 0,
-    failed: 0,
-    errors: [],
-  };
-
-  for (const def of TEMPLATES) {
-    try {
-      const existing = await adminDb
-        .collection('message_templates')
-        .where('scope', '==', 'global')
-        .where('category', '==', def.category)
-        .where('templateType', '==', def.templateType)
-        .where('channel', '==', def.channel)
-        .limit(1)
-        .get();
-
-      if (!existing.empty) {
-        result.skipped++;
-        continue;
-      }
-
-      const ref = adminDb.collection('message_templates').doc();
-      const template: MessageTemplate = {
-        id: ref.id,
-        scope: 'global',
-        category: def.category,
-        channel: def.channel,
-        target: 'external_client',
-        name: def.name,
-        contentMode: def.channel === 'sms' ? 'plain_text' : 'plain_text', // seed templates are plain text
-        templateType: def.templateType,
-        subject: def.subject,
-        body: def.body,
-        variableContext: def.variableContext,
-        declaredVariables: def.declaredVariables,
-        reminderConfig: def.reminderConfig,
-        status: 'active',
-        version: 1,
-        createdAt: now,
-        updatedAt: now,
-        createdBy: 'seed-action',
-      };
-
-      if (def.recipientType) {
-        template.recipientType = def.recipientType as any;
-      }
-
-      await ref.set(template);
-      result.created++;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      result.failed++;
-      result.errors.push({ name: def.name, error: message });
-    }
+export async function seedGlobalTemplatesAction(): Promise<{ total: number; created: number; skipped: number; failed: number; errors: any[] }> {
+  const result = await seedGlobalMessagingBlueprint();
+  
+  if (result.success) {
+    return {
+      total: result.templates,
+      created: result.templates,
+      skipped: 0,
+      failed: 0,
+      errors: []
+    };
+  } else {
+    return {
+      total: 0,
+      created: 0,
+      skipped: 0,
+      failed: 1,
+      errors: [{ name: 'Global Blueprint', error: result.error || 'Unknown error' }]
+    };
   }
-
-  return result;
 }

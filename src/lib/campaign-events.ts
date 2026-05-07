@@ -123,3 +123,68 @@ export async function emitCampaignEvents(campaignId: string): Promise<{
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Emits a real-time campaign engagement event for a single entity.
+ * Called by webhooks (e.g. email.opened, email.clicked).
+ */
+export async function emitSingleCampaignEvent(params: {
+  campaignId: string;
+  entityId: string;
+  event: 'campaign_opened' | 'campaign_clicked' | 'campaign_delivered' | 'campaign_failed';
+}): Promise<{ success: boolean; queuedCount: number; error?: string }> {
+  const { campaignId, entityId, event } = params;
+
+  try {
+    const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
+    if (!campaignSnap.exists) return { success: false, queuedCount: 0, error: 'Campaign not found' };
+
+    const campaign = campaignSnap.data() as MessageCampaign;
+    const hooks = campaign.automationHooks || [];
+
+    // Filter hooks that match this specific event
+    const matchingHooks = hooks.filter(h => h.event === event);
+    if (matchingHooks.length === 0) return { success: true, queuedCount: 0 };
+
+    let queuedCount = 0;
+    const now = new Date();
+
+    const { runAutomationById } = await import('./automation-processor');
+
+    for (const hook of matchingHooks) {
+      const payload = {
+        entityId,
+        workspaceId: campaign.workspaceId,
+        campaignId,
+        campaignName: campaign.internalName,
+        event: hook.event,
+        channel: campaign.channel,
+        organizationId: campaign.organizationId || '',
+      };
+
+      if (!hook.delayMinutes || hook.delayMinutes === 0) {
+        // Immediate execution
+        await runAutomationById(hook.automationId, payload);
+      } else {
+        // Queued execution
+        const executeAt = new Date(now.getTime() + hook.delayMinutes * 60_000);
+        await adminDb.collection('automation_jobs').add({
+          automationId: hook.automationId,
+          runId: '',
+          targetNodeId: '__campaign_trigger__',
+          payload,
+          executeAt: executeAt.toISOString(),
+          status: 'pending',
+          source: 'campaign_realtime_event',
+        });
+      }
+      queuedCount++;
+    }
+
+    return { success: true, queuedCount };
+
+  } catch (error: any) {
+    console.error('[CAMPAIGN-EVENT-SINGLE] Failed:', error.message);
+    return { success: false, queuedCount: 0, error: error.message };
+  }
+}

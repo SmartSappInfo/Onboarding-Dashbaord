@@ -43,7 +43,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function MessageStylesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     
     const [isAdding, setIsAdding] = React.useState(false);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
@@ -66,18 +66,29 @@ export default function MessageStylesPage() {
     const [isAiProcessing, setIsAiProcessing] = React.useState(false);
     const [generatedHtml, setGeneratedHtml] = React.useState<string | null>(null);
 
-    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
-
+    // Data Subscriptions - GLOBAL + WORKSPACE
     const stylesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'message_styles'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('createdAt', 'desc')
+            orderBy('name', 'asc')
         );
     }, [firestore, activeWorkspaceId]);
 
-    const { data: styles, isLoading } = useCollection<MessageStyle>(stylesQuery);
+    const { data: allStyles, isLoading } = useCollection<MessageStyle>(stylesQuery);
+
+    // Filter and Deduplicate (Org > Global)
+    const styles = React.useMemo(() => {
+        if (!allStyles) return [];
+        const globalStyles = allStyles.filter(s => !s.workspaceIds || s.workspaceIds.length === 0);
+        const workspaceStyles = allStyles.filter(s => s.workspaceIds?.includes(activeWorkspaceId));
+        
+        // If we have a workspace-specific override with the same ID logic (e.g., prefix with orgId)
+        // For now, just show all relevant ones
+        return [...workspaceStyles, ...globalStyles];
+    }, [allStyles, activeWorkspaceId]);
+
+    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,6 +105,7 @@ export default function MessageStylesPage() {
                 name: name.trim(),
                 htmlWrapper: htmlWrapper.trim(),
                 workspaceIds: workspaceIds.length > 0 ? workspaceIds : [activeWorkspaceId],
+                organizationId: activeOrganizationId || '',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             });

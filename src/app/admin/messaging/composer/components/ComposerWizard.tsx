@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, ResolvedContact, TemplateVariable } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
@@ -25,11 +25,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import {
-    Check, ChevronRight, Smartphone, Mail, Users, Upload, Loader2, Sparkles, Eye,
+    Check, ChevronRight, Smartphone, Mail, Users, Upload, Loader2, Eye,
     X, AlertCircle, Info, CalendarClock, Building, Trophy, TrendingUp, Zap,
     CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText, ClipboardList,
     Calendar, Database, PlusCircle, FlaskConical, Tag, Send, Settings2,
@@ -48,6 +48,7 @@ import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
 import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
+import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -202,6 +203,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
     const [availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
+    const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -229,19 +231,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
 
     // ── Firestore queries ──────────────────────────────────────────────────────
-    const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        let q = query(
-            collection(firestore, 'message_templates'),
-            where('channel', '==', watchedChannel),
-            where('status', '==', 'active')
-        );
-        // Filter by category if context is provided
-        if (composerContext?.category) {
-            q = query(q, where('category', '==', composerContext.category));
-        }
-        return q;
-    }, [firestore, watchedChannel, composerContext?.category]);
 
     const profilesQuery = useMemoFirebase(() =>
         firestore ? query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel)) : null,
@@ -271,7 +260,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             : null,
     [firestore, watchedSourcePdfId]);
 
-    const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);
@@ -346,7 +334,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     const isCombinedLoading = isLoadingEntities || isLoadingWE;
 
-    const selectedTemplate = React.useMemo(() => templates?.find(t => t.id === watchedTemplateId), [templates, watchedTemplateId]);
 
     // ── Effects ────────────────────────────────────────────────────────────────
     React.useEffect(() => {
@@ -434,6 +421,25 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
         loadVars();
     }, [activeWorkspaceId, selectedTemplate]);
+    
+    // Sync selectedTemplate when templateId changes (e.g. on mount or via form)
+    React.useEffect(() => {
+        if (!watchedTemplateId || (selectedTemplate && selectedTemplate.id === watchedTemplateId)) return;
+        
+        // If we don't have the template object yet, fetch it
+        const fetchTemplate = async () => {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const tDoc = await getDoc(doc(firestore, 'message_templates', watchedTemplateId));
+                if (tDoc.exists()) {
+                    setSelectedTemplate({ id: tDoc.id, ...tDoc.data() } as MessageTemplate);
+                }
+            } catch (err) {
+                console.error("Failed to fetch template for sync:", err);
+            }
+        };
+        fetchTemplate();
+    }, [watchedTemplateId, firestore, selectedTemplate]);
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -657,40 +663,16 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                             </Button>
                                         </div>
                                         <Controller name="templateId" control={control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold">
-                                                    <SelectValue placeholder="Select a template..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {isLoadingTemplates ? (
-                                                        <div className="p-4 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-                                                    ) : (() => {
-                                                        // Group templates by templateType
-                                                        const grouped = templates?.reduce((acc, t) => {
-                                                            const type = t.templateType || 'other';
-                                                            if (!acc[type]) acc[type] = [];
-                                                            acc[type].push(t);
-                                                            return acc;
-                                                        }, {} as Record<string, MessageTemplate[]>) || {};
-
-                                                        return Object.entries(grouped).map(([type, typeTemplates]) => (
-                                                            <div key={type}>
-                                                                <div className="px-2 py-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                                                    {type.replace(/_/g, ' ')}
-                                                                </div>
-                                                                {typeTemplates.map(t => (
-                                                                    <SelectItem key={t.id} value={t.id} className="rounded-lg my-0.5 pl-4">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <Badge variant="outline" className="text-[8px] font-bold uppercase h-4 px-1.5 border-primary/20 text-primary">{t.category}</Badge>
-                                                                            <span className="font-semibold text-sm">{t.name}</span>
-                                                                        </div>
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </div>
-                                                        ));
-                                                    })()}
-                                                </SelectContent>
-                                            </Select>
+                                            <SmartTemplateDropdown 
+                                                category={composerContext?.category || 'general'}
+                                                recipientType="entity" // Default for composer
+                                                channel={watchedChannel}
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                onSelect={setSelectedTemplate}
+                                                placeholder="Choose message blueprint..."
+                                                className="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold text-xs"
+                                            />
                                         )} />
                                     </div>
 

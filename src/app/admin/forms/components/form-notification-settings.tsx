@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
 
 interface NotificationConfig {
   enabled: boolean;
@@ -39,15 +40,7 @@ export function FormNotificationSettings({
   onChangeInternal,
   onChangeRespondent,
 }: FormNotificationSettingsProps) {
-  const firestore = useFirestore();
   const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms' | 'in_app' | 'push'; open: boolean; templateId?: string; type: 'internal' | 'respondent' } | null>(null);
-
-  const templatesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('category', '==', 'forms'));
-  }, [firestore]);
-
-  const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
 
   const renderConfigBlock = (
     type: 'internal' | 'respondent',
@@ -56,11 +49,9 @@ export function FormNotificationSettings({
     title: string,
     subtitle: string,
     icon: React.ReactNode,
-    recipientTypeMatch: string
+    recipientTypeMatch: 'respondent' | 'internal_alert'
   ) => {
     const isEnabled = config.enabled;
-    const emailTemplates = templates?.filter(t => t.channel === 'email' && (t.recipientType === recipientTypeMatch || t.recipientType === 'external_alert' || t.recipientType === 'entity'));
-    const smsTemplates = templates?.filter(t => t.channel === 'sms' && (t.recipientType === recipientTypeMatch || t.recipientType === 'external_alert' || t.recipientType === 'entity'));
 
     return (
       <div className={cn("rounded-[2rem] border-2 transition-all duration-500", isEnabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-background")}>
@@ -141,15 +132,15 @@ export function FormNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <Select value={config.emailTemplateId || 'none'} onValueChange={(val) => onChange({ ...config, emailTemplateId: val === 'none' ? undefined : val })}>
-                    <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs">
-                      <SelectValue placeholder="Select email template..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="none">No email template</SelectItem>
-                      {emailTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SmartTemplateDropdown 
+                    category="forms"
+                    recipientType={recipientTypeMatch}
+                    channel="email"
+                    value={config.emailTemplateId}
+                    onValueChange={(val) => onChange({ ...config, emailTemplateId: val })}
+                    placeholder="Select email blueprint..."
+                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -168,15 +159,15 @@ export function FormNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <Select value={config.smsTemplateId || 'none'} onValueChange={(val) => onChange({ ...config, smsTemplateId: val === 'none' ? undefined : val })}>
-                    <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs">
-                      <SelectValue placeholder="Select SMS template..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="none">No SMS template</SelectItem>
-                      {smsTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SmartTemplateDropdown 
+                    category="forms"
+                    recipientType={recipientTypeMatch}
+                    channel="sms"
+                    value={config.smsTemplateId}
+                    onValueChange={(val) => onChange({ ...config, smsTemplateId: val })}
+                    placeholder="Select SMS blueprint..."
+                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                  />
                 </div>
               </div>
             </div>

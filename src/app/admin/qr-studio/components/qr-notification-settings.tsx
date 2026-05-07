@@ -1,18 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { MessageTemplate } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Mail, Smartphone, PlusCircle, Pencil, ScanLine } from 'lucide-react';
+import { Mail, Smartphone, PlusCircle, Pencil, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
 
 interface NotificationConfig {
   enabled: boolean;
@@ -32,19 +29,9 @@ export function QRNotificationSettings({
   internalAlerts = { enabled: false, userIds: [] },
   onChangeInternal,
 }: QRNotificationSettingsProps) {
-  const firestore = useFirestore();
   const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms' | 'in_app' | 'push'; open: boolean; templateId?: string } | null>(null);
 
-  const templatesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('category', '==', 'qr_codes'));
-  }, [firestore]);
-
-  const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
-
   const isEnabled = internalAlerts.enabled;
-  const emailTemplates = templates?.filter(t => t.channel === 'email' && (t.recipientType === 'internal_alert' || t.recipientType === 'external_alert' || t.recipientType === 'entity'));
-  const smsTemplates = templates?.filter(t => t.channel === 'sms' && (t.recipientType === 'internal_alert' || t.recipientType === 'external_alert' || t.recipientType === 'entity'));
 
   return (
     <div className="space-y-6">
@@ -100,15 +87,15 @@ export function QRNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <Select value={internalAlerts.emailTemplateId || 'none'} onValueChange={(val) => onChangeInternal({ ...internalAlerts, emailTemplateId: val === 'none' ? undefined : val })}>
-                    <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs">
-                      <SelectValue placeholder="Select email template..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="none">No email template</SelectItem>
-                      {emailTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SmartTemplateDropdown 
+                    category="qr_codes"
+                    recipientType="internal_alert"
+                    channel="email"
+                    value={internalAlerts.emailTemplateId}
+                    onValueChange={(val) => onChangeInternal({ ...internalAlerts, emailTemplateId: val })}
+                    placeholder="Select email blueprint..."
+                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -127,15 +114,15 @@ export function QRNotificationSettings({
                       </Button>
                     </div>
                   </div>
-                  <Select value={internalAlerts.smsTemplateId || 'none'} onValueChange={(val) => onChangeInternal({ ...internalAlerts, smsTemplateId: val === 'none' ? undefined : val })}>
-                    <SelectTrigger className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs">
-                      <SelectValue placeholder="Select SMS template..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="none">No SMS template</SelectItem>
-                      {smsTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SmartTemplateDropdown 
+                    category="qr_codes"
+                    recipientType="internal_alert"
+                    channel="sms"
+                    value={internalAlerts.smsTemplateId}
+                    onValueChange={(val) => onChangeInternal({ ...internalAlerts, smsTemplateId: val })}
+                    placeholder="Select SMS blueprint..."
+                    className="h-11 rounded-xl bg-card border-primary/10 font-bold transition-all text-xs"
+                  />
                 </div>
               </div>
             </div>

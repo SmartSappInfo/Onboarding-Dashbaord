@@ -22,7 +22,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
-import { Separator } from '@/components/ui/separator';
 import {
     ArrowLeft, ArrowRight, Check, ChevronRight, Loader2, Mail, Smartphone,
     Users, Save, Send, Tag, Target, FileText, Calendar, Eye, Megaphone, Zap, X, Plus,
@@ -33,6 +32,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
 import QuickTemplateDialog from '../../components/quick-template-dialog';
 
@@ -496,13 +496,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 
                                 <SmartTemplateDropdown 
                                     category="campaigns"
-                                    recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
+                                    recipientType={state.target === 'external_client' ? 'prospect' : 'internal_alert'}
                                     channel={state.channel}
                                     value={state.templateId}
-                                    onValueChange={(val) => {
+                                    onValueChange={(val: string, template?: MessageTemplate) => {
                                         setField('templateId', val);
-                                    }}
-                                    onSelect={(template) => {
                                         if (template) {
                                             setField('templateName', template.name);
                                             setField('customSubject', template.subject || '');
@@ -824,8 +822,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Dispatch Time</Label>
                                     <DateTimePicker
-                                        value={state.scheduledAt || undefined}
-                                        onChange={v => setField('scheduledAt', v || null)}
+                                        value={state.scheduledAt ?? undefined}
+                                        onChange={v => setField('scheduledAt', v ?? null)}
                                     />
                                 </div>
                             )}
@@ -857,11 +855,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 {state.postSendTagRules.map((rule, idx) => (
                                     <div key={idx} className="p-4 rounded-xl border bg-card/50 flex items-center gap-3">
                                         <div className="flex-1 space-y-1">
-                                            <p className="text-[10px] font-bold text-primary">WHEN {rule.appliesTo?.replace('_', ' ').toUpperCase()}</p>
+                                            <p className="text-[10px] font-bold text-primary">WHEN {rule.appliesTo.replace('_', ' ').toUpperCase()}</p>
                                             <div className="flex flex-wrap gap-1">
-                                                <Badge variant="secondary" className="text-[8px] font-bold">
-                                                    {rule.tagName || rule.tagId}
-                                                </Badge>
+                                                {rule.tagIds.map((tid: string) => {
+                                                    const tag = allTags?.find((t: any) => t.id === tid);
+                                                    return (
+                                                        <Badge key={tid} variant="secondary" className="text-[8px] font-bold" style={{ backgroundColor: tag?.color + '20', color: tag?.color }}>
+                                                            {tag?.name || tid}
+                                                        </Badge>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => {
@@ -881,7 +884,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     onClick={() => {
                                         setField('postSendTagRules', [
                                             ...state.postSendTagRules,
-                                            { appliesTo: 'delivered', tagId: 'new', tagName: 'New Tag' }
+                                            { appliesTo: 'delivered', tagIds: [] } as PostSendTagRule
                                         ]);
                                     }}
                                 >
@@ -892,7 +895,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     </div>
                 );
 
-            case 5:
+            case 5: {
                 const senderProfile = senderProfiles?.find(p => p.id === state.senderProfileId);
                 return (
                     <div className="space-y-8">
@@ -970,6 +973,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         )}
                     </div>
                 );
+            }
 
             default: return null;
         }
@@ -1051,10 +1055,15 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     onOpenChange={setQuickCreateOpen}
                     channel={state.channel}
                     category="campaigns"
-                    recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
+                    recipientType={state.target === 'external_client' ? 'prospect' : 'internal_alert'}
                     templateId={state.templateId || undefined}
-                    onCreated={(id) => {
+                    onCreated={(id: string, template?: MessageTemplate) => {
                         setField('templateId', id);
+                        if (template) {
+                            setField('templateName', template.name);
+                            setField('customSubject', template.subject || '');
+                            setField('customBody', template.body || '');
+                        }
                     }}
                 />
             )}

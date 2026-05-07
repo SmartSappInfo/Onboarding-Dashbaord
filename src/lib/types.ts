@@ -2083,7 +2083,7 @@ export interface PostSendTagRule {
  * Phase 6: Hook that triggers an automation when a campaign engagement event occurs.
  */
 export interface CampaignAutomationHook {
-  event: 'campaign_delivered' | 'campaign_failed' | 'campaign_not_delivered';
+  event: 'campaign_delivered' | 'campaign_failed' | 'campaign_not_delivered' | 'campaign_opened' | 'campaign_clicked';
   automationId: string;
   automationName: string;
   /** Optional delay in minutes before triggering */
@@ -2136,6 +2136,8 @@ export interface MessageCampaign {
   postSendTagRules?: PostSendTagRule[];
   /** Automation hooks triggered by campaign engagement events */
   automationHooks?: CampaignAutomationHook[];
+  /** Whether to transform URLs in the message body into tracked links (Phase 7) */
+  trackLinks?: boolean;
 
   // Stats (denormalized for list view)
   stats: {
@@ -2221,6 +2223,8 @@ export interface MessageJob {
   organizationId?: string;
   /** Workspace ID for scoping */
   workspaceId?: string;
+  /** Whether to transform URLs in the message body into tracked links (Phase 7) */
+  trackLinks?: boolean;
 }
 
 export interface MessageTask {
@@ -2230,6 +2234,9 @@ export interface MessageTask {
   status: 'pending' | 'sent' | 'failed';
   providerId?: string;
   sentAt?: string;
+  deliveredAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
   error?: string;
   /** Entity display name for analytics recipient table */
   displayName?: string;

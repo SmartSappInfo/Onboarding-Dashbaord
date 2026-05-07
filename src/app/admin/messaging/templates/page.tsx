@@ -60,15 +60,33 @@ export default function MessageTemplatesPage() {
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [isAiProcessing, setIsAiProcessing] = React.useState(false);
 
-    // Data Subscriptions - Filtered by Active Workspace
+    // Data Subscriptions - GLOBAL + WORKSPACE
     const templatesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'message_templates'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('createdAt', 'desc')
         );
     }, [firestore, activeWorkspaceId]);
+
+    const { data: allTemplates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
+
+    // Filter and Deduplicate (Org > Global)
+    const templates = React.useMemo(() => {
+        if (!allTemplates) return [];
+        
+        // Templates belonging to this workspace
+        const workspaceTemplates = allTemplates.filter(t => t.workspaceIds?.includes(activeWorkspaceId));
+        
+        // Global templates
+        const globalTemplates = allTemplates.filter(t => t.scope === 'global');
+
+        // Logic: For each unique 'templateType', if a workspace version exists, hide the global one.
+        const workspaceTypes = new Set(workspaceTemplates.map(t => t.templateType).filter(Boolean));
+        const filteredGlobal = globalTemplates.filter(t => !t.templateType || !workspaceTypes.has(t.templateType));
+
+        return [...workspaceTemplates, ...filteredGlobal];
+    }, [allTemplates, activeWorkspaceId]);
 
     const varsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -104,7 +122,6 @@ export default function MessageTemplatesPage() {
         return query(collection(firestore, 'pdfs'), where('status', '==', 'published'));
     }, [firestore]);
 
-    const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: entities } = useCollection<WorkspaceEntity>(entitiesQuery);
@@ -112,7 +129,6 @@ export default function MessageTemplatesPage() {
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 
-    // FER-02: Merge Firestore variables with dynamically generated contact variables
     const variables = React.useMemo(() => {
         const contactVarDefs = generateContactVariableDefinitions('institution');
         const firestoreVars = firestoreVariables || [];
@@ -154,6 +170,7 @@ export default function MessageTemplatesPage() {
                 target: 'external_client',
                 contentMode: 'rich_builder',
                 status: 'active',
+                scope: 'organization',
                 workspaceIds: [activeWorkspaceId],
             };
 
@@ -171,7 +188,8 @@ export default function MessageTemplatesPage() {
 
     const handleSave = async (data: any) => {
         if (!firestore || !user) return;
-        
+        const { activeOrganizationId } = activeWorkspaceId ? { activeOrganizationId: '' } : { activeOrganizationId: '' }; // Fallback
+
         const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
@@ -184,6 +202,8 @@ export default function MessageTemplatesPage() {
         const templateData = {
             ...data,
             workspaceIds,
+            organizationId: data.organizationId || '', // In Next.js pages we can get it from context
+            scope: data.scope || 'organization',
             variables: variableList,
             status: data.status || 'active',
             isActive: (data.status || 'active') !== 'archived', // backward compat
@@ -195,11 +215,14 @@ export default function MessageTemplatesPage() {
         const sanitizedData = JSON.parse(JSON.stringify(templateData));
 
         try {
-            if (editingTemplate?.id) {
+            if (editingTemplate?.id && editingTemplate.scope !== 'global') {
                 await updateDoc(doc(firestore, 'message_templates', editingTemplate.id), sanitizedData);
             } else {
+                // If it's a global template being edited, save it as a new organization template
                 await addDoc(collection(firestore, 'message_templates'), { 
                     ...sanitizedData, 
+                    id: undefined, // Force new ID
+                    scope: 'organization',
                     createdAt: new Date().toISOString() 
                 });
             }

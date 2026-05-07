@@ -2,24 +2,24 @@
 
 import * as React from 'react';
 import { useFormContext, Controller, useFieldArray } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Zap, Users, ShieldCheck, Database, Tags, Bell, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Mail, Smartphone, Search, Check, PlusCircle, Eye, RotateCcw } from 'lucide-react';
-import { cn, toTitleCase, stripHtml } from '@/lib/utils';
+import { Zap, Database, Tags, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Search, Check, PlusCircle } from 'lucide-react';
+import { cn, stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { type SurveyQuestion, type SurveyElement, type MessageTemplate, type AppField, type Tag } from '@/lib/types';
+import { type SurveyQuestion, type SurveyElement, type AppField } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+
 import { useToast } from '@/hooks/use-toast';
 import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
@@ -54,14 +54,9 @@ export default function SubmissionBehaviorStep() {
 
 
     const createEntity = watch('createEntity');
-    const assignmentEnabled = watch('assignmentEnabled');
 
     // 1. Dynamic Data Fetching (WORKSPACE SCOPED)
-    const usersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name', 'asc'));
-    }, [firestore]);
-    const { data: users } = useCollection<any>(usersQuery);
+
 
     const tagsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -98,19 +93,6 @@ export default function SubmissionBehaviorStep() {
     }, [firestore, activeWorkspaceId]);
     const { data: automations } = useCollection<any>(automationsQuery);
 
-    const templatesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'message_templates'),
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('name', 'asc')
-        );
-    }, [firestore, activeWorkspaceId]);
-    const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
-
-    const emailTemplates = templates?.filter(t => t.channel === 'email') || [];
-    const smsTemplates = templates?.filter(t => t.channel === 'sms') || [];
-
     // Group fields by FieldGroup for the mapping dropdown
     const groupedTargetFields = React.useMemo(() => {
         if (!appFields || !fieldGroups) return [];
@@ -141,7 +123,7 @@ export default function SubmissionBehaviorStep() {
     const [isCreateFieldOpen, setIsCreateFieldOpen] = React.useState(false);
     const [isCreateAutomationOpen, setIsCreateAutomationOpen] = React.useState(false);
     const [isCreateTemplateOpen, setIsCreateTemplateOpen] = React.useState(false);
-    const [newTemplateChannel, setNewTemplateChannel] = React.useState<'email' | 'sms'>('email');
+    const [newTemplateChannel, setNewTemplateChannel] = React.useState('email');
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 

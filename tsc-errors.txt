@@ -1,0 +1,38 @@
+src/app/actions/seed-global-templates-action.ts(7,13): error TS2304: Cannot find name 'TemplateCategory'.
+src/app/actions/seed-global-templates-action.ts(13,20): error TS2304: Cannot find name 'VariableContext'.
+src/app/actions/seed-global-templates-action.ts(15,20): error TS2304: Cannot find name 'ReminderConfig'.
+src/app/admin/automations/components/NodeInspector.tsx(292,46): error TS2741: Property 'channel' is missing in type '{ category: any; recipientType: any; value: any; onValueChange: (v: string) => void; placeholder: string; className: string; }' but required in type 'SmartTemplateDropdownProps'.
+src/app/admin/backoffice/messaging/templates/TemplatesClient.tsx(202,26): error TS2739: Type '{ templates: WithId<MessageTemplate>[]; isLoading: boolean; onEdit: (tmpl: MessageTemplate) => void; onDelete: Dispatch<SetStateAction<MessageTemplate | null>>; onPreview: (tmpl: MessageTemplate) => void; }' is missing the following properties from type 'TemplateGalleryProps': cloningId, onClone
+src/app/admin/finance/contracts/components/ContractWizard.tsx(375,81): error TS2322: Type '"finance"' is not assignable to type 'TemplateCategory'.
+src/app/admin/finance/contracts/components/ContractWizard.tsx(394,81): error TS2322: Type '"finance"' is not assignable to type 'TemplateCategory'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(498,37): error TS2322: Type '"prospect" | "internal_alert"' is not assignable to type 'RecipientType'.
+  Type '"prospect"' is not assignable to type 'RecipientType'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(501,37): error TS2322: Type '(val: any, template: any) => void' is not assignable to type '(value: string) => void'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(501,53): error TS7006: Parameter 'val' implicitly has an 'any' type.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(501,58): error TS7006: Parameter 'template' implicitly has an 'any' type.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(824,41): error TS2322: Type 'Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(825,80): error TS2345: Argument of type 'Date | undefined' is not assignable to parameter of type 'Date | null'.
+  Type 'undefined' is not assignable to type 'Date | null'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(832,26): error TS2304: Cannot find name 'Separator'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(847,26): error TS2304: Cannot find name 'Separator'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(858,106): error TS2339: Property 'condition' does not exist on type 'PostSendTagRule'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(860,55): error TS2551: Property 'tagIds' does not exist on type 'PostSendTagRule'. Did you mean 'tagId'?
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(860,66): error TS7006: Parameter 'tid' implicitly has an 'any' type.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(887,47): error TS2322: Type 'PostSendTagRule | { condition: string; tagIds: never[]; }' is not assignable to type 'PostSendTagRule'.
+  Object literal may only specify known properties, and 'condition' does not exist in type 'PostSendTagRule'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(887,47): error TS2353: Object literal may only specify known properties, and 'condition' does not exist in type 'PostSendTagRule'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(1057,21): error TS2322: Type '"prospect" | "internal_alert"' is not assignable to type 'RecipientType | undefined'.
+  Type '"prospect"' is not assignable to type 'RecipientType | undefined'.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(1059,21): error TS2322: Type '(id: any, template: any) => void' is not assignable to type '(templateId: string) => void'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(1059,33): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/app/admin/messaging/campaigns/components/campaign-wizard.tsx(1059,37): error TS7006: Parameter 'template' implicitly has an 'any' type.
+src/app/admin/surveys/components/submission-behavior-step.tsx(655,27): error TS2304: Cannot find name 'isCreateTemplateOpen'.
+src/app/admin/surveys/components/submission-behavior-step.tsx(655,63): error TS2304: Cannot find name 'setIsCreateTemplateOpen'.
+src/app/admin/surveys/components/submission-behavior-step.tsx(658,94): error TS2304: Cannot find name 'newTemplateChannel'.
+src/app/admin/surveys/components/submission-behavior-step.tsx(673,44): error TS2304: Cannot find name 'setIsCreateTemplateOpen'.
+src/lib/campaign-analytics.ts(233,40): error TS2339: Property 'deliveredAt' does not exist on type 'MessageTask'.
+src/lib/campaign-analytics.ts(234,25): error TS2339: Property 'openedAt' does not exist on type 'MessageTask'.
+src/lib/campaign-analytics.ts(235,25): error TS2339: Property 'clickedAt' does not exist on type 'MessageTask'.

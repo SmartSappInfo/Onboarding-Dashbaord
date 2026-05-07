@@ -13,6 +13,8 @@ interface BulkJobInput {
   senderProfileId: string;
   recipients: { recipient: string; variables: Record<string, any>; entityId?: string; displayName?: string }[];
   userId: string;
+  trackLinks?: boolean;
+  campaignId?: string;
 }
 
 /**
@@ -38,6 +40,8 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
       processed: 0,
       success: 0,
       failed: 0,
+      trackLinks: input.trackLinks || false,
+      campaignId: input.campaignId,
       createdAt: new Date().toISOString()
     };
 
@@ -144,10 +148,33 @@ export async function processBulkJobChunk(jobId: string) {
     let failedIncrement = 0;
 
     if (job.channel === 'email') {
-        const batchPayload = tasksSnap.docs.map(taskDoc => {
+        const { isSuppressed } = await import('./suppression-service');
+        
+        const batchPayload = [];
+        for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
+            
+            // Suppression Check
+            const suppressed = await isSuppressed({
+                recipient: task.recipient,
+                workspaceId: job.workspaceId || 'onboarding',
+                channel: 'email'
+            });
+            
+            if (suppressed) {
+                failedIncrement++;
+                await taskDoc.ref.update({ status: 'failed', error: 'Recipient unsubscribed' });
+                continue;
+            }
+
             // Merge org branding as base layer; task-specific vars override
             const mergedVars = { ...orgBrandingVars, ...task.variables };
+            
+            // Phase 7: Inject Unsubscribe Link
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+            const unsubId = task.entityId || task.recipient;
+            mergedVars.unsubscribe_link = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+
             let html = '';
             let subject = resolveVariables(template.subject || '', mergedVars);
 
@@ -160,20 +187,42 @@ export async function processBulkJobChunk(jobId: string) {
                     wrapper: styleWrapper || undefined
                 });
             } else {
-                html = resolveVariables(template.body, mergedVars);
                 if (styleWrapper && styleWrapper.includes('{{content}}')) {
                     html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
                 }
             }
 
-            return {
+            // Phase 7: Branded Link Tracking
+            if (job.trackLinks) {
+                // This is a placeholder for async transformation in the loop below
+                // We'll transform the body for each task individually to get per-recipient tracking
+            }
+
+            batchPayload.push({
                 from: sender.identifier,
                 to: task.recipient,
                 subject: subject,
                 html: html,
-                taskDocRef: taskDoc.ref
-            };
-        });
+                taskDocRef: taskDoc.ref,
+                tags: [
+                    { name: 'jobId', value: jobId },
+                    { name: 'taskId', value: taskDoc.id }
+                ]
+            });
+        }
+
+        // Phase 7: Apply real-time link tracking transformation
+        if (job.trackLinks) {
+            const { transformBodyWithTracking } = await import('./link-tracking');
+            for (const payload of batchPayload) {
+                payload.html = await transformBodyWithTracking({
+                    body: payload.html,
+                    campaignId: job.campaignId || 'manual',
+                    jobId: jobId,
+                    taskId: payload.taskDocRef.id
+                });
+            }
+        }
 
         try {
             const result = await sendBatchEmails(batchPayload);
@@ -197,13 +246,28 @@ export async function processBulkJobChunk(jobId: string) {
             }
         }
     } else {
+        const { transformBodyWithTracking } = await import('./link-tracking');
         for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
+            
+            // Resolve variables for individual task body (if not already handled)
+            // For raw messages or simple templates, we need to ensure the body is ready for tracking
+            // In bulk-messaging, individual tasks don't have their own bodies, they use template.body + variables
+            
+            let finalBody = ''; // This is handled inside sendMessage, but for tracking we need it BEFORE
+            // Actually, sendMessage handles the resolution.
+            // If we want to track links in SMS, we should probably resolve variables, then track, then pass as override.
+            
             const result = await sendMessage({
                 templateId: job.templateId,
                 senderProfileId: job.senderProfileId,
                 recipient: task.recipient,
-                variables: task.variables
+                variables: task.variables,
+                trackLinks: job.trackLinks,
+                tags: [
+                    { name: 'jobId', value: jobId },
+                    { name: 'taskId', value: taskDoc.id }
+                ]
             });
 
             if (result.success) {

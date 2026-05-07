@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useFormContext, useFieldArray, Controller } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText } from 'lucide-react';
@@ -11,8 +11,9 @@ import { PageEditor } from './result-page-builder';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { MessageTemplate, SenderProfile } from '@/lib/types';
+import type { SenderProfile } from '@/lib/types';
 import { useParams } from 'next/navigation';
+import { SmartTemplateDropdown } from '../../components/SmartTemplateDropdown';
 
 export function MinimalRespondentMessage() {
     const { control, watch, setValue } = useFormContext();
@@ -37,21 +38,13 @@ export function MinimalRespondentMessage() {
         }
     }, [rules.length, setValue]);
 
-    const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'), where('isActive', '==', true));
-    }, [firestore]);
-
     const profilesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
     }, [firestore]);
 
-    const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
-    const smsTemplates = templates?.filter(t => t.channel === 'sms' && t.isActive && t.category === 'surveys' && t.recipientType === 'respondent');
-    const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive && t.category === 'surveys' && t.recipientType === 'respondent');
     const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
     const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
 
@@ -108,15 +101,15 @@ export function MinimalRespondentMessage() {
                                 name={`resultRules.0.emailTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                        <SelectTrigger className="h-9 bg-card border-blue-200 text-xs font-bold shadow-sm">
-                                            <SelectValue placeholder="Choose email template..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No Email Automation</SelectItem>
-                                            {emailTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <SmartTemplateDropdown 
+                                        category="surveys"
+                                        recipientType="respondent"
+                                        channel="email"
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder="Choose email blueprint..."
+                                        className="h-9 bg-card border-blue-200 text-xs font-bold shadow-sm"
+                                    />
                                 )}
                             />
                             {selectedEmailId && selectedEmailId !== 'none' && (
@@ -177,15 +170,15 @@ export function MinimalRespondentMessage() {
                                 name={`resultRules.0.smsTemplateId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                        <SelectTrigger className="h-9 bg-card border-orange-200 text-xs font-bold shadow-sm">
-                                            <SelectValue placeholder="Choose SMS template..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">No SMS Automation</SelectItem>
-                                            {smsTemplates?.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <SmartTemplateDropdown 
+                                        category="surveys"
+                                        recipientType="respondent"
+                                        channel="sms"
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder="Choose SMS blueprint..."
+                                        className="h-9 bg-card border-orange-200 text-xs font-bold shadow-sm"
+                                    />
                                 )}
                             />
                             {selectedSmsId && selectedSmsId !== 'none' && (

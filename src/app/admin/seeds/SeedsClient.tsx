@@ -202,6 +202,7 @@ export default function SeedsClient() {
                         status={globalTemplatesStatus}
                         onSync={handleSeedGlobalTemplates}
                         syncLabel="Seed Templates"
+                        buttonClassName="bg-red-600 hover:bg-red-700 text-white shadow-red-500/20 ring-2 ring-red-500 ring-offset-2 ring-offset-background"
                     />
                 </div>
             </section>
@@ -211,7 +212,7 @@ export default function SeedsClient() {
 }
 
 // Simple migration card for basic seed operations
-function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon, syncLabel = "Map Agreements" }: {
+function SimpleMigrationCard({ title, description, onSync, onRollback, status, icon: Icon, syncLabel = "Map Agreements", buttonClassName }: {
   title: string;
   description: string;
   onSync: () => void;
@@ -219,6 +220,7 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
   status: SeedingState;
   icon: any;
   syncLabel?: string;
+  buttonClassName?: string;
 }) {
     return (
         <Card className="border border-border bg-transparent shadow-sm rounded-2xl ring-1 ring-border overflow-hidden text-left group">
@@ -233,7 +235,7 @@ function SimpleMigrationCard({ title, description, onSync, onRollback, status, i
                     </div>
                 </div>
                 <div className="flex gap-4 pt-6 mt-4 border-t border-border/50">
-                    <Button onClick={onSync} disabled={status === 'seeding'} className="rounded-xl font-bold h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transform active:scale-95 transition-all">
+                    <Button onClick={onSync} disabled={status === 'seeding'} className={cn("rounded-xl font-bold h-12 px-8 shadow-lg transform active:scale-95 transition-all", buttonClassName || "bg-primary hover:bg-primary/90 text-primary-foreground")}>
                         {status === 'seeding' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Zap className="h-5 w-5 mr-2" />} {syncLabel}
                     </Button>
                     {onRollback && (

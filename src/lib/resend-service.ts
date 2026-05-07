@@ -44,9 +44,13 @@ async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' 
   return data;
 }
 
+export interface ResendTag {
+  name: string;
+  value: string;
+}
+
 /**
  * Sends an email or schedules one for later.
- * @param params Object containing recipient, subject, html, attachments, and optional scheduledAt.
  */
 export async function sendEmail(params: {
   from?: string;
@@ -54,7 +58,8 @@ export async function sendEmail(params: {
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
-  scheduledAt?: string; // ISO 8601 format
+  scheduledAt?: string;
+  tags?: ResendTag[];
 }) {
   const payload = {
     from: params.from || `SmartSapp <notifications@${DOMAIN}>`,
@@ -63,22 +68,20 @@ export async function sendEmail(params: {
     html: params.html,
     attachments: params.attachments,
     scheduled_at: params.scheduledAt,
+    tags: params.tags,
   };
 
   return resendRequest('/emails', 'POST', payload);
 }
 
-/**
- * Sends multiple emails in a single batch request for high performance.
- * @param emails Array of individual email objects.
- */
 export async function sendBatchEmails(emails: { 
     from?: string; 
     to: string | string[]; 
     subject: string; 
     html: string; 
     attachments?: EmailAttachment[];
-    scheduledAt?: string 
+    scheduledAt?: string;
+    tags?: ResendTag[];
 }[]) {
   const payload = emails.map(email => ({
     from: email.from || `SmartSapp <notifications@${DOMAIN}>`,
@@ -87,6 +90,7 @@ export async function sendBatchEmails(emails: {
     html: email.html,
     attachments: email.attachments,
     scheduled_at: email.scheduledAt,
+    tags: email.tags,
   }));
 
   return resendRequest('/emails/batch', 'POST', payload);
