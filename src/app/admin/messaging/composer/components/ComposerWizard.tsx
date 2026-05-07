@@ -233,9 +233,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (!firestore) return null;
         let q = query(
             collection(firestore, 'message_templates'),
-            where('isActive', '==', true),
             where('channel', '==', watchedChannel),
-            where('status', '==', 'approved')
+            where('status', '==', 'active')
         );
         // Filter by category if context is provided
         if (composerContext?.category) {

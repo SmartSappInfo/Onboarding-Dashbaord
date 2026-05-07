@@ -71,8 +71,8 @@ async function validateAutomationTemplates(automation: Partial<Automation>): Pro
                 }
 
                 const template = templateSnap.data();
-                if (template?.status !== 'approved') {
-                    throw new Error(`Template "${template?.name || config.templateId}" is not approved (status: ${template?.status}) in node "${node.data?.label || node.id}"`);
+                if (template?.status !== 'active') {
+                    throw new Error(`Template "${template?.name || config.templateId}" is not active (status: ${template?.status}) in node "${node.data?.label || node.id}"`);
                 }
             }
 
@@ -83,13 +83,12 @@ async function validateAutomationTemplates(automation: Partial<Automation>): Pro
                     .collection('message_templates')
                     .where('category', '==', config.templateCategory)
                     .where('templateType', '==', config.templateType)
-                    .where('status', '==', 'approved')
-                    .where('isActive', '==', true)
+                    .where('status', '==', 'active')
                     .limit(1)
                     .get();
 
                 if (templatesSnap.empty) {
-                    throw new Error(`No approved template found for category "${config.templateCategory}" and type "${config.templateType}" in node "${node.data?.label || node.id}"`);
+                    throw new Error(`No active template found for category "${config.templateCategory}" and type "${config.templateType}" in node "${node.data?.label || node.id}"`);
                 }
             }
 

@@ -151,8 +151,10 @@ export default function MessageTemplatesPage() {
                 blocks: result.blocks || [],
                 channel: 'email',
                 category: 'general',
-                workspaceIds: [activeWorkspaceId], // Automatically bind to current hub
-                isActive: true
+                target: 'external_client',
+                contentMode: 'rich_builder',
+                status: 'active',
+                workspaceIds: [activeWorkspaceId],
             };
 
             setEditingTemplate(draftTemplate);
@@ -183,7 +185,10 @@ export default function MessageTemplatesPage() {
             ...data,
             workspaceIds,
             variables: variableList,
-            isActive: true,
+            status: data.status || 'active',
+            isActive: (data.status || 'active') !== 'archived', // backward compat
+            target: data.target || 'external_client',
+            contentMode: data.contentMode || (data.channel === 'sms' ? 'plain_text' : 'rich_builder'),
             updatedAt: new Date().toISOString(),
         };
 

@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
-import type { MessageTemplate, TemplateCategory, VariableContext } from './types';
+import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, VariableContext } from './types';
 
 // ---------------------------------------------------------------------------
 // Supporting types
@@ -12,9 +12,13 @@ import type { MessageTemplate, TemplateCategory, VariableContext } from './types
 export interface TemplateFilters {
   category?: TemplateCategory;
   channel?: 'email' | 'sms';
+  target?: TemplateTarget;
   status?: MessageTemplate['status'];
+  /** @deprecated Use status filter instead. Kept for backward compatibility. */
   isActive?: boolean;
   templateType?: string;
+  /** If true, exclude archived templates from results */
+  excludeArchived?: boolean;
 }
 
 export interface CreateTemplateInput {
@@ -92,16 +96,17 @@ export async function createGlobalTemplate(
     id: ref.id,
     scope: 'global',
     category: data.category,
-    templateType: data.templateType,
-    name: data.name,
     channel: data.channel,
+    target: 'external_client',
+    name: data.name,
+    contentMode: data.channel === 'sms' ? 'plain_text' : 'rich_builder',
+    templateType: data.templateType,
     subject: data.subject,
     body: data.body,
     variableContext: data.variableContext,
     declaredVariables: data.declaredVariables ?? [],
     reminderConfig: data.reminderConfig,
     status: 'draft',
-    isActive: false,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -179,6 +184,7 @@ export async function listGlobalTemplates(
 
   if (filters?.category) q = q.where('category', '==', filters.category);
   if (filters?.channel) q = q.where('channel', '==', filters.channel);
+  if (filters?.target) q = q.where('target', '==', filters.target);
   if (filters?.status) q = q.where('status', '==', filters.status);
   if (filters?.isActive !== undefined) q = q.where('isActive', '==', filters.isActive);
   if (filters?.templateType) q = q.where('templateType', '==', filters.templateType);
@@ -230,7 +236,6 @@ export async function createOrgOverride(
     organizationId: orgId,
     globalTemplateId,
     status: 'draft',
-    isActive: false,
     version: 1,
     createdAt: now,
     updatedAt: now,
@@ -315,6 +320,7 @@ export async function listTemplates(
 
   if (filters?.category) orgQuery = orgQuery.where('category', '==', filters.category);
   if (filters?.channel) orgQuery = orgQuery.where('channel', '==', filters.channel);
+  if (filters?.target) orgQuery = orgQuery.where('target', '==', filters.target);
   if (filters?.status) orgQuery = orgQuery.where('status', '==', filters.status);
   if (filters?.isActive !== undefined) orgQuery = orgQuery.where('isActive', '==', filters.isActive);
 
@@ -335,6 +341,7 @@ export async function listTemplates(
 
   if (filters?.category) globalQuery = globalQuery.where('category', '==', filters.category);
   if (filters?.channel) globalQuery = globalQuery.where('channel', '==', filters.channel);
+  if (filters?.target) globalQuery = globalQuery.where('target', '==', filters.target);
   if (filters?.status) globalQuery = globalQuery.where('status', '==', filters.status);
   if (filters?.isActive !== undefined) globalQuery = globalQuery.where('isActive', '==', filters.isActive);
 
@@ -347,13 +354,14 @@ export async function listTemplates(
 }
 
 // ---------------------------------------------------------------------------
-// Status transitions
+// Status transitions (simplified: draft → active → archived)
 // ---------------------------------------------------------------------------
 
 /**
- * Approves a template (draft → approved). Writes an audit log entry.
+ * Activates a template (draft/archived → active).
+ * Makes the template available in all consumer selectors.
  */
-export async function approveTemplate(id: string, approvedBy: string): Promise<void> {
+export async function activateTemplate(id: string, activatedBy: string): Promise<void> {
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -362,25 +370,19 @@ export async function approveTemplate(id: string, approvedBy: string): Promise<v
   }
 
   const existing = snap.data() as MessageTemplate;
-  const allowedStatuses: MessageTemplate['status'][] = ['draft', 'pending_approval', 'rejected'];
-  if (!allowedStatuses.includes(existing.status)) {
-    throw new Error(
-      `Cannot approve template with status "${existing.status}". Expected one of: ${allowedStatuses.join(', ')}.`,
-    );
-  }
 
   await ref.update({
-    status: 'approved',
-    isActive: true,
+    status: 'active',
+    isActive: true, // backward compat
     updatedAt: nowIso(),
-    updatedBy: approvedBy,
+    updatedBy: activatedBy,
   });
 
   await writeAuditLog({
-    action: 'approved',
+    action: 'activated',
     templateId: id,
     templateName: existing.name,
-    userId: approvedBy,
+    userId: activatedBy,
     organizationId: existing.organizationId,
     metadata: { previousStatus: existing.status },
   });
@@ -390,13 +392,11 @@ export async function approveTemplate(id: string, approvedBy: string): Promise<v
 }
 
 /**
- * Rejects a template with a reason. Writes an audit log entry.
+ * Archives a template. Archived templates are excluded from all consumer
+ * template selectors (Composer, Survey, Meeting, Automation) but remain
+ * visible in the Templates management page for easy unarchiving.
  */
-export async function rejectTemplate(
-  id: string,
-  reason: string,
-  rejectedBy: string,
-): Promise<void> {
+export async function archiveTemplate(id: string, archivedBy: string): Promise<void> {
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -405,31 +405,33 @@ export async function rejectTemplate(
   }
 
   const existing = snap.data() as MessageTemplate;
-  const allowedStatuses: MessageTemplate['status'][] = ['draft', 'pending_approval'];
-  if (!allowedStatuses.includes(existing.status)) {
-    throw new Error(
-      `Cannot reject template with status "${existing.status}". Expected one of: ${allowedStatuses.join(', ')}.`,
-    );
-  }
 
   await ref.update({
-    status: 'rejected',
-    isActive: false,
+    status: 'archived',
+    isActive: false, // backward compat
     updatedAt: nowIso(),
-    updatedBy: rejectedBy,
+    updatedBy: archivedBy,
   });
 
   await writeAuditLog({
-    action: 'rejected',
+    action: 'archived',
     templateId: id,
     templateName: existing.name,
-    userId: rejectedBy,
+    userId: archivedBy,
     organizationId: existing.organizationId,
-    metadata: { reason, previousStatus: existing.status },
+    metadata: { previousStatus: existing.status },
   });
 
   revalidatePath('/backoffice/messaging/templates');
   revalidatePath('/admin/settings/messaging/templates');
+}
+
+/**
+ * Unarchives a template back to active status.
+ * Single-click action, no confirmation needed.
+ */
+export async function unarchiveTemplate(id: string, unarchivedBy: string): Promise<void> {
+  return activateTemplate(id, unarchivedBy);
 }
 
 /**

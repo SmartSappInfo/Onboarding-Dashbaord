@@ -225,7 +225,39 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     });
 
-    // 6. Resolve Style Wrapper
+    // 5.5 Inject Organization Branding Variables (Dynamic Org Branding)
+    // These variables power dynamic logos, footers, and style wrappers.
+    // Resolution priority: variables already set > org record > empty string fallback.
+    const orgId = template.organizationId || variables.organizationId || '';
+    if (orgId) {
+        try {
+            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+            if (orgSnap.exists) {
+                const org = orgSnap.data() as Record<string, any>;
+                const orgVars: Record<string, string> = {
+                    org_name: org.name || '',
+                    org_logo_url: org.logoUrl || '',
+                    org_email: org.email || '',
+                    org_phone: org.phone || '',
+                    org_address: org.address || '',
+                    org_website: org.website || '',
+                    current_year: new Date().getFullYear().toString(),
+                };
+                // Only set if not already provided by the caller
+                Object.entries(orgVars).forEach(([k, v]) => {
+                    if (finalVariables[k] === undefined) finalVariables[k] = v;
+                });
+            }
+        } catch (e) {
+            console.warn('>>> [MSG-ENGINE] Org branding lookup skipped:', (e as Error).message);
+        }
+    }
+    // Ensure current_year is always available even without an org
+    if (finalVariables.current_year === undefined) {
+        finalVariables.current_year = new Date().getFullYear().toString();
+    }
+
+    // 6. Resolve Style Wrapper (styleId is optional — null/undefined/'' means no wrapper)
     let styleWrapper = '';
     if (template.styleId && template.styleId !== 'none') {
         const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();

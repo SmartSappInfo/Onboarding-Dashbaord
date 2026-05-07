@@ -252,9 +252,12 @@ export default function QuickTemplateDialog({
             name: name.trim(),
             category,
             channel,
+            target: 'external_client',
+            contentMode: channel === 'sms' ? 'plain_text' : 'rich_builder',
             body: body.trim(),
             variables: variableList,
-            isActive: true,
+            status: 'active',
+            isActive: true, // backward compat
             updatedAt: new Date().toISOString(),
         };
 

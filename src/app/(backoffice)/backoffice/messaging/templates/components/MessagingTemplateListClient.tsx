@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import TemplateCard from '@/components/messaging/TemplateCard';
 import { listGlobalTemplates } from '@/lib/template-actions';
-import { approveTemplate, deleteGlobalTemplate } from '@/lib/template-actions';
+import { activateTemplate, deleteGlobalTemplate } from '@/lib/template-actions';
 import { useBackoffice } from '../../../context/BackofficeProvider';
 import type { MessageTemplate, TemplateCategory } from '@/lib/types';
 
@@ -80,9 +80,9 @@ export default function MessagingTemplateListClient() {
     return map;
   }, [filtered]);
 
-  async function handleApprove(id: string) {
+  async function handleActivate(id: string) {
     if (!profile) return;
-    await approveTemplate(id, profile.id);
+    await activateTemplate(id, profile.id);
     load();
   }
 
@@ -169,9 +169,7 @@ export default function MessagingTemplateListClient() {
           <SelectContent className="bg-muted border-border">
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="pending_approval">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
           </SelectContent>
         </Select>
@@ -226,7 +224,7 @@ export default function MessagingTemplateListClient() {
                       template={t}
                       onEdit={() => router.push(`/backoffice/messaging/templates/${t.id}`)}
                       onDelete={can('templates', 'delete') ? () => handleDelete(t.id, t.name) : undefined}
-                      onApprove={can('templates', 'edit') ? () => handleApprove(t.id) : undefined}
+                      onApprove={can('templates', 'edit') ? () => handleActivate(t.id) : undefined}
                     />
                   ))}
                 </div>

@@ -46,9 +46,9 @@ function EntityContactItem({
 
     return (
         <Card
- className={cn(
-                "border-none ring-1 ring-border shadow-sm overflow-hidden relative group bg-card/50 transition-all duration-500 text-left",
-                isSignatory || isPrimary ? "ring-primary/40 bg-primary/[0.04] shadow-xl" : "hover:ring-primary/20",
+            className={cn(
+                "border-none ring-1 ring-border shadow-sm overflow-hidden relative group bg-card transition-all duration-500 text-left",
+                isSignatory || isPrimary ? "ring-primary/40 bg-primary/[0.04] dark:bg-primary/[0.02] shadow-xl" : "hover:ring-primary/20",
                 personErrors && "ring-destructive/50 bg-destructive/5"
             )}
         >
@@ -57,73 +57,81 @@ function EntityContactItem({
  <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
                 {isPrimary && (
                     <Badge className="bg-amber-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1 shadow-lg shadow-amber-500/20 animate-in zoom-in">
-                        <User className="h-2.5 w-2.5" /> Primary
+                        <User className="h-2.5 w-2.5" aria-hidden="true" /> Primary
                     </Badge>
                 )}
                 {isSignatory && (
                     <Badge className="bg-primary text-white border-none text-[8px] h-5 uppercase px-2 font-semibold gap-1 shadow-lg shadow-primary/20 animate-in zoom-in">
-                        <BadgeCheck className="h-2.5 w-2.5" /> Signatory
+                        <BadgeCheck className="h-2.5 w-2.5" aria-hidden="true" /> Signatory
                     </Badge>
                 )}
                 <Button
                     type="button"
                     variant="ghost"
                     size="icon"
- className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-destructive/10"
+                    aria-label="Remove Contact"
+                    className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-destructive/10"
                     onClick={() => remove(index)}
                     disabled={fieldsCount === 1}
                 >
- <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
             </div>
 
  <CardContent className="p-6 space-y-6">
- <div className="space-y-2">
- <Label className="text-[9px] font-semibold text-muted-foreground/60 flex items-center gap-1.5 ml-1">
- <User className="h-3 w-3 text-primary" /> Full Name
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5 ml-1 uppercase tracking-widest">
+                        <User className="h-3 w-3 text-primary" /> Full Name
                     </Label>
                     <Input
                         {...register(`entityContacts.${index}.name`)}
                         placeholder="e.g. Ama Serwaa"
- className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 font-bold"
                     />
                 </div>
 
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <div className="space-y-2">
- <Label className="text-[9px] font-semibold text-muted-foreground/60 flex items-center gap-1.5 ml-1">
- <Mail className="h-3 w-3" /> Email
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5 ml-1 uppercase tracking-widest">
+                            <Mail className="h-3 w-3" /> Email
                         </Label>
                         <Input
                             {...register(`entityContacts.${index}.email`)}
                             type="email"
                             placeholder="ama@school.edu"
- className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 font-medium"
                         />
                     </div>
- <div className="space-y-2">
- <Label className="text-[9px] font-semibold text-muted-foreground/60 flex items-center gap-1.5 ml-1">
- <Phone className="h-3 w-3" /> Phone
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5 ml-1 uppercase tracking-widest">
+                            <Phone className="h-3 w-3" aria-hidden="true" /> Phone
                         </Label>
                         <Input
                             {...register(`entityContacts.${index}.phone`)}
-                            placeholder="+233..."
- className="h-11 rounded-xl bg-background border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold"
+                            placeholder="+233…"
+                            inputMode="tel"
+                            autoComplete="off"
+                            className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 font-bold"
                         />
                     </div>
                 </div>
 
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
- <div className="col-span-full space-y-2">
- <Label className="text-[9px] font-semibold text-muted-foreground/60 flex items-center gap-1.5 ml-1">
- <ShieldCheck className="h-3 w-3" /> Authority Role
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                    <div className="col-span-full space-y-2">
+                        <Label className="text-[10px] font-bold text-muted-foreground/60 flex items-center gap-1.5 ml-1 uppercase tracking-widest">
+                            <ShieldCheck className="h-3 w-3" /> Assigned Role
                         </Label>
                         {isCustomRole ? (
- <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                            <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
                                 <Input 
                                     {...register(`entityContacts.${index}.typeLabel`)}
-                                    placeholder="Enter custom role..."
- className="h-10 rounded-xl bg-background border-none font-bold"
+                                    placeholder="Enter custom role…"
+                                    autoComplete="off"
+                                    className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner font-bold focus-visible:ring-2 focus-visible:ring-primary/20"
                                     autoFocus
                                     onChange={(e) => {
                                         // Update the hidden typeKey when typeLabel changes
@@ -132,7 +140,7 @@ function EntityContactItem({
                                     }}
                                 />
                                 <input type="hidden" {...register(`entityContacts.${index}.typeKey`)} />
- <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsCustomRole(false)}><X className="h-4 w-4" /></Button>
                             </div>
                         ) : (
                             <Controller
@@ -157,17 +165,17 @@ function EntityContactItem({
                                         }} 
                                         value={selectField.value}
                                     >
- <SelectTrigger className="h-10 rounded-xl bg-background border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                        <SelectTrigger className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus:ring-1 focus:ring-primary/20 font-bold">
                                             <SelectValue />
                                         </SelectTrigger>
- <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectContent className="rounded-xl shadow-2xl border border-border/50 bg-card">
                                             {availableRoles.map((t) => (
- <SelectItem key={t.key} value={t.key} className="font-bold">
+                                                <SelectItem key={t.key} value={t.key} className="font-bold text-xs">
                                                     {t.label}
                                                 </SelectItem>
                                             ))}
- <Separator className="my-1" />
- <SelectItem value="CUSTOM" className="text-primary font-semibold italic">Add Custom Role...</SelectItem>
+                                            <Separator className="my-1" />
+                                            <SelectItem value="CUSTOM" className="text-primary font-semibold italic text-xs">Add Custom Role…</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 )}
@@ -177,26 +185,26 @@ function EntityContactItem({
                         {!isCustomRole && <input type="hidden" {...register(`entityContacts.${index}.typeLabel`)} />}
                     </div>
 
- <div className="flex flex-col justify-center gap-2 px-1">
- <Label className="text-[9px] font-semibold text-primary tracking-tighter">Primary Contact</Label>
- <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border shadow-inner transition-all">
- <span className="text-[10px] font-semibold text-muted-foreground">Main POC</span>
+                    <div className="flex flex-col justify-center gap-2 px-1">
+                        <Label className="text-[9px] font-bold text-primary tracking-widest uppercase">Primary Contact</Label>
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-border/50 shadow-inner transition-all">
+                            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tight">Main Person</span>
                             <Switch 
                                 checked={!!isPrimary} 
                                 onCheckedChange={() => handleSetPrimary(index)}
- className="scale-90"
+                                className="scale-90"
                             />
                         </div>
                     </div>
 
- <div className="flex flex-col justify-center gap-2 px-1">
- <Label className="text-[9px] font-semibold text-primary tracking-tighter">Legal Signatory</Label>
- <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border shadow-inner transition-all">
- <span className="text-[10px] font-semibold text-muted-foreground">Authorized</span>
+                    <div className="flex flex-col justify-center gap-2 px-1">
+                        <Label className="text-[9px] font-bold text-primary tracking-widest uppercase">Authorized Signer</Label>
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-border/50 shadow-inner transition-all">
+                            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tight">Signer</span>
                             <Switch 
                                 checked={!!isSignatory} 
                                 onCheckedChange={() => handleSetSignatory(index)}
- className="scale-90"
+                                className="scale-90"
                             />
                         </div>
                     </div>
@@ -264,18 +272,18 @@ export function EntityContactManager({ entityType = 'institution', organizationI
   return (
  <div className="space-y-6">
  <div className="flex items-center justify-between px-1">
- <div className="space-y-0.5">
-            <Label className="text-[10px] font-semibold text-primary">
-                Entity Contacts
-            </Label>
- <p className="text-[9px] font-bold text-muted-foreground opacity-60">Manage contact persons and their roles</p>
-        </div>
+            <div className="space-y-0.5">
+                <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                    Staff & Contacts
+                </Label>
+                <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Add people who will manage the school system</p>
+            </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={handleAdd}
- className="h-9 rounded-xl font-semibold border-dashed border-2 text-[10px] hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
+                className="h-10 rounded-xl font-bold border-dashed border-2 text-[10px] uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
         >
  <Plus className="h-3.5 w-3.5 mr-1.5" /> New Contact
         </Button>
@@ -296,18 +304,18 @@ export function EntityContactManager({ entityType = 'institution', organizationI
       </div>
       
       {errors.entityContacts?.root?.message && (
- <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse">
- <AlertCircle className="h-5 w-5 text-rose-500" />
- <p className="text-[10px] font-semibold text-rose-500 leading-tight">
-                Logic Integrity Failure: {String(errors.entityContacts.root.message)}
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse" role="alert">
+          <AlertCircle className="h-5 w-5 text-rose-500" aria-hidden="true" />
+          <p className="text-[10px] font-semibold text-rose-500 leading-tight">
+                Contact List Error: {String(errors.entityContacts.root.message)}
             </p>
         </div>
       )}
       {errors.entityContacts?.message && !errors.entityContacts.root && (
- <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse">
- <AlertCircle className="h-5 w-5 text-rose-500" />
- <p className="text-[10px] font-semibold text-rose-500 leading-tight">
-                Logic Integrity Failure: {String(errors.entityContacts.message)}
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3 animate-pulse" role="alert">
+          <AlertCircle className="h-5 w-5 text-rose-500" aria-hidden="true" />
+          <p className="text-[10px] font-semibold text-rose-500 leading-tight">
+                Contact List Error: {String(errors.entityContacts.message)}
             </p>
         </div>
       )}

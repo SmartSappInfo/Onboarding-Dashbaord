@@ -1776,6 +1776,30 @@ export type TemplateCategory =
   | 'qr_codes'
   | 'general';
 
+/**
+ * Template target audience axis.
+ * - 'external_client': Messages to entities/contacts (label uses workspace terminology)
+ * - 'internal_team': Messages to workspace users, admins, team members
+ */
+export type TemplateTarget = 'external_client' | 'internal_team';
+
+/**
+ * Email content authoring mode.
+ * - 'plain_text': Simple text with {{variable}} placeholders
+ * - 'html_code': Raw HTML/CSS editor with live preview
+ * - 'rich_builder': Visual drag-and-drop block editor
+ * SMS templates always use 'plain_text'.
+ */
+export type ContentMode = 'plain_text' | 'html_code' | 'rich_builder';
+
+/**
+ * Simplified template lifecycle status.
+ * - 'draft': Work-in-progress, not usable in consumer selectors
+ * - 'active': Published and available in template selectors
+ * - 'archived': Soft-hidden, excluded from all consumer template lists
+ */
+export type TemplateStatus = 'draft' | 'active' | 'archived';
+
 export type VariableContext =
   | 'meeting'
   | 'form'
@@ -1855,19 +1879,25 @@ export interface MessageTemplate {
   organizationId?: string;
   globalTemplateId?: string;
 
-  // Categorization
+  // THREE-AXIS CLASSIFICATION
   category: TemplateCategory;
-  templateType: string;
-  recipientType?: RecipientType;
+  channel: MessageChannel;
+  /** Target audience: external clients (uses workspace terminology) or internal team */
+  target: TemplateTarget;
 
   // Content
   name: string;
-  channel: MessageChannel;
+  /** Email content authoring mode. SMS always uses 'plain_text'. */
+  contentMode: ContentMode;
   subject?: string;
   previewText?: string;
   body: string;
   blocks?: MessageBlock[];
   bodyBlocks?: MessageBlock[];
+
+  // Template sub-type (e.g. 'invitation', 'reminder', 'follow_up')
+  templateType: string;
+  recipientType?: RecipientType;
 
   // Variables
   variableContext: VariableContext;
@@ -1878,14 +1908,16 @@ export interface MessageTemplate {
   // Reminder config (reminders category only)
   reminderConfig?: ReminderConfig;
 
-  // Status & lifecycle
-  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'archived';
-  isActive: boolean;
+  // Status & lifecycle (simplified: no approval workflow)
+  status: TemplateStatus;
   version: number;
   previousVersionId?: string;
 
-  // Legacy / misc
-  styleId?: string;
+  /** @deprecated Use status === 'active' instead. Kept for backward compatibility with existing Firestore queries. */
+  isActive?: boolean;
+
+  // Style (OPTIONAL — null/undefined means no wrapper)
+  styleId?: string | null;
   workspaceIds?: string[];
 
   // Metadata
@@ -2178,6 +2210,10 @@ export interface PageTrigger {
   name: string; // Human-readable label e.g. "Welcome popup"
   event: 'page_load' | 'block_click' | 'form_submitted' | 'on_exit' | 'scroll_to';
   targetBlockId?: string; // Which block fires this (for block_click/form_submitted)
+  config?: {
+    once?: boolean;
+    delaySeconds?: number;
+  };
   actions: PageTriggerAction[]; // Multiple actions per trigger
 }
 

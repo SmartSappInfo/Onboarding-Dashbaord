@@ -162,8 +162,7 @@ export default function OrgTemplateListClient() {
       try {
         setLoading(true);
         const data = await listTemplates(activeOrganization!.id, {
-          status: 'approved',
-          isActive: true,
+          status: 'active',
         });
         setTemplates(data);
       } catch (error) {
@@ -227,8 +226,7 @@ export default function OrgTemplateListClient() {
       });
       // Reload templates
       const data = await listTemplates(activeOrganization!.id, {
-        status: 'approved',
-        isActive: true,
+        status: 'active',
       });
       setTemplates(data);
     } catch (error) {

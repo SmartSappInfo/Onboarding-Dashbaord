@@ -45,7 +45,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError, useCollection, useMemoFirebase } from "@/firebase";
 import { EntityContactManager } from "@/app/admin/entities/components/EntityContactManager";
-import { PackageSelect } from "@/app/admin/entities/components/PackageSelect";
 import { type SubscriptionPackage } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -83,11 +82,9 @@ const formSchema = z.object({
   creditBalance: z.coerce.number().default(0),
 
   notifySchool: z.boolean().default(true),
-  notifySchoolEmails: z.array(z.string().email()).default([]),
   notifySmartSapp: z.boolean().default(true),
   notifyOnboarding: z.boolean().default(true),
   notifySchoolBySms: z.boolean().default(true),
-  notifySchoolSmsNumbers: z.array(z.string().min(10, { message: "Phone number must be at least 10 digits." })).default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -126,30 +123,14 @@ export default function NewSchoolSignupForm() {
       arrearsBalance: 0,
       creditBalance: 0,
       notifySchool: true,
-      notifySchoolEmails: [],
       notifySmartSapp: true,
       notifyOnboarding: true,
       notifySchoolBySms: true,
-      notifySchoolSmsNumbers: [],
     },
   });
 
-  const [emailInputValue, setEmailInputValue] = React.useState("");
-  const emailInputRef = React.useRef<HTMLInputElement>(null);
-  const [smsInputValue, setSmsInputValue] = React.useState("");
-  const smsInputRef = React.useRef<HTMLInputElement>(null);
-
-  const watchNotifySchool = form.watch("notifySchool");
   const watchEntityContacts = form.watch("entityContacts");
   const watchPackageId = form.watch("subscriptionPackageId");
-  
-  const primarySignatory = watchEntityContacts.find(p => p.isPrimary) || watchEntityContacts.find(p => p.isSignatory) || watchEntityContacts[0];
-  const watchMainEmail = primarySignatory?.email;
-  const isMainEmailValid = z.string().email().safeParse(watchMainEmail).success;
-
-  const watchNotifySchoolBySms = form.watch("notifySchoolBySms");
-  const watchMainPhone = primarySignatory?.phone;
-  const isMainPhoneValid = z.string().min(10).safeParse(watchMainPhone).success;
 
   const handleDiscountChange = (val: number) => {
     const pkg = packages?.find(p => p.id === watchPackageId);
@@ -169,25 +150,30 @@ export default function NewSchoolSignupForm() {
     
     // 1. Send to Pabbly Webhook
     try {
-      const schoolEmails = [];
-      if (data.notifySchool) {
-        if (watchMainEmail) schoolEmails.push(watchMainEmail);
-        if (data.notifySchoolEmails) schoolEmails.push(...data.notifySchoolEmails);
-      }
+      const schoolEmails = data.entityContacts
+        .map(c => c.email?.trim())
+        .filter(email => email && z.string().email().safeParse(email).success);
       
-      const schoolSmsNumbers = [];
-      if (data.notifySchoolBySms) {
-          if (watchMainPhone) schoolSmsNumbers.push(watchMainPhone);
-          if (data.notifySchoolSmsNumbers) schoolSmsNumbers.push(...data.notifySchoolSmsNumbers);
-      }
+      const schoolSmsNumbers = data.entityContacts
+        .map(c => c.phone?.trim())
+        .filter(phone => phone && phone.length >= 10);
 
       const webhookData: Record<string, any> = { ...data };
       
       webhookData.submissionDate = new Date().toISOString();
       webhookData.implementationDate = format(data.implementationDate, 'yyyy-MM-dd');
       webhookData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
-      webhookData.notifySchoolEmails = [...new Set(schoolEmails)].join(',');
-      webhookData.notifySchoolSmsNumbers = [...new Set(schoolSmsNumbers)].join(',');
+      
+      // Extract Primary Contact for targeted template fields
+      const primaryContact = data.entityContacts.find(c => c.isPrimary) || data.entityContacts[0];
+      webhookData.contactPerson = primaryContact?.name || "";
+      webhookData.phone = primaryContact?.phone || "";
+      webhookData.email = primaryContact?.email || "";
+      
+      // Only include addresses if the corresponding notify flag is true
+      webhookData.notifySchoolEmails = data.notifySchool ? [...new Set(schoolEmails)].join(',') : '';
+      webhookData.notifySchoolSmsNumbers = data.notifySchoolBySms ? [...new Set(schoolSmsNumbers)].join(',') : '';
+      
       webhookData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
       webhookData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
 
@@ -266,396 +252,384 @@ export default function NewSchoolSignupForm() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12 text-left pb-20">
-        
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50 border-b p-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                        <Building className="h-6 w-6" />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="pb-20">
+        <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border bg-card overflow-hidden">
+            <CardContent className="p-0">
+                {/* School Details Section */}
+                <div className="p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center bg-primary/10 text-primary rounded-xl ring-1 ring-primary/20 shadow-sm" aria-hidden="true">
+                            <Building className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-bold tracking-tight">School Details</h3>
                     </div>
-                    <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Institutional Profile</CardTitle>
-                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Core identification and logistics</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-                <FormField
-                    control={form.control}
-                    name="organization"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Official School Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g. Ghana International School" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
                     <FormField
                         control={form.control}
-                        name="location"
+                        name="organization"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Physical Location</FormLabel>
+                            <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">School Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g. Airport Residential Area, Accra" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
+                                <Input placeholder="e.g. Ghana International School" {...field} autoComplete="off" spellCheck={false} className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner font-bold text-lg focus-visible:ring-2 focus-visible:ring-primary/20" />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="nominalRoll"
-                        render={({ field }) => (
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="location"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Location</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. Airport Residential Area, Accra" {...field} autoComplete="off" className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner font-semibold focus-visible:ring-2 focus-visible:ring-primary/20" />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="nominalRoll"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Total Users (Students)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" inputMode="numeric" {...field} className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner font-black focus-visible:ring-2 focus-visible:ring-primary/20" />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+
+                <Separator className="bg-border/50" />
+
+                {/* Contacts Section */}
+                <div className="p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center bg-primary/10 text-primary rounded-xl ring-1 ring-primary/20 shadow-sm" aria-hidden="true">
+                            <Users className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-bold tracking-tight">Contacts & Owners</h3>
+                    </div>
+                    <EntityContactManager />
+                </div>
+
+                <Separator className="bg-border/50" />
+
+                {/* Billing Section */}
+                <div className="p-8 space-y-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center bg-primary/10 text-primary rounded-xl ring-1 ring-primary/20 shadow-sm" aria-hidden="true">
+                            <Banknote className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-bold tracking-tight">Billing & Subscription</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField control={form.control} name="subscriptionPackageId" render={({ field }) => (
                             <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Student Footprint (Roll)</FormLabel>
-                            <FormControl>
-                                <Input type="number" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-black" />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50 border-b p-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                        <Users className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Administrative Stakeholders</CardTitle>
-                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Authorized institutional representatives</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-8">
-                <EntityContactManager />
-            </CardContent>
-        </Card>
-
-        {/* Financial Profile Card */}
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50 border-b p-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                        <Banknote className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Financial Profile</CardTitle>
-                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Configure billing preferences and effective rates</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField control={form.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
-                            <FormControl>
-                                <PackageSelect 
-                                    value={field.value} 
-                                    onValueChange={(val, pkg) => {
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
+                                <Select 
+                                    onValueChange={(val) => {
                                         field.onChange(val);
+                                        const pkg = packages?.find(p => p.id === val);
                                         if (pkg) {
                                             form.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
                                             form.setValue('discountPercentage', 0, { shouldDirty: true });
                                         }
-                                    }}
-                                    error={!!fieldState.error}
-                                />
+                                    }} 
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus:ring-1 focus:ring-primary/20 font-bold">
+                                            <SelectValue placeholder="Pick a pricing tier…" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl shadow-2xl border border-border/50 bg-card">
+                                        <SelectItem value="none" className="font-bold italic opacity-60 text-xs">No Active Subscription</SelectItem>
+                                        {packages?.map(pkg => (
+                                            <SelectItem key={pkg.id} value={pkg.id} className="font-bold text-xs">
+                                                {pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="currency" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Currency</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus:ring-1 focus:ring-primary/20 font-black">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl shadow-2xl border border-border/50 bg-card">
+                                        <SelectItem value="GHS" className="font-bold text-xs">Ghanaian Cedi (GH¢)</SelectItem>
+                                        <SelectItem value="USD" className="font-bold text-xs">US Dollar ($)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )} />
+                    </div>
+
+                    {/* Rate and Discount Adjustment */}
+                    <div className={cn(
+                        "p-6 rounded-2xl border border-dashed transition-all duration-500",
+                        watchPackageId && watchPackageId !== 'none' 
+                            ? "bg-primary/5 dark:bg-primary/10 border-primary/20" 
+                            : "bg-slate-100/50 dark:bg-slate-800/50 border-border opacity-40 pointer-events-none"
+                    )}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-primary/10 text-primary rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Rate Engine</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <FormField control={form.control} name="discountPercentage" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-bold uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Discount %</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            inputMode="numeric"
+                                            step="0.01" 
+                                            {...field} 
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                field.onChange(val);
+                                                handleDiscountChange(val);
+                                            }}
+                                            className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center focus-visible:ring-2 focus-visible:ring-primary/20" 
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Percentage off the normal price</FormDescription>
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="subscriptionRate" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-bold uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Final Rate</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            inputMode="numeric"
+                                            step="0.01" 
+                                            {...field} 
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                field.onChange(val);
+                                                handleRateChange(val);
+                                            }}
+                                            className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center focus-visible:ring-2 focus-visible:ring-primary/20" 
+                                        />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">The actual amount charged per student</FormDescription>
+                                </FormItem>
+                            )} />
+                        </div>
+                    </div>
+
+                    <FormField control={form.control} name="billingAddress" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Invoice Address</FormLabel>
+                            <FormControl>
+                                <Textarea {...field} placeholder="Where should we send financial documents?" className="min-h-[100px] rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20 font-medium" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField control={form.control} name="currency" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                        <FormField control={form.control} name="arrearsBalance" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-rose-500 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Old Arrears</FormLabel>
                                 <FormControl>
-                                    <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
-                                        <SelectValue />
-                                    </SelectTrigger>
+                                    <Input type="number" inputMode="numeric" step="0.01" {...field} className="h-12 rounded-xl bg-rose-500/10 border-none shadow-inner font-black text-rose-500 text-lg focus-visible:ring-2 focus-visible:ring-rose-500/30" />
                                 </FormControl>
-                                <SelectContent className="rounded-xl shadow-2xl border-none">
-                                    <SelectItem value="GHS" className="font-black">Ghanaian Cedi (GH¢)</SelectItem>
-                                    <SelectItem value="USD" className="font-black">US Dollar ($)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </FormItem>
-                    )} />
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Unpaid amount from your old system</FormDescription>
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="creditBalance" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Initial Credit</FormLabel>
+                                <FormControl>
+                                    <Input type="number" inputMode="numeric" step="0.01" {...field} className="h-12 rounded-xl bg-primary/10 border-none shadow-inner font-black text-primary text-lg focus-visible:ring-2 focus-visible:ring-primary/30" />
+                                </FormControl>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Money already paid in advance</FormDescription>
+                            </FormItem>
+                        )} />
+                    </div>
                 </div>
 
-                {/* Rate and Discount Adjustment */}
-                <div className={cn(
-                    "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500",
-                    watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-border opacity-40 pointer-events-none"
-                )}>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Rate Optimization Engine</p>
+                <Separator className="bg-border/50" />
+
+                {/* Requirements Section */}
+                <div className="p-8 space-y-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center bg-primary/10 text-primary rounded-xl ring-1 ring-primary/20 shadow-sm" aria-hidden="true">
+                            <Zap className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-bold tracking-tight">Software Requirements</h3>
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="modules"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Software Features</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="e.g. Student Billing, Child Security, Staff Attendance…" {...field} autoComplete="off" spellCheck={false} className="min-h-[120px] rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none p-6 font-medium leading-relaxed shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20" />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <FormField
+                            control={form.control}
+                            name="implementationDate"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col text-left">
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1 mb-2">Target Go-Live Date</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button variant={"outline"} className={cn("h-12 justify-start pl-4 text-left font-bold rounded-xl border-none bg-slate-100/50 dark:bg-slate-800/50 shadow-inner focus-visible:ring-2 focus-visible:ring-primary/20", !field.value && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-3 h-5 w-5 text-primary" aria-hidden="true" />
+                                        {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 rounded-2xl shadow-2xl border-none" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                                        initialFocus
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="referee"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 ml-1">Referee</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Name of Sales Executive" {...field} autoComplete="off" className="h-12 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border-none shadow-inner font-bold focus-visible:ring-2 focus-visible:ring-primary/20" />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="includeDroneFootage"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border-2 border-dashed border-primary/20 p-4 bg-primary/5 h-12 mt-auto">
+                                <div className="space-y-0.5">
+                                <FormLabel className="text-[10px] font-bold uppercase tracking-tight text-primary">Paid for Drone Footage</FormLabel>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+
+                <Separator className="bg-border/50" />
+
+                {/* Notifications Section */}
+                <div className="p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 flex items-center justify-center bg-primary/10 text-primary rounded-xl ring-1 ring-primary/20 shadow-sm" aria-hidden="true">
+                            <ShieldCheck className="h-5 w-5" />
+                        </div>
+                        <h3 className="text-lg font-bold tracking-tight">Notifications</h3>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <FormField control={form.control} name="discountPercentage" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Preferred Discount</FormLabel>
-                                <FormControl>
-                                    <Input 
-                                        type="number" 
-                                        step="0.01" 
-                                        {...field} 
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
-                                            field.onChange(val);
-                                            handleDiscountChange(val);
-                                        }}
-                                        className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center" 
-                                    />
-                                </FormControl>
-                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this campus</FormDescription>
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="subscriptionRate" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Target Unit Rate</FormLabel>
-                                <FormControl>
-                                    <Input 
-                                        type="number" 
-                                        step="0.01" 
-                                        {...field} 
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value) || 0;
-                                            field.onChange(val);
-                                            handleRateChange(val);
-                                        }}
-                                        className="h-12 rounded-xl bg-card border-primary/10 shadow-inner font-black text-xl text-center" 
-                                    />
-                                </FormControl>
-                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Effective rate billed per student</FormDescription>
-                            </FormItem>
-                        )} />
-                    </div>
-                </div>
-
-                <FormField control={form.control} name="billingAddress" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Remittance Address</FormLabel>
-                        <FormControl>
-                            <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-slate-50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
-                    <FormField control={form.control} name="arrearsBalance" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Carried Arrears</FormLabel>
-                            <FormControl>
-                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-500/10 border-none shadow-inner font-black text-rose-500" />
-                            </FormControl>
-                            <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Previous system outstanding balance</FormDescription>
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="creditBalance" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Initial Credit</FormLabel>
-                            <FormControl>
-                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-500/10 border-none shadow-inner font-black text-emerald-500" />
-                            </FormControl>
-                            <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Overpayments from old system</FormDescription>
-                        </FormItem>
-                    )} />
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50 border-b p-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                        <Zap className="h-6 w-6" />
-                    </div>
-                    <div>
-                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Functional Needs</CardTitle>
-                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Requirements and implementation window</CardDescription>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8">
-                <FormField
-                    control={form.control}
-                    name="modules"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Required Capabilities</FormLabel>
-                        <FormControl>
-                            <Textarea placeholder="e.g. Student Billing, Child Security, Staff Attendance..." {...field} className="min-h-[120px] rounded-2xl bg-slate-50 border-none p-6 font-medium leading-relaxed shadow-inner" />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField
-                        control={form.control}
-                        name="implementationDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col text-left">
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2">Target Go-Live Date</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button variant={"outline"} className={cn("h-12 justify-start pl-4 text-left font-bold rounded-xl border-none bg-slate-50 shadow-inner", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 rounded-2xl shadow-2xl" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="referee"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Referral Source</FormLabel>
-                            <FormControl>
-                                <Input placeholder="How did you hear about us?" {...field} className="h-12 rounded-xl bg-slate-50 border-none shadow-inner font-bold" />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-            </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-            <h3 className="text-xl font-black uppercase tracking-tight px-2 flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" /> Dispatch Protocols
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="rounded-[2rem] border border-border/50 bg-white">
-                    <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
                             name="notifySchool"
                             render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-slate-50">
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border/50 p-4 bg-slate-100/50 dark:bg-slate-800/50">
                                 <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-black uppercase">Email Acknowledgement</FormLabel>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Confirmation to focal persons</p>
+                                <FormLabel className="text-sm font-bold uppercase tracking-tight">Email Alerts</FormLabel>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Confirmation emails</p>
                                 </div>
                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
                             )}
                         />
-                        {watchNotifySchool && (
-                            <div className="space-y-3 px-1 animate-in fade-in slide-in-from-top-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Additional Receivers</Label>
-                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-50 shadow-inner">
-                                    {isMainEmailValid && <Badge variant="outline" className="bg-card font-bold h-6 border-primary/20 text-primary">{watchMainEmail}</Badge>}
-                                    {form.getValues('notifySchoolEmails').map(e => <Badge key={e} className="bg-primary h-6 font-bold">{e}</Badge>)}
-                                    <Input 
-                                        placeholder="Add email..." 
-                                        value={emailInputValue} 
-                                        onChange={e => setEmailInputValue(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' || e.key === ',') {
-                                                e.preventDefault();
-                                                const email = emailInputValue.trim();
-                                                if (z.string().email().safeParse(email).success) {
-                                                    const current = form.getValues('notifySchoolEmails');
-                                                    if (!current.includes(email)) form.setValue('notifySchoolEmails', [...current, email]);
-                                                    setEmailInputValue('');
-                                                }
-                                            }
-                                        }}
-                                        className="h-8 border-none bg-transparent shadow-none focus-visible:ring-0 text-xs w-32"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card className="rounded-[2rem] border border-border/50 bg-white">
-                    <CardContent className="p-6 space-y-6">
                         <FormField
                             control={form.control}
                             name="notifySchoolBySms"
                             render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-2xl border p-4 bg-slate-50">
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border/50 p-4 bg-slate-100/50 dark:bg-slate-800/50">
                                 <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-black uppercase">SMS Alerting</FormLabel>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Real-time handset confirmation</p>
+                                <FormLabel className="text-sm font-bold uppercase tracking-tight">SMS Alerts</FormLabel>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Instant text messages</p>
                                 </div>
                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
                             )}
                         />
-                        {watchNotifySchoolBySms && (
-                            <div className="space-y-3 px-1 animate-in fade-in slide-in-from-top-2">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Handset Targets</Label>
-                                <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-slate-50 shadow-inner">
-                                    {isMainPhoneValid && <Badge variant="outline" className="bg-card font-bold h-6 border-primary/20 text-primary">{watchMainPhone}</Badge>}
-                                    {form.getValues('notifySchoolSmsNumbers').map(n => <Badge key={n} className="bg-primary h-6 font-bold">{n}</Badge>)}
-                                    <Input 
-                                        placeholder="Add number..." 
-                                        value={smsInputValue} 
-                                        onChange={e => setSmsInputValue(e.target.value)}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter' || e.key === ',') {
-                                                e.preventDefault();
-                                                const num = smsInputValue.trim();
-                                                if (num.length >= 10) {
-                                                    const current = form.getValues('notifySchoolSmsNumbers');
-                                                    if (!current.includes(num)) form.setValue('notifySchoolSmsNumbers', [...current, num]);
-                                                    setSmsInputValue('');
-                                                }
-                                            }
-                                        }}
-                                        className="h-8 border-none bg-transparent shadow-none focus-visible:ring-0 text-xs w-32"
-                                    />
+                        <FormField
+                            control={form.control}
+                            name="notifySmartSapp"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border/50 p-4 bg-slate-100/50 dark:bg-slate-800/50">
+                                <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-bold uppercase tracking-tight">Notify SmartSapp</FormLabel>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Team awareness alert</p>
                                 </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="notifyOnboarding"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border/50 p-4 bg-slate-100/50 dark:bg-slate-800/50">
+                                <div className="space-y-0.5">
+                                <FormLabel className="text-sm font-bold uppercase tracking-tight">Notify Onboarding</FormLabel>
+                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Trigger deployment flow</p>
+                                </div>
+                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
 
-        <div className="flex justify-center pt-8">
-          <Button type="submit" size="lg" disabled={form.formState.isSubmitting} className="h-16 px-20 rounded-[2rem] font-black text-xl shadow-2xl shadow-primary/30 transition-all active:scale-95 uppercase tracking-widest">
-            {form.formState.isSubmitting ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Building className="mr-3 h-6 w-6" />}
-            Execute Institutional Registration
-          </Button>
-        </div>
+                <Separator className="bg-border/50" />
+
+                <div className="p-8 flex justify-center" aria-live="polite">
+                    <Button type="submit" size="lg" disabled={form.formState.isSubmitting} className="h-14 px-16 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 transition-all active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground">
+                        {form.formState.isSubmitting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Building className="mr-3 h-5 w-5" aria-hidden="true" />}
+                        {form.formState.isSubmitting ? "Processing…" : "Register School"}
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
       </form>
     </FormProvider>
   );

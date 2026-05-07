@@ -9,10 +9,8 @@ import type { MessageTemplate } from '@/lib/types';
 // ── Status badge config ────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<MessageTemplate['status'], { label: string; className: string; dot: string }> = {
-  approved:         { label: 'Approved',         className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400' },
-  draft:            { label: 'Draft',             className: 'bg-slate-500/15 text-muted-foreground border-slate-500/20', dot: 'bg-slate-400' },
-  pending_approval: { label: 'Pending Approval',  className: 'bg-amber-500/15 text-amber-400 border-amber-500/20', dot: 'bg-amber-400' },
-  rejected:         { label: 'Rejected',          className: 'bg-red-500/15 text-red-400 border-red-500/20', dot: 'bg-red-400' },
+  active:           { label: 'Active',           className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400' },
+  draft:            { label: 'Draft',             className: 'bg-amber-500/15 text-amber-400 border-amber-500/20', dot: 'bg-amber-400' },
   archived:         { label: 'Archived',          className: 'bg-slate-500/15 text-muted-foreground border-slate-500/20', dot: 'bg-slate-500' },
 };
 
@@ -72,13 +70,13 @@ export default function TemplateCard({ template, onEdit, onDelete, onApprove }: 
           {status.label}
         </Badge>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onApprove && template.status !== 'approved' && (
+          {onApprove && template.status !== 'active' && (
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
               onClick={onApprove}
-              aria-label="Approve template"
+              aria-label="Activate template"
             >
               <CheckCircle className="h-3.5 w-3.5" />
             </Button>

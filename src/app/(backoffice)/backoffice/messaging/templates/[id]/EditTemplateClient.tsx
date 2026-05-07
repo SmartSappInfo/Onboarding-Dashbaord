@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import TemplateEditor from '@/components/messaging/TemplateEditor';
 import ReminderConfig from '@/components/messaging/ReminderConfig';
-import { updateGlobalTemplate, deleteGlobalTemplate, approveTemplate, rejectTemplate, listGlobalTemplates } from '@/lib/template-actions';
+import { updateGlobalTemplate, deleteGlobalTemplate, activateTemplate, archiveTemplate, listGlobalTemplates } from '@/lib/template-actions';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { renderTemplate } from '@/lib/template-utils';
 import { useBackoffice } from '../../../context/BackofficeProvider';
@@ -44,10 +44,8 @@ type FormData = z.infer<typeof schema>;
 // ── Status badge config ────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<MessageTemplate['status'], { label: string; className: string }> = {
-  approved:         { label: 'Approved',        className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
-  draft:            { label: 'Draft',            className: 'bg-slate-500/15 text-muted-foreground border-slate-500/20' },
-  pending_approval: { label: 'Pending Approval', className: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
-  rejected:         { label: 'Rejected',         className: 'bg-red-500/15 text-red-400 border-red-500/20' },
+  active:           { label: 'Active',           className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' },
+  draft:            { label: 'Draft',            className: 'bg-amber-500/15 text-amber-400 border-amber-500/20' },
   archived:         { label: 'Archived',         className: 'bg-slate-500/15 text-muted-foreground border-slate-500/20' },
 };
 
@@ -196,8 +194,7 @@ export default function EditTemplateClient({ templateId }: { templateId: string 
   const [reminderConfig, setReminderConfig] = React.useState<ReminderConfigType | undefined>();
   const [showPreview, setShowPreview] = React.useState(false);
   const [showSendTest, setShowSendTest] = React.useState(false);
-  const [rejectReason, setRejectReason] = React.useState('');
-  const [showRejectDialog, setShowRejectDialog] = React.useState(false);
+  // Reject dialog removed — simplified to activate/archive model
 
   const { control, handleSubmit, watch, reset, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -264,23 +261,22 @@ export default function EditTemplateClient({ templateId }: { templateId: string 
     }
   }
 
-  async function handleApprove() {
+  async function handleActivate() {
     if (!profile || !template) return;
     try {
-      await approveTemplate(template.id, profile.id);
-      toast({ title: 'Template approved' });
+      await activateTemplate(template.id, profile.id);
+      toast({ title: 'Template activated' });
       load();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed', description: e.message });
     }
   }
 
-  async function handleReject() {
-    if (!profile || !template || !rejectReason.trim()) return;
+  async function handleArchive() {
+    if (!profile || !template) return;
     try {
-      await rejectTemplate(template.id, rejectReason, profile.id);
-      toast({ title: 'Template rejected' });
-      setShowRejectDialog(false);
+      await archiveTemplate(template.id, profile.id);
+      toast({ title: 'Template archived' });
       load();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Failed', description: e.message });
@@ -367,25 +363,25 @@ export default function EditTemplateClient({ templateId }: { templateId: string 
             {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             {showPreview ? 'Hide Preview' : 'Preview'}
           </Button>
-          {can('templates', 'edit') && template.status !== 'approved' && (
+          {can('templates', 'edit') && template.status !== 'active' && (
             <Button
               type="button"
               size="sm"
-              onClick={handleApprove}
+              onClick={handleActivate}
               className="rounded-xl h-9 gap-2 bg-emerald-600 hover:bg-emerald-700 text-foreground"
             >
-              <CheckCircle className="h-3.5 w-3.5" /> Approve
+              <CheckCircle className="h-3.5 w-3.5" /> Activate
             </Button>
           )}
-          {can('templates', 'edit') && (template.status === 'draft' || template.status === 'pending_approval') && (
+          {can('templates', 'edit') && template.status !== 'archived' && (
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setShowRejectDialog(true)}
-              className="rounded-xl h-9 gap-2 border-red-500/30 text-red-400 hover:bg-red-500/10"
+              onClick={handleArchive}
+              className="rounded-xl h-9 gap-2 border-slate-500/30 text-muted-foreground hover:bg-slate-500/10"
             >
-              <XCircle className="h-3.5 w-3.5" /> Reject
+              <XCircle className="h-3.5 w-3.5" /> Archive
             </Button>
           )}
           {can('templates', 'delete') && (
@@ -621,33 +617,7 @@ export default function EditTemplateClient({ templateId }: { templateId: string 
         variables={variables}
       />
 
-      {/* Reject Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={(v) => !v && setShowRejectDialog(false)}>
-        <DialogContent className="bg-muted border-border rounded-2xl max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Reject Template</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Label className="text-xs text-muted-foreground">Rejection Reason</Label>
-            <Input
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Explain why this template is being rejected..."
-              className="h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl"
-            />
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setShowRejectDialog(false)} className="rounded-xl text-muted-foreground">Cancel</Button>
-            <Button
-              onClick={handleReject}
-              disabled={!rejectReason.trim()}
-              className="bg-red-600 hover:bg-red-700 text-foreground rounded-xl gap-2"
-            >
-              <XCircle className="h-4 w-4" /> Reject
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Reject dialog removed — simplified to activate/archive model */}
     </div>
   );
 }

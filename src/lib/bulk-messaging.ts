@@ -107,6 +107,28 @@ export async function processBulkJobChunk(jobId: string) {
 
     const template = templateSnap.data() as MessageTemplate;
     const sender = senderSnap.data() as SenderProfile;
+
+    // Resolve org branding variables once per chunk (not per recipient)
+    const orgBrandingVars: Record<string, string> = {
+        current_year: new Date().getFullYear().toString(),
+    };
+    const orgId = template.organizationId || '';
+    if (orgId) {
+        try {
+            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+            if (orgSnap.exists) {
+                const org = orgSnap.data() as Record<string, any>;
+                orgBrandingVars.org_name = org.name || '';
+                orgBrandingVars.org_logo_url = org.logoUrl || '';
+                orgBrandingVars.org_email = org.email || '';
+                orgBrandingVars.org_phone = org.phone || '';
+                orgBrandingVars.org_address = org.address || '';
+                orgBrandingVars.org_website = org.website || '';
+            }
+        } catch (e) {
+            console.warn('>>> [BULK] Org branding lookup skipped:', (e as Error).message);
+        }
+    }
     
     let styleWrapper = '';
     if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
@@ -122,17 +144,19 @@ export async function processBulkJobChunk(jobId: string) {
     if (job.channel === 'email') {
         const batchPayload = tasksSnap.docs.map(taskDoc => {
             const task = taskDoc.data() as MessageTask;
+            // Merge org branding as base layer; task-specific vars override
+            const mergedVars = { ...orgBrandingVars, ...task.variables };
             let html = '';
-            let subject = resolveVariables(template.subject || '', task.variables);
+            let subject = resolveVariables(template.subject || '', mergedVars);
 
             if (template.blocks?.length) {
-                html = renderBlocksToHtml(template.blocks, task.variables, {
+                html = renderBlocksToHtml(template.blocks, mergedVars, {
                     wrapper: styleWrapper || undefined
                 });
             } else {
-                html = resolveVariables(template.body, task.variables);
+                html = resolveVariables(template.body, mergedVars);
                 if (styleWrapper && styleWrapper.includes('{{content}}')) {
-                    html = styleWrapper.replace('{{content}}', html);
+                    html = resolveVariables(styleWrapper, mergedVars).replace('{{content}}', html);
                 }
             }
 

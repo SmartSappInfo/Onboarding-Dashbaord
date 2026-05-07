@@ -1,907 +1,525 @@
-Yes — this should become a **full Messaging Campaigns app**, not a single-send composer.
+# SmartSapp Messaging Campaigns — Full Product Specification
 
-Your current messaging engine already has the right bones: a variable/registry layer, templates, styles, sender profiles, provider handoff through Resend and Mnotify, and message logs with webhook-driven engagement tracking. It also already fits your automation model, which is event-driven, workspace-bound, and supports tag triggers and send-message actions.  
-
-The overhaul I’d recommend is this:
-
-> Turn Messaging into a **workspace-scoped campaign system** with
-> campaign planning, audience building, channel-specific creation flows, template management, scheduling, delivery/retry orchestration, engagement tracking, and post-send automations.
+> **SmartSapp Campaign Messaging**
+> A workspace-based campaign system for Email and SMS that helps teams create, schedule, personalize, track, and optimize outreach with templates, AI assistance, automations, and engagement analytics. WhatsApp support is planned as a separate specification.
 
 ---
 
-# 1. Product vision
+# 1. Product Vision
 
-SmartSapp Messaging Campaigns should let a workspace user:
+SmartSapp Messaging Campaigns lets a workspace user:
 
-* create **Email**, **SMS**, and later **WhatsApp** campaigns
-* draft, schedule, or send immediately
-* pick a template or create custom content
-* use AI to draft and improve copy
-* target the exact right audience using workspace-specific entity filters, tags, and contact roles
-* track delivery, opens, clicks, replies, failures, and non-action segments
-* clone campaigns, reuse templates, and resend intelligently
-* trigger follow-up tags and automations based on message engagement
-
-That aligns with best practice in modern platforms: reusable segments, saved segment builders, conditional email content, scheduled and batch sending, and tracked links for click measurement. ActiveCampaign emphasizes reusable segments and conditional content based on tags/fields, while Resend and Twilio both support campaign-scale sending, scheduling, and engagement tracking through broadcasts, scheduling, link tracking, and webhooks. ([ActiveCampaign Help Center][1])
+* Create **Email** and **SMS** campaigns (WhatsApp planned separately)
+* Draft, schedule, or send immediately
+* Pick a template or create custom content
+* Use AI to draft and improve copy
+* Target the exact right audience using workspace-specific entity filters, tags, and contact roles
+* Track delivery, opens, clicks, replies, failures, and non-action segments
+* Clone campaigns, reuse templates, and resend intelligently
+* Trigger follow-up tags and automations based on message engagement
 
 ---
 
-# 2. Core product rules
+# 2. Core Product Rules
 
 ## Workspace-first
 
-Campaigns belong to a workspace, not the organization globally. That matches the rest of your architecture: automations are workspace-bound, tag triggers are workspace-aware, and cross-workspace contamination is something you’re already avoiding. 
+Campaigns belong to a workspace. Audience, tags, automations, sender profiles, and logs are all workspace-scoped.
 
 ## Channel-specific flows
 
-The user picks:
-
-* Email
-* SMS
-* WhatsApp later
-
-Then the wizard changes based on channel.
-
-That is important because best practice is not to force one generic composer across all channels. Email needs richer design, subjects, preview text, conditional sections, and click/open analytics. SMS needs length awareness, sender constraints, compliance controls, and click tracking. ActiveCampaign separates conditional content and segmentation heavily for email, while SMS has different segmentation and engagement rules. ([ActiveCampaign Help Center][1])
+User picks Email or SMS. The wizard adapts per channel. Email needs richer design, subjects, preview text, conditional sections, and click/open analytics. SMS needs length awareness, sender constraints, compliance controls, and click tracking. WhatsApp integration is deferred to a separate specification.
 
 ## Audience first, content second
 
-Users should define audience before final send. Modern campaign tools put segmentation at the center because personalization, deliverability, and relevance depend on it. ActiveCampaign’s segment builder is reusable across campaigns and automations, and that is the right model to copy. ([ActiveCampaign Help Center][2])
+Users define audience before final send. Segmentation is reusable across campaigns and automations.
 
 ## Queue-based delivery
 
-Do not send campaigns directly from the wizard. Queue them. Your earlier messaging direction already pointed toward a message queue, rate limiting, tracked links, and delivery optimization; keep that. 
+Campaigns are queued, not sent directly from the UI. Messages go through rate limiting, tracked links, and delivery optimization.
 
 ---
 
-# 3. Messaging app information architecture
+# 3. Template Taxonomy (Three-Axis Classification)
+
+Templates are classified on **three independent axes**. Every template must declare all three.
+
+## Axis 1: Channel (`channel`)
+
+| Value   | Description |
+|---------|-------------|
+| `email` | Email via Resend |
+| `sms`   | SMS via mNotify |
+
+## Axis 2: Module Context (`category`)
+
+| Value        | Description |
+|--------------|-------------|
+| `surveys`    | Survey invitations, follow-ups, result notifications |
+| `meetings`   | Meeting invites, reminders, follow-ups |
+| `forms`      | Doc-signing requests, completion notifications |
+| `agreements` | Agreement/contract related messages |
+| `campaigns`  | Marketing campaigns, newsletters, announcements |
+| `reminders`  | Scheduled reminders (deadlines, tasks, events) |
+| `tasks`      | Task assignments and updates |
+| `automations`| Automation-triggered messages |
+| `qr_codes`   | QR code delivery messages |
+| `general`    | Miscellaneous / uncategorized |
+
+## Axis 3: Target Audience (`target`)
+
+| Value             | Label (UI)                 | Description |
+|-------------------|----------------------------|-------------|
+| `external_client` | Uses workspace terminology (e.g. "Institution", "Parent", "Client") | Messages sent to entities/contacts outside the org |
+| `internal_team`   | "Team / Staff"             | Messages sent to workspace users, admins, team members |
+
+### Filtering Rules
+
+When a consumer (Survey, Meeting, Automation, Composer) requests templates, it filters on **all three axes**:
+
+```
+// Example: Survey module needs an SMS to send to a client
+channel === 'sms' AND category === 'surveys' AND target === 'external_client'
+
+// Example: Meeting module needs an email reminder for team
+channel === 'email' AND category === 'meetings' AND target === 'internal_team'
+```
+
+### UI Labels
+
+The `target` axis uses workspace terminology for `external_client`. The `useTerminology()` hook provides the display label:
+- If workspace calls entities "Institutions" → "Institution Templates"
+- If workspace calls entities "Clients" → "Client Templates"
+- `internal_team` always renders as "Team Templates"
+
+---
+
+# 4. Email Content Modes
+
+When creating an email template or composing an email campaign, the user selects one of **three content modes**:
+
+## Mode 1: Plain Text
+
+Simple text body with `{{variable}}` placeholders. No HTML rendering. Best for transactional alerts and simple notifications.
+
+## Mode 2: HTML/CSS Code Editor
+
+Raw HTML/CSS editor with syntax highlighting. Full control over markup. Includes:
+- Live preview pane
+- HTML validation warnings
+- Variable insertion toolbar
+- `{{content}}` compatibility for style wrapper injection
+
+## Mode 3: Rich Email Builder (Block Editor)
+
+Visual drag-and-drop block editor. Available block types:
+
+| Block Type   | Description |
+|--------------|-------------|
+| `heading`    | H1/H2/H3 with styling |
+| `text`       | Rich text paragraph |
+| `image`      | Image with URL and alt text |
+| `button`     | CTA button with link |
+| `divider`    | Horizontal separator |
+| `spacer`     | Vertical spacing |
+| `list`       | Ordered/unordered list |
+| `logo`       | **Dynamic** — pulls from organization logo |
+| `header`     | Pre-built header section with dynamic logo |
+| `footer`     | Pre-built footer with dynamic org details |
+| `score-card` | Data display card |
+| `quote`      | Blockquote styling |
+| `video`      | Video embed |
+
+Each block supports `visibilityLogic` for conditional display based on variable values.
+
+### Content Mode Storage
+
+```typescript
+contentMode: 'plain_text' | 'html_code' | 'rich_builder'
+```
+
+- `plain_text` → body field contains raw text
+- `html_code` → body field contains raw HTML
+- `rich_builder` → blocks[] array contains structured block data
+
+---
+
+# 5. Dynamic Organization Branding
+
+## Dynamic Logo Resolution
+
+Logos in email templates are **never hardcoded**. The `logo` and `header` block types resolve the image URL at render time from the organization record:
+
+```
+Resolution order:
+1. Organization.logoUrl (from the sending org)
+2. Workspace-level override (if configured)
+3. Fallback placeholder image
+```
+
+The variable `{{org_logo_url}}` is automatically available in all templates and resolves to the organization's current logo URL.
+
+## Dynamic Footer Content
+
+Footer blocks and style wrapper footers use **organization-level placeholders**, not hardcoded values:
+
+| Variable              | Source                       |
+|-----------------------|------------------------------|
+| `{{org_name}}`        | Organization.name            |
+| `{{org_email}}`       | Organization.email           |
+| `{{org_phone}}`       | Organization.phone           |
+| `{{org_address}}`     | Organization.address         |
+| `{{org_website}}`     | Organization.website         |
+| `{{org_logo_url}}`    | Organization.logoUrl         |
+| `{{current_year}}`    | Computed at send time        |
+
+### Style Wrapper Convention
+
+All style wrappers (`message_styles`) should use these placeholders in their header/footer sections rather than embedding literal organization details. This ensures that when an organization updates their contact info or logo, all future sends automatically reflect the change.
+
+---
+
+# 6. Style Wrapper Rules
+
+## Style is Optional
+
+A template can exist **without** a style wrapper. When `styleId` is `null`, `undefined`, or `'none'`, the template body renders without any wrapper envelope.
+
+- SMS templates never use styles
+- Email templates may optionally attach a style
+- Plain text emails typically skip styles
+- HTML code and Rich Builder emails may optionally use a style
+
+## Style Wrapper Structure
+
+Styles contain a `{{content}}` injection point plus dynamic organization variables:
+
+```html
+<html>
+<body>
+  <div class="header">
+    <img src="{{org_logo_url}}" alt="{{org_name}}" />
+  </div>
+  <div class="content">
+    {{content}}
+  </div>
+  <div class="footer">
+    <p>{{org_name}} | {{org_address}}</p>
+    <p>{{org_email}} | {{org_phone}}</p>
+    <p>© {{current_year}} {{org_name}}</p>
+  </div>
+</body>
+</html>
+```
+
+---
+
+# 7. Updated Data Model
+
+## `message_templates` (Updated)
+
+```typescript
+interface MessageTemplate {
+  id: string;
+
+  // Scope
+  scope: 'global' | 'organization';
+  organizationId?: string;
+  globalTemplateId?: string;
+
+  // THREE-AXIS CLASSIFICATION
+  channel: 'email' | 'sms';
+  category: TemplateCategory;
+  target: 'external_client' | 'internal_team';
+
+  // Content
+  name: string;
+  contentMode: 'plain_text' | 'html_code' | 'rich_builder';
+  subject?: string;
+  previewText?: string;
+  body: string;
+  blocks?: MessageBlock[];
+
+  // Template sub-type (e.g. 'invitation', 'reminder', 'follow_up')
+  templateType: string;
+  recipientType?: RecipientType;
+
+  // Variables
+  variableContext: VariableContext;
+  declaredVariables: string[];
+
+  // Reminder config
+  reminderConfig?: ReminderConfig;
+
+  // Style (OPTIONAL — null means no wrapper)
+  styleId?: string | null;
+
+  // Status & lifecycle
+  // draft: work-in-progress, not usable in selectors
+  // active: published and available in template selectors
+  // archived: soft-hidden, excluded from all consumer template lists, easy to unarchive
+  status: 'draft' | 'active' | 'archived';
+  version: number;
+  previousVersionId?: string;
+
+  // Workspace binding
+  workspaceIds?: string[];
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+```
+
+## `message_campaigns` (New)
+
+```typescript
+interface MessageCampaign {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+
+  // Identity
+  internalName: string;
+  channel: 'email' | 'sms';
+  target: 'external_client' | 'internal_team';
+
+  // Content source
+  templateId?: string;
+  contentMode: 'plain_text' | 'html_code' | 'rich_builder';
+  customSubject?: string;
+  customBody?: string;
+  customBlocks?: MessageBlock[];
+
+  // Audience
+  audienceDefinition: AudienceDefinition;
+  audienceSnapshotId?: string; // Frozen at send time
+
+  // Sender
+  senderProfileId: string;
+
+  // Schedule
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'failed' | 'archived';
+  scheduledAt?: string;
+  sentAt?: string;
+
+  // Post-send behavior
+  postSendTagIds?: string[];
+  postSendAutomationIds?: string[];
+
+  // Stats (denormalized for list view)
+  stats: {
+    totalTargeted: number;
+    totalSent: number;
+    totalFailed: number;
+    totalOpened: number;
+    totalClicked: number;
+  };
+
+  // Metadata
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## `message_audiences` (New)
+
+```typescript
+interface MessageAudience {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  filters: AudienceFilter[];
+  filterLogic: 'AND' | 'OR';
+  estimatedCount?: number;
+  lastUsedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AudienceFilter {
+  field: string; // e.g. 'tags', 'contactRole', 'stage', 'status'
+  operator: 'is' | 'is_not' | 'contains' | 'not_contains' | 'any_of' | 'all_of';
+  value: any;
+}
+```
+
+---
+
+# 8. Audience Builder
+
+## Audience Sources
+
+### A. All entities in workspace
+Start from all workspace-linked entities.
+
+### B. Role-based contact targeting
+Pull recipients by contact role: School Owner, Champion, Billing Officer, Parent, Primary Contact, etc.
+
+### C. Tag-based targeting
+- has tag / has any of these tags / has all of these tags / does not have tag
+
+### D. Manual selection
+Search and pick specific entities or contacts.
+
+### E. Saved audiences
+Save a segment definition for reuse across campaigns.
+
+## Audience Filter Conditions
+
+- Entity type, tags, contact role, assigned owner
+- Pipeline, stage, status
+- Date created, activity dates
+- Survey completion, form submission, task completion
+- Invoice status
+- Message activity (opened, clicked, replied, failed, never opened, etc.)
+
+---
+
+# 9. Campaign Creation Wizard
+
+## Step 1: Channel + Target
+- Select Email or SMS
+- Select External Client or Internal Team
+
+## Step 2: Content
+- Channel-specific builder (Plain Text / HTML Code / Rich Builder for email; text editor for SMS)
+- Template selection or compose from scratch
+- AI assistance for drafting/refining
+- Variable picker
+
+## Step 3: Audience
+- Select from saved audiences or build new
+- Tag-based filtering
+- Manual entity/contact selection
+- Live recipient count
+
+## Step 4: Behavior (Tags & Automations)
+- Post-send tagging rules
+- Automation triggers on delivery/open/click/failure
+
+## Step 5: Review & Send
+- Preview with sample recipient data
+- Test send
+- Schedule or send now
+- Save as draft
+
+---
+
+# 10. Tracking & Analytics
+
+## Metrics per Campaign
+- Total targeted, queued, sent, delivered, failed, bounced
+- Opened, clicked, replied, unsubscribed (later)
+
+## Recovery Actions
+- Resend to failed
+- Resend to not opened / not clicked / not replied
+- Clone campaign to new audience subset
+- Create follow-up automation from campaign results
+
+---
+
+# 11. Post-Send Tagging & Automations
+
+## Tagging Actions
+Tag: all targeted, delivered, openers, clickers, repliers, failed, non-openers after X time, non-clickers after X time.
+
+## Automation Hooks
+- Email: on delivered, on opened, on clicked, on not opened/clicked after X days, on bounce/failure
+- SMS: on delivered, on failed, on replied, on no reply after X time, on clicked (tracked link)
+
+---
+
+# 12. Information Architecture
 
 Inside a workspace:
 
 **Messaging**
-
-* Dashboard
-* Campaigns
-* Templates
-* Audiences
-* Sender Profiles
-* Activity / Delivery Logs
-* Analytics
-* Preferences / Policies
-* AI Assistant
-* Settings
-
-Recommended first release:
-
-* Dashboard
-* Campaigns
-* Templates
-* Audiences
-* Analytics
-* Delivery Logs
+- Dashboard (overview + stats)
+- Campaigns (list + wizard)
+- Templates (gallery + workshop)
+- Audiences (saved segments)
+- Sender Profiles
+- Visual Styles
+- Delivery Logs
+- Analytics
+- AI Assistant
+- Settings / Preferences
 
 ---
 
-# 4. Main campaign types
+# 13. Phased Rollout
 
-## Email campaign
+## Phase 1: Template Taxonomy & Dynamic Branding
+- Add `target` axis to templates (`external_client` | `internal_team`)
+- Add `contentMode` field to templates
+- Make `styleId` optional (nullable)
+- Implement dynamic org variables (`{{org_logo_url}}`, `{{org_name}}`, etc.)
+- Update template filters across Survey, Meeting, and Automation consumers
+- Update template gallery UI with three-axis filtering
 
-Use for:
+## Phase 2: Email Content Modes
+- Plain text editor
+- HTML/CSS code editor with preview
+- Rich block editor enhancements (dynamic logo block, dynamic footer block)
+- Style wrapper templates using org placeholders
+- Template preview with live org branding
 
-* newsletters
-* onboarding
-* billing reminders
-* event invitations
-* product updates
-* admissions and onboarding flows
+## Phase 3: Campaign Entity & Management
+- `message_campaigns` collection and types
+- Campaign list view (drafts, scheduled, sending, sent, archived)
+- Campaign creation wizard (5-step flow)
+- Draft save/resume
+- Campaign cloning
+- Audience snapshot at send time
 
-## SMS campaign
+## Phase 4: Audience Builder & Segments
+- Saved audience definitions (`message_audiences` collection)
+- Advanced filter builder (tag, role, stage, status, activity)
+- Live recipient count
+- Audience reuse across campaigns
 
-Use for:
+## Phase 5: Analytics & Engagement
+- Campaign-level analytics dashboard
+- Open/click/bounce tracking per campaign
+- Engagement cohort segmentation
+- Resend to failed / non-openers / non-clickers
 
-* reminders
-* urgent nudges
-* billing alerts
-* event reminders
-* short follow-ups
-* no-action retargeting
+## Phase 6: Post-Send Automation & Intelligence
+- Post-send tagging rules
+- Engagement-based automation triggers
+- AI copy improvement integration
+- A/B subject/body variants (later)
 
-## WhatsApp campaign later
+## Phase 7: Advanced Features
+- Link tracking (branded shortened links)
+- Multilingual templates
+- Unsubscribe / preference center (email `List-Unsubscribe` header)
+- Send time optimization
+- Throttling policies
 
-Use for:
-
-* richer mobile engagement
-* click-through flows
-* reminders with slightly richer content
-* follow-up sequences
-
-Twilio supports tracked, shortened links for both SMS and WhatsApp through Messaging Services, which is useful later when you add WhatsApp. ([Twilio][3])
-
----
-
-# 5. Campaign creation flow
-
-This should be a **modern stepwise wizard**.
-
-## Step 1: Choose channel
-
-User selects:
-
-* Email
-* SMS
-* WhatsApp later
-
-Once selected, the wizard adapts.
-
-## Step 2: Campaign basics
-
-Fields:
-
-* Internal campaign name
-* Workspace
-* Objective
-* Sender profile
-* Draft / Send now / Schedule
-* Optional campaign tags
-* Optional related automation / related audience / related template
-
-## Step 3: Audience
-
-This is the most important step after channel selection.
-
-## Step 4: Content
-
-Channel-specific builder.
-
-## Step 5: Tracking + tags + automations
-
-What should happen after delivery, open, click, reply, or failure.
-
-## Step 6: Review + test
-
-Preview, test recipients, sample renders, summary.
-
-## Step 7: Send / schedule / save draft
-
-Final confirmation.
+> **Note:** WhatsApp channel support is planned as a separate product specification.
 
 ---
 
-# 6. Audience builder
-
-This should be one of the strongest parts of the system.
-
-Your earlier messaging ideas already pointed to an audience layer, tag-based targeting, and contact tagging with cached tag arrays for fast filtering. That should now become a first-class audience builder.  
-
-## Audience sources
-
-### A. All entities in workspace
-
-The user can start from all workspace-linked entities.
-
-### B. Role-based focal/contact sending
-
-Recipients can be pulled from contacts attached to entities by role.
-
-Examples:
-
-* School Owner
-* Champion
-* Billing Officer
-* Parent
-* Guardian
-* Signatory
-* Primary Contact
-
-This is already consistent with your entity/contact direction, where focal persons become generalized contacts. 
-
-### C. Tag-based targeting
-
-Users should be able to filter:
-
-* has tag
-* has any of these tags
-* has all of these tags
-* does not have tag
-
-### D. Manual selection
-
-Search or scroll:
-
-* entities
-* contacts under entities
-* bulk pick specific people
-
-### E. Saved audiences
-
-User can save a segment as an audience for reuse.
-
-That mirrors modern segment libraries and is strongly aligned with ActiveCampaign’s segment model. ([ActiveCampaign Help Center][2])
-
-## Audience filter conditions
-
-The audience builder should support:
-
-* entity type in workspace scope
-* entity tags
-* contact role
-* assigned owner
-* pipeline
-* stage
-* status
-* date created
-* activity dates
-* survey completion
-* form submission
-* task completion
-* invoice status where applicable
-* message activity:
-
-  * opened
-  * clicked
-  * replied
-  * failed
-  * never opened
-  * never clicked
-  * never replied
-
-Because your automation layer already emits triggers like `SURVEY_SUBMITTED`, `TASK_COMPLETED`, `TAG_ADDED`, `TAG_REMOVED`, and can send messages or create tasks, this data model can support campaign targeting and re-targeting naturally. 
-
-## Audience modes
-
-### Simple mode
-
-A user-friendly rules builder:
-
-* “Send to all contacts with role = Parent and tag = NEW_PARENT”
-
-### Advanced mode
-
-Nested AND/OR groups:
-
-* role is Parent OR Guardian
-* AND has tag ADMISSIONS_INTEREST
-* AND has not tag UNSUBSCRIBED
-
----
-
-# 7. SMS campaign flow
-
-This should be very simple and fast.
-
-## Step A: Pick content source
-
-* Choose SMS template
-* Start blank
-* Generate with AI
-
-## Step B: Write message
-
-Features:
-
-* live character count
-* segment count / estimated SMS parts
-* variable picker
-* AI polish / rewrite
-* tone options
-* shorten / expand
-* CTA suggestions
-* compliance warning if too long
-
-## Step C: Insert variables
-
-Fields and variables should be insertable from the new Fields Manager, which is exactly the right move. Your current message variable registry and resolver can evolve into that broader field-backed variable system. 
-
-Examples:
-
-* `{{contact_name}}`
-* `{{entity_name}}`
-* `{{invoice_amount}}`
-* `{{survey_score}}`
-
-## Step D: Link tracking
-
-If the SMS contains links, SmartSapp should support tracked and ideally branded shortened links later. Twilio’s link shortening and click tracking model is a strong benchmark: branded domain, click callbacks, distinction between preview and click, and message-to-click linkage. ([Twilio][3])
-
-## Step E: Save as template
-
-The user should be able to save the current SMS as a reusable template or update an existing template.
-
-## Step F: Preview with sample recipients
-
-Preview using a few selected contacts/entities before send.
-
-## Step G: Review and send/schedule
-
----
-
-# 8. Email campaign flow
-
-Email needs a richer builder.
-
-## Step A: Choose content mode
-
-* Drag-and-drop builder
-* Code / HTML mode
-* Start from template
-* Generate with AI
-
-This is the right split. Many mature tools separate no-code designer from custom HTML.
-
-## Step B: Template or blank
-
-Templates should include:
-
-* newsletter
-* event invitation
-* product launch
-* onboarding
-* reminder
-* billing notice
-* survey follow-up
-* admissions invite
-
-## Step C: Builder experience
-
-The drag-and-drop builder should support:
-
-* sections
-* columns
-* heading
-* text
-* image
-* button
-* divider
-* spacer
-* social links
-* footer
-* hero
-* cards
-* FAQ
-* CTA banner
-
-Your existing messaging architecture already has block-based rendering for HTML emails, which is a strong foundation for this. 
-
-## Step D: Code mode
-
-Allow:
-
-* raw HTML
-* MJML later if you want
-* embedded custom code block inside drag-and-drop layouts
-
-But keep guardrails:
-
-* validate HTML
-* sanitize unsupported elements
-* warn on risky email markup
-* show preview issues
-
-## Step E: Variables and personalization
-
-Use fields/variables picker.
-Support:
-
-* inline variable insertion
-* fallback values
-* format helpers later
-
-## Step F: Conditional display
-
-This is a major differentiator.
-
-Allow blocks/sections to be shown based on:
-
-* tags
-* contact role
-* field values
-* entity type
-* stage
-* invoice status
-* survey score range
-* language
-* workspace-compatible conditions
-
-That matches modern conditional-content behavior in email tools and is directly inspired by ActiveCampaign’s conditional content model. ActiveCampaign allows sections/blocks to display conditionally based on tags, contact fields, events, and related data, and explicitly recommends tags as a clean targeting mechanism. ([ActiveCampaign Help Center][1])
-
-## Step G: Email-specific settings
-
-* subject
-* preview text
-* from profile
-* reply-to
-* preheader
-* tracking on/off
-* tracked links on/off
-* unsubscribe/footer policy where needed
-* internal notes
-
-## Step H: Test renders
-
-* send test email
-* preview as selected recipient
-* desktop/mobile preview
-* spam/deliverability checklist later
-
-## Step I: Schedule or send
-
-For email scheduling, Resend supports scheduled sends and broadcast-oriented sending flows, which makes it a good benchmark for queue/scheduling design. ([Resend][4])
-
----
-
-# 9. WhatsApp later
-
-Design now so WhatsApp slots in later.
-
-WhatsApp campaign flow should resemble SMS, but with:
-
-* richer templates if provider supports them
-* tracked links
-* media support later
-* stricter provider template constraints depending provider
-
-Twilio’s link shortening/click tracking already extends to WhatsApp in its Messaging Service model, so your campaign model should keep “link tracking” channel-agnostic from the start. ([Twilio][3])
-
----
-
-# 10. Templates
-
-## Template library
-
-Organize by:
-
-* channel
-* category
-* purpose
-* workspace
-* usage count
-
-Examples:
-
-* Billing
-* Admissions
-* Onboarding
-* Surveys
-* Meetings
-* Events
-* General announcements
-
-This aligns with the earlier recommendation to categorize templates and add metadata like usage count and recommended variables. 
-
-## Template actions
-
-* create
-* duplicate
-* save from campaign
-* update from campaign
-* archive
-* version history later
-
-## Template metadata
-
-* template name
-* channel
-* category
-* preview
-* recommended audience
-* recommended variables
-* created by
-* last used
-
----
-
-# 11. AI assistance
-
-AI should be embedded directly in the content step.
-
-## For SMS
-
-* write from prompt
-* shorten
-* make friendlier
-* make more urgent
-* make professional
-* add CTA
-* translate later
-
-## For Email
-
-* generate draft from objective
-* improve subject line
-* improve preview text
-* rewrite body
-* create variants
-* summarize long content
-* generate CTA ideas
-
-Keep AI assistive, not mandatory.
-
----
-
-# 12. Tracking, statistics, and re-targeting
-
-This needs to become a full campaign analytics layer.
-
-Your current engine already uses Resend webhooks to increment opens and clicks in message logs. Build from that instead of replacing it. 
-
-## Metrics by campaign
-
-* total targeted
-* total queued
-* total sent
-* delivered
-* failed
-* bounced where available
-* opened
-* clicked
-* replied
-* unsubscribed later
-* conversion action later
-
-## Segment analytics
-
-Break down by:
-
-* channel
-* sender profile
-* template
-* tag
-* contact role
-* stage
-* audience segment
-
-## Recovery actions
-
-Users should be able to:
-
-* resend to failed
-* resend to not opened
-* resend to not clicked
-* resend to not replied
-* clone campaign to new audience subset
-* create follow-up automation from campaign results
-
-For SMS, ActiveCampaign’s SMS conditions explicitly support segmenting by reply behavior, which validates this direction for re-targeting engagement-based cohorts. ([ActiveCampaign Help Center][5])
-
----
-
-# 13. Post-send tagging and automations
-
-This is one of the best upgrades you proposed.
-
-## Tagging actions
-
-User can choose to tag:
-
-* all targeted contacts
-* successfully delivered contacts
-* openers
-* clickers
-* repliers
-* failed recipients
-* non-openers after X time
-* non-clickers after X time
-
-This fits directly with your tag architecture and automation trigger model, where tags can be added/removed and those events can themselves trigger automations.  
-
-## Automation hooks
-
-For email:
-
-* on delivered
-* on opened
-* on clicked
-* on not opened after X days
-* on not clicked after X days
-* on bounce/failure
-
-For SMS:
-
-* on delivered
-* on failed
-* on replied
-* on no reply after X time
-* on clicked if tracked link exists
-
-Examples:
-
-* email opened but not clicked in 3 days → send SMS follow-up
-* SMS delivered but no reply in 2 days → create task
-* clicked “Apply Now” → tag `high_intent`
-* failed email → try SMS fallback if allowed
-
-That matches both your automation engine and earlier messaging enhancement direction.
-
----
-
-# 14. Best-practice architecture for your app
-
-## A. New top-level objects
-
-Introduce:
-
-* `message_campaigns`
-* `message_campaign_versions`
-* `message_campaign_audiences`
-* `message_templates`
-* `message_segments` or saved audiences
-* `message_deliveries`
-* `message_events`
-* `message_retry_jobs`
-
-## B. Queue-based send engine
-
-Do not fire provider sends directly from the UI.
-
-Flow:
-
-1. campaign created
-2. audience resolved and frozen
-3. campaign version snapshotted
-4. messages queued per recipient
-5. queue workers send through provider adapters
-6. provider webhooks update status
-7. analytics and automations consume events
-
-## C. Freeze audience at send time
-
-When the campaign is scheduled or sent, snapshot:
-
-* recipient entity/contact list
-* variables at send-time or render-time depending design
-* template version
-* sender profile
-* campaign settings
-
-This avoids “moving target” campaigns.
-
-## D. Provider abstraction
-
-You already have:
-
-* Resend for email
-* Mnotify for SMS
-
-Keep that adapter pattern. Add WhatsApp provider later behind the same interface. 
-
----
-
-# 15. Data model direction
-
-At a high level:
-
-## `message_campaigns`
-
-Stores:
-
-* workspaceId
-* channel
-* internalName
-* status
-* senderProfileId
-* templateId or custom mode
-* audienceDefinition
-* schedule
-* createdBy
-* stats summary
-
-## `message_campaign_versions`
-
-Stores frozen content and settings.
-
-## `message_campaign_recipients`
-
-Stores resolved targets:
-
-* entityId
-* contactId
-* role
-* destination
-* personalization snapshot
-* delivery status
-
-## `message_deliveries`
-
-One record per attempted send.
-
-## `message_events`
-
-Open, click, reply, failure, bounce, unsubscribe later.
-
-## `message_retry_jobs`
-
-Retries for failed deliveries or chosen follow-up cohorts.
-
----
-
-# 16. Recommended page structure
-
-## Messaging Dashboard
-
-* active drafts
-* scheduled campaigns
-* recent sends
-* delivery health
-* engagement summary
-* top templates
-* failed deliveries needing action
-
-## Campaigns List
-
-* drafts
-* scheduled
-* sending
-* sent
-* archived
-* channel filter
-* clone
-* resend
-* analytics
-
-## Campaign Builder Wizard
-
-Stepwise flow described above.
-
-## Templates
-
-Library with create/edit/duplicate/version.
-
-## Audiences
-
-Saved segments and live count builder.
-
-## Delivery Logs
-
-Filter by campaign, channel, status, provider.
-
-## Analytics
-
-Per campaign and aggregate.
-
----
-
-# 17. UX principles
-
-## Keep the wizard short
-
-Users should feel progress:
-
-1. Channel
-2. Audience
-3. Content
-4. Behavior
-5. Review
-
-## Show live counts
-
-As filters are applied:
-
-* entities matched
-* contacts matched
-* valid recipients by channel
-* invalid/missing destinations
-
-## Warn clearly
-
-Examples:
-
-* 38 recipients missing phone number
-* 112 contacts unsubscribed
-* 9 recipients have no matching role contact
-* this SMS may span 3 message parts
-
-## Separate “design” from “behavior”
-
-Users should not configure automations while writing content unless they want to. Keep behavior in its own step.
-
-## Make retries and cloning easy
-
-Campaign operations should feel operational, not hidden.
-
----
-
-# 18. Phased rollout
-
-## Phase 1: foundation
-
-* campaign object model
-* new campaign list
-* SMS and email channel split
-* draft / schedule / send now
-* sender profile selection
-* workspace-scoped audience builder
-* template selection
-* clone campaign
-* basic analytics
-* resend to failed
-
-## Phase 2: richer content and segmentation
-
-* email drag-and-drop builder
-* code mode
-* variable picker
-* conditional content for email
-* saved audiences
-* manual entity/contact picker
-* test renders
-* tracked links for SMS/email
-
-## Phase 3: behavior and automation
-
-* post-send tagging
-* engagement-based automations
-* resend to non-openers/non-clickers/non-repliers
-* click/open cohorts
-* AI copy improvement
-
-## Phase 4: advanced optimization
-
-* A/B subject/body variants
-* send time optimization
-* WhatsApp support
-* multilingual templates
-* unsubscribe / preference center
-* throttling policies and advanced compliance controls
-
----
-
-# 19. My strongest recommendations
-
-The most important decisions here are:
-
-## 1. Build around campaigns, not messages
-
-A campaign is the right unit for:
-
-* scheduling
-* analytics
-* retries
-* cloning
-* audience freezing
-* automation hooks
-
-## 2. Keep it workspace-scoped
-
-Audience, tags, automations, sender profiles, and logs should all be workspace-aware.
-
-## 3. Make audience building reusable
-
-Saved segments are critical. That is one of the biggest best-practice patterns from mature tools. ([ActiveCampaign Help Center][2])
-
-## 4. Use conditional email sections, not only inline variables
-
-That will make the email builder genuinely competitive. ([ActiveCampaign Help Center][1])
-
-## 5. Treat SMS differently from email
-
-Character count, tracked links, response segmentation, and compliance rules should be native to SMS flow. ([ActiveCampaign Help Center][5])
-
-## 6. Use queue + provider webhooks
-
-This is how you get reliability, retries, and performance.
-
----
-
-# 20. Final product framing
-
-This should be positioned as:
-
-> **SmartSapp Campaign Messaging**
-> A workspace-based campaign system for Email, SMS, and WhatsApp that helps teams create, schedule, personalize, track, and optimize outreach with templates, AI assistance, automations, and engagement analytics.
-
-And this should explicitly replace the current “messaging wizard” with:
-
-* a campaign-centered workflow
-* reusable audiences
-* reusable templates
-* rich analytics
-* recovery actions
-* post-send automation
-
-If you want, I’ll turn this next into a **full PRD with page-by-page UI specs and a Next.js + Firebase technical architecture**.
-
-[1]: https://help.activecampaign.com/hc/en-us/articles/220358207-Use-Conditional-Content?utm_source=chatgpt.com "Use Conditional Content – ActiveCampaign Help Center"
-[2]: https://help.activecampaign.com/hc/en-us/articles/221483407-Get-started-with-segments-in-ActiveCampaign?utm_source=chatgpt.com "Get started with segments in ActiveCampaign – ActiveCampaign Help Center"
-[3]: https://www.twilio.com/docs/messaging/features/link-shortening?utm_source=chatgpt.com "Link Shortening | Twilio"
-[4]: https://resend.com/docs/dashboard/broadcasts/introduction?utm_source=chatgpt.com "Managing Broadcasts - Resend"
-[5]: https://help.activecampaign.com/hc/en-us/articles/17035619690140-ActiveCampaign-SMS-segment-conditions?utm_source=chatgpt.com "ActiveCampaign SMS segment conditions – ActiveCampaign Help Center"
+# 14. Strongest Recommendations
+
+1. **Build around campaigns, not messages** — campaigns are the right unit for scheduling, analytics, retries, cloning, and automation hooks.
+2. **Keep it workspace-scoped** — all entities respect workspace boundaries.
+3. **Three-axis template classification** — channel × category × target eliminates ambiguity and enables precise template filtering.
+4. **Dynamic branding over hardcoded assets** — logos and footers always resolve from org data.
+5. **Style is optional** — not every template needs a wrapper.
+6. **Audience building is reusable** — saved segments are critical for operational efficiency.
+7. **Treat SMS differently from email** — character count, tracked links, response segmentation.
+8. **Use queue + provider webhooks** — reliability, retries, and performance.
+
+[1]: https://help.activecampaign.com/hc/en-us/articles/220358207-Use-Conditional-Content "Use Conditional Content – ActiveCampaign"
+[2]: https://help.activecampaign.com/hc/en-us/articles/221483407-Get-started-with-segments-in-ActiveCampaign "Segments – ActiveCampaign"
+[3]: https://www.twilio.com/docs/messaging/features/link-shortening "Link Shortening | Twilio"
+[4]: https://resend.com/docs/dashboard/broadcasts/introduction "Managing Broadcasts - Resend"
+[5]: https://help.activecampaign.com/hc/en-us/articles/17035619690140-ActiveCampaign-SMS-segment-conditions "SMS segment conditions – ActiveCampaign"
