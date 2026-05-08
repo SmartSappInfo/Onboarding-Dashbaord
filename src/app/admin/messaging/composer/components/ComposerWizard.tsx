@@ -61,7 +61,7 @@ const formSchema = z.object({
     mode: z.enum(['single', 'bulk']).default('single'),
     selectedEntityIds: z.array(z.string()).default([]),
     contactScope: z.enum(['primary', 'signatories', 'all']).default('primary'),
-    contactTypeFilter: z.string().optional().nullable(),
+    contactTypeFilter: z.array(z.string()).default([]),
     tagSegmentInclude: z.array(z.string()).default([]),
     tagSegmentExclude: z.array(z.string()).default([]),
     tagSegmentLogic: z.enum(['AND', 'OR']).default('OR'),
@@ -79,6 +79,9 @@ const formSchema = z.object({
     sourceResponseId: z.string().optional(),
     sourcePdfId: z.string().optional(),
     sourceSubmissionId: z.string().optional(),
+    // Custom ad-hoc content
+    customBody: z.string().optional(),
+    customSubject: z.string().optional(),
     // CSV bulk
     recipient: z.string().optional(),
     selectedContacts: z.array(z.string()).default([]),
@@ -213,6 +216,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             isScheduled: false, variables: {}, applyTagIds: [], triggerAutomationIds: [],
             tagSegmentInclude: [], tagSegmentExclude: [], tagSegmentLogic: 'OR',
             selectedContacts: [],
+            customBody: '', customSubject: 'Important Update',
         },
     });
 
@@ -229,6 +233,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const watchedSourceResponseId = watch('sourceResponseId');
     const watchedSourcePdfId = watch('sourcePdfId');
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
+    const watchedCustomBody = watch('customBody');
+    const watchedMessageSourceType = watch('messageSourceType');
 
     // ── Firestore queries ──────────────────────────────────────────────────────
 
@@ -293,13 +299,10 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             if (we.entityId) weMap.set(we.entityId, we);
         });
 
-        // Collect all unique entity IDs from both collections
-        const allIds = new Set([
-            ...entities.map(e => e.id),
-            ...weItems.map(we => we.entityId).filter(Boolean) as string[]
-        ]);
+        // ONLY include entities that are actually linked to this workspace
+        const allIds = Array.from(weMap.keys());
 
-        return Array.from(allIds).map(id => {
+        return allIds.map(id => {
             const entity = entitiesMap.get(id);
             const we = weMap.get(id);
             
@@ -500,8 +503,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (step < 5) {
             // Check if we can progress (logic similar to NavFooter)
             if (step === 1) setStep(2);
-            else if (step === 2 && data.messageSourceType === 'template' && !data.templateId) return; // Wait for template
-            else if (step === 2) setStep(3);
+            else if (step === 2) {
+                if (data.messageSourceType === 'template' && !data.templateId) return;
+                if (data.messageSourceType === 'new' && !data.customBody) return;
+                setStep(3);
+            }
             else if (step === 3 && data.mode === 'single' && data.selectedEntityIds.length === 0 && tagSegment.includeTagIds.length === 0) return; // Wait for selection
             else if (step === 3) setStep(4);
             else if (step === 4) setStep(5);
@@ -523,19 +529,35 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         const recipients = await resolveRecipientContacts({
                             entityId, workspaceId: activeWorkspace?.id,
                             contactScope: data.contactScope,
-                            contactTypeFilter: data.contactTypeFilter ?? null,
+                            contactTypeFilter: data.contactTypeFilter,
                             channel: data.channel,
                         });
                         if (!recipients.length) { results.totalFailed++; results.failedEntities.push({ entityId, error: 'No contacts for scope/channel.' }); continue; }
+                        
+                        const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
+
                         for (const recipient of recipients) {
-                            const res = await sendMessage({
-                                templateId: data.templateId!, senderProfileId: data.senderProfileId!,
-                                recipient, variables: { ...data.variables, channel: data.channel },
-                                workspaceId: activeWorkspace?.id, scheduledAt, entityId,
-                            });
+                            let res;
+                            if (data.messageSourceType === 'template') {
+                                res = await sendMessage({
+                                    templateId: data.templateId!, senderProfileId: data.senderProfileId!,
+                                    recipient, variables: { ...data.variables, channel: data.channel },
+                                    workspaceId: activeWorkspace?.id, scheduledAt, entityId,
+                                });
+                            } else {
+                                res = await sendRawMessage({
+                                    channel: data.channel, recipient,
+                                    body: data.customBody!,
+                                    subject: data.channel === 'email' ? data.customSubject : undefined,
+                                    senderProfileId: data.senderProfileId,
+                                    variables: { ...data.variables, channel: data.channel },
+                                    workspaceIds: [activeWorkspace?.id].filter(Boolean) as string[],
+                                });
+                            }
+
                             if (res.success) {
                                 results.totalSent++;
-                                if (res.logId) results.logIds.push(res.logId);
+                                if ((res as any).logId) results.logIds.push((res as any).logId);
                                 if (entityId && activeWorkspace?.id) {
                                     updateEntityLastContactedAt(entityId, activeWorkspace.id).catch(() => {});
                                 }
@@ -853,8 +875,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                             isLoading={isCombinedLoading}
                                             channel={watchedChannel}
                                             selectedEntityIds={watchedSelectedEntityIds}
-                                            activeContactTypeFilter={watchedContactTypeFilter ?? null}
-                                            onContactTypeFilterChange={(k) => setValue('contactTypeFilter', k ?? null)}
+                                            activeContactTypeFilter={watchedContactTypeFilter || []}
+                                            onContactTypeFilterChange={(keys) => setValue('contactTypeFilter', keys)}
                                             onSelectionChange={(ids) => {
                                                 setValue('selectedEntityIds', ids, { shouldValidate: true });
                                                 setValue('entityId', ids.length === 1 ? ids[0] : '');
@@ -907,11 +929,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                             </div>
 
                                             {/* Active contact-type filter indicator */}
-                                            {watchedContactTypeFilter && (
+                                            {watchedContactTypeFilter && watchedContactTypeFilter.length > 0 && (
                                                 <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs font-semibold text-primary">
                                                     <Tag className="h-3.5 w-3.5 shrink-0" />
-                                                    Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.replace(/_/g, ' ')}</span> contacts only.
-                                                    <button type="button" onClick={() => setValue('contactTypeFilter', null)} className="ml-auto hover:text-destructive">
+                                                    Filtering to <span className="capitalize font-bold">{watchedContactTypeFilter.join(', ').replace(/_/g, ' ')}</span> contacts only.
+                                                    <button type="button" onClick={() => setValue('contactTypeFilter', [])} className="ml-auto hover:text-destructive">
                                                         <X className="h-3.5 w-3.5" />
                                                     </button>
                                                 </div>

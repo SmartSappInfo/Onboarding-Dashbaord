@@ -127,9 +127,9 @@ export function TemplateGallery({
 }: TemplateGalleryProps) {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [channelFilter, setChannelFilter] = React.useState('all');
-    const [categoryFilter, setCategoryFilter] = React.useState('all');
+    const [categoryFilter, setCategoryFilter] = React.useState('general');
     const [statusFilter, setStatusFilter] = React.useState<TemplateStatus | 'all'>('all');
-    const [targetFilter, setTargetFilter] = React.useState<TemplateTarget | 'all'>('all');
+    const [targetFilter, setTargetFilter] = React.useState<TemplateTarget | 'all'>('external_client');
     const [groupBy, setGroupBy] = React.useState<'none' | 'channel' | 'category'>('none');
 
     const filteredTemplates = React.useMemo(() => {

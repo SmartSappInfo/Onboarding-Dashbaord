@@ -41,12 +41,14 @@ const AI_PROVIDERS = [
         color: 'text-purple-500',
         bgColor: 'bg-purple-500/10',
         models: [
-            { id: 'openrouter/free', name: 'Auto Free Model', description: 'Auto-selects best available free model' },
-            { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', description: 'Best Open Source Logic' },
-            { id: 'google/gemini-2.0-flash-lite-preview-02-05:free', name: 'Gemini 2.0 Flash Lite', description: 'Google Free Tier' },
-            { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B', description: 'Excellent Reasoning' },
-            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 120B', description: 'NVIDIA Optimization' },
-            { id: 'deepseek/deepseek-r1-distill-llama-70b:free', name: 'DeepSeek R1', description: 'Advanced Distillation' },
+            { id: 'openrouter/owl-alpha', name: 'Owl Alpha', description: '284B token model optimized for agentic workloads' },
+            { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B', description: 'Strong vision & tool-use (262K context)' },
+            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', description: '120B parameter model from NVIDIA' },
+            { id: 'qwen/qwen3-coder:free', name: 'Qwen 3 Coder', description: 'Optimized coding model from Qwen' },
+            { id: 'poolside/poolside-laguna-m1:free', name: 'Poolside Laguna M1', description: '185B parameter specialized coding agent' },
+            { id: 'mistral/devstral-2-2512:free', name: 'Devstral 2', description: 'Versatile math & coding model' },
+            { id: 'xiaomi/mimo-v2-flash:free', name: 'Mimo V2 Flash', description: '309B parameter reasoning & coding model' },
+            { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', description: 'Efficient MoE designed for long-context' },
         ]
     },
     {

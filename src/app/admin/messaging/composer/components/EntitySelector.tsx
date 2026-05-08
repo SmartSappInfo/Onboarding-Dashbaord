@@ -20,8 +20,8 @@ export interface EntitySelectorProps {
   channel: 'email' | 'sms';
   onSelectionChange: (entityIds: string[]) => void;
   selectedEntityIds: string[];
-  onContactTypeFilterChange?: (typeKey: string | null) => void;
-  activeContactTypeFilter?: string | null;
+  onContactTypeFilterChange?: (typeKeys: string[]) => void;
+  activeContactTypeFilter?: string[];
   /** Kept for backward-compat with tests */
   maxSelections?: number;
 }
@@ -54,7 +54,7 @@ export function EntitySelector({
   onSelectionChange,
   selectedEntityIds,
   onContactTypeFilterChange,
-  activeContactTypeFilter,
+  activeContactTypeFilter = [],
 }: EntitySelectorProps) {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
@@ -81,8 +81,17 @@ export function EntitySelector({
   // Filter
   const filtered = React.useMemo(() => {
     const lower = debouncedSearch.toLowerCase().trim();
-    if (!lower) return entities;
-    return entities.filter(e => {
+    
+    // 1. First filter by contact type if active
+    let pool = entities;
+    if (activeContactTypeFilter.length > 0) {
+      pool = entities.filter(e => 
+        (e.entityContacts || []).some(c => activeContactTypeFilter.includes(c.typeKey || ''))
+      );
+    }
+
+    if (!lower) return pool;
+    return pool.filter(e => {
       const nameMatch = e.name?.toLowerCase().includes(lower);
       const typeMatch = e.entityType?.toLowerCase().includes(lower);
       const contactMatch = (e.entityContacts || []).some(c =>
@@ -140,24 +149,32 @@ export function EntitySelector({
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
-              onClick={() => onContactTypeFilterChange?.(null)}
+              onClick={() => onContactTypeFilterChange?.([])}
               className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all',
-                !activeContactTypeFilter ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
+                activeContactTypeFilter.length === 0 ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
               )}
             >
               All contacts
             </button>
-            {allContactTypes.map(({ key, label }) => (
-              <button key={key}
-                type="button"
-                onClick={() => onContactTypeFilterChange?.(activeContactTypeFilter === key ? null : key)}
-                className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize',
-                  activeContactTypeFilter === key ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
-                )}
-              >
-                {label}
-              </button>
-            ))}
+            {allContactTypes.map(({ key, label }) => {
+              const isActive = activeContactTypeFilter.includes(key);
+              return (
+                <button key={key}
+                  type="button"
+                  onClick={() => {
+                    const next = isActive 
+                      ? activeContactTypeFilter.filter(k => k !== key)
+                      : [...activeContactTypeFilter, key];
+                    onContactTypeFilterChange?.(next);
+                  }}
+                  className={cn('px-3 py-1 rounded-full text-[10px] font-bold border transition-all capitalize',
+                    isActive ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/40 border-border/50 text-muted-foreground hover:border-primary/40'
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -235,8 +252,8 @@ export function EntitySelector({
                 const eid = entity.entityId || entity.id;
                 const isSelected = selectedEntityIds.includes(eid);
                 const contacts: EntityContact[] = entity.entityContacts || [];
-                const visibleContacts = activeContactTypeFilter
-                  ? contacts.filter(c => c.typeKey === activeContactTypeFilter)
+                const visibleContacts = activeContactTypeFilter.length > 0
+                  ? contacts.filter(c => activeContactTypeFilter.includes(c.typeKey || ''))
                   : contacts;
 
                 return (
@@ -259,8 +276,8 @@ export function EntitySelector({
                         <p className="text-[11px] text-muted-foreground font-medium truncate">
                           {visibleContacts.map(c => c.name).join(', ')}
                         </p>
-                      ) : contacts.length > 0 && activeContactTypeFilter ? (
-                        <p className="text-[10px] text-muted-foreground italic">No {activeContactTypeFilter.replace(/_/g, ' ')} contacts found</p>
+                      ) : contacts.length > 0 && activeContactTypeFilter.length > 0 ? (
+                        <p className="text-[10px] text-muted-foreground italic">No matching contacts found</p>
                       ) : contacts.length === 0 ? (
                         <p className="text-[10px] text-muted-foreground italic opacity-60">No contacts recorded</p>
                       ) : null}

@@ -122,10 +122,18 @@ type QuestionsOutput = z.infer<typeof QuestionsOutputSchema>;
 const QUESTIONS_PROMPT = `You are an expert survey architect building the questions for a survey. You have been given a blueprint (section outline) and the original source material.
 
 ### YOUR TASK:
-Generate ALL questions, section containers, and layout blocks. Organize them strictly according to the blueprint sections.
+1. **Faithful Extraction (GOLDEN RULE)**: If the source material provides a list of options for a question, you MUST include EVERY SINGLE ONE in the \`options\` array. Do NOT skip, summarize, or truncate the list. An empty \`options\` array for a choice-based question is a FAILURE.
+2. Generate ALL questions, section containers, and layout blocks. Organize them strictly according to the blueprint sections.
+
+### PATTERN RECOGNITION:
+- **Questions**: Usually start with a number (e.g., "1.", "5.") or are on a single line ending in a question mark.
+- **Options**: The lines immediately following a question that represent choices. You MUST collect all these into the \`options\` array.
+- **Instruction/Category Lines**: Lines like "1. Ice Breaker Question" should NOT be separate blocks. Merge them into the question title (e.g., "Ice Breaker: [Question Text]") or use a \`heading\` block if it's a section title. NEVER generate a question block without options if the source material provides them immediately below.
+- **Description/Content Blocks**: For blocks with type \`description\`, \`text\`, or \`heading\`, you MUST follow the source copy EXACTLY. Do NOT summarize or rephrase.
+- **Formatting**: Respect all whitespace, carriage returns, and paragraphs. Use double newlines (\`\\n\\n\`) in the \`content\` or \`description\` fields to preserve paragraph breaks. NEVER lump multiple paragraphs into a single block of text.
+- **De-duplication**: NEVER generate the same question twice. If you see a header and then a question, they are ONE element.
 
 ### ELEMENT ORDERING:
-For each section in the blueprint, output elements in this order:
 1. A \`section\` block (with \`renderAsPage: true\`, \`validateBeforeNext: true\`)
 2. Optional \`heading\` or \`description\` blocks for section instructions
 3. The questions for that section
@@ -137,7 +145,7 @@ For each section in the blueprint, output elements in this order:
 - \`email\`: Email address input (USE THIS when asking for email addresses)
 - \`phone\`: Phone number input (USE THIS when asking for phone/mobile numbers)
 - \`yes-no\`: Binary choice (renderer expects answers "Yes" or "No" exactly)
-- \`multiple-choice\`: Single selection from options (MUST include \`options: string[]\` with 2+ items)
+- \`multiple-choice\`: Single selection from options (MUST include \`options: string[]\`, can set \`allowOther: true\`)
 - \`checkboxes\`: Multi-selection (MUST include \`options: string[]\`, can set \`allowOther: true\`)
 - \`dropdown\`: Single selection dropdown (MUST include \`options: string[]\` with 3+ items)
 - \`rating\`: 1-5 star rating
@@ -146,11 +154,15 @@ For each section in the blueprint, output elements in this order:
 - \`file-upload\`: File attachment
 
 ### CRITICAL RULES:
-1. **Unique IDs**: Every element MUST have a unique kebab-case ID (e.g. \`q_entity_name\`, \`sec_demographics\`, \`head_intro\`)
-2. **Section IDs**: Use the exact section IDs from the blueprint
-3. **Required Fields**: Set \`isRequired: true\` for critical identity/assessment questions
-4. **autoAdvance**: Set to \`true\` on \`yes-no\` and \`multiple-choice\` questions where it makes sense for flow
-5. **Options**: For \`multiple-choice\`, \`dropdown\`, and \`checkboxes\`, ALWAYS include 2+ options
+1. **"Other" Option Logic**: 
+   - If the source text includes "Other" or "Please specify" as an option, do NOT add it to the \`options\` array.
+   - Instead, set \`allowOther: true\` on the question element.
+2. **Unique IDs**: Every element MUST have a unique kebab-case ID (e.g. \`q_entity_name\`, \`sec_demographics\`, \`head_intro\`)
+3. **Section IDs**: Use the exact section IDs from the blueprint
+4. **Required Fields (STRICT)**: 
+   - Set \`isRequired: false\` by default for all questions.
+   - ONLY set \`isRequired: true\` if the source text explicitly includes "Required", an asterisk (*), or if it is a critical contact field (Email/Phone).
+5. **autoAdvance**: Set to \`true\` on \`yes-no\` and \`multiple-choice\` questions where it makes sense for flow
 6. **No Scoring**: Do NOT set \`enableScoring\`, \`optionScores\`, \`yesScore\`, or \`noScore\` — Phase 3 handles scoring
 7. **No Logic Blocks**: Do NOT generate elements with \`type: "logic"\` — Phase 3 handles logic
 8. **Headings**: Use \`variant: "h1"\` for main titles, \`"h2"\` for section headers, \`"h3"\` for sub-headers
@@ -249,13 +261,38 @@ The survey engine's \`calculateScore()\` function ONLY evaluates questions where
 - \`maxScore\` = sum of all highest-possible scores (e.g. for checkboxes, sum ALL option scores)
 
 ### LOGIC BLOCK RULES:
-- \`sourceQuestionId\` MUST be an exact question ID from the elements list below
-- \`targetElementId\` MUST be an exact element ID from the elements list below
-- Operator guidance:
-  - \`isEqualTo\`/\`isNotEqualTo\`: works with all types (string comparison)
-  - \`contains\`/\`doesNotContain\`: best for \`text\`, \`long-text\`
-  - \`isGreaterThan\`/\`isLessThan\`: ONLY for \`rating\` (numeric comparison)
-  - \`isEmpty\`/\`isNotEmpty\`: works with all types
+- **Type Compliance**: Every logic block MUST have \`type: "logic"\`.
+- **Target Specification (CRITICAL)**: Every logic rule MUST include either \`targetElementId\` OR \`targetElementIds\`. Rules with empty targets are BROKEN.
+- **Placement**: Place logic blocks immediately following the \`sourceQuestionId\` in the elements array for better readability.
+- **Follow-up Logic (Negative Exclusion)**: If a question is a follow-up to a previous one (e.g., "If yes, why?", "If you would like, share..."), you MUST create a logic block to HIDE the follow-up if the parent question's answer makes it irrelevant (e.g., hiding a follow-up if the answer is "Never", "No", or "None").
+- \`sourceQuestionId\` MUST be an exact ID from the list below (e.g. \`q_satisfaction\`).
+- \`targetElementId\` MUST be an exact ID from the list below (e.g. \`q_feedback\`).
+
+#### Logic Example:
+If a user answers "No" to a question with ID \`q_has_experience\`, hide the question with ID \`q_experience_years\`:
+\`\`\`json
+{
+  "id": "logic_experience_skip",
+  "type": "logic",
+  "rules": [
+    {
+      "sourceQuestionId": "q_has_experience",
+      "operator": "isEqualTo",
+      "targetValue": "No",
+      "action": {
+        "type": "hide",
+        "targetElementId": "q_experience_years"
+      }
+    }
+  ]
+}
+\`\`\`
+
+#### Logic Checklist:
+- [ ] Does every action have a \`targetElementId\` or \`targetElementIds\`?
+- [ ] Are all IDs identical to the ones in the "EXISTING ELEMENTS" list?
+- [ ] Is the \`type\` field set to "logic"?
+
 
 ### RESULT PAGE RULES:
 - Create 2-4 outcome buckets with NON-OVERLAPPING score ranges
@@ -264,6 +301,7 @@ The survey engine's \`calculateScore()\` function ONLY evaluates questions where
 - \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`
 - \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`
 - Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID
+- **Message Templates**: If an outcome is significant (e.g., "High Risk", "Selected"), you may set placeholder IDs like \`"email_template_placeholder"\` or \`"sms_template_placeholder"\` in the \`resultRule\` — the system will prompt the user to link actual templates later.
 
 ### BLUEPRINT:
 Title: {{{title}}}

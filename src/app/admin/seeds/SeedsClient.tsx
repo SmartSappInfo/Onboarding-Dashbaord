@@ -14,6 +14,7 @@ import { useTenant } from '@/context/TenantContext';
 import { migrateAllPermissions } from '@/lib/permissions-migration';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
+import { seedMaintenanceAction } from '@/app/actions/seed-maintenance-action';
 import { executeDealMigration } from '@/app/actions/deal-migration-actions';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
@@ -27,6 +28,7 @@ export default function SeedsClient() {
   const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
   const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
   const [globalTemplatesStatus, setGlobalTemplatesStatus] = useState<SeedingState>('idle');
+  const [maintenanceStatus, setMaintenanceStatus] = useState<SeedingState>('idle');
 
   // Deal Migration States
   const [dealMigrationStatus, setDealMigrationStatus] = useState<SeedingState>('idle');
@@ -130,6 +132,24 @@ export default function SeedsClient() {
     }
   };
 
+  const handleSeedMaintenance = async () => {
+    setMaintenanceStatus('seeding');
+    try {
+      const result = await seedMaintenanceAction();
+      if (result.success) {
+        toast({ title: 'Maintenance Template Seeded!', description: 'The SMS alert for maintenance windows is now active.' });
+        setMaintenanceStatus('success');
+      } else {
+        throw new Error(result.error || 'Failed to seed');
+      }
+    } catch (error: any) {
+      setMaintenanceStatus('error');
+      toast({ variant: 'destructive', title: 'Seed Failed', description: error.message });
+    } finally {
+      setTimeout(() => setMaintenanceStatus('idle'), 2500);
+    }
+  };
+
     return (
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-12 pb-32 w-full">
@@ -161,14 +181,26 @@ export default function SeedsClient() {
                     <p className="text-muted-foreground font-medium">Seed shared reference data used across the platform.</p>
                 </div>
 
-                <SimpleMigrationCard
-                    title="💼 Decouple Entity Deals"
-                    description="Execute the transactional migration of legacy 1:1 entity-pipeline relationships into the new 1:Many Deals collection. This removes stage and pipeline IDs from entities and auto-generates linked deals."
-                    onSync={handleDealMigration}
-                    status={dealMigrationStatus}
-                    icon={Workflow}
-                    syncLabel={dealMigrationStatus === 'success' ? (dealMigrationMessage || 'Done') : 'Execute Deal Migration'}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <SimpleMigrationCard
+                        title="💼 Decouple Entity Deals"
+                        description="Execute the transactional migration of legacy 1:1 entity-pipeline relationships into the new 1:Many Deals collection. This removes stage and pipeline IDs from entities and auto-generates linked deals."
+                        onSync={handleDealMigration}
+                        status={dealMigrationStatus}
+                        icon={Workflow}
+                        syncLabel={dealMigrationStatus === 'success' ? (dealMigrationMessage || 'Done') : 'Execute Deal Migration'}
+                    />
+
+                    <SimpleMigrationCard
+                        title="🛠️ Seed Maintenance Alert"
+                        description="Seeds the specialized SMS maintenance template: 'Please note: SmartSapp maintenance runs Sat 9AM–Mon 5AM...'. Essential for system reliability communication."
+                        onSync={handleSeedMaintenance}
+                        status={maintenanceStatus}
+                        icon={TriangleAlert}
+                        syncLabel="Seed Maintenance Template"
+                        buttonClassName="bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/20 ring-2 ring-amber-500 ring-offset-2 ring-offset-background"
+                    />
+                </div>
             </section>
 
             {/* Core Migrations */}

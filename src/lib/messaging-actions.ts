@@ -628,7 +628,7 @@ export async function resolveRecipientContacts(params: {
   workspaceId?: string;
   contactScope: 'primary' | 'signatories' | 'all' | 'custom';
   channel: 'email' | 'sms';
-  contactTypeFilter?: string | null; // e.g. 'father', 'mother', 'guardian'
+  contactTypeFilter?: string[] | null; // e.g. ['father', 'mother', 'guardian']
 }): Promise<string[]> {
   const { entityId, workspaceId = 'onboarding', contactScope, channel, contactTypeFilter } = params;
 
@@ -639,8 +639,8 @@ export async function resolveRecipientContacts(params: {
     const sourceContacts = contact.entityContacts || contact.contacts || [];
 
     // If a contact type filter is active, narrow to that type first then apply scope
-    if (contactTypeFilter) {
-      const typed = sourceContacts.filter((c: any) => c.typeKey === contactTypeFilter);
+    if (contactTypeFilter && contactTypeFilter.length > 0) {
+      const typed = sourceContacts.filter((c: any) => contactTypeFilter.includes(c.typeKey));
       const recipients = typed
         .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
         .filter((v: any) => !!v) as string[];

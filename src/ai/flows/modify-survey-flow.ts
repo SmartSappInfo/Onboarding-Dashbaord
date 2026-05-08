@@ -99,13 +99,22 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 
 ### RULES:
 1. **Consistency**: Ensure new elements match professional standards and logical conventions.
-2. **Logic Updates**: If you add or remove questions, update any 'logic' blocks or 'resultRules' that might be affected.
+2. **Logic Updates**: Every logic block MUST have \`type: "logic"\`. Every rule MUST specify a valid \`targetElementId\`. Place logic blocks immediately after their source questions. Implement "Negative Exclusion" for follow-ups (e.g., hide the "Why?" question if the answer is "No").
+   - Example: \`{"type": "hide", "targetElementId": "q_next_field"}\` — NEVER leave \`targetElementId\` empty.
 3. **Scoring**: If 'scoringEnabled' is true (or if the content suggests an assessment), ensure questions have appropriate scores and 'maxScore' is updated.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
 5. **Layouts**: Use appropriate variants for headings (h1, h2, h3).
 6. **Multimodal Analysis**: If a PDF Data URI is provided, use it for deep discovery of fields and structure.
 7. **Entity Focus**: Always refer to the institution/campus as an "Entity". Avoid terms like "School" unless it's part of the official name.
-8. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+8. **Modern Controls**: 
+   - Use \`email\` and \`phone\` types for contact information.
+   - For \`multiple-choice\` and \`checkboxes\`, use \`allowOther: true\` if the list is not exhaustive.
+9. **Faithful Extraction**: When creating elements from text, include EVERY option provided. If "Other" is listed, use the \`allowOther: true\` field instead of adding it to the options list.
+10. **Outcome Communication**: Use \`resultPages\` for scored outcomes. If an outcome is significant, set \`emailTemplateId: "email_template_placeholder"\` or \`smsTemplateId: "sms_template_placeholder"\` in the \`resultRule\`.
+11. **Required Fields**: Default to \`isRequired: false\` unless the user explicitly asks for a field to be required or it's marked as such in the provided text.
+12. **Copy Fidelity**: For instructional or description blocks, follow the source copy EXACTLY. Do not summarize or rephrase.
+13. **Paragraphs**: Respect white spaces and carriage returns. Use \`\\n\\n\` to preserve paragraph breaks.
+14. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}

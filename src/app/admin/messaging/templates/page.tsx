@@ -30,11 +30,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
 
 /**
  * @fileOverview Messaging Templates Management Page.
@@ -47,6 +49,7 @@ export default function MessageTemplatesPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const { activeWorkspaceId } = useWorkspace();
+    const { activeOrganizationId } = useTenant();
     
     // Global Navigation State
     const [isAdding, setIsAdding] = React.useState(false);
@@ -172,6 +175,8 @@ export default function MessageTemplatesPage() {
                 status: 'active',
                 scope: 'organization',
                 workspaceIds: [activeWorkspaceId],
+                templateType: `ai_draft_${Date.now()}`,
+                recipientType: 'participant',
             };
 
             setEditingTemplate(draftTemplate);
@@ -188,7 +193,6 @@ export default function MessageTemplatesPage() {
 
     const handleSave = async (data: any) => {
         if (!firestore || !user) return;
-        const { activeOrganizationId } = activeWorkspaceId ? { activeOrganizationId: '' } : { activeOrganizationId: '' }; // Fallback
 
         const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
@@ -202,13 +206,14 @@ export default function MessageTemplatesPage() {
         const templateData = {
             ...data,
             workspaceIds,
-            organizationId: data.organizationId || '', // In Next.js pages we can get it from context
+            organizationId: activeOrganizationId,
             scope: data.scope || 'organization',
             variables: variableList,
             status: data.status || 'active',
             isActive: (data.status || 'active') !== 'archived', // backward compat
             target: data.target || 'external_client',
             contentMode: data.contentMode || (data.channel === 'sms' ? 'plain_text' : 'rich_builder'),
+            templateType: data.templateType || `custom_${data.category || 'general'}_${Date.now()}`,
             updatedAt: new Date().toISOString(),
         };
 
@@ -218,10 +223,10 @@ export default function MessageTemplatesPage() {
             if (editingTemplate?.id && editingTemplate.scope !== 'global') {
                 await updateDoc(doc(firestore, 'message_templates', editingTemplate.id), sanitizedData);
             } else {
-                // If it's a global template being edited, save it as a new organization template
+                // If it's a global template being edited or a new one, save it as a new organization template
+                const { id: _, ...dataToSave } = sanitizedData;
                 await addDoc(collection(firestore, 'message_templates'), { 
-                    ...sanitizedData, 
-                    id: undefined, // Force new ID
+                    ...dataToSave, 
                     scope: 'organization',
                     createdAt: new Date().toISOString() 
                 });
@@ -283,19 +288,25 @@ export default function MessageTemplatesPage() {
                     />
                 ) : (
                     <div className="flex-1 overflow-y-auto text-left">
-                        <div className=" space-y-8">
-                            <div className="flex items-center justify-end flex-wrap gap-4">
+                        <div className=" space-y-8 p-8">
+                            {/* Dashboard Header */}
+                            <div className="flex items-center justify-between flex-wrap gap-6">
+                                <div className="space-y-1">
+                                    <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1">Communications Hub</Badge>
+                                    <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
+                                    <p className="text-muted-foreground text-sm max-w-lg">Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules.</p>
+                                </div>
                                 <div className="flex items-center gap-3">
                                     <RainbowButton 
                                         onClick={() => setIsAiModalOpen(true)} 
                                     >
- <Sparkles className="h-4 w-4" /> AI Template Generator
+                                        <Sparkles className="h-4 w-4" /> AI Template Generator
                                     </RainbowButton>
                                     <Button 
                                         onClick={() => { setEditingTemplate(null); setIsAdding(true); }} 
- className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2"
+                                        className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2"
                                     >
- <Plus className="h-5 w-5" /> Manual Create
+                                        <Plus className="h-5 w-5" /> Manual Create
                                     </Button>
                                 </div>
                             </div>

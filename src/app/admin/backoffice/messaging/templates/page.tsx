@@ -1,4 +1,4 @@
-'use server';
+
 
 import { Metadata } from 'next';
 import TemplatesClient from './TemplatesClient';

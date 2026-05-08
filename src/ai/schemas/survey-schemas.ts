@@ -62,7 +62,7 @@ export const questionSchema = z.object({
   title: z.string().describe('The question text displayed to the respondent'),
   type: z.enum(QUESTION_TYPES),
   options: z.array(z.string()).optional().describe('REQUIRED for multiple-choice, dropdown, checkboxes. 2+ items.'),
-  allowOther: z.boolean().optional().describe('Only for checkboxes — adds a free-text "Other" field'),
+  allowOther: z.boolean().optional().describe('For checkboxes and multiple-choice — adds a free-text "Other" field'),
   isRequired: z.boolean().describe('true for critical questions'),
   hidden: z.boolean().optional().describe('If true, hidden by default (can be shown via logic)'),
   placeholder: z.string().optional().describe('Placeholder text for text/long-text/email/phone inputs'),
@@ -156,4 +156,8 @@ export const resultRuleSchema = z.object({
   maxScore: z.number(),
   priority: z.number().describe('Lower number = higher priority'),
   pageId: z.string().describe('ID of the result page to display'),
+  emailTemplateId: z.string().optional().describe('Optional: ID of email template to send on this outcome'),
+  emailSenderProfileId: z.string().optional(),
+  smsTemplateId: z.string().optional().describe('Optional: ID of SMS template to send on this outcome'),
+  smsSenderProfileId: z.string().optional(),
 });

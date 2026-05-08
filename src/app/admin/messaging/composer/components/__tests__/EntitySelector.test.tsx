@@ -177,7 +177,7 @@ describe('EntitySelector Component', () => {
     });
 
     it('filters visible contacts when activeContactTypeFilter is set', () => {
-      render(<EntitySelector {...defaultProps} entities={entitiesWithContacts} activeContactTypeFilter="father" />);
+      render(<EntitySelector {...defaultProps} entities={entitiesWithContacts} activeContactTypeFilter={["father"]} />);
       expect(screen.getByText('John Father')).toBeInTheDocument();
       expect(screen.queryByText('Jane Mother')).not.toBeInTheDocument();
     });

@@ -114,6 +114,8 @@ export function TemplateWorkshop({
         initialTemplate?.contentMode || (initialTemplate?.channel === 'sms' ? 'plain_text' : 'rich_builder')
     );
     const [target, setTarget] = React.useState<TemplateTarget>(initialTemplate?.target || 'external_client');
+    const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || '');
+    const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || 'participant');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
     const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
     const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
@@ -200,7 +202,8 @@ export function TemplateWorkshop({
         // Clear irrelevant data on save (Risk Analysis: Improvement 2)
         const saveData: any = {
             name, category, channel, contentMode, target, workspaceIds,
-            subject, previewText, body, blocks, styleId
+            subject, previewText, body, blocks, styleId, templateType,
+            recipientType
         };
         if (contentMode === 'rich_builder') {
             // blocks is source of truth — body is auto-generated
@@ -340,25 +343,52 @@ export function TemplateWorkshop({
                                                     <button type="button" onClick={() => { setChannel('sms'); setContentMode('plain_text'); }} className={cn("h-10 rounded-lg font-semibold text-[9px] transition-all", channel === 'sms' ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
                                                 </div>
                                             </div>
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-semibold text-primary ml-1">Category</Label>
-                                                <Select value={category} onValueChange={(v: any) => setCategory(v)}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="general">General</SelectItem>
-                                                        <SelectItem value="surveys">Surveys</SelectItem>
-                                                        <SelectItem value="meetings">Meetings</SelectItem>
-                                                        <SelectItem value="forms">Forms</SelectItem>
-                                                        <SelectItem value="agreements">Agreements</SelectItem>
-                                                        <SelectItem value="campaigns">Campaigns</SelectItem>
-                                                        <SelectItem value="reminders">Reminders</SelectItem>
-                                                        <SelectItem value="tasks">Tasks</SelectItem>
-                                                        <SelectItem value="automations">Automations</SelectItem>
-                                                        <SelectItem value="qr_codes">QR Codes</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
+                                                <div className="space-y-4">
+                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Message Scope (Category)</Label>
+                                                    <Select value={category} onValueChange={(v: any) => setCategory(v)}>
+                                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="general">General</SelectItem>
+                                                            <SelectItem value="surveys">Surveys</SelectItem>
+                                                            <SelectItem value="meetings">Meetings</SelectItem>
+                                                            <SelectItem value="forms">Forms</SelectItem>
+                                                            <SelectItem value="agreements">Agreements</SelectItem>
+                                                            <SelectItem value="campaigns">Campaigns</SelectItem>
+                                                            <SelectItem value="reminders">Reminders</SelectItem>
+                                                            <SelectItem value="tasks">Tasks</SelectItem>
+                                                            <SelectItem value="automations">Automations</SelectItem>
+                                                            <SelectItem value="qr_codes">QR Codes</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                        </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-dashed">
+                                                <div className="space-y-4">
+                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Template Identifier (Key)</Label>
+                                                    <Input 
+                                                        value={templateType} 
+                                                        onChange={e => setTemplateType(e.target.value)} 
+                                                        placeholder="e.g. invitation, reminder_1"
+                                                        className="h-12 rounded-xl bg-muted/20 border-none font-bold"
+                                                    />
+                                                    <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Required for system resolution. Overrides must use the same key as blueprints.</p>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <Label className="text-[10px] font-semibold text-primary ml-1">Recipient Role</Label>
+                                                    <Select value={recipientType} onValueChange={setRecipientType}>
+                                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="participant">Participant / Client</SelectItem>
+                                                            <SelectItem value="referee">Referee / Second Party</SelectItem>
+                                                            <SelectItem value="signatory">Signatory</SelectItem>
+                                                            <SelectItem value="team_member">Team Member</SelectItem>
+                                                            <SelectItem value="admin">Administrator</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <p className="text-[9px] font-bold text-muted-foreground px-1 leading-relaxed">Specifies who the intended recipient type is.</p>
+                                                </div>
+                                            </div>
                                         {/* Target Audience (Story 4) */}
                                         <div className="space-y-4 pt-4 border-t border-dashed">
                                             <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><UserCog className="h-3 w-3" /> Target Audience</Label>

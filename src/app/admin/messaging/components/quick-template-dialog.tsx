@@ -73,7 +73,7 @@ export default function QuickTemplateDialog({
 }: QuickTemplateDialogProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { activeOrganizationId } = useTenant();
+    const { activeOrganizationId, activeWorkspaceId } = useTenant();
     
     const [name, setName] = React.useState('');
     const [subject, setSubject] = React.useState('');
@@ -85,6 +85,7 @@ export default function QuickTemplateDialog({
     const [showAiInput, setShowAiInput] = React.useState(false);
     const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
+    const [existingTemplateType, setExistingTemplateType] = React.useState<string | undefined>(undefined);
     
     // Context Selection
     const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | undefined>(fixedSourceId);
@@ -130,6 +131,7 @@ export default function QuickTemplateDialog({
                         setSubject(data.subject || '');
                         setBody(data.body);
                         setBlocks(data.blocks || []);
+                        setExistingTemplateType(data.templateType);
                     }
                 } catch (e) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template.' });
@@ -259,6 +261,10 @@ export default function QuickTemplateDialog({
             status: 'active',
             isActive: true, // backward compat
             updatedAt: new Date().toISOString(),
+            scope: 'organization',
+            organizationId: activeOrganizationId,
+            workspaceIds: [activeWorkspaceId || ''],
+            templateType: existingTemplateType || `custom_${category}_${Date.now()}`
         };
 
         if (recipientType) {
