@@ -52,7 +52,7 @@ const ModifySurveyInputSchema = z.object({
   }),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('googleai'),
-  modelId: z.string().optional().default('gemini-1.5-flash'),
+  modelId: z.string().optional().default('gemini-3-flash-preview'),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
 

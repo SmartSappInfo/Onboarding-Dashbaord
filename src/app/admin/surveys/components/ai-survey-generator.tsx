@@ -89,8 +89,8 @@ export default function AiSurveyGenerator() {
   const questionsRef = React.useRef<any>(null);
   const logicRef = React.useRef<any>(null);
   const sourceTextRef = React.useRef<string>('');
-  const providerRef = React.useRef<string>('openrouter');
-  const modelIdRef = React.useRef<string>('openrouter/free');
+  const providerRef = React.useRef<string>('googleai');
+  const modelIdRef = React.useRef<string>('gemini-3-flash-preview');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -116,16 +116,16 @@ export default function AiSurveyGenerator() {
   };
 
   const resolveModel = async () => {
-    let provider = 'openrouter';
-    let modelId = 'openrouter/free';
+    let provider = 'googleai';
+    let modelId = 'gemini-3-flash-preview';
     
     if (user && firestore) {
       const userRef = doc(firestore, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const profile = userSnap.data() as UserProfile;
-        provider = profile.preferredAiProvider || 'openrouter';
-        modelId = profile.preferredAiModel || 'openrouter/free';
+        provider = profile.preferredAiProvider || 'googleai';
+        modelId = profile.preferredAiModel || 'gemini-3-flash-preview';
       }
     }
 

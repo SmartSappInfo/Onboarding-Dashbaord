@@ -9,7 +9,7 @@ export const ai = genkit({
     googleAI(),
     openAICompatible({ name: 'openai' }), // System default OpenAI (uses OPENAI_API_KEY)
   ],
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-3-flash-preview',
 });
 
 /**

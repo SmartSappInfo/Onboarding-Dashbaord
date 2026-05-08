@@ -107,8 +107,8 @@ const GenerateSurveyInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('openrouter'),
-  modelId: z.string().optional().default('openrouter/free'),
+  provider: z.string().optional().default('googleai'),
+  modelId: z.string().optional().default('gemini-3-flash-preview'),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
@@ -208,7 +208,7 @@ const generateSurveyFlow = ai.defineFlow(
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: input.modelId || 'openrouter/free',
+                    model: input.modelId || 'gemini-3-flash-preview',
                     response_format: { type: "json_object" },
                     messages: [
                         { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints.' },

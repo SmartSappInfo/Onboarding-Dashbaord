@@ -58,8 +58,8 @@ function AiChatPanel() {
     const [unreadCount, setUnreadCount] = React.useState(0);
 
     // Live model preferences — updated in real time when user changes model in AiModelSelector
-    const [liveProvider, setLiveProvider] = React.useState('openrouter');
-    const [liveModelId, setLiveModelId] = React.useState('openrouter/free');
+    const [liveProvider, setLiveProvider] = React.useState('googleai');
+    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
 
     const [messages, setMessages] = React.useState<Message[]>([
         { role: 'assistant', content: "Hello! I'm your AI Design Partner. Describe changes, paste a link, or upload a document to build your survey blueprint." }

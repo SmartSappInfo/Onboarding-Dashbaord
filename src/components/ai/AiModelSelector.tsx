@@ -27,9 +27,11 @@ const AI_PROVIDERS = [
         color: 'text-blue-500',
         bgColor: 'bg-blue-500/10',
         models: [
-            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Fastest Native Model' },
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Extremely Fast & Efficient' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Complex Reasoning' },
+            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Frontier performance for high-volume tasks' },
+            { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', description: 'High-frequency, simple tasks' },
+            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning & multimodal' },
+            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanced performance & low-latency' },
+            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Legacy balanced multimodal model' },
         ]
     },
     {
@@ -66,8 +68,8 @@ export default function AiModelSelector({ className }: { className?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const [selectedProvider, setSelectedProvider] = React.useState<string>('openrouter');
-    const [selectedModel, setSelectedModel] = React.useState<string>('meta-llama/llama-3.3-70b-instruct:free');
+    const [selectedProvider, setSelectedProvider] = React.useState<string>('googleai');
+    const [selectedModel, setSelectedModel] = React.useState<string>('gemini-3-flash-preview');
     const [isLoading, setIsLoading] = React.useState(true);
 
     const availableProviders = React.useMemo(() => {
