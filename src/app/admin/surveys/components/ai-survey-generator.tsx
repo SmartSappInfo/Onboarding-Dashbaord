@@ -42,6 +42,8 @@ import { mergeSurveyPhases } from '@/ai/utils/merge-survey-phases';
 // Legacy fallback
 import { generateSurvey } from '@/ai/flows/generate-survey-flow';
 
+import { createLearningSignalAction } from '@/lib/learning-loop-actions';
+
 const formSchema = z.object({
   sourceType: z.enum(['text', 'url', 'file']),
   text: z.string().optional(),
@@ -91,11 +93,14 @@ export default function AiSurveyGenerator() {
   const sourceTextRef = React.useRef<string>('');
   const providerRef = React.useRef<string>('googleai');
   const modelIdRef = React.useRef<string>('gemini-3-flash-preview');
+  const keyLevelRef = React.useRef<string>('App API');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       sourceType: 'text',
+      text: '',
+      url: '',
     },
   });
 
@@ -118,6 +123,7 @@ export default function AiSurveyGenerator() {
   const resolveModel = async () => {
     let provider = 'googleai';
     let modelId = 'gemini-3-flash-preview';
+    let keyLevel = 'App API';
     
     if (user && firestore) {
       const userRef = doc(firestore, 'users', user.uid);
@@ -127,15 +133,27 @@ export default function AiSurveyGenerator() {
         provider = profile.preferredAiProvider || 'googleai';
         modelId = profile.preferredAiModel || 'gemini-3-flash-preview';
       }
+
+      if (activeOrganizationId) {
+        const orgRef = doc(firestore, 'organizations', activeOrganizationId);
+        const orgSnap = await getDoc(orgRef);
+        if (orgSnap.exists()) {
+          const orgData = orgSnap.data();
+          if (provider === 'googleai' && orgData.geminiApiKey) keyLevel = 'Org API';
+          else if (provider === 'openai' && orgData.openaiApiKey) keyLevel = 'Org API';
+          else if (provider === 'openrouter' && orgData.openRouterApiKey) keyLevel = 'Org API';
+        }
+      }
     }
 
     providerRef.current = provider;
     modelIdRef.current = modelId;
-    return { provider, modelId };
+    keyLevelRef.current = keyLevel;
+    return { provider, modelId, keyLevel };
   };
 
   const runChunkedGeneration = async (content: string, sourceType: 'text' | 'url', startFrom?: PhaseId) => {
-    const { provider, modelId } = await resolveModel();
+    const { provider, modelId, keyLevel } = await resolveModel();
     sourceTextRef.current = content;
 
     // Resolve source text for URL inputs
@@ -227,7 +245,7 @@ export default function AiSurveyGenerator() {
     const newSurvey: Omit<Survey, 'id'> = {
       ...mainSurveyData,
       slug,
-      status: 'published',
+      status: 'draft',
       backgroundPattern: 'none',
       workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
       internalName: generatedData.title,
@@ -285,6 +303,13 @@ export default function AiSurveyGenerator() {
     setShowProgress(true);
 
     try {
+      const { provider, modelId, keyLevel } = await resolveModel();
+      
+      toast({
+        title: 'Generation Started',
+        description: `Model: ${modelId} | Billing: ${keyLevel}`,
+      });
+
       let generatedData: any;
 
       // Fast-path: use legacy monolithic flow for very short content
@@ -294,7 +319,6 @@ export default function AiSurveyGenerator() {
           description: 'Using fast-path for short content...',
         });
 
-        const { provider, modelId } = await resolveModel();
         generatedData = await generateSurvey({
           sourceType,
           content,
@@ -316,7 +340,26 @@ export default function AiSurveyGenerator() {
         throw new Error('AI model did not return a valid survey structure.');
       }
 
-      const surveyId = await saveSurvey(generatedData);
+      // Create Learning Signal before saving survey
+      const signalResult = await createLearningSignalAction({
+        prompt: content,
+        modelId,
+        provider,
+        artifactType: 'survey',
+        initialState: generatedData,
+        workspaceId: activeWorkspaceId || '',
+        organizationId: activeOrganizationId || '',
+        userId: user!.uid,
+      });
+
+      const surveyId = await saveSurvey({
+        ...generatedData,
+        aiMetadata: {
+          isAiGenerated: true,
+          learningSignalId: signalResult.success ? signalResult.id : 'none',
+          isFirstPublishComplete: false,
+        }
+      });
 
       toast({
         title: 'Survey Generated!',

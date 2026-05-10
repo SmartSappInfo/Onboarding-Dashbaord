@@ -1306,6 +1306,11 @@ export interface Survey {
   autoAutomations?: string[];
   allowCrossVisibility?: boolean; // When true, assigned users can see all submissions (default: false = own only)
   allowResubmission?: boolean; // When true, shows "Submit Another Response" button on thank you/result pages
+  aiMetadata?: {
+    isAiGenerated: boolean;
+    learningSignalId: string;
+    isFirstPublishComplete: boolean;
+  };
 }
 
 export interface SurveyElement {
@@ -1436,6 +1441,28 @@ export interface SurveySession {
   updatedAt: string;
   assignedUserId?: string; // The representative who shared the link (from ?ref= param)
   startedAt?: string; // First visit timestamp for completion time calculation
+}
+
+export interface LearningSignal {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  userId: string;
+  prompt: string;
+  modelId: string;
+  provider: string;
+  artifactType: 'survey' | 'form' | 'page' | 'pdf';
+  initialState: any;
+  finalState?: any;
+  touchedFields?: string[];
+  validationErrors?: string[];
+  validationSuccess?: boolean;
+  userRating?: number;
+  isPublished: boolean;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  editDistance?: number; // Normalized delta between initial and final
 }
 
 export interface PdfSession {

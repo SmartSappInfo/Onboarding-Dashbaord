@@ -26,19 +26,20 @@ export async function getModel(params: {
   let apiKey: string | undefined;
   let aiKeyMode: 'platform' | 'custom' = 'platform';
 
-  // 1. Fetch Organization Key and Mode if orgId is provided
+  // 1. Fetch Organization Key if orgId is provided (High Priority)
   if (organizationId) {
     try {
       const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
       if (orgDoc.exists) {
         const data = orgDoc.data();
-        aiKeyMode = data?.aiKeyMode || 'platform';
         
-        if (aiKeyMode === 'custom') {
-          // Strictly use organization keys
-          if (provider === 'googleai') apiKey = data?.geminiApiKey;
-          else if (provider === 'openai') apiKey = data?.openaiApiKey;
-          else if (provider === 'openrouter') apiKey = data?.openRouterApiKey;
+        // Use organization keys if they exist, regardless of mode
+        if (provider === 'googleai') apiKey = data?.geminiApiKey;
+        else if (provider === 'openai') apiKey = data?.openaiApiKey;
+        else if (provider === 'openrouter') apiKey = data?.openRouterApiKey;
+
+        if (apiKey) {
+          console.log(`[AI] Using Organization-specific key for provider "${provider}" (Org: ${organizationId})`);
         }
       }
     } catch (error) {
@@ -46,35 +47,36 @@ export async function getModel(params: {
     }
   }
 
-  // 2. If using platform defaults, strictly use environment variables
-  if (aiKeyMode === 'platform') {
+  // 2. Fall back to Platform Keys if no Organization key was found (Medium Priority)
+  if (!apiKey) {
     if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY;
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
     else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY;
+
+    if (apiKey) {
+      console.log(`[AI] Using Platform default key for provider "${provider}"`);
+    }
   }
 
   // 3. If no API key is available, fall back to system defaults
   if (!apiKey) {
     console.warn(`No API key found for provider "${provider}", falling back to system default`);
-    // Return a model reference using the system default configuration
     if (provider === 'googleai') {
-      return `googleai/${modelId}`;
+      return { modelString: `googleai/${modelId}` };
     }
-    return `${provider}/${modelId}`;
+    return { modelString: `${provider}/${modelId}` };
   }
 
   // 4. Create a new genkit instance with the specific API key for this request
   if (provider === 'googleai') {
-    // customAi is created for side-effect of registering the plugin with the key;
-    // we return the model string for use with the global ai instance
-    genkit({ plugins: [googleAI({ apiKey })] });
-    return `googleai/${modelId}`;
+    const customAi = genkit({ plugins: [googleAI({ apiKey })] });
+    return { modelString: `googleai/${modelId}`, customAi };
   }
 
   // Handle openrouter and openai with openAICompatible
   const baseURL = provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : undefined;
 
-  genkit({
+  const customAi = genkit({
     plugins: [
       openAICompatible({
         name: provider,
@@ -84,5 +86,5 @@ export async function getModel(params: {
     ]
   });
 
-  return `${provider}/${modelId}`;
+  return { modelString: `${provider}/${modelId}`, customAi };
 }

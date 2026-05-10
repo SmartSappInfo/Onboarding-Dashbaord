@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Send, Loader2, Bot, User, BrainCircuit, X, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import { modifySurvey } from '@/ai/flows/modify-survey-flow';
 import { createSurveyFromAiAction } from '@/lib/ai-survey-actions';
+import { updateSignalRatingAction } from '@/lib/learning-loop-actions';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useUser } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -301,6 +302,14 @@ function AiChatPanel() {
         }
     };
 
+    const handleRate = async (rating: number) => {
+        const signalId = getValues('aiMetadata.learningSignalId');
+        if (!signalId || signalId === 'none') return;
+
+        toast({ title: 'Feedback Received', description: 'Thank you for helping me improve!' });
+        await updateSignalRatingAction(signalId, rating);
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -408,23 +417,52 @@ function AiChatPanel() {
  <div className={cn("space-y-4 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
                                             {messages.map((m, i) => (
  <div key={i} className={cn(
-                                                    "flex gap-2.5 max-w-[88%]",
-                                                    m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
+                                                    "flex flex-col gap-1.5 max-w-[88%]",
+                                                    m.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                                                 )}>
  <div className={cn(
-                                                        "h-7 w-7 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5",
-                                                        m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-card border border-border text-primary"
+                                                        "flex gap-2.5",
+                                                        m.role === 'user' ? "flex-row-reverse" : ""
                                                     )}>
- {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                                                    </div>
  <div className={cn(
-                                                        "px-3.5 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
-                                                        m.role === 'user'
-                                                            ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                                            : "bg-card border border-border/60 rounded-tl-sm text-foreground"
-                                                    )}>
-                                                        {m.content}
+                                                            "h-7 w-7 rounded-full flex items-center justify-center shrink-0 shadow-sm mt-0.5",
+                                                            m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-card border border-border text-primary"
+                                                        )}>
+ {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+                                                        </div>
+ <div className={cn(
+                                                            "px-3.5 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
+                                                            m.role === 'user'
+                                                                ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                                                : "bg-card border border-border/60 rounded-tl-sm text-foreground"
+                                                        )}>
+                                                            {m.content}
+                                                        </div>
                                                     </div>
+                                                    
+                                                    {m.role === 'assistant' && i > 0 && i === messages.length - 1 && getValues('aiMetadata.learningSignalId') && (
+ <div className="ml-9 flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-500">
+ <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">How did I do?</span>
+ <div className="flex items-center gap-1">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-6 w-6 rounded-md hover:bg-emerald-500/10 hover:text-emerald-600 text-muted-foreground/60"
+                                                                    onClick={() => handleRate(5)}
+                                                                >
+ <Sparkles className="h-3 w-3" />
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-6 w-6 rounded-md hover:bg-destructive/10 hover:text-destructive text-muted-foreground/60"
+                                                                    onClick={() => handleRate(1)}
+                                                                >
+ <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
 

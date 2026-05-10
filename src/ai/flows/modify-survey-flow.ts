@@ -114,7 +114,9 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 11. **Required Fields**: Default to \`isRequired: false\` unless the user explicitly asks for a field to be required or it's marked as such in the provided text.
 12. **Copy Fidelity**: For instructional or description blocks, follow the source copy EXACTLY. Do not summarize or rephrase.
 13. **Paragraphs**: Respect white spaces and carriage returns. Use \`\\n\\n\` to preserve paragraph breaks.
-14. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+14. **Auto-Advance (STRICT)**: Set \`autoAdvance: false\` for all questions. ONLY set \`autoAdvance: true\` for the LAST question of a section IF AND ONLY IF the following section has \`renderAsPage: true\`.
+15. **Order Fidelity**: Maintain the exact sequence of questions provided in the source material or existing state. Do not re-order unless specifically asked.
+16. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}
@@ -161,8 +163,19 @@ const modifySurveyFlow = ai.defineFlow(
         
         while (retries < maxRetries) {
             try {
-                // For now, use the system default model until we can properly implement dynamic model selection
-                const { output } = await modifyPrompt(input);
+                // Resolve the model instance with the correct API key for this organization
+                const model = await getModel({
+                    organizationId: input.organizationId,
+                    provider: input.provider || 'googleai',
+                    modelId: input.modelId || 'gemini-3-flash-preview',
+                });
+
+                const { output } = await ai.generate({
+                    model,
+                    prompt: modifyPrompt.render(input),
+                    output: { schema: ModifySurveyOutputSchema },
+                });
+                
                 if (!output) throw new Error("The AI model failed to process the request.");
                 return output;
             } catch (error: any) {

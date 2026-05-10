@@ -39,6 +39,8 @@ import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
+import { updateWorkspaceVocabularyAction } from '@/lib/vocabulary-map-actions';
 
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
@@ -121,6 +123,11 @@ const formSchema = z.object({
   autoAutomations: z.array(z.string()).default([]),
   allowCrossVisibility: z.boolean().default(false),
   allowResubmission: z.boolean().default(false),
+  aiMetadata: z.object({
+    isAiGenerated: z.boolean().default(false),
+    learningSignalId: z.string().optional(),
+    isFirstPublishComplete: z.boolean().default(false),
+  }).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -189,6 +196,7 @@ export default function EditSurveyPage() {
     const surveyId = params.id as string;
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
+    const { user } = useUser();
     
     // UI State
     const [step, setStep] = React.useState(1);
@@ -306,6 +314,17 @@ export default function EditSurveyPage() {
             toast({ title: '✓ Changes Committed', description: 'Survey saved. Keep editing or finalize when ready.' });
             if (data.status === 'published') {
                 syncVariableRegistry().catch(console.error);
+                
+                // Check if we should finalize a learning signal
+                const aiMetadata = survey?.aiMetadata;
+                if (aiMetadata?.isAiGenerated && !aiMetadata.isFirstPublishComplete && aiMetadata.learningSignalId) {
+                    await finalizeLearningSignalAction(aiMetadata.learningSignalId, data, []);
+                    
+                    // Mark as complete in the DB
+                    await updateDoc(docRef, {
+                        "aiMetadata.isFirstPublishComplete": true
+                    });
+                }
             }
             // Don't redirect — let the user continue editing. Only the Publish page button closes the editor.
         } catch (error) {
@@ -318,8 +337,45 @@ export default function EditSurveyPage() {
     const onPublishAndExit = async (data: FormData) => {
         setIsSaving(true);
         const { resultPages, ...mainData } = data;
+        const aiMetadata = survey?.aiMetadata;
+
         try {
             const docRef = doc(firestore!, 'surveys', surveyId);
+            
+            // Check if we should finalize a learning signal
+            if (aiMetadata?.isAiGenerated && !aiMetadata.isFirstPublishComplete && aiMetadata.learningSignalId) {
+                // Determine touched fields for reinforcement learning
+                const touchedFields = Object.keys(form.formState.touchedFields);
+                
+                // Finalize the signal (non-blocking via after() inside the action)
+                await finalizeLearningSignalAction(
+                    aiMetadata.learningSignalId, 
+                    data,
+                    [] // Validation errors empty if we reached this point successfully
+                );
+
+                // Entity Mapping Reinforcement: Capture user-defined field vocabularies
+                const finalMapping = data.entityMapping;
+                
+                if (finalMapping) {
+                    const newVocabulary: Record<string, string> = {};
+                    if (finalMapping.entityNameFieldId) newVocabulary['entityName'] = finalMapping.entityNameFieldId;
+                    if (finalMapping.contactNameFieldId) newVocabulary['contactName'] = finalMapping.contactNameFieldId;
+                    if (finalMapping.contactEmailFieldId) newVocabulary['contactEmail'] = finalMapping.contactEmailFieldId;
+                    if (finalMapping.contactPhoneFieldId) newVocabulary['contactPhone'] = finalMapping.contactPhoneFieldId;
+                    
+                    if (Object.keys(newVocabulary).length > 0) {
+                        await updateWorkspaceVocabularyAction(activeWorkspaceId!, newVocabulary, user!.uid);
+                    }
+                }
+
+                // Mark as first publish complete to prevent re-processing
+                mainData.aiMetadata = {
+                    ...aiMetadata,
+                    isFirstPublishComplete: true
+                };
+            }
+
             await updateDoc(docRef, JSON.parse(JSON.stringify({ ...mainData, updatedAt: new Date().toISOString() })));
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
             for (const page of resultPages) {
@@ -329,6 +385,7 @@ export default function EditSurveyPage() {
             syncVariableRegistry().catch(console.error);
             router.push('/admin/surveys');
         } catch (error) {
+            console.error('Publish Error:', error);
             toast({ variant: 'destructive', title: 'Save Failed' });
         } finally {
             setIsSaving(false);

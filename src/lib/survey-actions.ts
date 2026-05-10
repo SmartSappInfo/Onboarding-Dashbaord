@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { logActivity } from './activity-logger';
 import { triggerInternalNotification, triggerExternalNotification } from './notification-engine';
 import { triggerAutomationProtocols } from './automation-processor';
@@ -172,6 +173,16 @@ export async function deleteSurveyAction(surveyId: string, userId: string) {
         batch.delete(surveyRef);
         
         await batch.commit();
+
+        // Cleanup Learning Loop Data (Non-blocking)
+        after(async () => {
+            try {
+                const { deleteLearningSignalsBySurveyAction } = await import('./learning-loop-actions');
+                await deleteLearningSignalsBySurveyAction(surveyId);
+            } catch (err) {
+                console.error('Failed to cleanup learning signals:', err);
+            }
+        });
 
         await logActivity({
             organizationId: 'default',

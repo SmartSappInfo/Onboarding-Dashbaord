@@ -14,6 +14,7 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
+import { getGoldStandardExamples } from '@/lib/learning-loop-actions';
 import { z } from 'genkit';
 import {
   questionSchema,
@@ -66,12 +67,13 @@ Create the survey's identity and section structure. Do NOT generate individual q
 ### RULES:
 1. **Title**: Concise, professional, and engaging. Max 60 characters.
 2. **Description**: 1-2 sentence introduction for respondents.
-3. **Sections**: Identify 2-6 logical groupings from the content. Each section gets:
-   - A unique kebab-case ID (e.g. \`sec_entity_profile\`, \`sec_risk_assessment\`)
-   - A full title and a short stepper label (max 15 chars)
-   - An estimate of how many questions belong in that group
+3. **Sections**: Identify 2-6 logical groupings. If the source material explicitly contains "SECTION X" or "PAGE X" markers, you MUST use those as the primary basis for your sections. Each section MUST have:
+   - \`id\`: Unique kebab-case ID (e.g. \`sec_profile\`)
+   - \`title\`: Full section title
+   - \`stepperTitle\`: Short label for the progress stepper (max 15 chars)
+   - \`estimatedQuestions\`: A number representing the approximate count of questions in this section.
 4. **Scoring**: Set \`scoringEnabled: true\` ONLY if the content is clearly an assessment, quiz, qualification check, or risk evaluation. Simple feedback surveys should be \`false\`.
-5. **Thank You**: Always generate a warm, professional thank-you title and description.
+5. **Thank You**: Always generate a warm, professional \`thankYouTitle\` and \`thankYouDescription\`.
 
 ### SOURCE MATERIAL:
 \`\`\`text
@@ -122,17 +124,20 @@ type QuestionsOutput = z.infer<typeof QuestionsOutputSchema>;
 const QUESTIONS_PROMPT = `You are an expert survey architect building the questions for a survey. You have been given a blueprint (section outline) and the original source material.
 
 ### YOUR TASK:
-1. **Faithful Extraction (GOLDEN RULE)**: If the source material provides a list of options for a question, you MUST include EVERY SINGLE ONE in the \`options\` array. Do NOT skip, summarize, or truncate the list. An empty \`options\` array for a choice-based question is a FAILURE.
+1. **Faithful Extraction & Mandatory Options (GOLDEN RULE)**: Every \`multiple-choice\`, \`checkboxes\`, and \`dropdown\` question MUST have an \`options\` array with at least 2 items. If the source material provides a list of options, you MUST include EVERY SINGLE ONE. Do NOT skip, summarize, or truncate the list. If the source material does NOT provide options for a choice-based question, you MUST generate reasonable, context-appropriate options yourself. An empty \`options\` array is a FAILURE.
 2. Generate ALL questions, section containers, and layout blocks. Organize them strictly according to the blueprint sections.
 
 ### PATTERN RECOGNITION:
 - **Questions**: Usually start with a number (e.g., "1.", "5.") or are on a single line ending in a question mark.
 - **Options**: The lines immediately following a question that represent choices. You MUST collect all these into the \`options\` array.
+- **Non-Bulleted Options & Question Types**: If a question is followed immediately by a list of statements (even long sentences without bullets), YOU MUST classify the question as \`multiple-choice\` or \`checkboxes\`. You MUST extract every single one of those statements into the \`options\` array. DO NOT treat them as description text. DO NOT classify the question as a \`text\` input.
+- **Strict Bullet Rule**: Any line starting with a bullet (•), hyphen (-), or asterisk (*) that follows a question is an option. If you generate a question block and skip these bullets, you have FAILED your task.
 - **Instruction/Category Lines**: Lines like "1. Ice Breaker Question" should NOT be separate blocks. Merge them into the question title (e.g., "Ice Breaker: [Question Text]") or use a \`heading\` block if it's a section title. NEVER generate a question block without options if the source material provides them immediately below.
-- **Description/Content Blocks**: For blocks with type \`description\`, \`text\`, or \`heading\`, you MUST follow the source copy EXACTLY. Do NOT summarize or rephrase.
+- **Description/Content Blocks**: For blocks with type \`description\`, \`text\`, or \`heading\`, you MUST follow the source copy EXACTLY. Do NOT summarize or rephrase. These are for introductory text or section notes, NOT for question options.
 - **Formatting**: Respect all whitespace, carriage returns, and paragraphs. Use double newlines (\`\\n\\n\`) in the \`content\` or \`description\` fields to preserve paragraph breaks. NEVER lump multiple paragraphs into a single block of text.
-- **De-duplication**: NEVER generate the same question twice. If you see a header and then a question, they are ONE element.
-
+- **De-duplication & Merging**: NEVER merge questions together. If the source material has repeated questions under different headings (e.g., "Persona 1", "Persona 2"), you MUST treat them as completely separate questions. Do NOT combine their options into one massive list.
+- **Option Boundaries**: Only extract options that belong immediately to a specific question. Stop extracting options when you reach a new heading or a new question.
+- **Unique Options**: Within a single question, NEVER repeat the exact same option twice. Every string in the \`options\` array MUST be unique.
 ### ELEMENT ORDERING:
 1. A \`section\` block (with \`renderAsPage: true\`, \`validateBeforeNext: true\`)
 2. Optional \`heading\` or \`description\` blocks for section instructions
@@ -145,8 +150,8 @@ const QUESTIONS_PROMPT = `You are an expert survey architect building the questi
 - \`email\`: Email address input (USE THIS when asking for email addresses)
 - \`phone\`: Phone number input (USE THIS when asking for phone/mobile numbers)
 - \`yes-no\`: Binary choice (renderer expects answers "Yes" or "No" exactly)
-- \`multiple-choice\`: Single selection from options (MUST include \`options: string[]\`, can set \`allowOther: true\`)
-- \`checkboxes\`: Multi-selection (MUST include \`options: string[]\`, can set \`allowOther: true\`)
+- \`checkboxes\`: Multi-selection. USE THIS when source says "Select all that apply" or "Select up to X". (MUST include \`options: string[]\`, can set \`allowOther: true\`)
+- \`multiple-choice\`: Single selection from options. Default for choice questions unless multi-select is specified. (MUST include \`options: string[]\`, can set \`allowOther: true\`)
 - \`dropdown\`: Single selection dropdown (MUST include \`options: string[]\` with 3+ items)
 - \`rating\`: 1-5 star rating
 - \`date\`: Calendar date picker
@@ -162,10 +167,43 @@ const QUESTIONS_PROMPT = `You are an expert survey architect building the questi
 4. **Required Fields (STRICT)**: 
    - Set \`isRequired: false\` by default for all questions.
    - ONLY set \`isRequired: true\` if the source text explicitly includes "Required", an asterisk (*), or if it is a critical contact field (Email/Phone).
-5. **autoAdvance**: Set to \`true\` on \`yes-no\` and \`multiple-choice\` questions where it makes sense for flow
-6. **No Scoring**: Do NOT set \`enableScoring\`, \`optionScores\`, \`yesScore\`, or \`noScore\` — Phase 3 handles scoring
-7. **No Logic Blocks**: Do NOT generate elements with \`type: "logic"\` — Phase 3 handles logic
-8. **Headings**: Use \`variant: "h1"\` for main titles, \`"h2"\` for section headers, \`"h3"\` for sub-headers
+5. **autoAdvance (STRICT)**: 
+   - Set \`autoAdvance: false\` for ALL questions by default.
+   - EXCEPTION: You may ONLY set \`autoAdvance: true\` for the **last question** of a section IF AND ONLY IF the following section has \`renderAsPage: true\`. If the next section is NOT a new page, do NOT use autoAdvance.
+6. **Order Fidelity**: You MUST follow the exact top-to-bottom sequence of questions and sections provided in the source material. Never re-order, categorize, or mix them unless explicitly requested. The order in the source is intentional.
+7. **No Scoring**: Do NOT set \`enableScoring\`, \`optionScores\`, \`yesScore\`, or \`noScore\` — Phase 3 handles scoring
+8. **No Logic Blocks**: Do NOT generate elements with \`type: "logic"\` — Phase 3 handles logic
+9. **No Inline Logic**: NEVER place a "rules" array inside a question block. Logic is strictly handled in Phase 3.
+10. **Title is Required**: EVERY single question MUST have a "title" field. Do not generate empty question stubs.
+11. **Headings**: Use \`variant: "h1"\` for main titles, \`"h2"\` for section headers, \`"h3"\` for sub-headers
+
+### ROOT JSON FORMAT:
+You MUST return a single JSON object with the "elements" key. NEVER return a naked array.
+\`\`\`json
+{
+  "elements": [
+    { "id": "sec_intro", "type": "section", "title": "Intro", "stepperTitle": "Intro" },
+    { 
+      "id": "q_persona", 
+      "type": "multiple-choice", 
+      "title": "Which statement feels closest to your current life situation?",
+      "options": [
+        "I run a business or trade and constantly manage money between stock, customers, and responsibilities.",
+        "I survive mostly on occasional jobs or daily hustle work where income is unpredictable.",
+        "I work temporary or contract jobs where income comes in cycles."
+      ]
+    }
+  ]
+}
+\`\`\`
+
+### VERIFICATION CHECKLIST (MANDATORY):
+Before finalizing the JSON, verify:
+- [ ] Did I extract ALL options for every choice-based question?
+- [ ] If there were bullets (•, -, *) following a question, are they in the \`options\` array?
+- [ ] Did I set \`allowOther: true\` if "Other" was present?
+- [ ] Is the question order identical to the source text?
+- [ ] Are all \`autoAdvance\` values set to \`false\` except for the last question of a page?
 
 ### BLUEPRINT:
 Title: {{{title}}}
@@ -190,14 +228,32 @@ const generateQuestionsFlow = ai.defineFlow(
       .map((s, i) => `${i + 1}. [${s.id}] "${s.title}" (stepper: "${s.stepperTitle}") — ~${s.estimatedQuestions} questions`)
       .join('\n');
 
-    const prompt = QUESTIONS_PROMPT
+    let finalPrompt = QUESTIONS_PROMPT
       .replace('{{{title}}}', input.blueprint.title)
       .replace('{{{description}}}', input.blueprint.description)
       .replace('{{{sections}}}', sectionsText)
       .replace('{{{sourceText}}}', input.sourceText);
 
+    if (input.organizationId) {
+      const goldStandards = await getGoldStandardExamples(input.organizationId, 1);
+      if (goldStandards.length > 0) {
+        // Extract a condensed version of the elements to teach formatting without prompt bloat
+        const exampleElements = goldStandards[0].finalState?.elements?.slice(0, 5).map((e: any) => ({
+          type: e.type,
+          title: e.title,
+          options: e.options,
+          allowOther: e.allowOther,
+          autoAdvance: e.autoAdvance
+        }));
+
+        if (exampleElements && exampleElements.length > 0) {
+          finalPrompt += `\n\n### ORGANIZATION PREFERENCES (LEARNED EXAMPLES):\nBelow are examples of perfectly formatted elements previously approved by this organization. Notice the structure and how options were extracted:\n\`\`\`json\n${JSON.stringify({ elements: exampleElements }, null, 2)}\n\`\`\``;
+        }
+      }
+    }
+
     const result = await callAI<QuestionsOutput>({
-      prompt,
+      prompt: finalPrompt,
       schema: QuestionsOutputSchema,
       input,
       phaseName: 'Questions',
@@ -292,6 +348,19 @@ If a user answers "No" to a question with ID \`q_has_experience\`, hide the ques
 - [ ] Does every action have a \`targetElementId\` or \`targetElementIds\`?
 - [ ] Are all IDs identical to the ones in the "EXISTING ELEMENTS" list?
 - [ ] Is the \`type\` field set to "logic"?
+- [ ] Is \`maxScore\` calculated and provided as a number?
+
+### ROOT JSON FORMAT:
+You MUST return a single JSON object with these keys: "scoringPatches", "logicBlocks", "maxScore", "resultRules", "resultPages".
+\`\`\`json
+{
+  "scoringPatches": [...],
+  "logicBlocks": [...],
+  "maxScore": 0,
+  "resultRules": [...],
+  "resultPages": [...]
+}
+\`\`\`
 
 
 ### RESULT PAGE RULES:
@@ -461,17 +530,14 @@ async function callAI<T>(params: {
 
         if (input.organizationId) {
           const orgDoc = await adminDb.collection('organizations').doc(input.organizationId).get();
-          aiKeyMode = orgDoc.data()?.aiKeyMode || 'platform';
-          
-          if (aiKeyMode === 'custom') {
+          if (orgDoc.exists) {
             apiKey = orgDoc.data()?.openRouterApiKey;
-            if (!apiKey) throw new Error('Organization is configured to use custom AI APIs, but OpenRouter API key is missing. Please add it to your organization settings.');
           }
         }
 
-        if (aiKeyMode === 'platform') {
+        if (!apiKey) {
           apiKey = process.env.OPENROUTER_API_KEY;
-          if (!apiKey) throw new Error('Platform AI API keys are not configured. Please contact the administrator or switch to custom API keys in your organization settings.');
+          if (!apiKey) throw new Error('AI API keys are not configured. Please contact the administrator or add an OpenRouter API key in your organization settings.');
         }
 
         const fullPrompt = `${prompt}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
@@ -487,7 +553,7 @@ async function callAI<T>(params: {
             model: modelId,
             response_format: { type: 'json_object' },
             messages: [
-              { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints.' },
+              { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints. Every response MUST be a single JSON object wrapped in the appropriate root key (e.g. "elements" or "sections").' },
               { role: 'user', content: fullPrompt },
             ],
           }),
@@ -503,14 +569,16 @@ async function callAI<T>(params: {
       }
 
       // Native Genkit path (Gemini, OpenAI)
-      const model = await getModel({
+      const resolvedModel = await getModel({
         organizationId: input.organizationId,
         provider,
         modelId,
       });
 
-      const { output } = await ai.generate({
-        model,
+      const generatorAi = resolvedModel.customAi || ai;
+
+      const { output } = await generatorAi.generate({
+        model: resolvedModel.modelString,
         prompt,
         output: { schema },
       });
