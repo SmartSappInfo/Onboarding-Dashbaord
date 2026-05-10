@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Megaphone, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MessageCampaign, CampaignStatus } from '@/lib/types';
-import { CampaignCard } from './campaign-card';
+import { CampaignListRow } from './campaign-list-row';
 
 interface CampaignListProps {
     campaigns: MessageCampaign[];
@@ -93,9 +93,9 @@ export function CampaignList({
                     <Skeleton className="h-10 w-32 rounded-xl" />
                     <Skeleton className="h-10 w-32 rounded-xl" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <Skeleton key={i} className="h-48 rounded-2xl" />
+                <div className="space-y-3">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <Skeleton key={i} className="h-20 rounded-2xl w-full" />
                     ))}
                 </div>
             </div>
@@ -168,20 +168,22 @@ export function CampaignList({
                 )}
             </div>
 
-            {/* Campaign grid */}
+            {/* Campaign list */}
             {filteredCampaigns.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-                    {filteredCampaigns.map(campaign => (
-                        <CampaignCard
-                            key={campaign.id}
-                            campaign={campaign}
-                            onEdit={onEdit}
-                            onClone={onClone}
-                            onArchive={onArchive}
-                            onDelete={onDelete}
-                            onViewStats={onViewAnalytics || onViewStats}
-                        />
-                    ))}
+                <div className="bg-card border border-border/50 rounded-3xl overflow-hidden shadow-sm mb-20">
+                    <div className="divide-y divide-border/40">
+                        {filteredCampaigns.map(campaign => (
+                            <CampaignListRow
+                                key={campaign.id}
+                                campaign={campaign}
+                                onEdit={onEdit}
+                                onClone={onClone}
+                                onArchive={onArchive}
+                                onDelete={onDelete}
+                                onViewStats={onViewAnalytics || onViewStats}
+                            />
+                        ))}
+                    </div>
                 </div>
             ) : (
                 /* crm-builder pattern: Empty state with action CTA */

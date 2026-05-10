@@ -18,6 +18,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
 import AddElementModal from './add-element-modal';
+import { MarqueeSelect } from './MarqueeSelect';
+import { BulkActionsBar } from './BulkActionsBar';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
 import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
@@ -50,9 +52,11 @@ export default function SurveyFormBuilder() {
     const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
     const [isAccordion, setIsAccordion] = React.useState(true);
-    const [activeBlockId, setActiveBlockId] = React.useState<string | null>(null);
+    const [selectedBlockIds, setSelectedBlockIds] = React.useState<string[]>([]);
+    const [lastSelectedId, setLastSelectedId] = React.useState<string | null>(null);
     const [isPreviewMode, setIsPreviewMode] = React.useState(false);
     const [isPropertiesBarVisible, setIsPropertiesBarVisible] = React.useState(true);
+    const canvasRef = React.useRef<HTMLDivElement>(null);
 
     const elements = watch('elements') || [];
     const sections = elements.filter((el: any) => el.type === 'section');
@@ -147,7 +151,10 @@ export default function SurveyFormBuilder() {
         }
         
         insert(insertionIndex, newElement);
-        setActiveBlockId(newElement.id || null);
+        if (newElement.id) {
+            setSelectedBlockIds([newElement.id]);
+            setLastSelectedId(newElement.id);
+        }
     };
 
     const watchedForm = watch();
@@ -210,6 +217,103 @@ export default function SurveyFormBuilder() {
         }
     }, [user, isDirty, router]);
 
+    const handleBulkAction = React.useCallback((action: string, value?: any) => {
+        const currentElements: SurveyElement[] = getValues('elements') || [];
+        const selectedIndices = selectedBlockIds
+            .map(id => currentElements.findIndex(el => el.id === id))
+            .filter(idx => idx !== -1)
+            .sort((a, b) => a - b);
+
+        if (selectedIndices.length === 0) return;
+
+        let updatedElements = [...currentElements];
+
+        switch (action) {
+            case 'delete':
+                if (confirm(`Are you sure you want to delete ${selectedIndices.length} blocks?`)) {
+                    updatedElements = updatedElements.filter(el => !selectedBlockIds.includes(el.id));
+                    setSelectedBlockIds([]);
+                    setLastSelectedId(null);
+                }
+                break;
+
+            case 'clone':
+                const blocksToClone = selectedIndices.map(idx => ({
+                    ...JSON.parse(JSON.stringify(updatedElements[idx])),
+                    id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                }));
+                const lastIdx = selectedIndices[selectedIndices.length - 1];
+                updatedElements.splice(lastIdx + 1, 0, ...blocksToClone);
+                setSelectedBlockIds(blocksToClone.map(b => b.id));
+                break;
+
+            case 'move-top':
+                const topBlocks = selectedIndices.map(idx => updatedElements[idx]);
+                const remainingTop = updatedElements.filter(el => !selectedBlockIds.includes(el.id));
+                updatedElements = [...topBlocks, ...remainingTop];
+                break;
+
+            case 'move-bottom':
+                const bottomBlocks = selectedIndices.map(idx => updatedElements[idx]);
+                const remainingBottom = updatedElements.filter(el => !selectedBlockIds.includes(el.id));
+                updatedElements = [...remainingBottom, ...bottomBlocks];
+                break;
+
+            case 'move-up':
+                if (selectedIndices[0] > 0) {
+                    selectedIndices.forEach(idx => {
+                        [updatedElements[idx], updatedElements[idx - 1]] = [updatedElements[idx - 1], updatedElements[idx]];
+                    });
+                }
+                break;
+
+            case 'move-down':
+                if (selectedIndices[selectedIndices.length - 1] < updatedElements.length - 1) {
+                    [...selectedIndices].reverse().forEach(idx => {
+                        [updatedElements[idx], updatedElements[idx + 1]] = [updatedElements[idx + 1], updatedElements[idx]];
+                    });
+                }
+                break;
+
+            case 'visibility':
+                selectedIndices.forEach(idx => {
+                    updatedElements[idx] = { ...updatedElements[idx], hidden: value };
+                });
+                break;
+
+            case 'align':
+                selectedIndices.forEach(idx => {
+                    updatedElements[idx] = { 
+                        ...updatedElements[idx], 
+                        style: { ...(updatedElements[idx].style || {}), textAlign: value } 
+                    };
+                });
+                break;
+
+            case 'format':
+                const tag = value;
+                selectedIndices.forEach(idx => {
+                    const el = updatedElements[idx];
+                    const fieldsToFormat = ['title', 'description', 'text'];
+                    const updatedEl = { ...el };
+                    
+                    fieldsToFormat.forEach(field => {
+                        if ((updatedEl as any)[field]) {
+                            (updatedEl as any)[field] = `<${tag}>${(updatedEl as any)[field]}</${tag}>`;
+                        }
+                    });
+                    updatedElements[idx] = updatedEl;
+                });
+                break;
+        }
+
+        setValue('elements', updatedElements, { shouldDirty: true });
+        toast({ 
+            title: "Bulk Action Complete", 
+            description: `Successfully applied ${action} to ${selectedIndices.length} blocks.` 
+        });
+    }, [getValues, setValue, selectedBlockIds, toast]);
+
     React.useEffect(() => { triggerSave(debouncedForm); }, [debouncedForm, triggerSave]);
 
     React.useEffect(() => {
@@ -231,8 +335,23 @@ export default function SurveyFormBuilder() {
 
                 {/* 1. Middle Canvas - The Question Editor or Preview */}
                 <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
-                    <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth p-2 md:p-6 lg:p-10">
-                        <div className="max-w-3xl mx-auto space-y-16 pb-96">
+                    <div 
+                        ref={canvasRef}
+                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
+                    >
+                        <MarqueeSelect
+                            containerRef={canvasRef}
+                            itemSelector="[data-block-id]"
+                            onSelectionChange={(ids, isAccumulating) => {
+                                if (isAccumulating) {
+                                    setSelectedBlockIds(prev => Array.from(new Set([...prev, ...ids])));
+                                } else {
+                                    setSelectedBlockIds(ids);
+                                }
+                                if (ids.length > 0) setLastSelectedId(ids[ids.length - 1]);
+                            }}
+                        >
+                            <div className="max-w-3xl mx-auto space-y-16 p-2 md:p-6 lg:p-10 pb-96">
                             {isPreviewMode ? (
                                 <div className="animate-in fade-in zoom-in duration-300">
                                     {/* Intro Disabled Banner — visual indicator that the toggle is working */}
@@ -275,8 +394,10 @@ export default function SurveyFormBuilder() {
                                     swap={swap} 
                                     insert={insert}
                                     requestAddElement={requestAddElement}
-                                    activeBlockId={activeBlockId}
-                                    setActiveBlockId={setActiveBlockId}
+                                    selectedBlockIds={selectedBlockIds}
+                                    setSelectedBlockIds={setSelectedBlockIds}
+                                    lastSelectedId={lastSelectedId}
+                                    setLastSelectedId={setLastSelectedId}
                                     isAccordion={isAccordion}
                                 />
                             ) : (
@@ -305,6 +426,7 @@ export default function SurveyFormBuilder() {
                                 </div>
                             )}
                         </div>
+                        </MarqueeSelect>
                     </div>
 
                     {/* Premium Autosave Status Pill */}
@@ -449,14 +571,14 @@ export default function SurveyFormBuilder() {
 
                     {isPropertiesBarVisible && (
                         <div className="flex-1 overflow-y-auto w-full no-scrollbar pb-10">
-                            <BlockSettingsSidebar activeBlockId={activeBlockId} />
+                            <BlockSettingsSidebar selectedBlockIds={selectedBlockIds} />
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Mobile Block Settings Floating Action */}
-            {!isPreviewMode && activeBlockId && (
+            {!isPreviewMode && selectedBlockIds.length > 0 && (
                 <div className="xl:hidden fixed bottom-6 right-6 z-50">
                     <Sheet>
                         <SheetTrigger asChild>
@@ -465,7 +587,7 @@ export default function SurveyFormBuilder() {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="h-[80vh] p-0 overflow-hidden sm:max-w-none w-full border-t-2 border-primary/20 rounded-t-3xl">
-                            <BlockSettingsSidebar activeBlockId={activeBlockId} />
+                            <BlockSettingsSidebar selectedBlockIds={selectedBlockIds} />
                         </SheetContent>
                     </Sheet>
                 </div>
@@ -475,6 +597,15 @@ export default function SurveyFormBuilder() {
                 open={isAddElementModalOpen}
                 onOpenChange={setIsAddElementModalOpen}
                 onSelect={handleElementSelect}
+            />
+
+            <BulkActionsBar 
+                selectedIds={selectedBlockIds} 
+                onClear={() => {
+                    setSelectedBlockIds([]);
+                    setLastSelectedId(null);
+                }}
+                onAction={handleBulkAction}
             />
         </div>
     );

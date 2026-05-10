@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { QrCode, Download, Save, Radio, Lock, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
+import { QrCode, Download, Save, Radio, Lock, Loader2, CheckCircle2, ExternalLink, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { downloadQR } from '@/app/admin/qr-studio/components/qr-preview';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { createQRCode, getQRCodeByUrl, updateQRCode } from '@/lib/qr-actions';
+import { createQRCode, getQRCodeByUrl, updateQRCode, updateQRShortPath } from '@/lib/qr-actions';
 import type { QRDesign } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import QRDesigner from '@/app/admin/qr-studio/components/designer/qr-designer';
@@ -40,6 +40,8 @@ export default function AttributionQRSheet({
     const [name, setName] = React.useState(`${userName} — ${surveyTitle}`);
     const [mode, setMode] = React.useState<'dynamic' | 'static'>('dynamic');
     const [design, setDesign] = React.useState<QRDesign>(DEFAULT_QR_DESIGN);
+    const [shortPath, setShortPath] = React.useState('');
+    const [originalShortPath, setOriginalShortPath] = React.useState('');
     
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -65,11 +67,20 @@ export default function AttributionQRSheet({
                         setMode(existing.mode);
                         if (existing.design) setDesign(existing.design);
                         setExistingQrId(existing.id);
+                        if (existing.shortPath) {
+                            setShortPath(existing.shortPath);
+                            setOriginalShortPath(existing.shortPath);
+                        } else {
+                            setShortPath('');
+                            setOriginalShortPath('');
+                        }
                     } else {
                         setName(`${userName} — ${surveyTitle}`);
                         setMode('dynamic');
                         setDesign(DEFAULT_QR_DESIGN);
                         setExistingQrId(null);
+                        setShortPath('');
+                        setOriginalShortPath('');
                     }
                 }
             } catch (err) {
@@ -106,6 +117,15 @@ export default function AttributionQRSheet({
                     name,
                     design
                 });
+                
+                if (mode === 'dynamic' && shortPath && shortPath !== originalShortPath) {
+                    const shortPathResult = await updateQRShortPath(organizationId, workspaceId, existingQrId, shortPath);
+                    if (!shortPathResult.success) {
+                        throw new Error(shortPathResult.error);
+                    }
+                    setOriginalShortPath(shortPath);
+                }
+                
                 toast({ title: 'QR Code Updated', description: 'Your design changes have been saved.' });
             } else {
                 // Create new
@@ -120,8 +140,13 @@ export default function AttributionQRSheet({
                     design,
                     tracking: { enabled: mode === 'dynamic' },
                     createdBy: currentUser,
+                    customShortPath: mode === 'dynamic' && shortPath ? shortPath : undefined,
                 });
                 setExistingQrId(result.id);
+                if (result.shortPath) {
+                    setShortPath(result.shortPath);
+                    setOriginalShortPath(result.shortPath);
+                }
                 toast({ title: 'Saved to QR Studio', description: 'QR Code created successfully.' });
             }
             setIsSuccess(true);
@@ -218,11 +243,48 @@ export default function AttributionQRSheet({
                                 </div>
                                 
                                 {/* URL Info */}
-                                <div className="p-4 bg-card border rounded-2xl shadow-sm space-y-2">
-                                    <Label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Destination</Label>
-                                    <div className="px-3 py-2 rounded-xl bg-muted/30 border border-border/50 text-xs font-mono text-muted-foreground break-all select-all">
-                                        {url}
+                                <div className="p-4 bg-card border rounded-2xl shadow-sm space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between ml-1">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Long Link</Label>
+                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-primary/10 hover:text-primary" onClick={() => {
+                                                navigator.clipboard.writeText(url);
+                                                toast({ title: 'Long Link Copied' });
+                                            }}>
+                                                <Copy className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                        <div className="px-3 py-2 rounded-xl bg-muted/30 border border-border/50 text-xs font-mono text-muted-foreground break-all select-all">
+                                            {url}
+                                        </div>
                                     </div>
+                                    
+                                    {mode === 'dynamic' && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between ml-1">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Short Link</Label>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-primary/10 hover:text-primary" onClick={() => {
+                                                    const fullShortUrl = `${window.location.origin}/q/${shortPath || '...'}`;
+                                                    navigator.clipboard.writeText(fullShortUrl);
+                                                    toast({ title: 'Short Link Copied' });
+                                                }}>
+                                                    <Copy className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <div className="flex h-10 border border-border rounded-xl overflow-hidden bg-muted/30 transition-all focus-within:ring-1 focus-within:ring-primary/20">
+                                                <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">{typeof window !== 'undefined' ? window.location.host : ''}/q/</div>
+                                                <Input 
+                                                    value={shortPath}
+                                                    onChange={(e) => setShortPath(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
+                                                    placeholder="custom-alias"
+                                                    className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent flex-1 text-xs font-mono" 
+                                                />
+                                            </div>
+                                            {shortPath !== originalShortPath && originalShortPath !== '' && (
+                                                <p className="text-[10px] font-bold text-amber-600 ml-1">Unsaved changes to shortlink.</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

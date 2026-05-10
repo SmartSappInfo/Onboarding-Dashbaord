@@ -703,13 +703,83 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           </Select>
                       )}
                       />
-                      {showValueInput && (
+                      {showValueInput && (() => {
+                        const sourceQuestionId = watch(`elements.${elementIndex}.rules.${index}.sourceQuestionId`);
+                        const sourceQuestion = allElements.find(el => el.id === sourceQuestionId) as any;
+                        const isChoiceType = sourceQuestion && ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'].includes(sourceQuestion.type);
+                        const options = sourceQuestion?.type === 'yes-no' ? ['Yes', 'No'] : (sourceQuestion?.options || []);
+
+                        if (isChoiceType) {
+                          return (
+                            <Controller
+                              name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                              control={control}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                                  <SelectTrigger className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1 h-10">
+                                    <SelectValue placeholder="Select option..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="z-[100]" position="popper" sideOffset={5}>
+                                    {options.map((opt: string, i: number) => (
+                                      <SelectItem key={i} value={opt}>{opt}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          );
+                        }
+
+                        if (sourceQuestion?.type === 'number') {
+                            return (
+                              <Controller
+                                name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                                control={control}
+                                render={({ field }) => (
+                                  <Input 
+                                    {...field} 
+                                    type="number"
+                                    value={field.value ?? ''} 
+                                    placeholder="Number value..." 
+                                    className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1 h-10" 
+                                  />
+                                )}
+                              />
+                            );
+                        }
+
+                        if (sourceQuestion?.type === 'date') {
+                            return (
+                              <Controller
+                                name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                                control={control}
+                                render={({ field }) => (
+                                  <div className="w-full sm:flex-1">
+                                    <DatePicker 
+                                        value={field.value} 
+                                        onChange={(date) => field.onChange(date ? date.toISOString() : '')} 
+                                    />
+                                  </div>
+                                )}
+                              />
+                            );
+                        }
+
+                        return (
                           <Controller
-                          name={`elements.${elementIndex}.rules.${index}.targetValue`}
-                          control={control}
-                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1" />}
+                            name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                            control={control}
+                            render={({ field }) => (
+                              <Input 
+                                {...field} 
+                                value={field.value ?? ''} 
+                                placeholder="Value..." 
+                                className="bg-background border-border/50 ring-1 ring-border w-full sm:flex-1 h-10" 
+                              />
+                            )}
                           />
-                      )}
+                        );
+                      })()}
                   </div>
                   </div>
                   <Button 
@@ -841,90 +911,22 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     );
 }
 
-function QuestionSettingsPopover({ element, index, changeType }: {
-    element: SurveyElement;
-    index: number;
-    changeType: (index: number, type: SurveyElement['type']) => void;
-}) {
-    const { control, getValues, setValue } = useFormContext();
-    const isElemQuestion = isQuestion(element);
-    const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
-    
-    const [useMin, setUseMin] = React.useState(false);
-    const [useMax, setUseMax] = React.useState(false);
-
-    const handleToggle = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean, fieldName: string) => {
-        setter(value);
-        if (!value) {
-            setValue(`elements.${index}.${fieldName}`, undefined);
-        }
-    };
-    
-    const questionTypes: { type: SurveyQuestion['type'], label: string }[] = [
-        { type: 'text', label: 'Short Text'}, { type: 'long-text', label: 'Long Text'}, { type: 'yes-no', label: 'Yes/No'},
-        { type: 'multiple-choice', label: 'Multiple Choice'}, { type: 'checkboxes', label: 'Checkboxes'}, { type: 'dropdown', label: 'Dropdown'},
-        { type: 'rating', label: 'Rating'}, { type: 'date', label: 'Date'}, { type: 'time', label: 'Time'},
-        { type: 'file-upload', label: 'File Upload'},
-    ];
-
-    React.useEffect(() => {
-        setUseMin(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
-        setUseMax(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
-    }, [getValues, index, isTextQuestion]);
-
-    return (
- <div className="space-y-4">
-            {isElemQuestion && isTextQuestion && (
- <div className="space-y-4">
- <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Validation</h4>
- <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`min-chars-toggle-${index}`} className="text-sm font-semibold">Min characters</Label>
-                        <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
-                    </div>
- {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
-
- <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`max-chars-toggle-${index}`} className="text-sm font-semibold">Max characters</Label>
-                        <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
-                    </div>
- {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
-                </div>
-            )}
- <div className="space-y-4">
- <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Content</h4>
- <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
- <Label htmlFor={`hidden-toggle-${index}`} className="text-sm font-semibold">Hidden by default</Label>
-                   <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
-                </div>
-            </div>
- <div className="space-y-4">
- <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] ">Change To</h4>
-                <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
- <SelectTrigger className="h-10"><SelectValue placeholder="Turn into..." /></SelectTrigger>
-                    <SelectContent>
-                        {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type}>{qType.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-    );
-}
-
-function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement, activeBlockId, setActiveBlockId, isAccordion }: {
+function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement, selectedBlockIds, onSelect, isAccordion }: {
     id: string;
     index: number;
     remove: (index: number) => void;
     swap: (a: number, b: number) => void;
     insert: (index: number, value: any) => void;
     requestAddElement: (index: number) => void;
-    activeBlockId: string | null;
-    setActiveBlockId: (id: string | null) => void;
+    selectedBlockIds: string[];
+    onSelect: (id: string, isMulti: boolean, isRange: boolean) => void;
     isAccordion: boolean;
 }) {
   const { watch, control, setValue, getValues, formState: { errors } } = useFormContext();
   const element = watch(`elements.${index}`);
-  const isActive = activeBlockId === element?.id;
-  const isCollapsed = isAccordion && !isActive;
+  const isSelected = selectedBlockIds.includes(element?.id);
+  const isPrimaryActive = selectedBlockIds.length === 1 && isSelected;
+  const isCollapsed = isAccordion && !isPrimaryActive;
   const hasErrors = !!(errors.elements as any)?.[index];
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -946,22 +948,38 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
 
   
   return (
-    <div className="relative group" ref={setNodeRef} style={style} onClickCapture={() => setActiveBlockId(element?.id)}>
+    <div 
+        className="relative group" 
+        ref={setNodeRef} 
+        style={style} 
+        onClickCapture={(e) => {
+            // Only handle selection if not clicking a button or input
+            const target = e.target as HTMLElement;
+            if (target.closest('button') || target.closest('input') || target.closest('textarea') || target.closest('[contenteditable]') || target.closest('[data-marquee-ignore="true"]')) return;
+            
+            e.stopPropagation();
+            onSelect(element?.id, e.metaKey || e.ctrlKey, e.shiftKey);
+        }}
+    >
         <div
+            data-marquee-ignore="true"
             className={cn(
                 "absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-foreground border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-2xl",
-                isDragging && "opacity-100"
+                isDragging && "cursor-grabbing scale-110 shadow-2xl ring-4 ring-primary/20",
+                isSelected && "opacity-100"
             )}
             {...attributes}
             {...listeners}
         >
-            <GripVertical className="h-4 w-4 text-background" />
+            <GripVertical className="h-4 w-4 text-white" />
         </div>
         <Card 
             id={element.id}
+            data-block-id={element.id}
             className={cn(
                 "border transition-all duration-500 overflow-hidden rounded-[2rem]",
-                isActive ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-border/60 shadow-sm hover:border-foreground/20",
+                isSelected ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-border/60 shadow-sm hover:border-foreground/20",
+                isPrimaryActive ? "bg-primary/[0.01]" : "bg-card",
                 hasErrors ? "border-destructive shadow-lg" : "",
                 element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-card",
                 isCollapsed && "hover:translate-x-1"
@@ -969,20 +987,20 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         >
             <CardHeader className={cn(
                 "py-3 px-6 transition-colors border-b border-border/20",
-                isActive ? "bg-primary/[0.02]" : "bg-transparent",
+                isSelected ? "bg-primary/[0.02]" : "bg-transparent",
                 isCollapsed && "cursor-pointer py-3"
             )}>
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-4">
                         <div className={cn(
                             "flex items-center justify-center rounded-xl border shadow-xs transition-all duration-300",
-                            isActive ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground",
+                            isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground",
                             "h-8 w-8"
                         )}>
                             <ElementIcon className={cn("shrink-0 transition-all h-4 w-4")} />
                         </div>
                         <div className="flex flex-col gap-0">
-                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isActive ? "text-primary" : "text-muted-foreground")}>
+                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isSelected ? "text-primary" : "text-muted-foreground")}>
                                 {isElementQuestion ? `Question ${questionNumber}`
                                 : isElementSection ? `Section ${sectionNumber}`
                                 : isElementLayout ? `${element.type} Block`
@@ -992,7 +1010,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 <div className="flex items-center gap-2 max-w-md">
                                     <span className={cn(
                                         "font-bold tracking-tight truncate transition-all duration-300 text-sm text-muted-foreground",
-                                        isActive && "text-foreground"
+                                        isSelected && "text-foreground"
                                     )}>
                                         {stripHtml((element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block'))}
                                     </span>
@@ -1002,9 +1020,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                         </div>
                     </div>
-                    {isActive && (
+                    {isSelected && (
                         <div className="flex items-center gap-1.5 mt-2 sm:mt-0">
                             <Button 
+                                data-marquee-ignore="true"
                                 variant="outline" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hidden sm:flex bg-background"
@@ -1017,6 +1036,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 <ArrowUp className="h-4 w-4" />
                             </Button>
                             <Button 
+                                data-marquee-ignore="true"
                                 variant="outline" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hidden sm:flex bg-background"
@@ -1029,6 +1049,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 <ArrowDown className="h-4 w-4" />
                             </Button>
                             <Button 
+                                data-marquee-ignore="true"
                                 variant="outline" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hidden sm:flex bg-background hover:bg-primary/5 hover:text-primary hover:border-primary/20"
@@ -1036,12 +1057,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     e.stopPropagation();
                                     const newElem = { ...element, id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
                                     insert(index + 1, newElem);
-                                    setActiveBlockId(newElem.id);
+                                    setSelectedBlockIds([newElem.id]);
+                                    setLastSelectedId(newElem.id);
                                 }}
                             >
                                 <Copy className="h-4 w-4" />
                             </Button>
                             <Button 
+                                data-marquee-ignore="true"
                                 variant="outline" 
                                 size="icon" 
                                 className="h-8 w-8 rounded-md hidden sm:flex text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20 bg-background"
@@ -1347,6 +1370,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             </div>
         </Card>
         <div
+            data-marquee-ignore="true"
             className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-1.5 bg-background border border-border rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
             onClick={(e) => {
                 e.stopPropagation();
@@ -1359,15 +1383,17 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   );
 }
 
-export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement, activeBlockId, setActiveBlockId, isAccordion }: {
+export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement, selectedBlockIds, setSelectedBlockIds, lastSelectedId, setLastSelectedId, isAccordion }: {
     fields: any[];
     remove: (index: number) => void;
     move: (from: number, to: number) => void;
     swap: (indexA: number, indexB: number) => void;
     insert: (index: number, value: SurveyElement) => void;
     requestAddElement: (index: number) => void;
-    activeBlockId: string | null;
-    setActiveBlockId: (id: string | null) => void;
+    selectedBlockIds: string[];
+    setSelectedBlockIds: (ids: string[]) => void;
+    lastSelectedId: string | null;
+    setLastSelectedId: (id: string | null) => void;
     isAccordion: boolean;
 }) {
   const { formState: { errors } } = useFormContext();
@@ -1392,9 +1418,35 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     }
   }
 
+  const handleSelect = (id: string, isMulti: boolean, isRange: boolean) => {
+    if (isRange && lastSelectedId) {
+        const lastIdx = fields.findIndex(f => f.id === lastSelectedId);
+        const currIdx = fields.findIndex(f => f.id === id);
+        if (lastIdx !== -1 && currIdx !== -1) {
+            const start = Math.min(lastIdx, currIdx);
+            const end = Math.max(lastIdx, currIdx);
+            const rangeIds = fields.slice(start, end + 1).map(f => f.id);
+            const newSelection = Array.from(new Set([...selectedBlockIds, ...rangeIds]));
+            setSelectedBlockIds(newSelection);
+        }
+    } else if (isMulti) {
+        if (selectedBlockIds.includes(id)) {
+            setSelectedBlockIds(selectedBlockIds.filter(bid => bid !== id));
+        } else {
+            setSelectedBlockIds([...selectedBlockIds, id]);
+        }
+    } else {
+        setSelectedBlockIds([id]);
+    }
+    setLastSelectedId(id);
+  };
+
   return (
     <div onClickCapture={(e) => {
-        if(e.target === e.currentTarget) setActiveBlockId(null);
+        if(e.target === e.currentTarget) {
+            setSelectedBlockIds([]);
+            setLastSelectedId(null);
+        }
     }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
@@ -1408,8 +1460,8 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                             swap={swap} 
                             insert={insert}
                             requestAddElement={requestAddElement}
-                            activeBlockId={activeBlockId}
-                            setActiveBlockId={setActiveBlockId}
+                            selectedBlockIds={selectedBlockIds}
+                            onSelect={handleSelect}
                             isAccordion={isAccordion}
                         />
                     ))}
@@ -1418,6 +1470,7 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
         </DndContext>
         <div className="mt-8 flex justify-center">
             <Button
+                data-marquee-ignore="true"
                 type="button"
                 variant="outline"
                 className="rounded-xl border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary gap-2 h-12 px-8"

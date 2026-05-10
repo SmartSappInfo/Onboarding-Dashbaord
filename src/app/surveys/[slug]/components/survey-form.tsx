@@ -886,12 +886,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
 
     // Scroll to stepper (used on Next/Prev), or top (used on initial load/cover page)
     const scrollToStepper = React.useCallback((toTop = false) => {
-        if (toTop || !stepperRef.current) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-        }
-        const offset = stepperRef.current.getBoundingClientRect().top + window.scrollY - 16;
-        window.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+        // Use a small timeout to ensure the DOM has updated (especially when moving from cover page to first section)
+        setTimeout(() => {
+            if (toTop || !stepperRef.current) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            const offset = stepperRef.current.getBoundingClientRect().top + window.scrollY - 16;
+            window.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+        }, 100);
     }, []);
 
     // Drop-off Analytics Session State

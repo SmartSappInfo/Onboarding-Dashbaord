@@ -34,7 +34,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
-import QuickTemplateDialog from '../../components/quick-template-dialog';
+import dynamic from 'next/dynamic';
+const QuickTemplateDialog = dynamic(() => import('../../components/quick-template-dialog'), { ssr: false });
 
 // ─── Wizard State (R4 fix: useReducer instead of 25+ useState) ───────────────
 
@@ -451,11 +452,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                             {p.name} ({p.identifier})
                                         </SelectItem>
                                     ))}
-                                    {!(senderProfiles || []).some(p => p.channel === state.channel) && (
+                                    {!(senderProfiles || []).some(p => p.channel === state.channel) ? (
                                         <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
                                             No {state.channel} profiles available
                                         </SelectItem>
-                                    )}
+                                    ) : null}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -478,16 +479,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         </div>
 
                         {/* Template Picker (when template mode is on) */}
-                        {state.contentMode === 'template' && (
+                        {state.contentMode === 'template' ? (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1">
                                     <Label className="text-[10px] font-semibold text-muted-foreground">Select a Template</Label>
                                     <div className="flex items-center gap-1">
-                                        {state.templateId && (
+                                        {state.templateId ? (
                                             <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => setQuickCreateOpen(true)}>
                                                 <Pencil className="h-3 w-3" /> Edit
                                             </Button>
-                                        )}
+                                        ) : null}
                                         <Button type="button" variant="ghost" className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-primary gap-1 rounded-lg" onClick={() => { setField('templateId', ''); setQuickCreateOpen(true); }}>
                                             <PlusCircle className="h-3 w-3" /> New
                                         </Button>
@@ -513,16 +514,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     className="h-12 rounded-xl bg-card border-border/50 font-bold transition-all text-xs"
                                 />
                                 
-                                {state.templateId && (
+                                {state.templateId ? (
                                     <Badge variant="outline" className="text-[9px] font-bold">
                                         Using: {state.templateName}
                                     </Badge>
-                                )}
+                                ) : null}
                             </div>
-                        )}
+                        ) : null}
 
                         {/* Subject (email only) */}
-                        {state.channel === 'email' && (
+                        {state.channel === 'email' ? (
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
                                 <Input
@@ -532,7 +533,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     className="h-12 rounded-xl bg-card border-border/50 font-bold"
                                 />
                             </div>
-                        )}
+                        ) : null}
 
                         {/* Body */}
                         <div className="space-y-2">
@@ -545,12 +546,12 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 placeholder={state.channel === 'sms' ? 'Type your SMS message...' : 'Type your email content...'}
                                 className="min-h-[250px] rounded-xl bg-card border-border/50 font-semibold text-sm"
                             />
-                            {state.channel === 'sms' && (
+                            {state.channel === 'sms' ? (
                                 <p className="text-[9px] font-bold text-muted-foreground text-right tabular-nums">
                                     {state.customBody.length} / {state.customBody.length <= 160 ? 160 : Math.ceil(state.customBody.length / 153) * 153} chars
                                     ({state.customBody.length <= 160 ? 1 : Math.ceil(state.customBody.length / 153)} segment{state.customBody.length > 160 ? 's' : ''})
                                 </p>
-                            )}
+                            ) : null}
                         </div>
 
                         {/* Variable reference */}
@@ -587,7 +588,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 </Badge>
                             </button>
 
-                            {showAiPanel && (
+                            {showAiPanel ? (
                                 <div className="p-4 pt-0 space-y-4 border-t">
                                     {/* Generate from scratch */}
                                     <div className="space-y-2">
@@ -634,7 +635,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </div>
 
                                     {/* Subject variants */}
-                                    {aiVariants.length > 0 && state.channel === 'email' && (
+                                    {aiVariants.length > 0 && state.channel === 'email' ? (
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line Variants</Label>
                                             <div className="space-y-1.5">
@@ -656,10 +657,10 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                 ))}
                                             </div>
                                         </div>
-                                    )}
+                                    ) : null}
 
                                     {/* Refine existing copy */}
-                                    {(state.customSubject || state.customBody) && (
+                                    {(state.customSubject || state.customBody) ? (
                                         <div className="space-y-2 pt-2 border-t border-border/30">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Refine Existing Copy</Label>
                                             <div className="flex gap-2">
@@ -701,9 +702,9 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                 </Button>
                                             </div>
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 );
@@ -733,24 +734,24 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         </div>
 
                         {/* All mode */}
-                        {state.audienceMode === 'all' && (
+                        {state.audienceMode === 'all' ? (
                             <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                                 <Users className="h-5 w-5 text-emerald-600 shrink-0" />
                                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">All entities in your workspace will receive this campaign.</p>
                             </div>
-                        )}
+                        ) : null}
 
                         {/* Advanced filter mode */}
-                        {state.audienceMode === 'advanced' && (
+                        {state.audienceMode === 'advanced' ? (
                             <FilterBuilder
                                 filters={state.filters}
                                 filterLogic={state.filterLogic}
                                 onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
                             />
-                        )}
+                        ) : null}
 
                         {/* Saved audience mode */}
-                        {state.audienceMode === 'saved' && (
+                        {state.audienceMode === 'saved' ? (
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Saved Audience</Label>
@@ -772,21 +773,21 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                                     {a.name} ({a.filters?.length || 0} filters)
                                                 </SelectItem>
                                             ))}
-                                            {savedAudiences.length === 0 && (
+                                            {savedAudiences.length === 0 ? (
                                                 <SelectItem value="_none" disabled className="text-xs text-muted-foreground">No saved audiences</SelectItem>
-                                            )}
+                                            ) : null}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {state.savedAudienceId && state.filters.length > 0 && (
+                                {state.savedAudienceId && state.filters.length > 0 ? (
                                     <FilterBuilder
                                         filters={state.filters}
                                         filterLogic={state.filterLogic}
                                         onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
                                     />
-                                )}
+                                ) : null}
                             </div>
-                        )}
+                        ) : null}
 
                         {/* Contact scope */}
                         <div className="space-y-2">
@@ -820,7 +821,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 />
                             </div>
 
-                            {state.isScheduled && (
+                            {state.isScheduled ? (
                                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Dispatch Time</Label>
                                     <DateTimePicker
@@ -828,7 +829,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                         onChange={v => setField('scheduledAt', v || null)}
                                     />
                                 </div>
-                            )}
+                            ) : null}
                         </div>
 
                         <Separator className="opacity-50" />
@@ -943,12 +944,12 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 {state.templateName && <Badge variant="secondary" className="text-[8px] font-bold">Template: {state.templateName}</Badge>}
                             </div>
                             <div className="rounded-2xl border bg-card overflow-hidden">
-                                {state.channel === 'email' && (
+                                {state.channel === 'email' ? (
                                     <div className="p-4 border-b bg-muted/10">
                                         <p className="text-[10px] font-bold text-muted-foreground mb-1">Subject</p>
                                         <p className="text-xs font-bold">{state.customSubject || '(No subject)'}</p>
                                     </div>
-                                )}
+                                ) : null}
                                 <div className="p-6 max-h-[300px] overflow-y-auto">
                                     <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans">
                                         {state.customBody || '(No content)'}
@@ -957,7 +958,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                             </div>
                         </div>
 
-                        {state.isScheduled && (
+                        {state.isScheduled ? (
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-primary" />
                                 <div>
@@ -967,7 +968,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </p>
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 );
 
@@ -1004,11 +1005,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
                 <CardFooter className="p-8 pt-4 border-t bg-muted/10 shrink-0 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        {state.step > 1 && (
+                        {state.step > 1 ? (
                             <Button variant="ghost" onClick={() => dispatch({ type: 'PREV_STEP' })} className="rounded-xl font-bold h-12 px-6">
                                 <ArrowLeft className="h-4 w-4 mr-2" /> Back
                             </Button>
-                        )}
+                        ) : null}
                         <Button variant="ghost" onClick={handleSaveDraft} disabled={state.isSaving || state.isSending || !state.internalName} className="rounded-xl font-bold h-12 px-6 text-primary">
                             {state.isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                             {campaign ? 'Update Draft' : 'Save as Draft'}
@@ -1045,7 +1046,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 </AlertDialogContent>
             </AlertDialog>
 
-            {quickCreateOpen && (
+            {quickCreateOpen ? (
                 <QuickTemplateDialog 
                     open={quickCreateOpen}
                     onOpenChange={setQuickCreateOpen}
@@ -1053,11 +1054,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                     category="campaigns"
                     recipientType={state.target === 'external_client' ? 'entity' : 'internal_alert'}
                     templateId={state.templateId || undefined}
-                    onCreated={(id) => {
-                        setField('templateId', id);
+                    onCreated={(template: any) => {
+                        setField('templateId', template.id);
+                        if (template.name) setField('templateName', template.name);
+                        if (template.subject !== undefined) setField('customSubject', template.subject);
+                        if (template.body !== undefined) setField('customBody', template.body);
+                        if (template.contentMode) setField('contentMode', template.contentMode);
+                        setQuickCreateOpen(false);
                     }}
                 />
-            )}
+            ) : null}
         </div>
     );
 }

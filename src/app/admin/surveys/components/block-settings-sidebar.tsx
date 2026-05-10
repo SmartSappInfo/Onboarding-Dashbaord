@@ -7,8 +7,16 @@ import {
     ChevronRight, Info, AlertCircle, Trash2, Copy, 
     EyeOff, Eye, AlignLeft, AlignCenter, AlignRight, AlignJustify, 
     Layers, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine,
-    Bold, Italic, Underline
+    Bold, Italic, Underline, Baseline, Pilcrow, CheckCircle2,
+    ListChecks, ChevronDownSquare, Star, Calendar as CalendarIcon,
+    Clock, Upload, Heading1, Type, Minus, Image as ImageIcon,
+    Video as VideoIcon, AudioWaveform, FileText, Code, Bot,
+    Link as LinkIcon, CheckCircle, ChevronDown, Mail, Phone, Hash
 } from 'lucide-react';
+import { 
+    Select, SelectContent, SelectGroup, SelectItem, 
+    SelectLabel, SelectTrigger, SelectValue 
+} from '@/components/ui/select';
 import { 
     Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from '@/components/ui/card';
@@ -27,15 +35,70 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { MediaSelect } from '../../entities/components/media-select';
 
 interface BlockSettingsSidebarProps {
-    activeBlockId: string | null;
+    selectedBlockIds: string[];
 }
 
-export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSidebarProps) {
-    const { watch, setValue, control, register } = useFormContext();
+export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettingsSidebarProps) {
+    const { watch, setValue, control, register, getValues } = useFormContext();
     const elements = watch('elements') || [];
     
-    const activeIndex = elements.findIndex((el: any) => el.id === activeBlockId);
+    const activeIndex = selectedBlockIds.length === 1 
+        ? elements.findIndex((el: any) => el.id === selectedBlockIds[0]) 
+        : -1;
     const element = activeIndex !== -1 ? elements[activeIndex] : null;
+
+    if (selectedBlockIds.length > 1) {
+        return (
+            <div className="flex flex-col h-full bg-card/50 backdrop-blur-xl border-l border-border/50 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="p-6 border-b border-border/50 space-y-1 bg-foreground text-background">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-primary text-white border-none rounded-md uppercase tracking-widest text-[10px] font-black px-1.5 py-0">
+                            Bulk selection
+                        </Badge>
+                    </div>
+                    <h3 className="font-black text-xl tracking-tight leading-tight">Batch Editing</h3>
+                    <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{selectedBlockIds.length} blocks active</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
+                    <div className="space-y-4">
+                        <Label className="text-sm font-black uppercase tracking-wider text-muted-foreground">Selected Items</Label>
+                        <div className="space-y-2">
+                            {selectedBlockIds.map(id => {
+                                const el = elements.find((e: any) => e.id === id);
+                                if (!el) return null;
+                                return (
+                                    <div key={id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-border/50 group hover:border-primary/30 transition-colors">
+                                        <div className="h-8 w-8 rounded-xl bg-background border border-border flex items-center justify-center shrink-0">
+                                            <Layers className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none mb-1">{el.type}</p>
+                                            <p className="text-xs font-bold truncate opacity-70">
+                                                {el.title || el.text || 'Untitled Block'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="p-4 bg-primary/5 rounded-[2rem] border border-primary/10 space-y-4">
+                        <div className="flex items-center gap-3 text-primary">
+                            <Info className="h-5 w-5" />
+                            <span className="text-xs font-black uppercase tracking-[0.2em]">Quick Tip</span>
+                        </div>
+                        <p className="text-xs font-medium leading-relaxed opacity-70">
+                            Use the <span className="font-black text-primary">Floating Action Bar</span> at the bottom of the canvas to perform batch movements, cloning, deletion, and styling across all selected blocks.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!element) {
         return (
@@ -54,6 +117,103 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
     const isQuestion = (el: SurveyElement): el is SurveyQuestion => 'isRequired' in el;
     const isLayout = (el: SurveyElement): el is SurveyLayoutBlock => !('isRequired' in el);
 
+    const convertBlockType = (newType: SurveyElement['type']) => {
+        if (!element) return;
+        
+        const oldType = element.type;
+        const newElements = [...elements];
+        
+        // Base object with preserved common fields
+        const base: any = {
+            ...element,
+            type: newType,
+        };
+
+        // 1. Data Preservation Logic
+        const choiceTypes = ['multiple-choice', 'checkboxes', 'dropdown'];
+        const mediaTypes = ['image', 'video', 'audio', 'document'];
+        const staticTypes = ['heading', 'description', 'section'];
+
+        // Between Choice Types: Preserve options, scoring, and auto-advance
+        if (choiceTypes.includes(oldType) && choiceTypes.includes(newType)) {
+            // No extra mapping needed, base spreading handles it
+        }
+
+        // To Choice Types from non-choice: Initialize options
+        if (!choiceTypes.includes(oldType) && choiceTypes.includes(newType)) {
+            base.options = ['Option 1', 'Option 2'];
+        }
+
+        // To Yes/No: Enforce Yes/No options
+        if (newType === 'yes-no') {
+            base.options = ['Yes', 'No'];
+            base.autoAdvance = true;
+        }
+
+        // Between Media Types: Preserve URL
+        if (mediaTypes.includes(oldType) && mediaTypes.includes(newType)) {
+            // url is already in base
+        }
+
+        // Between Static Types: Preserve Title/Text
+        if (staticTypes.includes(oldType) && staticTypes.includes(newType)) {
+            if (newType === 'description') base.text = element.title || element.text;
+            else base.title = element.text || element.title;
+        }
+
+        // 2. Specific field cleanup/initialization
+        if (newType === 'rating') base.ratingMax = 5;
+        if (newType === 'heading') base.variant = 'h2';
+
+        newElements[activeIndex] = base;
+        setValue('elements', newElements, { shouldDirty: true });
+    };
+
+    const BLOCK_TYPE_GROUPS = [
+        {
+            label: 'Question Inputs',
+            types: [
+                { id: 'text', label: 'Short Text', icon: Baseline },
+                { id: 'long-text', label: 'Long Text', icon: Pilcrow },
+                { id: 'email', label: 'Email', icon: Mail },
+                { id: 'phone', label: 'Phone', icon: Phone },
+                { id: 'number', label: 'Number', icon: Hash },
+                { id: 'link', label: 'Link', icon: LinkIcon },
+                { id: 'date', label: 'Date', icon: CalendarIcon },
+                { id: 'rating', label: 'Rating', icon: Star },
+                { id: 'file-upload', label: 'File Upload', icon: Upload },
+            ]
+        },
+        {
+            label: 'Choices & Logic',
+            types: [
+                { id: 'multiple-choice', label: 'Multiple Choice', icon: CheckCircle },
+                { id: 'checkboxes', label: 'Checkboxes', icon: ListChecks },
+                { id: 'dropdown', label: 'Dropdown', icon: ChevronDownSquare },
+                { id: 'yes-no', label: 'Yes / No', icon: CheckCircle2 },
+            ]
+        },
+        {
+            label: 'Media Content',
+            types: [
+                { id: 'image', label: 'Image', icon: ImageIcon },
+                { id: 'video', label: 'Video', icon: VideoIcon },
+                { id: 'audio', label: 'Audio', icon: AudioWaveform },
+                { id: 'document', label: 'Document', icon: FileText },
+                { id: 'embed', label: 'Embed HTML', icon: Code },
+            ]
+        },
+        {
+            label: 'Layout & Static',
+            types: [
+                { id: 'section', label: 'Section', icon: Layers },
+                { id: 'heading', label: 'Heading', icon: Heading1 },
+                { id: 'description', label: 'Text Block', icon: Type },
+                { id: 'divider', label: 'Divider', icon: Minus },
+            ]
+        }
+    ];
+
     return (
         <div className="flex flex-col h-full bg-card/50 backdrop-blur-xl border-l border-border/50 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="p-6 border-b border-border/50 space-y-1">
@@ -67,7 +227,50 @@ export default function BlockSettingsSidebar({ activeBlockId }: BlockSettingsSid
 
             <div className="flex-1 overflow-y-auto no-scrollbar">
                 <div className="p-6 space-y-8 pb-32">
-                    {/* 0. Quick Actions */}
+                    {/* 0. Block Type Transformation */}
+                    <div className="space-y-4">
+                        <Label className="text-sm font-black uppercase tracking-wider text-muted-foreground/60">Block Type</Label>
+                        <Select value={element.type} onValueChange={convertBlockType}>
+                            <SelectTrigger className="h-14 bg-primary/5 border-primary/20 rounded-2xl ring-0 focus:ring-4 focus:ring-primary/5 transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg">
+                                        {(() => {
+                                            const Group = BLOCK_TYPE_GROUPS.find(g => g.types.some(t => t.id === element.type));
+                                            const TypeIcon = Group?.types.find(t => t.id === element.type)?.icon || Type;
+                                            return <TypeIcon className="h-4 w-4" />;
+                                        })()}
+                                    </div>
+                                    <div className="flex flex-col items-start">
+                                        <SelectValue placeholder="Change block type..." />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">Transform Block</span>
+                                    </div>
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-border/50 shadow-2xl z-[100]" position="popper" sideOffset={8}>
+                                {BLOCK_TYPE_GROUPS.map((group) => (
+                                    <SelectGroup key={group.label}>
+                                        <SelectLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground py-3 px-4">{group.label}</SelectLabel>
+                                        {group.types.map((type) => (
+                                            <SelectItem 
+                                                key={type.id} 
+                                                value={type.id}
+                                                className="rounded-xl py-3 px-4 focus:bg-primary/5 transition-colors group"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-6 w-6 rounded-lg bg-muted group-hover:bg-primary/10 transition-colors flex items-center justify-center">
+                                                        <type.icon className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                    </div>
+                                                    <span className="font-bold text-sm tracking-tight">{type.label}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* 1. Quick Actions */}
                     <div className="space-y-4">
                         <Label className="text-sm font-semibold">Quick Actions</Label>
                         <div className="grid grid-cols-2 gap-2">

@@ -41,7 +41,12 @@ import {
     FlaskConical,
     Users,
     UserCheck,
-    ShieldCheck
+    ShieldCheck,
+    ArrowRight,
+    ArrowLeft,
+    ChevronRight,
+    Edit3,
+    X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -49,17 +54,54 @@ import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import TestDispatchDialog from './TestDispatchDialog';
 import { useTenant } from '@/context/TenantContext';
 import { generateContactVariableDefinitions, groupContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { RichTextEditor, FormattingToolbar } from '../templates/components/editor-ui';
 
 interface QuickTemplateDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onCreated: (templateId: string) => void;
+    onCreated: (template: any) => void;
     category: MessageTemplate['category'];
     channel: MessageTemplate['channel'];
     recipientType?: MessageTemplate['recipientType'];
     fixedSourceId?: string; // If provided, locks the dialog to a specific survey
     templateId?: string; // If provided, loads existing template for editing
 }
+
+interface VariableSectionProps {
+    title: string;
+    icon: any;
+    items: VariableDefinition[];
+    badge?: string;
+    onInsert: (key: string) => void;
+}
+
+const VariableSection = ({ title, icon: Icon, items, badge, onInsert }: VariableSectionProps) => {
+    if (items.length === 0) return null;
+    return (
+        <div className="space-y-3 pt-4 first:pt-0">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                    <Icon className="h-3 w-3 text-primary opacity-60" />
+                    <span className="text-[9px] font-semibold text-primary/60">{title}</span>
+                </div>
+                {badge ? <Badge variant="outline" className="text-[7px] h-4 font-semibold uppercase border-primary/20 bg-primary/5 text-primary">{badge}</Badge> : null}
+            </div>
+            <div className="space-y-2">
+                {items.map(v => (
+                    <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => onInsert(v.key)}
+                        className="w-full text-left p-3 rounded-xl bg-card border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-all group shadow-sm"
+                    >
+                        <p className="text-xs font-bold truncate leading-none text-foreground/80">{v.label}</p>
+                        <code className="text-[9px] font-mono text-muted-foreground opacity-60 mt-1.5 block">{"{{" + v.key + "}}"}</code>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export default function QuickTemplateDialog({ 
     open, 
@@ -86,6 +128,8 @@ export default function QuickTemplateDialog({
     const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [existingTemplateType, setExistingTemplateType] = React.useState<string | undefined>(undefined);
+    const [step, setStep] = React.useState(1);
+    const [contentMode, setContentMode] = React.useState<any>('rich_builder');
     
     // Context Selection
     const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | undefined>(fixedSourceId);
@@ -132,6 +176,7 @@ export default function QuickTemplateDialog({
                         setBody(data.body);
                         setBlocks(data.blocks || []);
                         setExistingTemplateType(data.templateType);
+                        if (data.contentMode) setContentMode(data.contentMode);
                     }
                 } catch (e) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template.' });
@@ -255,7 +300,7 @@ export default function QuickTemplateDialog({
             category,
             channel,
             target: 'external_client',
-            contentMode: channel === 'sms' ? 'plain_text' : 'rich_builder',
+            contentMode: channel === 'sms' ? 'plain_text' : contentMode,
             body: body.trim(),
             variables: variableList,
             status: 'active',
@@ -281,14 +326,14 @@ export default function QuickTemplateDialog({
         try {
             if (mode === 'update' && templateId) {
                 await updateDoc(doc(firestore, 'message_templates', templateId), templateData);
-                onCreated(templateId);
+                onCreated({ id: templateId, ...templateData });
                 toast({ title: 'Template Updated' });
             } else {
                 const docRef = await addDoc(collection(firestore, 'message_templates'), {
                     ...templateData,
                     createdAt: new Date().toISOString(),
                 });
-                onCreated(docRef.id);
+                onCreated({ id: docRef.id, ...templateData });
                 toast({ title: 'Template Created' });
             }
             reset();
@@ -307,6 +352,7 @@ export default function QuickTemplateDialog({
         setBlocks([]);
         setAiPrompt('');
         setShowAiInput(false);
+        setStep(1);
         if (!fixedSourceId) setSelectedSurveyId(undefined);
     };
 
@@ -317,242 +363,321 @@ export default function QuickTemplateDialog({
         onOpenChange(isOpen);
     };
 
-    const VariableSection = ({ title, icon: Icon, items, badge }: { title: string, icon: any, items: VariableDefinition[], badge?: string }) => {
-        if (items.length === 0) return null;
-        return (
- <div className="space-y-3 pt-4 first:pt-0">
- <div className="flex items-center justify-between px-1">
- <div className="flex items-center gap-2">
- <Icon className="h-3 w-3 text-primary opacity-60" />
- <span className="text-[9px] font-semibold text-primary/60">{title}</span>
-                    </div>
-                    {badge && <Badge variant="outline" className="text-[7px] h-4 font-semibold uppercase border-primary/20 bg-primary/5 text-primary">{badge}</Badge>}
-                </div>
- <div className="space-y-2">
-                    {items.map(v => (
-                        <button
-                            key={v.id}
-                            type="button"
-                            onClick={() => handleInsert(v.key)}
- className="w-full text-left p-3 rounded-xl bg-card border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-all group shadow-sm"
-                        >
- <p className="text-xs font-bold truncate leading-none text-foreground/80">{v.label}</p>
- <code className="text-[9px] font-mono text-muted-foreground opacity-60 mt-1.5 block">{"{{" + v.key + "}}"}</code>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
+
+
+    const STEPS = [
+        { num: 1, label: 'Identity', icon: Mail },
+        { num: 2, label: 'Content', icon: Edit3 },
+    ];
+
+    const canAdvanceToStep2 = () => {
+        if (!name.trim()) return false;
+        if (channel === 'email' && !subject.trim()) return false;
+        return true;
     };
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
- <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
-          <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
-            <div className="flex items-start justify-between text-left">
-              <div className="flex flex-col items-start gap-2">
-                <div className={cn(
-                  "p-3 rounded-2xl shadow-sm mb-1",
-                  channel === 'email' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500"
-                )}>
-                  {channel === 'email' ? <Mail className="h-6 w-6" aria-hidden="true" /> : <Smartphone className="h-6 w-6" aria-hidden="true" />}
-                </div>
-                <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
-                  {templateId ? 'Template Editor' : 'Quick Template Studio'}
-                </DialogTitle>
-                <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">Creating {channel} template for {category}</DialogDescription>
-              </div>
-              <div className="flex items-center gap-3 mt-1">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary cursor-pointer transition-colors duration-200"
-                  onClick={() => setIsTestModalOpen(true)}
-                >
-                  <FlaskConical className="h-4 w-4" aria-hidden="true" /> Send Test
-                </Button>
-                {!templateId && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary cursor-pointer transition-colors duration-200"
-                    onClick={() => setShowAiInput(!showAiInput)}
-                  >
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
-                    {showAiInput ? 'Designer Mode' : 'Draft with AI'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
- <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
- <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background relative text-left">
-                        {isLoadingTemplate && (
- <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
- <Loader2 className="h-10 w-10 animate-spin text-primary" />
- <p className="text-[10px] font-semibold opacity-40">Loading Template...</p>
+            <DialogContent className="w-screen h-screen max-w-none m-0 rounded-none flex flex-col p-0 overflow-hidden border-none shadow-none bg-background">
+                <DialogHeader className="px-6 py-4 border-b bg-muted/30 shrink-0">
+                    <div className="flex items-center justify-between text-left">
+                        <div className="flex items-center gap-4">
+                            <div className={cn(
+                                "p-2.5 rounded-xl shadow-sm",
+                                channel === 'email' ? "bg-primary/10 text-primary" : "bg-orange-500/10 text-orange-500"
+                            )}>
+                                {channel === 'email' ? <Mail className="h-5 w-5" aria-hidden="true" /> : <Smartphone className="h-5 w-5" aria-hidden="true" />}
                             </div>
-                        )}
-
-                        {showAiInput ? (
- <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
- <div className="p-10 rounded-[3rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-8">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary text-white rounded-xl shadow-lg"><Wand2 className="h-4 w-4" /></div>
- <Label className="text-base font-semibold tracking-tight text-primary">AI Draft Assistant</Label>
-                                    </div>
- <div className="space-y-3">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Message Description</Label>
-                                        <Textarea 
-                                            value={aiPrompt} 
-                                            onChange={e => setAiPrompt(e.target.value)}
-                                            placeholder="Describe the tone and goal... e.g. A friendly email confirming enrollment and mentioning the orientation date."
- className="min-h-[180px] rounded-[2rem] bg-card border-none shadow-inner p-6 leading-relaxed text-lg"
-                                        />
-                                    </div>
-                                    <Button 
-                                        onClick={handleAiArchitect} 
-                                        disabled={isAiProcessing || !aiPrompt.trim()}
- className="w-full h-14 rounded-2xl font-semibold shadow-2xl text-lg active:scale-95 transition-all"
-                                    >
- {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                        Generate Draft Structure
-                                    </Button>
-                                </div>
+                            <div>
+                                <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
+                                    {templateId ? 'Template Editor' : 'Quick Template Studio'}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                                    Creating {channel} template for {category}
+                                </DialogDescription>
                             </div>
-                        ) : (
- <div className="space-y-8">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Template Label</Label>
-                                        <Input 
-                                            value={name} 
-                                            onChange={e => setName(e.target.value)} 
-                                            placeholder="e.g. Admission Confirmation" 
- className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6"
-                                        />
+                        </div>
+                        <div className="flex items-center gap-6">
+                            <div className="hidden md:flex items-center gap-1.5 bg-background p-1.5 rounded-2xl border shadow-sm">
+                                {STEPS.map((s, i) => (
+                                    <React.Fragment key={s.num}>
+                                        <div className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold shrink-0 transition-all",
+                                            s.num === step ? "bg-primary text-primary-foreground shadow-sm" :
+                                            s.num < step ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                                        )}>
+                                            {s.num < step ? <Check className="h-3 w-3" /> : <s.icon className="h-3 w-3" />}
+                                            {s.label}
+                                        </div>
+                                        {i < STEPS.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                                    onClick={() => setIsTestModalOpen(true)}
+                                >
+                                    <FlaskConical className="h-4 w-4" /> <span className="hidden sm:inline">Send Test</span>
+                                </Button>
+                                <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9 border" onClick={() => handleOpenChange(false)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                    <div className="flex-1 overflow-y-auto p-8 bg-background relative text-left">
+                        {isLoadingTemplate ? (
+                            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                <p className="text-[10px] font-semibold opacity-40">Loading Template...</p>
+                            </div>
+                        ) : null}
+
+                        <div className="max-w-4xl mx-auto space-y-8 pb-20">
+                            {step === 1 ? (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <div className="space-y-4">
+                                        <h3 className="text-lg font-bold tracking-tight">Template Identity</h3>
+                                        <p className="text-xs text-muted-foreground font-semibold">Configure the basic details and content mode for this template.</p>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Template Label</Label>
+                                            <Input 
+                                                value={name} 
+                                                onChange={e => setName(e.target.value)} 
+                                                placeholder="e.g. Admission Confirmation" 
+                                                className="h-12 rounded-xl bg-card border-border/50 font-bold text-sm px-4"
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        {channel === 'email' ? (
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Content Format</Label>
+                                                <Select value={contentMode} onValueChange={setContentMode}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-card border-border/50 font-bold text-sm px-4">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="rich_builder" className="font-semibold text-xs">Rich Visual Builder</SelectItem>
+                                                        <SelectItem value="html_code" className="font-semibold text-xs">Custom HTML Code</SelectItem>
+                                                        <SelectItem value="plain_text" className="font-semibold text-xs">Plain Text Only</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        ) : null}
                                     </div>
 
-                                    {channel === 'email' && (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
+                                    {channel === 'email' ? (
+                                        <div className="space-y-2 max-w-2xl">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Subject Line</Label>
                                             <Input 
                                                 ref={subjectRef}
                                                 value={subject} 
                                                 onChange={e => setSubject(e.target.value)} 
                                                 placeholder="Email subject line…" 
- className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6"
+                                                className="h-12 rounded-xl bg-card border-border/50 font-bold text-sm px-4"
                                             />
                                         </div>
-                                    )}
-                                </div>
+                                    ) : null}
 
- <div className="space-y-2">
- <div className="flex justify-between items-center px-1">
- <Label className="text-[10px] font-semibold text-muted-foreground">Message Composition</Label>
+                                    {!templateId ? (
+                                        <div className="pt-6 border-t border-border/50 max-w-2xl">
+                                            <div className="p-6 rounded-[2rem] bg-primary/5 border border-primary/10 space-y-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Sparkles className="h-4 w-4 text-primary" />
+                                                    <Label className="text-sm font-bold text-primary">AI Draft Assistant</Label>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <Input 
+                                                        value={aiPrompt} 
+                                                        onChange={e => setAiPrompt(e.target.value)}
+                                                        placeholder="Describe tone... e.g. friendly welcome email"
+                                                        className="h-11 rounded-xl bg-card border-none font-semibold text-xs"
+                                                    />
+                                                    <Button 
+                                                        onClick={() => {
+                                                            handleAiArchitect();
+                                                            setStep(2); // Auto-advance to step 2 when done
+                                                        }} 
+                                                        disabled={isAiProcessing || !aiPrompt.trim()}
+                                                        className="h-11 rounded-xl font-bold px-6 shrink-0"
+                                                    >
+                                                        {isAiProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generate'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500 h-full flex flex-col">
+                                    <div className="flex justify-between items-center px-1 shrink-0">
+                                        <div>
+                                            <h3 className="text-lg font-bold tracking-tight">Message Composition</h3>
+                                            <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">Use the variables panel on the right to inject dynamic data.</p>
+                                        </div>
                                         {blocks.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-semibold uppercase h-5 px-2">Using Blocks</Badge>}
                                     </div>
- <div className="relative group">
-                                        <Textarea 
-                                            ref={bodyRef}
-                                            value={body} 
-                                            onChange={e => setBody(e.target.value)}
- className="min-h-[350px] rounded-[2rem] bg-muted/20 border-none p-8 font-medium leading-relaxed resize-none shadow-inner text-lg placeholder:italic"
-                                            placeholder={blocks.length > 0 ? "Blocks are driving this template. Use Template Studio for full control." : "Hi {{contact_name}}, ..."}
-                                        />
- <div className="absolute top-4 right-4 opacity-20">
- <Zap className="h-12 w-12 text-primary" />
+                                    <div className="relative group flex-1 flex flex-col h-full bg-card rounded-[2rem] border border-border/50 overflow-hidden shadow-inner">
+                                        {contentMode === 'rich_builder' && channel !== 'sms' && blocks.length === 0 ? (
+                                            <>
+                                                <div className="p-4 border-b border-border/50 bg-muted/20">
+                                                    <FormattingToolbar />
+                                                </div>
+                                                <div className="flex-1 p-6 overflow-y-auto">
+                                                    <RichTextEditor 
+                                                        value={body}
+                                                        onChange={setBody}
+                                                        placeholder="Hi {{contact_name}}, ..."
+                                                        className="min-h-full font-medium leading-relaxed text-sm focus:outline-none"
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : contentMode === 'html_code' && channel !== 'sms' && blocks.length === 0 ? (
+                                            <div className="flex-1 p-6 overflow-y-auto bg-slate-950 text-slate-200">
+                                                <Textarea 
+                                                    ref={bodyRef}
+                                                    value={body} 
+                                                    onChange={e => setBody(e.target.value)}
+                                                    className="h-full min-h-[400px] bg-transparent border-none p-0 font-mono text-xs leading-relaxed resize-none focus-visible:ring-0 shadow-none"
+                                                    placeholder="<html><body>Hi {{contact_name}}</body></html>"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Textarea 
+                                                ref={bodyRef}
+                                                value={body} 
+                                                onChange={e => setBody(e.target.value)}
+                                                className="h-full min-h-[400px] bg-transparent border-none p-6 font-medium leading-relaxed resize-none shadow-none text-sm placeholder:italic focus-visible:ring-0"
+                                                placeholder={blocks.length > 0 ? "Blocks are driving this template. Use Template Studio for full control." : "Hi {{contact_name}}, ..."}
+                                            />
+                                        )}
+                                        <div className="absolute top-4 right-4 opacity-10 pointer-events-none">
+                                            <Zap className="h-12 w-12 text-primary" />
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* VARIABLE PANEL */}
- <div className="w-full lg:w-80 border-l bg-background p-6 shrink-0 overflow-hidden flex flex-col gap-6 text-left">
- <div className="space-y-4 shrink-0">
- <div className="flex items-center gap-2">
- <Database className="h-4 w-4 text-primary" />
- <span className="text-[10px] font-semibold text-primary">Available Variables</span>
-                            </div>
-                            
-                            {!fixedSourceId && category === 'surveys' && (
- <div className="space-y-1.5">
- <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Filter by Survey</Label>
-                                    <Select value={selectedSurveyId || 'none'} onValueChange={setSelectedSurveyId}>
- <SelectTrigger className="h-10 rounded-xl border-primary/10 bg-card font-bold text-xs shadow-sm">
-                                            <SelectValue placeholder="All Sources" />
-                                        </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                            <SelectItem value="none">All Sources</SelectItem>
-                                            {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.internalName || s.title}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                             )}
                         </div>
-                        
- <ScrollArea className="flex-1 -mx-2 px-2">
- <div className="space-y-8 pb-20 divide-y divide-primary/5">
-                                {category === 'surveys' && (
-                                    <>
-                                        <VariableSection title="Submission Metrics" icon={Trophy} items={groupedVariables.metrics} badge="Real-time" />
-                                        <VariableSection title="Dynamic Survey Data" icon={ClipboardList} items={groupedVariables.survey} />
-                                    </>
-                                )}
-                                <VariableSection title="Institutional Tags" icon={Building} items={groupedVariables.core} />
-                                <VariableSection title="Financial Logic" icon={Banknote} items={groupedVariables.finance} />
-                                <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} />
-                                
-                                {/* FER-02: Contact variable groups */}
-                                <VariableSection title="Primary Contact" icon={UserCheck} items={contactGroups.primary} badge="Dynamic" />
-                                <VariableSection title="Signatory Contact" icon={ShieldCheck} items={contactGroups.signatory} badge="Dynamic" />
-                                <VariableSection title="Role-Based Contacts" icon={Users} items={contactGroups.roles} />
-
-                                {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId && (
- <div className="py-10 text-center opacity-40 space-y-2 border-t mt-4 pt-4">
- <Info className="h-6 w-6 mx-auto" />
- <p className="text-[9px] font-semibold tracking-tighter">Select a survey to view<br/>question-specific tags</p>
-                                    </div>
-                                )}
-                            </div>
-                        </ScrollArea>
-
- <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-3 mt-auto">
- <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
- <p className="text-[9px] font-bold text-primary/80 leading-relaxed tracking-tighter">
-                                Click any tag to inject it into your active input field.
-                            </p>
-                        </div>
                     </div>
+
+                    {/* VARIABLE PANEL - Only shown on Step 2 */}
+                    {step === 2 ? (
+                        <div className="w-full lg:w-80 xl:w-96 border-l bg-muted/10 p-6 shrink-0 overflow-hidden flex flex-col gap-6 text-left animate-in fade-in slide-in-from-right-8 duration-500">
+                            <div className="space-y-4 shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <Database className="h-4 w-4 text-primary" />
+                                    <span className="text-[10px] font-semibold text-primary uppercase tracking-widest">Available Variables</span>
+                                </div>
+                                
+                                {!fixedSourceId && category === 'surveys' ? (
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Filter by Survey</Label>
+                                        <Select value={selectedSurveyId || 'none'} onValueChange={setSelectedSurveyId}>
+                                            <SelectTrigger className="h-10 rounded-xl border-border/50 bg-card font-bold text-xs shadow-sm">
+                                                <SelectValue placeholder="All Sources" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="none">All Sources</SelectItem>
+                                                {surveys?.map(s => <SelectItem key={s.id} value={s.id} className="text-xs">{s.internalName || s.title}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                ) : null}
+                            </div>
+                            
+                            <ScrollArea className="flex-1 -mx-2 px-2">
+                                <div className="space-y-8 pb-20 divide-y divide-border/50">
+                                    {category === 'surveys' ? (
+                                        <>
+                                            <VariableSection title="Submission Metrics" icon={Trophy} items={groupedVariables.metrics} badge="Real-time" onInsert={handleInsert} />
+                                            <VariableSection title="Dynamic Survey Data" icon={ClipboardList} items={groupedVariables.survey} onInsert={handleInsert} />
+                                        </>
+                                    ) : null}
+                                    <VariableSection title="Institutional Tags" icon={Building} items={groupedVariables.core} onInsert={handleInsert} />
+                                    <VariableSection title="Financial Logic" icon={Banknote} items={groupedVariables.finance} onInsert={handleInsert} />
+                                    <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} onInsert={handleInsert} />
+                                    
+                                    {/* FER-02: Contact variable groups */}
+                                    <VariableSection title="Primary Contact" icon={UserCheck} items={contactGroups.primary} badge="Dynamic" onInsert={handleInsert} />
+                                    <VariableSection title="Signatory Contact" icon={ShieldCheck} items={contactGroups.signatory} badge="Dynamic" onInsert={handleInsert} />
+                                    <VariableSection title="Role-Based Contacts" icon={Users} items={contactGroups.roles} onInsert={handleInsert} />
+
+                                    {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId ? (
+                                        <div className="py-10 text-center opacity-40 space-y-2 border-t mt-4 pt-4">
+                                            <Info className="h-6 w-6 mx-auto" />
+                                            <p className="text-[9px] font-semibold tracking-tighter">Select a survey to view<br/>question-specific tags</p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </ScrollArea>
+
+                            <div className="p-4 rounded-2xl bg-card border border-border/50 flex items-start gap-3 mt-auto shadow-sm">
+                                <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                <p className="text-[9px] font-bold text-muted-foreground leading-relaxed tracking-tighter">
+                                    Click any tag to inject it into your active input field.
+                                </p>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
 
-        <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
-          <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl h-12 px-8 cursor-pointer hover:bg-muted/50 transition-colors duration-200">Cancel</Button>
-          <div className="flex-grow shrink-0 flex gap-3 sm:justify-end">
-            {templateId && (
-              <Button 
-                variant="outline"
-                onClick={() => handleCommit('new')} 
-                disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
-                className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 h-12 px-6 gap-2 cursor-pointer transition-colors duration-200"
-              >
-                <CopyPlus className="h-4 w-4" aria-hidden="true" />
-                Save as New
-              </Button>
-            )}
-            <Button 
-              onClick={() => handleCommit(templateId ? 'update' : 'new')} 
-              disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
-              className="px-16 rounded-2xl font-semibold shadow-lg h-12 text-sm cursor-pointer transition-all duration-200 active:scale-95 flex-grow sm:flex-grow-0"
-            >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : templateId ? <Save className="mr-2 h-4 w-4" aria-hidden="true" /> : <Check className="mr-2 h-4 w-4" aria-hidden="true" />}
-              {templateId ? 'Update Current' : 'Save Template'}
-            </Button>
-          </div>
-        </DialogFooter>
+                <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3 items-center justify-between">
+                    <div>
+                        {step === 2 ? (
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setStep(1)} 
+                                className="font-bold rounded-xl h-12 px-6 border-border/50 gap-2"
+                            >
+                                <ArrowLeft className="h-4 w-4" /> Back
+                            </Button>
+                        ) : null}
+                    </div>
+                    <div className="flex-grow shrink-0 flex gap-3 sm:justify-end w-full sm:w-auto">
+                        {step === 1 ? (
+                            <Button 
+                                onClick={() => setStep(2)} 
+                                disabled={!canAdvanceToStep2()}
+                                className="px-10 rounded-xl font-bold h-12 text-sm w-full sm:w-auto gap-2"
+                            >
+                                Continue to Editor <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        ) : (
+                            <>
+                                {templateId ? (
+                                    <Button 
+                                        variant="outline"
+                                        onClick={() => handleCommit('new')} 
+                                        disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+                                        className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 h-12 px-6 gap-2 w-full sm:w-auto"
+                                    >
+                                        <CopyPlus className="h-4 w-4" />
+                                        Save as New
+                                    </Button>
+                                ) : null}
+                                <Button 
+                                    onClick={() => handleCommit(templateId ? 'update' : 'new')} 
+                                    disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+                                    className="px-10 rounded-xl font-bold shadow-lg h-12 text-sm w-full sm:w-auto gap-2"
+                                >
+                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : templateId ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                                    {templateId ? 'Update Template' : 'Save Template'}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </DialogFooter>
             </DialogContent>
 
             <TestDispatchDialog 

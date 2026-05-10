@@ -60,27 +60,40 @@ export function SmartTemplateDropdown({
         }
     };
 
+    const fetchTemplates = React.useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const result = await getFilteredTemplatesAction({
+                category,
+                recipientType,
+                channel,
+                workspaceId: activeWorkspaceId || undefined,
+                organizationId: activeOrganizationId || undefined
+            });
+            setTemplates(result);
+            return result;
+        } catch (error) {
+            console.error('Failed to load filtered templates:', error);
+            return [];
+        } finally {
+            setIsLoading(false);
+        }
+    }, [category, recipientType, channel, activeWorkspaceId, activeOrganizationId]);
+
     React.useEffect(() => {
-        async function fetchTemplates() {
-            setIsLoading(true);
-            try {
-                const result = await getFilteredTemplatesAction({
-                    category,
-                    recipientType,
-                    channel,
-                    workspaceId: activeWorkspaceId || undefined,
-                    organizationId: activeOrganizationId || undefined
-                });
-                setTemplates(result);
-            } catch (error) {
-                console.error('Failed to load filtered templates:', error);
-            } finally {
-                setIsLoading(false);
+        fetchTemplates();
+    }, [fetchTemplates]);
+
+    // Phase 4: Auto-refetch if a value is provided but not found in the current list
+    const refetchAttemptedForValue = React.useRef<string | null>(null);
+    React.useEffect(() => {
+        if (value && templates.length > 0 && !templates.some(t => t.id === value)) {
+            if (refetchAttemptedForValue.current !== value) {
+                refetchAttemptedForValue.current = value;
+                fetchTemplates();
             }
         }
-
-        fetchTemplates();
-    }, [category, recipientType, channel, activeWorkspaceId, activeOrganizationId]);
+    }, [value, templates, fetchTemplates]);
 
     const getChannelIcon = () => {
         if (channel === 'email') return <Mail className="h-3 w-3 mr-2 text-primary" />;
