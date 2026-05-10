@@ -11,7 +11,7 @@ interface MarqueeState {
 
 interface MarqueeSelectProps {
   children: React.ReactNode;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onSelectionChange: (selectedIds: string[], isAccumulating: boolean) => void;
   itemSelector: string;
 }

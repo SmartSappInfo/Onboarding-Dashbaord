@@ -186,7 +186,9 @@ export default function NewSchoolSignupForm() {
       // Clean non-serializable fields before sending
       delete webhookData.implementationDate_raw;
       
+      console.log('>>> [SIGNUP:FORM] Preparing webhook data:', webhookData);
       const webhookResult = await dispatchSignupWebhook(webhookData);
+      console.log('>>> [SIGNUP:FORM] Webhook result:', webhookResult);
       if (!webhookResult.success) {
         console.warn('Webhook dispatch warning:', webhookResult.error);
         // Don't block signup on webhook failure — entity creation continues

@@ -261,37 +261,42 @@ export default function MediaUploader({
             },
             reject,
             async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              
-              const newAssetData: any = {
-                name: finalFilename,
-                originalName: fileState.file.name,
-                url: downloadURL,
-                fullPath: storagePath,
-                type: mediaType,
-                mimeType: finalMimeType,
-                size: blobToUpload.size,
-                uploadedBy: user.uid,
-                workspaceIds: selectedWorkspaces,
-                createdAt: new Date().toISOString()
-              };
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                
+                const newAssetData: any = {
+                  name: finalFilename,
+                  originalName: fileState.file.name,
+                  url: downloadURL,
+                  fullPath: storagePath,
+                  type: mediaType,
+                  mimeType: finalMimeType,
+                  size: blobToUpload.size,
+                  uploadedBy: user.uid,
+                  workspaceIds: selectedWorkspaces,
+                  createdAt: new Date().toISOString()
+                };
 
-              if (finalWidth !== undefined) newAssetData.width = finalWidth;
-              if (finalHeight !== undefined) newAssetData.height = finalHeight;
-              if (mediaType === 'image' && fileState.editingState?.format) {
-                  newAssetData.format = fileState.editingState.format;
+                if (finalWidth !== undefined) newAssetData.width = finalWidth;
+                if (finalHeight !== undefined) newAssetData.height = finalHeight;
+                if (mediaType === 'image' && fileState.editingState?.format) {
+                    newAssetData.format = fileState.editingState.format;
+                }
+
+                const docRef = await addDoc(collection(firestore, 'media'), newAssetData);
+
+                if (onUploadComplete) {
+                  onUploadComplete({ id: docRef.id, ...newAssetData } as MediaAsset);
+                }
+                setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'completed' } : fs));
+                resolve();
+              } catch (error) {
+                reject(error);
               }
-
-              const docRef = await addDoc(collection(firestore, 'media'), newAssetData);
-
-              if (onUploadComplete) {
-                onUploadComplete({ id: docRef.id, ...newAssetData } as MediaAsset);
-              }
-              setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'completed' } : fs));
-              resolve();
             }
           );
         });
+        return true;
       } catch (error) {
         console.error(`Upload failed for ${fileState.file.name}:`, error);
         setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'error' } : fs));
@@ -302,11 +307,12 @@ export default function MediaUploader({
           });
           errorEmitter.emit('permission-error', permissionError);
         }
+        return false;
       }
     });
 
-    await Promise.allSettled(uploadPromises);
-    const allSucceeded = stagedFiles.every(fs => fs.status === 'completed');
+    const results = await Promise.all(uploadPromises);
+    const allSucceeded = results.every(res => res === true);
     if (allSucceeded) {
       toast({ title: "Success", description: "All files uploaded successfully." });
       // Free memory for object URLs before clearing

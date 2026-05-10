@@ -164,15 +164,17 @@ const modifySurveyFlow = ai.defineFlow(
         while (retries < maxRetries) {
             try {
                 // Resolve the model instance with the correct API key for this organization
-                const model = await getModel({
+                const resolvedModel = await getModel({
                     organizationId: input.organizationId,
                     provider: input.provider || 'googleai',
                     modelId: input.modelId || 'gemini-3-flash-preview',
                 });
 
-                const { output } = await ai.generate({
-                    model,
-                    prompt: modifyPrompt.render(input),
+                const generatorAi = resolvedModel.customAi || ai;
+
+                const { output } = await generatorAi.generate({
+                    model: resolvedModel.modelString,
+                    prompt: await modifyPrompt.render(input),
                     output: { schema: ModifySurveyOutputSchema },
                 });
                 

@@ -911,7 +911,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     );
 }
 
-function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement, selectedBlockIds, onSelect, isAccordion }: {
+function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement, selectedBlockIds, setSelectedBlockIds, setLastSelectedId, onSelect, isAccordion }: {
     id: string;
     index: number;
     remove: (index: number) => void;
@@ -919,6 +919,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     insert: (index: number, value: any) => void;
     requestAddElement: (index: number) => void;
     selectedBlockIds: string[];
+    setSelectedBlockIds: (ids: string[]) => void;
+    setLastSelectedId: (id: string | null) => void;
     onSelect: (id: string, isMulti: boolean, isRange: boolean) => void;
     isAccordion: boolean;
 }) {
@@ -1461,6 +1463,8 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                             insert={insert}
                             requestAddElement={requestAddElement}
                             selectedBlockIds={selectedBlockIds}
+                            setSelectedBlockIds={setSelectedBlockIds}
+                            setLastSelectedId={setLastSelectedId}
                             onSelect={handleSelect}
                             isAccordion={isAccordion}
                         />

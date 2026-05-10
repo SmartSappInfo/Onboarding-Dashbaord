@@ -233,14 +233,16 @@ const generateSurveyFlow = ai.defineFlow(
         }
 
         // --- Native Genkit Path for Gemini and OpenAI ---
-        const model = await getModel({
+        const resolvedModel = await getModel({
             organizationId: input.organizationId,
             provider: input.provider || 'googleai',
             modelId: input.modelId || 'gemini-3-flash-preview',
         });
 
-        const { output } = await ai.generate({
-            model,
+        const generatorAi = resolvedModel.customAi || ai;
+
+        const { output } = await generatorAi.generate({
+            model: resolvedModel.modelString,
             prompt: PROMPT_TEMPLATE.replace('{{{sourceText}}}', sourceText),
             output: { schema: GenerateSurveyOutputSchema }
         });
