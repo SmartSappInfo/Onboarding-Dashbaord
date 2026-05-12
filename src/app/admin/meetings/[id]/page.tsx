@@ -105,7 +105,7 @@ export default function MeetingDetailPage() {
     );
   }
 
-  const publicUrl = `/meetings/${meeting.type.slug}/${meeting.entitySlug}`;
+  const publicUrl = `/meetings/${meeting.type.slug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
   return (
     <div className="h-full overflow-y-auto">

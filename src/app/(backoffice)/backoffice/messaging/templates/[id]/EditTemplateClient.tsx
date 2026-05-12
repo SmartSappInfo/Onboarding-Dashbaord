@@ -157,7 +157,7 @@ function SendTestDialog({ open, onClose, channel, body, subject, variables }: Se
             <Input
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              placeholder={channel === 'email' ? 'test@example.com' : '+1 555-000-0000'}
+              placeholder={channel === 'email' ? 'test@example.com' : '+233 24 123 4567'}
               className="h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl"
             />
           </div>

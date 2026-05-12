@@ -58,6 +58,40 @@ const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link'],
   },
 
+  // ── Meeting Registration Confirmation ──────────────────────────────────
+  {
+    name: 'Meeting Registration Confirmation (Email)', category: 'meetings', templateType: 'meeting_registration_confirmation', channel: 'email',
+    subject: 'Registration Confirmed: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nThank you for registering for {{meeting_title}}.\n\nYour registration has been received successfully, and we're excited to have you join us.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n📍 Platform: {{meeting_type}}\n🔗 Access Link: {{meeting_link}}\n\nPlease save this information for easy access on the day of the session.\n\nIf there are any updates or additional instructions before the event, we will share them with you.\n\nWe look forward to having you participate.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_type', 'meeting_link', 'organization_name'],
+  },
+  {
+    name: 'Meeting Registration Confirmation – Short (Email)', category: 'meetings', templateType: 'meeting_registration_confirmation_short', channel: 'email',
+    subject: 'Confirmed: {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nYour registration for {{meeting_title}} has been confirmed successfully.\n\n📅 {{meeting_date}}\n⏰ {{meeting_time}}\n🔗 {{meeting_link}}\n\nWe look forward to having you join us.\n\nRegards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'organization_name'],
+  },
+  {
+    name: 'Meeting Registration Confirmation (SMS)', category: 'meetings', templateType: 'meeting_registration_confirmation', channel: 'sms',
+    body: `Hello {{contact_name}}, thank you for registering for {{meeting_title}}. Your registration has been confirmed successfully.\n\nDate: {{meeting_date}}\nTime: {{meeting_time}}\nJoin here: {{meeting_link}}\n\nWe look forward to having you join us.\n\n— {{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'organization_name'],
+  },
+
+  // ── Meeting Internal Team Notification ─────────────────────────────────
+  {
+    name: 'New Meeting Registration Alert (Email)', category: 'meetings', templateType: 'meeting_new_registration_alert', channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'New Registration: {{meeting_title}}',
+    body: `Dear {{organizer_name}},\n\nA new registration has been received for {{meeting_title}}.\n\nRegistrant Details:\n\n• Name: {{contact_name}}\n• Phone: {{contact_phone}}\n• Email: {{contact_email}}\n• Organization: {{entity_name}}\n• Registration Date: {{current_date}}\n\nPlease review and follow up if necessary.\n\nRegards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['organizer_name', 'meeting_title', 'contact_name', 'contact_phone', 'contact_email', 'entity_name', 'current_date', 'organization_name'],
+  },
+  {
+    name: 'New Meeting Registration Alert (SMS)', category: 'meetings', templateType: 'meeting_new_registration_alert', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `New registration for {{meeting_title}}.\n\nName: {{contact_name}}\nPhone: {{contact_phone}}\nEmail: {{contact_email}}\nOrganization: {{entity_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'contact_name', 'contact_phone', 'contact_email', 'entity_name'],
+  },
+
   // ── Meeting Reminders ─────────────────────────────────────────────────────
   {
     name: 'Meeting Reminder – 15 Minutes (Email)', category: 'reminders', templateType: 'meeting_reminder_15min', channel: 'email',

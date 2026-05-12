@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { addDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +35,8 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
   const [isComplete, setIsComplete] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const fields = (meeting.registrationFields || []).sort((a, b) => a.order - b.order);
 
@@ -76,16 +79,52 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
     setIsSubmitting(true);
 
     try {
-      // Check capacity
+      const registrantsRef = collection(firestore, `meetings/${meeting.id}/registrants`);
+
+      // ── Step 0: Check for existing registration (Prevention of Duplication) ──
+      const userEmail = (data.email || '').toLowerCase().trim();
+      const userPhone = (data.phone || '').trim();
+
+      if (userEmail || userPhone) {
+        let existingRegistrant: any = null;
+
+        // Try email first
+        if (userEmail) {
+          const emailQ = query(registrantsRef, where('email', '==', userEmail));
+          const emailSnap = await getDocs(emailQ);
+          if (!emailSnap.empty) {
+            existingRegistrant = { id: emailSnap.docs[0].id, ...emailSnap.docs[0].data() };
+          }
+        }
+
+        // Try phone if email not found
+        if (!existingRegistrant && userPhone) {
+          const phoneQ = query(registrantsRef, where('phone', '==', userPhone));
+          const phoneSnap = await getDocs(phoneQ);
+          if (!phoneSnap.empty) {
+            existingRegistrant = { id: phoneSnap.docs[0].id, ...phoneSnap.docs[0].data() };
+          }
+        }
+
+        if (existingRegistrant && existingRegistrant.token) {
+          toast({
+            title: 'Welcome Back!',
+            description: 'You are already registered. Redirecting you to the waiting room...',
+          });
+          onRegistered(existingRegistrant.token);
+          router.push(`${pathname}/join?token=${existingRegistrant.token}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // ── Step 1: Check capacity ────────────
       if (meeting.capacityLimit && meeting.capacityLimit > 0) {
-        const registrantsRef = collection(firestore, `meetings/${meeting.id}/registrants`);
         const existingQuery = query(registrantsRef, where('status', 'in', ['registered', 'approved', 'attended']));
         const snapshot = await getDocs(existingQuery);
         
         if (snapshot.size >= meeting.capacityLimit) {
-          if (meeting.waitlistEnabled) {
-            // Will be added to waitlist below
-          } else {
+          if (!meeting.waitlistEnabled) {
             toast({
               variant: 'destructive',
               title: 'Registration Full',
@@ -99,12 +138,9 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
 
       const token = generateRegistrantToken();
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const personalizedUrl = buildPersonalizedMeetingUrl(
-        origin,
-        meeting.type?.slug || 'parent-engagement',
-        meeting.entitySlug || '',
-        token,
-      );
+      // Build the join page URL — this is sent to registrants via email/SMS
+      const joinPath = `${pathname}/join`;
+      const personalizedUrl = `${origin}${joinPath}?token=${token}`;
 
       // Determine status
       let status: 'registered' | 'approved' | 'waitlisted' = 'registered';
@@ -113,7 +149,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
       }
       // Check if over capacity for waitlist
       if (meeting.capacityLimit && meeting.capacityLimit > 0 && meeting.waitlistEnabled) {
-        const registrantsRef = collection(firestore, `meetings/${meeting.id}/registrants`);
+        // Use existing registrantsRef from outer scope
         const existingQuery = query(registrantsRef, where('status', 'in', ['registered', 'approved', 'attended']));
         const snapshot = await getDocs(existingQuery);
         if (snapshot.size >= meeting.capacityLimit) {
@@ -134,7 +170,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
         personalizedMeetingUrl: personalizedUrl,
       };
 
-      const registrantsRef = collection(firestore, `meetings/${meeting.id}/registrants`);
+      // Use existing registrantsRef from outer scope
       await addDoc(registrantsRef, registrantData);
 
       setIsComplete(true);
@@ -144,14 +180,15 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
           title: 'Added to Waitlist',
           description: "You've been added to the waitlist. We'll notify you if a spot opens up.",
         });
+        onRegistered(token);
       } else {
         toast({
           title: 'Registration Complete!',
-          description: meeting.registrationSuccessMessage || 'You have been registered for this session.',
+          description: 'Redirecting you to the waiting room...',
         });
+        // Redirect to the Joining Page (Waiting Room)
+        router.push(`${pathname}/join?token=${token}`);
       }
-
-      onRegistered(token);
     } catch (error) {
       console.error('Registration failed:', error);
       toast({

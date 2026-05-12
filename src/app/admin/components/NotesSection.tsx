@@ -26,6 +26,7 @@ export default function NotesSection({ entityId }: NotesSectionProps) {
     
     const [newNoteContent, setNewNoteContent] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [showAddNote, setShowAddNote] = React.useState(false);
 
     // Fetch notes for the current school
     const notesQuery = useMemoFirebase(() => {
@@ -85,38 +86,51 @@ export default function NotesSection({ entityId }: NotesSectionProps) {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Internal Notes</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-base font-bold">Internal Notes</CardTitle>
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setShowAddNote(!showAddNote)}
+                    className="h-8 rounded-lg font-bold text-primary hover:bg-primary/10"
+                >
+                    {showAddNote ? 'Cancel' : 'Add Note'}
+                </Button>
             </CardHeader>
             <CardContent>
  <div className="space-y-4">
                     {/* Add Note Form */}
- <div className="space-y-2">
-                        <Textarea
-                            placeholder="Add a new note..."
-                            value={newNoteContent}
-                            onChange={(e) => setNewNoteContent(e.target.value)}
-                            disabled={isSubmitting}
- className="min-h-[100px]"
-                        />
- <div className="flex justify-end">
-                            <Button onClick={handleAddNote} disabled={isSubmitting || !newNoteContent.trim()}>
- {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Add Note
-                            </Button>
+                    {showAddNote && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300 bg-muted/20 p-4 rounded-xl border border-border/50">
+                            <Textarea
+                                placeholder="Add a new note..."
+                                value={newNoteContent}
+                                onChange={(e) => setNewNoteContent(e.target.value)}
+                                disabled={isSubmitting}
+                                className="min-h-[100px] bg-background border-border/50 rounded-xl resize-none text-sm"
+                            />
+                            <div className="flex justify-end">
+                                <Button 
+                                    onClick={() => { handleAddNote(); setShowAddNote(false); }} 
+                                    disabled={isSubmitting || !newNoteContent.trim()}
+                                    className="rounded-xl font-bold h-9 px-4"
+                                >
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Note
+                                </Button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                     
                     {/* Notes List */}
- <div className="relative space-y-4">
+                    <div className="relative space-y-4 pt-2">
                         {isLoading ? (
- <div className="space-y-4">
- <Skeleton className="h-16 w-full" />
- <Skeleton className="h-16 w-full" />
+                            <div className="space-y-4">
+                                <Skeleton className="h-24 w-full rounded-xl" />
+                                <Skeleton className="h-24 w-full rounded-xl" />
                             </div>
                         ) : notes && notes.length > 0 ? (
- <div className="relative">
- <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
+                            <div className="space-y-4">
                                {notes.map(note => (
  <div key={note.id} className="group relative">
                                         <NoteItem

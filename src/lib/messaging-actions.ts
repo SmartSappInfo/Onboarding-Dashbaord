@@ -435,28 +435,28 @@ export async function resolveTagVariables(
  *   Preview always capped at 500 docs. Count uses subset estimation.
  *
  * Backward-compatible: accepts both legacy tag params and Phase 4 AudienceFilter[].
- *
  * Requirements: FR5.1.2, FR5.1.3
  */
 export async function previewCampaignAudience(params: {
   workspaceId: string;
-  // Legacy tag params (Phase 3 compat)
-  includeTagIds?: string[];
-  excludeTagIds?: string[];
-  includeLogic?: 'AND' | 'OR';
-  // Phase 4 advanced filters
   filters?: Array<{ id: string; field: string; operator: string; value: any }>;
   filterLogic?: 'AND' | 'OR';
   limit?: number;
+  contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
+  channel?: 'email' | 'sms';
+  includeTagIds?: string[];
+  excludeTagIds?: string[];
+  includeLogic?: 'AND' | 'OR';
 }): Promise<{
   success: boolean;
   count?: number;
+  contactCount?: number;
   preview?: { id: string; name: string; tags: string[] }[];
   tagDistribution?: { tagId: string; tagName: string; count: number }[];
   error?: string;
 }> {
   try {
-    const { workspaceId, limit: previewLimit = 10 } = params;
+    const { workspaceId, limit: previewLimit = 10, contactScope = 'all', channel } = params;
 
     // ── Normalize legacy params into filters ──────────────────────────────
     let filters = params.filters || [];
@@ -485,9 +485,8 @@ export async function previewCampaignAudience(params: {
       .collection('workspace_entities')
       .where('workspaceId', '==', workspaceId);
 
-    // Separate tag filters from equality filters
     const tagFilters = filters.filter(f => f.field === 'tags');
-    const equalityFilters = filters.filter(f => f.field !== 'tags' && f.operator !== 'is_empty' && f.operator !== 'is_not_empty');
+    const equalityFilters = filters.filter(f => f.field !== 'tags' && f.field !== 'contactRoles' && f.operator !== 'is_empty' && f.operator !== 'is_not_empty');
     const emptyFilters = filters.filter(f => f.operator === 'is_empty' || f.operator === 'is_not_empty');
 
     // Apply equality filters server-side (Firestore supports multiple == on different fields)
@@ -524,8 +523,8 @@ export async function previewCampaignAudience(params: {
       }
     }
 
-    // ── Execute query (capped at 500 docs — R2 fix) ───────────────────────
-    const snap = await baseQuery.limit(500).get();
+    // ── Execute query (Uncapped to get accurate count) ────────────────────────
+    const snap = await baseQuery.get();
 
     interface ContactEntry { id: string; name: string; tags: string[]; data: any; }
     let results: ContactEntry[] = snap.docs.map(d => ({
@@ -552,8 +551,7 @@ export async function previewCampaignAudience(params: {
         let chunkQuery: FirebaseFirestore.Query = adminDb
           .collection('workspace_entities')
           .where('workspaceId', '==', workspaceId)
-          .where('workspaceTags', 'array-contains-any', chunk)
-          .limit(500);
+          .where('workspaceTags', 'array-contains-any', chunk);
         const chunkSnap = await chunkQuery.get();
         const existingIds = new Set(results.map(r => r.id));
         chunkSnap.docs.forEach(d => {
@@ -578,6 +576,106 @@ export async function previewCampaignAudience(params: {
         results = results.filter(c => !c.data[fsField]);
       } else {
         results = results.filter(c => !!c.data[fsField]);
+      }
+    }
+
+    // (Contact Roles filter logic removed; now handled dynamically in contactScope)
+
+    // ── CRM & Automation Filters (Tier 2 JS Filter via Pre-flight Queries) ─
+
+    const dealPipelineFilters = filters.filter(f => f.field === 'dealPipeline');
+    const dealStageFilters = filters.filter(f => f.field === 'dealStage');
+    const automationIdFilters = filters.filter(f => f.field === 'automationId');
+    const automationStatusFilters = filters.filter(f => f.field === 'automationStatus');
+
+    // 1. Deals Filtering
+    if (dealPipelineFilters.length > 0 || dealStageFilters.length > 0) {
+      let dealQuery = adminDb.collection('deals').where('workspaceId', '==', workspaceId);
+      const dealsSnap = await dealQuery.get(); // Get all workspace deals to evaluate locally (O(1) lookups)
+      
+      const pipelines = dealPipelineFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+      const pipelineSet = new Set(pipelines);
+      
+      const stages = dealStageFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+      const stageSet = new Set(stages);
+      
+      const validDealEntityIds = new Set<string>();
+      
+      dealsSnap.docs.forEach(doc => {
+        const d = doc.data();
+        let match = true;
+        if (pipelineSet.size > 0 && !pipelineSet.has(d.pipelineId)) match = false;
+        if (stageSet.size > 0 && !stageSet.has(d.stageId)) match = false;
+        if (match && d.entityId) {
+          validDealEntityIds.add(d.entityId);
+        }
+      });
+
+      // Apply Pipeline Filters
+      for (const f of dealPipelineFilters) {
+        if (f.operator === 'any_of') {
+          results = results.filter(r => validDealEntityIds.has(r.id));
+        } else if (f.operator === 'is_not') {
+          results = results.filter(r => !validDealEntityIds.has(r.id));
+        }
+      }
+
+      // Apply Stage Filters
+      for (const f of dealStageFilters) {
+        if (f.operator === 'any_of') {
+          results = results.filter(r => validDealEntityIds.has(r.id));
+        } else if (f.operator === 'is_not') {
+          results = results.filter(r => !validDealEntityIds.has(r.id));
+        }
+      }
+    }
+
+    // 2. Automations Filtering
+    if (automationIdFilters.length > 0 || automationStatusFilters.length > 0) {
+      // Fetch automations matching the requested IDs or Statuses
+      const automationIds = automationIdFilters.flatMap(f => Array.isArray(f.value) ? f.value : []);
+      const automationIdSet = new Set(automationIds);
+      
+      const statuses = automationStatusFilters.flatMap(f => Array.isArray(f.value) ? f.value : (f.value ? [f.value] : []));
+      const statusSet = new Set(statuses);
+      
+      // Since automation_runs might not have workspaceId, we fetch by automationId if present
+      let runsSnap;
+      if (automationIds.length > 0 && automationIds.length <= 30) {
+         runsSnap = await adminDb.collection('automation_runs').where('automationId', 'in', automationIds).get();
+      } else {
+         // Fallback if >30 IDs or just status filters (might be heavy, consider limiting scope in production)
+         runsSnap = await adminDb.collection('automation_runs').get();
+      }
+
+      const validRunEntityIds = new Set<string>();
+      
+      runsSnap.docs.forEach(doc => {
+         const d = doc.data();
+         let match = true;
+         if (automationIdSet.size > 0 && !automationIdSet.has(d.automationId)) match = false;
+         if (statusSet.size > 0 && !statusSet.has(d.status)) match = false;
+         if (match && d.entityId) {
+            validRunEntityIds.add(d.entityId);
+         }
+      });
+
+      // Apply Automation ID Filters
+      for (const f of automationIdFilters) {
+        if (f.operator === 'any_of') {
+          results = results.filter(r => validRunEntityIds.has(r.id));
+        } else if (f.operator === 'is_not') {
+          results = results.filter(r => !validRunEntityIds.has(r.id));
+        }
+      }
+
+      // Apply Automation Status Filters
+      for (const f of automationStatusFilters) {
+        if (f.operator === 'is' || f.operator === 'any_of' as any) {
+          results = results.filter(r => validRunEntityIds.has(r.id));
+        } else if (f.operator === 'is_not') {
+          results = results.filter(r => !validRunEntityIds.has(r.id));
+        }
       }
     }
 
@@ -610,11 +708,56 @@ export async function previewCampaignAudience(params: {
       tags: c.tags.map(id => tagNameMap.get(id) || id),
     }));
 
-    return { success: true, count: results.length, preview, tagDistribution };
+    // Calculate contact count accurately based on channel & scope
+    let contactCount = 0;
+    const isRoleBased = contactScope !== 'primary' && contactScope !== 'signatories' && contactScope !== 'all';
+    const targetRole = isRoleBased && contactScope.startsWith('role:') ? contactScope.split(':')[1] : contactScope;
+
+    results.forEach(c => {
+      const sourceContacts = c.data.entityContacts || c.data.contacts || [];
+      
+      // Helper to check if a contact matches the requested channel
+      const isValidForChannel = (sc: any, fallbackData: any) => {
+        if (!channel) return true; // No channel specified, assume valid
+        if (channel === 'email') return !!sc.email || (!sc && !!fallbackData.email);
+        if (channel === 'sms') return !!sc.phone || (!sc && !!fallbackData.phone);
+        return false;
+      };
+
+      if (isRoleBased) {
+        // Only count contacts that have the specific role and valid channel data
+        contactCount += sourceContacts.filter((sc: any) => sc.typeKey === targetRole && isValidForChannel(sc, c.data)).length;
+      } else if (contactScope === 'primary') {
+        const primary = sourceContacts.find((sc: any) => sc.isPrimary) || sourceContacts[0];
+        if (primary) {
+          if (isValidForChannel(primary, c.data)) contactCount++;
+        } else {
+          // Fallback to entity direct fields if no nested contacts exist
+          if (isValidForChannel(null, c.data)) contactCount++;
+        }
+      } else if (contactScope === 'signatories') {
+        contactCount += sourceContacts.filter((sc: any) => sc.isSignatory && isValidForChannel(sc, c.data)).length;
+      } else { // 'all'
+        if (sourceContacts.length > 0) {
+          contactCount += sourceContacts.filter((sc: any) => isValidForChannel(sc, c.data)).length;
+        } else {
+          // Fallback to entity direct fields
+          if (isValidForChannel(null, c.data)) contactCount++;
+        }
+      }
+    });
+
+    return { success: true, count: results.length, contactCount, preview, tagDistribution };
   } catch (error: any) {
     console.error('previewCampaignAudience error:', error.message);
     return { success: false, error: error.message };
   }
+}
+
+export interface ResolvedRecipient {
+  contact: string;
+  contactName: string;
+  entityName: string;
 }
 
 /**
@@ -626,49 +769,60 @@ export async function previewCampaignAudience(params: {
 export async function resolveRecipientContacts(params: {
   entityId: string;
   workspaceId?: string;
-  contactScope: 'primary' | 'signatories' | 'all' | 'custom';
+  contactScope: 'primary' | 'signatories' | 'all' | 'custom' | (string & {});
   channel: 'email' | 'sms';
   contactTypeFilter?: string[] | null; // e.g. ['father', 'mother', 'guardian']
-}): Promise<string[]> {
+}): Promise<ResolvedRecipient[]> {
   const { entityId, workspaceId = 'onboarding', contactScope, channel, contactTypeFilter } = params;
 
   try {
     const contact = await resolveContact(entityId, workspaceId);
     if (!contact) return [];
 
+    const entityName = contact.name || 'Unknown Entity';
     const sourceContacts = contact.entityContacts || contact.contacts || [];
 
-    // If a contact type filter is active, narrow to that type first then apply scope
+    // Map source contacts to resolved recipients
+    const mapContacts = (list: any[]): ResolvedRecipient[] => {
+      return list.map((c: any) => ({
+        contact: channel === 'email' ? c.email : (c.phone || ''),
+        contactName: c.name || c.displayName || entityName,
+        entityName
+      })).filter(r => !!r.contact);
+    };
+
     if (contactTypeFilter && contactTypeFilter.length > 0) {
       const typed = sourceContacts.filter((c: any) => contactTypeFilter.includes(c.typeKey));
-      const recipients = typed
-        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
-        .filter((v: any) => !!v) as string[];
-      return recipients.length > 0 ? recipients : [''];
+      return mapContacts(typed);
     }
 
-    let recipients: string[] = [];
+    if (contactScope.startsWith('role:')) {
+      const targetRole = contactScope.split(':')[1];
+      const typed = sourceContacts.filter((c: any) => c.typeKey === targetRole);
+      return mapContacts(typed);
+    }
 
     if (contactScope === 'primary') {
-      const email = getContactEmail(contact);
-      const phone = getContactPhone(contact);
-      const val = channel === 'email' ? email : phone;
-      recipients = val ? [val] : [];
+      const primary = sourceContacts.find((c: any) => c.isPrimary) || sourceContacts[0];
+      if (!primary) {
+        // Fallback to direct entity fields if no contact objects exist
+        const email = getContactEmail(contact);
+        const phone = getContactPhone(contact);
+        const val = channel === 'email' ? email : phone;
+        return val ? [{ contact: val, contactName: entityName, entityName }] : [];
+      }
+      return mapContacts([primary]);
     } else if (contactScope === 'signatories') {
-      recipients = sourceContacts
-        .filter((c: any) => c.isSignatory)
-        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
-        .filter((v: any) => !!v) as string[];
+      const signatories = sourceContacts.filter((c: any) => c.isSignatory);
+      return mapContacts(signatories);
     } else if (contactScope === 'all') {
-      recipients = sourceContacts
-        .map((c: any) => channel === 'email' ? c.email : (c.phone || ''))
-        .filter((v: any) => !!v) as string[];
+      return mapContacts(sourceContacts);
     }
 
-    return recipients.length > 0 ? recipients : [''];
+    return [];
   } catch (error) {
     console.error(`[RESOLVE_CONTACTS] Error for ${entityId}:`, error);
-    return [''];
+    return [];
   }
 }
 

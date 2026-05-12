@@ -504,6 +504,102 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                             </Button>
                                                         </div>
                                                     )}
+
+                                                    {block.type === 'image' && block.props.src && (
+                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm">
+                                                            <img src={block.props.src} alt={block.props.alt || ''} className="w-full h-auto" loading="lazy" />
+                                                            {block.props.caption && (
+                                                                <p className="text-xs text-slate-500 text-center py-3 italic bg-slate-50/50">{interpolate(block.props.caption)}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'video' && block.props.url && (
+                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black">
+                                                            {(() => {
+                                                                const url = block.props.url;
+                                                                let embedUrl = url;
+                                                                // YouTube
+                                                                const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/);
+                                                                if (ytMatch) embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+                                                                // Vimeo
+                                                                const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+                                                                if (vimeoMatch) embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+                                                                // Loom
+                                                                const loomMatch = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
+                                                                if (loomMatch) embedUrl = `https://www.loom.com/embed/${loomMatch[1]}`;
+                                                                return <iframe src={embedUrl} className="w-full h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />;
+                                                            })()}
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'spacer' && (
+                                                        <div style={{ height: block.props.height || 48 }} />
+                                                    )}
+
+                                                    {block.type === 'divider' && (
+                                                        <div className="py-2">
+                                                            {block.props.style === 'gradient' ? (
+                                                                <div className="h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                                                            ) : (
+                                                                <hr className={cn(
+                                                                    "border-t",
+                                                                    block.props.style === 'dashed' && "border-dashed",
+                                                                    block.props.style === 'dotted' && "border-dotted"
+                                                                )} style={{ borderColor: block.props.color || '#e2e8f0' }} />
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'faq' && block.props.items?.length > 0 && (
+                                                        <div className="space-y-3">
+                                                            {block.props.items.map((item: any) => (
+                                                                <details key={item.id} className="group rounded-xl border border-border/30 bg-slate-50/50 overflow-hidden">
+                                                                    <summary className="flex items-center justify-between p-5 cursor-pointer select-none font-bold text-sm text-slate-800 hover:bg-white transition-colors">
+                                                                        {item.question}
+                                                                        <span className="ml-2 text-slate-400 group-open:rotate-180 transition-transform duration-200">▾</span>
+                                                                    </summary>
+                                                                    <div className="px-5 pb-5 text-sm text-slate-600 leading-relaxed border-t border-border/20 pt-3">
+                                                                        {item.answer}
+                                                                    </div>
+                                                                </details>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'testimonial' && (
+                                                        <div className="max-w-lg mx-auto p-8 bg-slate-50/50 rounded-2xl border border-border/20 text-center space-y-4">
+                                                            <div className="text-4xl text-slate-200">"</div>
+                                                            <p className="text-base italic text-slate-600 leading-relaxed font-medium">{interpolate(block.props.quote || '')}</p>
+                                                            <div className="flex items-center justify-center gap-3 pt-2">
+                                                                {block.props.avatarUrl && (
+                                                                    <img src={block.props.avatarUrl} alt={block.props.author} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                                                                )}
+                                                                <div className="text-left">
+                                                                    <p className="text-sm font-bold text-slate-800">{block.props.author || 'Author'}</p>
+                                                                    {block.props.role && <p className="text-xs text-slate-500">{block.props.role}</p>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'stats' && block.props.items?.length > 0 && (
+                                                        <div className={cn("grid gap-6 text-center", block.props.items.length <= 3 ? `grid-cols-${block.props.items.length}` : "grid-cols-2 md:grid-cols-4")}>
+                                                            {block.props.items.map((item: any) => (
+                                                                <div key={item.id} className="p-6 bg-slate-50/50 rounded-2xl border border-border/20">
+                                                                    <p className="text-3xl font-black text-primary tracking-tight">{item.value}</p>
+                                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-2">{item.label}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {block.type === 'html' && block.props.html && (
+                                                        <>
+                                                            {block.props.css && <style dangerouslySetInnerHTML={{ __html: block.props.css }} />}
+                                                            <div dangerouslySetInnerHTML={{ __html: block.props.html }} />
+                                                        </>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

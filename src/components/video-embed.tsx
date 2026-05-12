@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Play } from 'lucide-react';
 
@@ -20,8 +21,15 @@ interface VideoEmbedProps {
 
 const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
   const [isPlaying, setIsPlaying] = React.useState(false);
+  const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
   const videoId = extractYouTubeID(url);
   const isDirectFile = url?.match(/\.(mp4|webm|ogg)$/i);
+
+  React.useEffect(() => {
+    if (videoId) {
+      setThumbUrl(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+    }
+  }, [videoId]);
 
   if (!videoId && !isDirectFile) {
     return (
@@ -46,7 +54,7 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
   }
 
   // YouTube logic
-  if (!isPlaying) {
+  if (!isPlaying && videoId) {
     return (
       <div 
         className={cn(
@@ -55,19 +63,24 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
         )}
         onClick={() => setIsPlaying(true)}
       >
-        {/* Background Thumbnail */}
-        <img 
-          src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`} 
-          alt="Video thumbnail"
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80"
-          onError={(e) => {
-            // Fallback to high quality if maxres isn't available
-            (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-          }}
-        />
+        {/* Background Thumbnail with Next.js Image Optimization */}
+        {thumbUrl && (
+          <Image 
+            src={thumbUrl} 
+            alt="Video thumbnail"
+            fill
+            priority
+            className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-80"
+            onError={() => {
+              if (thumbUrl.includes('maxresdefault')) {
+                setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+              }
+            }}
+          />
+        )}
         
         {/* Overlay Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
         
         {/* Premium Play Button */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -85,9 +98,11 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
         
         {/* Video Info Overlay */}
         <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <p className="text-white font-bold text-lg sm:text-xl drop-shadow-lg">Click to Play Video</p>
-            <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
-                <Play className="w-4 h-4 text-white fill-current" />
+            <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
+                    <Play className="w-4 h-4 text-white fill-current" />
+                </div>
+                <p className="text-white font-bold text-lg sm:text-xl drop-shadow-lg">Click to Play Video</p>
             </div>
         </div>
       </div>

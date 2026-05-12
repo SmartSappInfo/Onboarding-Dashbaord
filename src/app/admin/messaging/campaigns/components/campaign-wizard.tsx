@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { createCampaign, updateCampaign } from '@/lib/campaign-hooks';
@@ -12,6 +12,8 @@ import { FilterBuilder } from '@/app/admin/messaging/audiences/components/filter
 import { useAudiences } from '@/lib/audience-hooks';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
+import { previewCampaignAudience } from '@/lib/messaging-actions';
 import { generateCampaignCopy, refineCampaignCopy } from '@/lib/campaign-ai';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Separator } from '@/components/ui/separator';
@@ -36,6 +38,84 @@ import { cn } from '@/lib/utils';
 import { SmartTemplateDropdown } from '../../../components/SmartTemplateDropdown';
 import dynamic from 'next/dynamic';
 const QuickTemplateDialog = dynamic(() => import('../../components/quick-template-dialog'), { ssr: false });
+
+// ─── Contact Scope Selector ───────────────────────────────────────────────────
+
+function ContactScopeSelector({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+    const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+    const [roles, setRoles] = React.useState<{label: string, value: string}[]>([]);
+    const firestore = useFirestore();
+
+    React.useEffect(() => {
+        if (!activeWorkspaceId || !firestore) return;
+        async function fetchRoles() {
+            try {
+                // Determine which entity types are actually present in this workspace to keep it "practical"
+                const typesSnap = await getDocs(
+                    query(
+                        collection(firestore, 'workspace_entities'),
+                        where('workspaceId', '==', activeWorkspaceId),
+                        limit(100)
+                    )
+                );
+                
+                const activeEntityTypes = new Set<string>();
+                typesSnap.docs.forEach(d => {
+                    const type = d.data().entityType;
+                    if (type) activeEntityTypes.add(type);
+                });
+
+                // Fallback to all types if workspace is empty (for new workspaces)
+                const typesToFetch = activeEntityTypes.size > 0 
+                    ? Array.from(activeEntityTypes) as any[]
+                    : ['institution', 'family', 'person'];
+
+                const rolePromises = typesToFetch.map(type => 
+                    getEffectiveContactTypes(type, activeOrganizationId, activeWorkspaceId)
+                );
+                
+                const roleResults = await Promise.all(rolePromises);
+                const uniqueRoles = new Map<string, string>();
+                
+                roleResults.flat().forEach(r => {
+                    if (r.active) uniqueRoles.set(r.key, r.label);
+                });
+                
+                setRoles(Array.from(uniqueRoles.entries()).map(([v, label]) => ({ label, value: `role:${v}` })));
+            } catch (error) {
+                console.error('[ContactScopeSelector] Failed to fetch roles:', error);
+            }
+        }
+        fetchRoles();
+    }, [activeWorkspaceId, activeOrganizationId, firestore]);
+
+    return (
+        <Select value={value} onValueChange={onChange}>
+            <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-card border-border/50">
+                <SelectValue placeholder="Select contact scope" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+                <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Broad Scope</SelectLabel>
+                    <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
+                    <SelectItem value="signatories" className="text-xs font-semibold">All Registered Signatories</SelectItem>
+                    <SelectItem value="all" className="text-xs font-semibold">Broadcast to All Known Contacts</SelectItem>
+                </SelectGroup>
+                {roles.length > 0 && (
+                    <>
+                        <Separator className="my-1 opacity-50" />
+                        <SelectGroup>
+                            <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">Role Based</SelectLabel>
+                            {roles.map(r => (
+                                <SelectItem key={r.value} value={r.value} className="text-xs font-semibold">{r.label}</SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </>
+                )}
+            </SelectContent>
+        </Select>
+    );
+}
 
 // ─── Wizard State (R4 fix: useReducer instead of 25+ useState) ───────────────
 
@@ -55,7 +135,7 @@ interface WizardState {
     tagLogic: 'any' | 'all';
     excludeTagIds: string[];
     entityIds: string[];
-    contactScope: 'primary' | 'signatories' | 'all';
+    contactScope: 'primary' | 'signatories' | 'all' | (string & {});
     senderProfileId: string;
     isScheduled: boolean;
     scheduledAt: Date | null;
@@ -197,6 +277,63 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
 
     const [state, dispatch] = React.useReducer(wizardReducer, campaign, createInitialState);
+
+    // ── Audience Preview State ────────────────────────────────────────────────
+    const [isPreviewing, setIsPreviewing] = React.useState(false);
+    const [previewResult, setPreviewResult] = React.useState<{
+        count: number;
+        contactCount: number;
+        preview: { id: string; name: string; tags: string[] }[];
+    } | null>(null);
+    const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const fetchPreview = React.useCallback(() => {
+        if (!activeWorkspaceId) {
+            setPreviewResult(null);
+            return;
+        }
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setIsPreviewing(true);
+            try {
+                // Determine which filters to use based on audience mode
+                let filters = state.filters;
+                if (state.audienceMode === 'all') filters = [];
+                if (state.audienceMode === 'manual') {
+                    filters = [{ id: '_manual', field: 'entityId', operator: 'any_of', value: state.entityIds }];
+                }
+
+                const result = await previewCampaignAudience({
+                    workspaceId: activeWorkspaceId,
+                    filters: filters as any,
+                    filterLogic: state.filterLogic,
+                    limit: 10,
+                    contactScope: state.contactScope,
+                    channel: state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined,
+                });
+                
+                if (result.success) {
+                    setPreviewResult({ 
+                        count: result.count ?? 0, 
+                        contactCount: result.contactCount ?? 0, 
+                        preview: result.preview ?? [] 
+                    });
+                }
+            } catch (err) {
+                console.error('[WizardPreview] Failed:', err);
+            } finally {
+                setIsPreviewing(false);
+            }
+        }, 800);
+    }, [activeWorkspaceId, state.filters, state.filterLogic, state.contactScope, state.channel, state.audienceMode, state.entityIds]);
+
+    React.useEffect(() => {
+        // Only run preview on Audience step (step 3)
+        if (state.step === 3) {
+            fetchPreview();
+        }
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    }, [fetchPreview, state.step]);
 
     const setField = <K extends keyof WizardState>(field: K, value: WizardState[K]) => {
         dispatch({ type: 'SET_FIELD', field, value });
@@ -744,8 +881,11 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         {/* Advanced filter mode */}
                         {state.audienceMode === 'advanced' ? (
                             <FilterBuilder
+                                contactScope={state.contactScope}
+                                channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
                                 filters={state.filters}
                                 filterLogic={state.filterLogic}
+                                showPreview={false}
                                 onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
                             />
                         ) : null}
@@ -781,27 +921,72 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 </div>
                                 {state.savedAudienceId && state.filters.length > 0 ? (
                                     <FilterBuilder
+                                        contactScope={state.contactScope}
+                                        channel={state.channel === 'email' || state.channel === 'sms' ? state.channel : undefined}
                                         filters={state.filters}
                                         filterLogic={state.filterLogic}
+                                        showPreview={false}
                                         onChange={(f, l) => { setField('filters', f); setField('filterLogic', l); }}
                                     />
                                 ) : null}
                             </div>
                         ) : null}
 
+                        {/* Projected Reach Summary */}
+                        <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg bg-primary/10">
+                                        <Users className="h-3.5 w-3.5 text-primary" />
+                                    </div>
+                                    <p className="text-xs font-bold">Projected Reach</p>
+                                </div>
+                                {isPreviewing ? (
+                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                ) : (
+                                    <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-none">
+                                        {previewResult?.contactCount || 0} Recipients
+                                    </Badge>
+                                )}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Entities Matched</p>
+                                    <p className="text-sm font-bold">{previewResult?.count || 0}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">Scope Coverage</p>
+                                    <p className="text-sm font-bold">
+                                        {previewResult?.count ? Math.round(((previewResult.contactCount || 0) / previewResult.count) * 100) : 0}%
+                                    </p>
+                                </div>
+                            </div>
+
+                            {previewResult?.preview && previewResult.preview.length > 0 && (
+                                <div className="pt-2 border-t border-border/50">
+                                    <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight mb-2">Sample Recipients</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {previewResult.preview.slice(0, 3).map(p => (
+                                            <Badge key={p.id} variant="outline" className="text-[9px] font-medium bg-card border-border/50 py-0 px-2 rounded-lg">
+                                                {p.name}
+                                            </Badge>
+                                        ))}
+                                        {previewResult.preview.length > 3 && (
+                                            <span className="text-[9px] font-semibold text-muted-foreground">+{previewResult.preview.length - 3} more</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Contact scope */}
                         <div className="space-y-2">
                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Scope</Label>
-                            <Select value={state.contactScope} onValueChange={v => setField('contactScope', v as any)}>
-                                <SelectTrigger className="h-10 rounded-xl font-bold text-xs bg-card border-border/50">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
-                                    <SelectItem value="signatories" className="text-xs font-semibold">All Registered Signatories</SelectItem>
-                                    <SelectItem value="all" className="text-xs font-semibold">Broadcast to All Known Contacts</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <ContactScopeSelector 
+                                value={state.contactScope} 
+                                onChange={v => setField('contactScope', v as any)} 
+                            />
                         </div>
                     </div>
                 );

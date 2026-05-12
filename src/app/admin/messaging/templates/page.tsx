@@ -240,14 +240,26 @@ export default function MessageTemplatesPage() {
     };
 
     const handleClone = async (tmpl: MessageTemplate) => {
-        if (!user) return;
+        if (!user || !firestore) return;
         setCloningId(tmpl.id);
         try {
-            // TODO: Implement cloneTemplate function
-            toast({ variant: 'destructive', title: 'Clone Error', description: 'Clone feature not yet implemented' });
-            // const result = await cloneTemplate(tmpl.id, user.uid);
-            // if (result.success) toast({ title: 'Clone Successful' });
-            // else throw new Error(result.error);
+            const { id: _, createdAt: __, updatedAt: ___, ...rest } = tmpl;
+            
+            const clonedData = {
+                ...rest,
+                name: `Copy of ${tmpl.name}`,
+                status: 'draft',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                workspaceIds: [activeWorkspaceId],
+                organizationId: activeOrganizationId,
+                scope: 'organization'
+            };
+
+            const sanitizedData = JSON.parse(JSON.stringify(clonedData));
+            await addDoc(collection(firestore, 'message_templates'), sanitizedData);
+            
+            toast({ title: 'Template Cloned Successfully', description: `Created "${clonedData.name}"` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Clone Error', description: e.message });
         } finally {

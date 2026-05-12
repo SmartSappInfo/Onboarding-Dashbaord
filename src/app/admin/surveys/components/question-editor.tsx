@@ -281,28 +281,29 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
  className="mr-1 mb-1 max-w-full"
                     >
                         <span className="truncate">{cleanLabel(option.label)}</span>
-                         <div
+                        <div
                             role="button"
                             tabIndex={0}
                             aria-label={`Remove ${cleanLabel(option.label)}`}
- className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 hover:bg-muted-foreground/20 transition-colors"
                             onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                             }}
                             onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                const newSelection = Array.from(selectedValues).filter((v) => v !== option.value);
-                                onChange(newSelection);
+                                handleRemove(option.value, e);
                             }}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     handleRemove(option.value, e as any);
                                 }
                             }}
                         >
- <X className="h-3 w-3 shrink-0" />
+                            <X className="h-3 w-3 shrink-0" />
                         </div>
                     </Badge>
                 ))
@@ -325,30 +326,41 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           <CommandList className="max-h-[300px] overflow-y-auto">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={cleanLabel(option.label)}
-                  onSelect={() => {
-                    const newSelection = new Set(value);
-                    if (newSelection.has(option.value)) {
-                      newSelection.delete(option.value);
-                    } else {
-                      newSelection.add(option.value);
-                    }
-                    onChange(Array.from(newSelection));
-                  }}
- className="cursor-pointer"
-                >
-                  <Check
- className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
-                      selectedValues.has(option.value) ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{cleanLabel(option.label)}</span>
-                </CommandItem>
-              ))}
+              {options.map((option) => {
+                const isSelected = selectedValues.has(option.value);
+                const label = cleanLabel(option.label);
+                
+                return (
+                  <CommandItem
+                    key={option.value}
+                    // CRITICAL: value must be unique for cmdk selection logic to work correctly
+                    // We append the unique ID to the label so it remains searchable by label but is globally unique.
+                    value={`${label} ${option.value}`}
+                    onSelect={() => {
+                      const newSelection = new Set(value);
+                      if (isSelected) {
+                        newSelection.delete(option.value);
+                      } else {
+                        newSelection.add(option.value);
+                      }
+                      onChange(Array.from(newSelection));
+                    }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4 shrink-0",
+                        isSelected ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
@@ -617,31 +629,30 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
       .slice(0, elementIndex)
       .filter((el): el is SurveyQuestion => isQuestion(el));
   
-    const getTargetableElements = (excludeSelf = true) => {
+    const targetableElements = React.useMemo(() => {
         return allElements
             .map((el, idx) => ({ el, idx }))
-            .filter(({ el, idx }) => excludeSelf ? idx !== elementIndex : true)
-            .map(({ el, idx }) => {
+            .filter(({ idx }) => idx !== elementIndex)
+            .map(({ el }) => {
                 const Icon = getElementIcon(el.type);
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : (el.type.charAt(0).toUpperCase() + el.type.slice(1));
                 const label = el.title ? `${prefix}: ${stripHtml(el.title)}` : `${prefix}: untitled`;
                 return { value: el.id, label, icon: Icon };
             });
-    }
+    }, [allElements, elementIndex]);
 
-    const getJumpTargets = () => {
+    const jumpTargets = React.useMemo(() => {
         return allElements
             .slice(elementIndex + 1)
-            .map((el, idx) => ({ el, originalIndex: elementIndex + 1 + idx }))
-            .filter(({ el }) => isQuestion(el) || el.type === 'heading' || el.type === 'section')
-            .map(({ el, originalIndex }) => {
+            .filter((el) => isQuestion(el) || el.type === 'heading' || el.type === 'section')
+            .map((el) => {
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : 'Section';
                 return {
                     value: el.id,
                     label: `${prefix}: ${stripHtml(el.title || 'untitled')}`
                 }
-            })
-    }
+            });
+    }, [allElements, elementIndex]);
   
     return (
  <div className="space-y-4 p-4 border border-primary/20 rounded-2xl bg-primary/10">
@@ -828,7 +839,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                                      <SelectValue placeholder="Target element..." />
                                    </SelectTrigger>
                                       <SelectContent className="max-w-[400px] max-h-[300px] overflow-y-auto z-[100]" position="popper" sideOffset={5}>
-                                      {getJumpTargets().map((el) => (
+                                      {jumpTargets.map((el) => (
                                           <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
                                       ))}
                                       </SelectContent>
@@ -843,7 +854,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                               defaultValue={[]}
                               render={({ field }) => (
                                   <MultiSelect 
-                                      options={getTargetableElements()}
+                                      options={targetableElements}
                                       value={field.value || []}
                                       onChange={field.onChange}
                                       placeholder="Select target element(s)..."
@@ -1002,12 +1013,20 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             <ElementIcon className={cn("shrink-0 transition-all h-4 w-4")} />
                         </div>
                         <div className="flex flex-col gap-0">
-                            <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isSelected ? "text-primary" : "text-muted-foreground")}>
-                                {isElementQuestion ? `Question ${questionNumber}`
-                                : isElementSection ? `Section ${sectionNumber}`
-                                : isElementLayout ? `${element.type} Block`
-                                : 'Logic Node'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isSelected ? "text-primary" : "text-muted-foreground")}>
+                                    {isElementQuestion ? `Question ${questionNumber}`
+                                    : isElementSection ? `Section ${sectionNumber}`
+                                    : isElementLayout ? `${element.type} Block`
+                                    : 'Logic Node'}
+                                </span>
+                                {isElementQuestion && element.isRequired && (
+                                    <span className="text-destructive font-black text-xs animate-pulse">*</span>
+                                )}
+                            </div>
+                            {!isCollapsed && isElementQuestion && element.isRequired && (
+                                <Badge variant="outline" className="h-4 text-[7px] font-black uppercase tracking-tighter px-1.5 border-destructive/20 text-destructive bg-destructive/5">Required</Badge>
+                            )}
                             {isCollapsed && (
                                 <div className="flex items-center gap-2 max-w-md">
                                     <span className={cn(
@@ -1050,6 +1069,32 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             >
                                 <ArrowDown className="h-4 w-4" />
                             </Button>
+                            {isElementQuestion && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                data-marquee-ignore="true"
+                                                variant="outline" 
+                                                size="icon" 
+                                                className={cn(
+                                                    "h-8 w-8 rounded-md hidden sm:flex bg-background transition-all",
+                                                    element.isRequired ? "border-destructive/40 text-destructive bg-destructive/5 hover:bg-destructive/10" : "hover:bg-primary/5 hover:text-primary border-border/60"
+                                                )}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setValue(`elements.${index}.isRequired`, !element.isRequired, { shouldDirty: true });
+                                                }}
+                                            >
+                                                <Asterisk className={cn("h-4 w-4", element.isRequired ? "fill-current" : "")} />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                            <p className="text-xs font-bold">{element.isRequired ? 'Make Optional' : 'Make Required'}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                             <Button 
                                 data-marquee-ignore="true"
                                 variant="outline" 
@@ -1178,7 +1223,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         <Input 
                                                             {...field} 
                                                             value={field.value || ''} 
-                                                            placeholder="+1 555-0123" 
+                                                            placeholder="+233 24 123 4567" 
                                                             className="h-12 bg-card border border-border/50 rounded-xl pl-14 pr-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
                                                         />
                                                     </div>

@@ -79,6 +79,7 @@ import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/indust
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
 import EntityNotesWidget from '../components/EntityNotesWidget';
+import EntityContactDirectory from '../components/EntityContactDirectory';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -393,44 +394,13 @@ export default function EntityDetailPage() {
                         </TabsTrigger>
                     </TabsList>
 
- <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
- <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
- <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8">
- <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Contact Directory</CardTitle>
-                                </CardHeader>
- <CardContent className="p-0">
- <div className="divide-y divide-border/50">
-                                        {(() => {
-                                            const contacts = resolveEntityContacts(entityData);
-                                            
-                                            return contacts.length > 0 ? (
-                                                contacts.map((person, idx) => (
- <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-background transition-colors text-left">
- <div className="flex items-center gap-4 text-left">
- <div className="h-12 w-12 rounded-2xl bg-card/50 flex items-center justify-center font-semibold text-primary border border-border/50 shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
- <div className="text-left">
- <p className="font-semibold text-base ">{person.name}</p>
- <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5">{person.typeLabel || person.typeKey}</Badge>
-                                                                {person.isPrimary && <Badge variant="secondary" className="text-[7px] font-semibold uppercase bg-blue-50 text-blue-700 border-blue-200 py-0.5 px-2">Primary</Badge>}
-                                                                {person.isSignatory && <Badge className="text-[7px] font-semibold uppercase bg-amber-500 text-white border-none py-0.5 px-2">Signatory</Badge>}
-                                                                <ShieldCheck className={cn("h-3.5 w-3.5", person.isSignatory ? "text-amber-500" : "text-muted-foreground/20")} />
-                                                            </div>
-                                                        </div>
-                                                    </div>
- <div className="flex gap-2 w-full sm:w-auto">
- {person.email && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`mailto:${person.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a></Button>}
- {person.phone && <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`tel:${person.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a></Button>}
-                                                    </div>
-                                                 </div>
-                                              ))
-                                            ) : (
- <div className="p-12 text-center text-muted-foreground font-medium italic">No entity contacts initialized.</div>
-                                            );
-                                        })()}
-                                    </div>
-                                </CardContent>
-                             </Card>
+  <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                                <EntityContactDirectory 
+                                    entityId={entityId} 
+                                    entityData={entityData} 
+                                    organizationId={entityData.organizationId} 
+                                    workspaceId={activeWorkspaceId} 
+                                />
                     </TabsContent>
 
  <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">

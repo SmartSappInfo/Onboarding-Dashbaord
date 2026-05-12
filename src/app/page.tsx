@@ -22,7 +22,7 @@ export default function Home() {
   ];
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-grow">
         <WelcomeHeroSection />
@@ -36,6 +36,6 @@ export default function Home() {
         <TestimonialsSection />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

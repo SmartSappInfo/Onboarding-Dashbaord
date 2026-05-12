@@ -19,6 +19,7 @@ import {
     Building, 
     Video,
     Eye,
+    EyeOff,
     ExternalLink,
     ImageIcon,
     ChevronRight,
@@ -26,6 +27,8 @@ import {
     Check,
     Type,
     Sparkles,
+    Palette,
+    LayoutTemplate,
     Bell,
     ClipboardCheck,
     Clock
@@ -69,8 +72,8 @@ import { scheduleRemindersForMeeting, rescheduleRemindersForMeeting } from '@/li
 import { Checkbox } from '@/components/ui/checkbox';
 
 const formSchema = z.object({
-  entity: z.custom<WorkspaceEntity>().refine(value => !!value, { message: "Entity is required." }),
-  entitySlug: z.string()
+  entity: z.custom<WorkspaceEntity>().optional().nullable(),
+  meetingSlug: z.string()
     .min(3, 'Slug must be at least 3 characters.')
     .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   meetingTime: z.date({
@@ -79,6 +82,18 @@ const formSchema = z.object({
   type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   
+  // V3: Branding controls
+  logoUrl: z.string().url().optional().or(z.literal('')),
+  brandingName: z.string().optional().or(z.literal('')),
+  brandingSlogan: z.string().optional().or(z.literal('')),
+  brandingEnabled: z.boolean().default(true),
+  heroLayout: z.enum(['image', 'form']).default('image'),
+
+  // V3: Banner controls
+  bannerType: z.enum(['none', 'image', 'embed']).default('none'),
+  bannerImageUrl: z.string().url().optional().or(z.literal('')),
+  bannerEmbedCode: z.string().optional().or(z.literal('')),
+
   // Registration
   registrationEnabled: z.boolean().default(false),
   registrationRequiredToJoin: z.boolean().default(false),
@@ -107,12 +122,21 @@ const formSchema = z.object({
   
   // Reminders (Task 12.1)
   enabledReminders: z.array(z.string()).default([]),
+}).refine((data) => {
+  if (data.brandingEnabled && !data.entity) {
+    return !!data.logoUrl && !!data.brandingName && !!data.brandingSlogan;
+  }
+  return true;
+}, {
+  message: "Logo, Name, and Slogan are required for standalone branding.",
+  path: ["brandingEnabled"]
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 const WIZARD_STEPS = [
   { id: 'config', label: 'Configuration', icon: Calendar, description: 'Setup & timing' },
+  { id: 'branding', label: 'Branding', icon: Palette, description: 'Logo & layout' },
   { id: 'registration', label: 'Registration', icon: ClipboardCheck, description: 'Signup & capacity' },
   { id: 'hero', label: 'Hero Content', icon: Type, description: 'Public messaging' },
   { id: 'options', label: 'Options', icon: Bell, description: 'Advanced features' },
@@ -131,6 +155,7 @@ export default function EditMeetingPage() {
 
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [currentStep, setCurrentStep] = React.useState(0);
+  const [lastStepChangeTime, setLastStepChangeTime] = React.useState(0);
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
@@ -152,11 +177,19 @@ export default function EditMeetingPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      entity: undefined,
-      entitySlug: '',
+      entity: null,
+      meetingSlug: '',
       meetingTime: undefined,
       type: undefined,
       meetingLink: '',
+      logoUrl: '',
+      brandingName: '',
+      brandingSlogan: '',
+      brandingEnabled: true,
+      heroLayout: 'image',
+      bannerType: 'none',
+      bannerImageUrl: '',
+      bannerEmbedCode: '',
       registrationEnabled: false,
       registrationRequiredToJoin: false,
       registrationMode: 'open',
@@ -181,10 +214,26 @@ export default function EditMeetingPage() {
     },
   });
 
-  const { setValue } = form;
+  const { setValue, watch } = form;
   const watchedType = form.watch('type');
-  const watchedSlug = form.watch('entitySlug');
+  const watchedEntity = form.watch('entity');
+  const watchedSlug = form.watch('meetingSlug');
   const registrationEnabled = form.watch('registrationEnabled');
+  const watchedBrandingEnabled = form.watch('brandingEnabled');
+
+  // V3: Automatically toggle branding based on entity selection
+  React.useEffect(() => {
+    // If watchedEntity is strictly undefined, it means we're still loading the initial document.
+    // Don't auto-set branding until the document has loaded and we have a definitive entity state.
+    // Also skip if we've already initialized (respect document value)
+    if (watchedEntity === undefined || hasInitialized) return;
+    
+    if (!watchedEntity) {
+      form.setValue('brandingEnabled', false);
+    } else {
+      form.setValue('brandingEnabled', true);
+    }
+  }, [watchedEntity?.id, hasInitialized]);
 
   React.useEffect(() => {
     if (meeting && entities && !hasInitialized) {
@@ -194,66 +243,94 @@ export default function EditMeetingPage() {
                           MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
                           MEETING_TYPES[0];
 
-      if (selectedEntity) {
-          form.reset({
-            entity: selectedEntity,
-            entitySlug: meeting.entitySlug || selectedEntity.slug || '',
-            meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
-            type: selectedType,
-            meetingLink: meeting.meetingLink || '',
-            registrationEnabled: meeting.registrationEnabled || false,
-            registrationRequiredToJoin: meeting.registrationRequiredToJoin || false,
-            registrationMode: meeting.registrationMode || 'open',
-            registrationFields: meeting.registrationFields || getDefaultRegistrationFields(),
-            registrationSuccessMessage: meeting.registrationSuccessMessage || 'You have successfully registered for this session.',
-            capacityLimit: meeting.capacityLimit || 0,
-            waitlistEnabled: meeting.waitlistEnabled || false,
-            heroImageUrl: meeting.heroImageUrl || '',
-            heroTitle: meeting.heroTitle || '',
-            heroDescription: meeting.heroDescription || '',
-            heroTagline: meeting.heroTagline || '',
-            heroCtaLabel: meeting.heroCtaLabel || '',
-            recordingUrl: meeting.recordingUrl || '',
-            brochureUrl: meeting.brochureUrl || '',
-            adminAlertsEnabled: meeting.adminAlertsEnabled || false,
-            adminAlertChannel: meeting.adminAlertChannel || 'both',
-            adminAlertNotifyManager: meeting.adminAlertNotifyManager ?? true,
-            adminAlertSpecificUserIds: meeting.adminAlertSpecificUserIds || [],
-            adminAlertEmailTemplateId: meeting.adminAlertEmailTemplateId || '',
-            adminAlertSmsTemplateId: meeting.adminAlertSmsTemplateId || '',
-            enabledReminders: meeting.enabledReminders || [],
-          });
-          setHasInitialized(true);
-      }
+      form.reset({
+        entity: selectedEntity || null,
+        meetingSlug: meeting.meetingSlug || meeting.entitySlug || '',
+        meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
+        type: selectedType,
+        meetingLink: meeting.meetingLink || '',
+        
+        // V3 Branding
+        logoUrl: meeting.logoUrl || '',
+        brandingName: meeting.brandingName || '',
+        brandingSlogan: meeting.brandingSlogan || '',
+        brandingEnabled: meeting.brandingEnabled ?? !!selectedEntity,
+        heroLayout: meeting.heroLayout || 'image',
+
+        // V3 Banners
+        bannerType: meeting.bannerType || 'none',
+        bannerImageUrl: meeting.bannerImageUrl || '',
+        bannerEmbedCode: meeting.bannerEmbedCode || '',
+
+        registrationEnabled: meeting.registrationEnabled || false,
+        registrationRequiredToJoin: meeting.registrationRequiredToJoin || false,
+        registrationMode: meeting.registrationMode || 'open',
+        registrationFields: meeting.registrationFields || getDefaultRegistrationFields(),
+        registrationSuccessMessage: meeting.registrationSuccessMessage || 'You have successfully registered for this session.',
+        capacityLimit: meeting.capacityLimit || 0,
+        waitlistEnabled: meeting.waitlistEnabled || false,
+        heroImageUrl: meeting.heroImageUrl || '',
+        heroTitle: meeting.heroTitle || '',
+        heroDescription: meeting.heroDescription || '',
+        heroTagline: meeting.heroTagline || '',
+        heroCtaLabel: meeting.heroCtaLabel || '',
+        recordingUrl: meeting.recordingUrl || '',
+        brochureUrl: meeting.brochureUrl || '',
+        adminAlertsEnabled: meeting.adminAlertsEnabled || false,
+        adminAlertChannel: meeting.adminAlertChannel || 'both',
+        adminAlertNotifyManager: meeting.adminAlertNotifyManager ?? true,
+        adminAlertSpecificUserIds: meeting.adminAlertSpecificUserIds || [],
+        adminAlertEmailTemplateId: meeting.adminAlertEmailTemplateId || '',
+        adminAlertSmsTemplateId: meeting.adminAlertSmsTemplateId || '',
+        enabledReminders: meeting.enabledReminders || [],
+      });
+      setHasInitialized(true);
     }
   }, [meeting, entities, form, hasInitialized]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) return;
     
+    // Prevent accidental submit immediately after step transition (fixes click bubbling)
+    if (Date.now() - lastStepChangeTime < 100) return;
+    
+    
     try {
         const meetingsRef = collection(firestore, 'meetings');
-        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('entitySlug', '==', data.entitySlug));
+        const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('meetingSlug', '==', data.meetingSlug));
         const querySnapshot = await getDocs(q);
         
         const isDuplicate = querySnapshot.docs.some(doc => doc.id !== meetingId);
         
         if (isDuplicate) {
-            form.setError('entitySlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+            form.setError('meetingSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
             toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
             setCurrentStep(0);
             return;
         }
 
         const meetingData = {
-            entityId: data.entity.entityId, // Store Global Entity ID instead of WorkspaceEntity ID
-            entityName: data.entity.displayName,
-            entitySlug: data.entitySlug,
-            entityType: data.entity.entityType || 'institution',
+            entityId: data.entity?.entityId || '', 
+            entityName: data.entity?.displayName || data.brandingName || data.heroTitle || 'Standalone Session',
+            entitySlug: data.meetingSlug,
+            meetingSlug: data.meetingSlug,
+            entityType: data.entity?.entityType || 'institution',
             workspaceIds: [activeWorkspaceId],
             meetingTime: data.meetingTime.toISOString(),
             meetingLink: data.meetingLink,
             type: data.type,
+            
+            // V3 Branding
+            logoUrl: data.logoUrl || '',
+            brandingName: data.brandingName || '',
+            brandingSlogan: data.brandingSlogan || '',
+            brandingEnabled: data.brandingEnabled,
+            heroLayout: data.heroLayout,
+
+            // V3 Banners
+            bannerType: data.bannerType,
+            bannerImageUrl: data.bannerImageUrl || '',
+            bannerEmbedCode: data.bannerEmbedCode || '',
 
             // Registration fields
             registrationEnabled: data.registrationEnabled,
@@ -288,17 +365,17 @@ export default function EditMeetingPage() {
         const docRef = doc(firestore, 'meetings', meetingId);
         
         await updateDoc(docRef, meetingData);
-        toast({ title: 'Meeting Updated', description: `Session for ${data.entity.displayName} saved.` });
+        toast({ title: 'Meeting Updated', description: `Session for ${data.entity?.displayName || data.heroTitle || 'Standalone Session'} saved.` });
         
         logActivity({
             organizationId: activeOrganizationId,
-            entityId: data.entity.id,
-            entityType: data.entity.entityType || 'institution',
+            entityId: data.entity?.entityId || '',
+            entityType: data.entity?.entityType || 'institution',
             userId: user.uid,
             workspaceId: activeWorkspaceId,
             type: 'entity_updated',
             source: 'user_action',
-            description: `updated the ${data.type.name} session for "${data.entity.displayName}".`,
+            description: `updated the ${data.type.name} session for "${data.entity?.displayName || data.heroTitle || 'Standalone Session'}".`,
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
@@ -311,7 +388,7 @@ export default function EditMeetingPage() {
                 smsTemplateId: data.adminAlertSmsTemplateId,
                 channel: data.adminAlertChannel,
                 variables: {
-                    school_name: data.entity.displayName,
+                    school_name: data.entity?.displayName || data.heroTitle || 'Standalone Session',
                     meeting_type: data.type.name,
                     date: format(data.meetingTime, 'PPPP'),
                     time: format(data.meetingTime, 'p'),
@@ -344,21 +421,25 @@ export default function EditMeetingPage() {
     let isValid = false;
     
     if (currentStep === 0) {
-      isValid = await form.trigger(['entity', 'entitySlug', 'meetingTime', 'type', 'meetingLink']);
+      isValid = await form.trigger(['entity', 'meetingSlug', 'meetingTime', 'type', 'meetingLink']);
     } else if (currentStep === 1) {
-      isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
+      isValid = await form.trigger(['brandingEnabled', 'logoUrl', 'brandingName', 'brandingSlogan', 'heroLayout', 'bannerType']);
     } else if (currentStep === 2) {
+      isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
+    } else if (currentStep === 3) {
       isValid = await form.trigger(['heroTitle', 'heroDescription', 'heroTagline', 'heroCtaLabel', 'heroImageUrl']);
     }
     
     if (isValid && currentStep < WIZARD_STEPS.length - 1) {
       setCurrentStep(prev => prev + 1);
+      setLastStepChangeTime(Date.now());
     }
   };
 
   const handlePrev = () => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
+      setLastStepChangeTime(Date.now());
     }
   };
 
@@ -476,8 +557,8 @@ export default function EditMeetingPage() {
                                             onValueChange={(entityId: string) => {
                                                 const entity = entities?.find((s) => s.id === entityId);
                                                 field.onChange(entity);
-                                                if (entity && !form.getValues('entitySlug')) {
-                                                    form.setValue('entitySlug', entity.slug || '', { shouldValidate: true });
+                                                if (entity && !form.getValues('meetingSlug')) {
+                                                    form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
                                                 }
                                             }}
                                             value={field.value?.id || ""}
@@ -563,7 +644,7 @@ export default function EditMeetingPage() {
 
                             <FormField
                                 control={form.control}
-                                name="entitySlug"
+                                name="meetingSlug"
                                 render={({ field }) => (
                                     <FormItem>
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">URL Path Context</FormLabel>
@@ -606,8 +687,228 @@ export default function EditMeetingPage() {
                 </div>
             </div>
 
-            {/* ──────── STEP 2: Registration ──────── */}
- <div className={cn(currentStep !== 1 && "hidden")}>
+                {/* ──────── STEP 2: Branding (V3) ──────── */}
+                <div className={cn(currentStep !== 1 && "hidden")}>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="lg:col-span-2 space-y-8">
+                            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
+                                        <div>
+                                            <CardTitle className="text-lg font-semibold tracking-tight">Branding & Layout</CardTitle>
+                                            <CardDescription className="text-xs font-medium text-left">Control logo, entity branding visibility, and hero layout mode.</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-6 space-y-8 bg-background">
+                                    {/* Logo Override */}
+                                    <FormField
+                                        control={form.control}
+                                        name="logoUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Meeting Logo</FormLabel>
+                                                <FormDescription className="text-xs text-muted-foreground">Upload a logo specific to this meeting. If empty, uses the linked entity&apos;s logo (if any).</FormDescription>
+                                                <FormControl>
+                                                    <MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-2xl" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <Separator className="bg-border/50" />
+
+                                    {/* Branding Toggle */}
+                                    <FormField
+                                        control={form.control}
+                                        name="brandingEnabled"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between p-4 bg-muted/20 rounded-xl border">
+                                                <div className="space-y-1 text-left">
+                                                    <FormLabel className="font-bold flex items-center gap-2">
+                                                        {field.value ? <Eye className="h-4 w-4 text-primary" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                                                        Show Branding
+                                                    </FormLabel>
+                                                    <FormDescription className="text-xs">When enabled, the meeting logo, entity name, and slogan are shown on the public page.</FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {watchedBrandingEnabled && !watchedEntity && (
+                                        <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="brandingName"
+                                                    render={({ field }) => (
+                                                        <FormItem className="text-left">
+                                                            <FormLabel className="text-[10px] font-semibold text-primary ml-1">Branding Name</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} placeholder="e.g. My Organization" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="brandingSlogan"
+                                                    render={({ field }) => (
+                                                        <FormItem className="text-left">
+                                                            <FormLabel className="text-[10px] font-semibold text-primary ml-1">Branding Slogan</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} placeholder="e.g. Excellence in Education" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                            <p className="text-[10px] italic text-amber-600 font-medium text-left">
+                                                Since no entity is selected, manual branding details are required.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <Separator className="bg-border/50" />
+
+                                    {/* Hero Layout Mode */}
+                                    <FormField
+                                        control={form.control}
+                                        name="heroLayout"
+                                        render={({ field }) => (
+                                            <FormItem className="text-left">
+                                                <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-2"><LayoutTemplate className="h-3.5 w-3.5" /> Form Placement</FormLabel>
+                                                <FormDescription className="text-xs text-left">Decide where the registration or join form appears.</FormDescription>
+                                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => field.onChange('image')}
+                                                        className={cn(
+                                                            "p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center cursor-pointer",
+                                                            field.value === 'image'
+                                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm"
+                                                                : "border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <Type className="h-5 w-5 text-muted-foreground" />
+                                                            <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+                                                            <ClipboardCheck className="h-5 w-5 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold">Below Titles</p>
+                                                            <p className="text-[10px] text-muted-foreground">Form follows the text</p>
+                                                        </div>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => field.onChange('form')}
+                                                        className={cn(
+                                                            "p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-3 text-center cursor-pointer",
+                                                            field.value === 'form'
+                                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm"
+                                                                : "border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        <ClipboardCheck className={cn("h-8 w-8", field.value === 'form' ? "text-primary" : "text-muted-foreground")} />
+                                                        <div>
+                                                            <p className="text-sm font-bold">Right Panel</p>
+                                                            <p className="text-[10px] text-muted-foreground">Replaces hero image</p>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <Separator className="bg-border/50" />
+
+                                    {/* V3: Banner Configuration */}
+                                    <div className="space-y-6">
+                                        <FormField
+                                            control={form.control}
+                                            name="bannerType"
+                                            render={({ field }) => (
+                                                <FormItem className="text-left">
+                                                    <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Top Banner</FormLabel>
+                                                    <FormDescription className="text-xs">Add a custom banner image or HTML embed at the top of the page.</FormDescription>
+                                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                                        {['none', 'image', 'embed'].map((type) => (
+                                                            <button
+                                                                key={type}
+                                                                type="button"
+                                                                onClick={() => field.onChange(type)}
+                                                                className={cn(
+                                                                    "h-10 rounded-xl border transition-all text-xs font-bold capitalize",
+                                                                    field.value === type 
+                                                                        ? "bg-primary text-primary-foreground border-primary shadow-md" 
+                                                                        : "bg-muted/20 border-border hover:bg-muted/40"
+                                                                )}
+                                                            >
+                                                                {type}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        {form.watch('bannerType') === 'image' && (
+                                            <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/20 animate-in fade-in slide-in-from-top-2">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="bannerImageUrl"
+                                                    render={({ field }) => (
+                                                        <FormItem className="text-left">
+                                                            <FormLabel className="text-[10px] font-bold text-primary">Banner Image (820x360)</FormLabel>
+                                                            <FormControl>
+                                                                <MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-xl h-24" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {form.watch('bannerType') === 'embed' && (
+                                            <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/20 animate-in fade-in slide-in-from-top-2">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="bannerEmbedCode"
+                                                    render={({ field }) => (
+                                                        <FormItem className="text-left">
+                                                            <FormLabel className="text-[10px] font-bold text-primary">HTML Embed Code</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea 
+                                                                    {...field} 
+                                                                    placeholder="<iframe ...></iframe>" 
+                                                                    className="min-h-[100px] bg-background border-none ring-1 ring-border focus-visible:ring-primary/40 font-mono text-[10px]" 
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+            </div>
+
+            {/* ──────── STEP 3: Registration ──────── */}
+                <div className={cn(currentStep !== 2 && "hidden")}>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -759,8 +1060,8 @@ export default function EditMeetingPage() {
                 </div>
             </div>
 
-            {/* ──────── STEP 3: Hero Content ──────── */}
- <div className={cn(currentStep !== 2 && "hidden")}>
+            {/* ──────── STEP 4: Hero Content ──────── */}
+                <div className={cn(currentStep !== 3 && "hidden")}>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -869,8 +1170,8 @@ export default function EditMeetingPage() {
                 </div>
             </div>
 
-            {/* ──────── STEP 4: Options ──────── */}
- <div className={cn(currentStep !== 3 && "hidden")}>
+            {/* ──────── STEP 5: Options ──────── */}
+                <div className={cn(currentStep !== 4 && "hidden")}>
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -988,11 +1289,11 @@ export default function EditMeetingPage() {
               </div>
 
               {currentStep < WIZARD_STEPS.length - 1 ? (
- <Button type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
+ <Button key="btn-next" type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
  Next Step <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
- <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
+ <Button key="btn-save" type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
  {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Save Changes
                 </Button>

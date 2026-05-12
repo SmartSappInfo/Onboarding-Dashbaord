@@ -13,7 +13,10 @@ import {
   Bot,
   FileText,
   CheckCircle2,
-  PlusCircle
+  PlusCircle,
+  UserCheck,
+  UserCog,
+  UserMinus
 } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 
@@ -36,7 +39,10 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     pdf_status_changed: BadgeCheck,
     note_added: MessageSquare,
     task_created: PlusCircle,
-    task_completed: CheckCircle2
+    task_completed: CheckCircle2,
+    contact_added: UserCheck,
+    contact_updated: UserCog,
+    contact_removed: UserMinus
   };
   return iconMap[type] || Bot;
 };

@@ -37,7 +37,7 @@ interface TemplateCardProps {
 
 function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelete }: TemplateCardProps) {
     return (
- <Card className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
+        <Card className={cn("group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>
  <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-background group-hover:bg-background transition-colors duration-500">
  <div className="flex items-center gap-1.5">
  <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
@@ -48,7 +48,7 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onPreview}><Eye className="h-4 w-4" /></Button>
  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
- <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", cloningId === template.id && "animate-spin")} onClick={onClone} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button>
+ <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", cloningId === template.id ? "animate-spin" : "")} onClick={onClone} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button>
  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
                 </div>
             </div>
@@ -79,7 +79,7 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
  <div className="min-w-0">
  <div className="flex items-center justify-between gap-2 mb-1">
  <CardTitle className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors leading-tight tracking-tight">{template.name}</CardTitle>
-                        {template.workspaceIds && template.workspaceIds.length > 1 && (
+                        {template.workspaceIds && template.workspaceIds.length > 1 ? (
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -92,7 +92,7 @@ function TemplateCard({ template, cloningId, onPreview, onEdit, onClone, onDelet
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                        )}
+                        ) : null}
                     </div>
  <p className="text-[8px] font-bold text-muted-foreground opacity-60">{template.category?.replace('_', ' ')}</p>
                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
@@ -231,13 +231,13 @@ export function TemplateGallery({
  <div className="space-y-16 pb-32">
                     {Object.entries(groupedTemplates).map(([groupName, groupItems]) => (
  <section key={groupName} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {groupBy !== 'none' && (
- <div className="flex items-center gap-4">
- <h2 className="text-xl font-semibold tracking-tight text-foreground/80">{groupName}</h2>
+                            {groupBy !== 'none' ? (
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-xl font-semibold tracking-tight text-foreground/80">{groupName}</h2>
                                     <Badge variant="secondary" className="rounded-full h-6 px-3 font-semibold tabular-nums">{groupItems.length}</Badge>
- <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                                    <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                                 </div>
-                            )}
+                            ) : null}
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {groupItems.map(template => (
                                     <TemplateCard 
@@ -254,12 +254,12 @@ export function TemplateGallery({
                         </section>
                     ))}
                     
-                    {filteredTemplates.length === 0 && (
- <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
- <FileType className="h-16 w-16 text-muted-foreground" />
- <p className="font-semibold text-sm">No templates found.</p>
+                    {filteredTemplates.length === 0 ? (
+                        <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-background flex flex-col items-center justify-center gap-4 opacity-30">
+                            <FileType className="h-16 w-16 text-muted-foreground" />
+                            <p className="font-semibold text-sm">No templates found.</p>
                         </div>
-                    )}
+                    ) : null}
                 </div>
             )}
         </div>

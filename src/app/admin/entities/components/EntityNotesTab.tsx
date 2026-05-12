@@ -31,7 +31,7 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
     const [newNote, setNewNote] = React.useState('');
     const [noteType, setNoteType] = React.useState<EntityNote['noteType']>('general');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [showAddNote, setShowAddNote] = React.useState(!compact);
+    const [showAddNote, setShowAddNote] = React.useState(false);
     
     const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
     const [editContent, setEditContent] = React.useState('');
@@ -426,32 +426,29 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
                         return (
                             <div key={note.id} className="space-y-3">
                                 <div className={cn(
-                                    "bg-card rounded-2xl p-6 border transition-all group relative",
-                                    note.isPinned ? "border-amber-500/30 shadow-md ring-1 ring-amber-500/10" : "border-border/50 shadow-sm hover:shadow-md"
+                                    "rounded-xl p-6 border-l-4 border-amber-400 bg-amber-50/50 transition-all group relative border-t-0 border-r-0 border-b-0",
+                                    note.isPinned ? "shadow-md ring-1 ring-amber-500/10" : "shadow-sm hover:shadow-md"
                                 )}>
                                     {note.isPinned && (
                                         <div className="absolute -top-2.5 -left-1 bg-amber-500 text-white p-1 rounded-lg shadow-lg z-10">
                                             <Pin className="h-3 w-3 fill-current" />
                                         </div>
                                     )}
-                                    <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-start justify-between mb-3 opacity-60">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                                            <div className="h-6 w-6 rounded-full bg-amber-200/50 flex items-center justify-center text-[8px] font-medium text-amber-700">
                                                 {note.createdByName ? note.createdByName.charAt(0).toUpperCase() : '?'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-semibold leading-none">{note.createdByName || 'Unknown User'}</p>
+                                                    <p className="text-[10px] font-medium text-amber-900/70 leading-none">{note.createdByName || 'Unknown User'}</p>
                                                     {note.noteType && note.noteType !== 'general' && (
-                                                        <Badge variant="secondary" className={cn(
-                                                            "text-[8px] px-1.5 py-0 h-4 font-bold uppercase tracking-wider",
-                                                            noteTypes.find(t => t.id === note.noteType)?.color
-                                                        )}>
-                                                            {note.noteType}
-                                                        </Badge>
+                                                        <span className="text-[9px] font-medium text-amber-900/50 uppercase tracking-wider">
+                                                            • {note.noteType}
+                                                        </span>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                <p className="text-[9px] text-amber-900/40 mt-0.5">
                                                     {format(new Date(note.createdAt), 'MMM d, yyyy h:mm a')}
                                                     {note.updatedAt !== note.createdAt && ' (edited)'}
                                                 </p>
@@ -510,7 +507,7 @@ export default function EntityNotesTab({ entityId, compact = false }: EntityNote
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                                        <p className="text-sm text-amber-950/80 whitespace-pre-wrap leading-relaxed font-normal">{note.content}</p>
                                     )}
                                 </div>
 

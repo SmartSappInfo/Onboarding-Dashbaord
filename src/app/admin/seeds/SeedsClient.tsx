@@ -7,15 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { migrateContractsToEntities, rollbackContractsMigration } from '@/lib/entity-migrations';
-import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin, Workflow } from 'lucide-react';
+import { restoreAllEntitiesToActiveAction } from '@/lib/entity-status-migration';
+import { Loader2, Zap, RotateCcw, FileCheck, TriangleAlert, MailCheck, Database, CheckCircle2, AlertCircle, Globe, MapPin, Workflow, ShieldAlert, ShieldCheck, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
 import { migrateAllPermissions } from '@/lib/permissions-migration';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import { seedMaintenanceAction } from '@/app/actions/seed-maintenance-action';
 import { executeDealMigration } from '@/app/actions/deal-migration-actions';
+import { executeMeetingFerAction } from '@/app/actions/meeting-fer-action';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 
@@ -23,16 +24,23 @@ export default function SeedsClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { activeWorkspaceId, activeOrganizationId } = useTenant();
-  
+
   const [migrationStatus, setMigrationStatus] = useState<SeedingState>('idle');
   const [rollbackStatus, setRollbackStatus] = useState<SeedingState>('idle');
   const [permissionsStatus, setPermissionsStatus] = useState<SeedingState>('idle');
   const [globalTemplatesStatus, setGlobalTemplatesStatus] = useState<SeedingState>('idle');
   const [maintenanceStatus, setMaintenanceStatus] = useState<SeedingState>('idle');
 
+  // FER-03 Restoration States
+  const [entityRestorationStatus, setEntityRestorationStatus] = useState<SeedingState>('idle');
+
   // Deal Migration States
   const [dealMigrationStatus, setDealMigrationStatus] = useState<SeedingState>('idle');
   const [dealMigrationMessage, setDealMigrationMessage] = useState<string>('');
+
+  // Meeting FER States
+  const [meetingFerStatus, setMeetingFerStatus] = useState<SeedingState>('idle');
+  const [meetingFerMessage, setMeetingFerMessage] = useState<string>('');
 
   const handleMigration = async () => {
     if (!firestore) return;
@@ -150,7 +158,51 @@ export default function SeedsClient() {
     }
   };
 
+  const handleMeetingFer = async () => {
+    setMeetingFerStatus('seeding');
+    try {
+      const result = await executeMeetingFerAction();
+      if (result.success) {
+        setMeetingFerStatus('success');
+        setMeetingFerMessage(`Enriched ${result.enriched} of ${result.totalMeetings} meetings`);
+        toast({ title: 'Meeting FER Complete!', description: `Enriched ${result.enriched} meetings. ${result.skipped} already up to date.` });
+      } else {
+        throw new Error(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setMeetingFerStatus('error');
+      setMeetingFerMessage(e.message);
+      toast({ variant: 'destructive', title: 'Meeting FER Failed', description: e.message });
+    }
+  };
+
+  const handleEntityRestoration = async () => {
+    setEntityRestorationStatus('seeding');
+    try {
+      const result = await restoreAllEntitiesToActiveAction(
+        'system-admin',
+        'System Administrator',
+        'admin@smartsapp.com'
+      );
+      if (result.success) {
+        toast({ 
+            title: 'FER-03: Entities Restored!', 
+            description: result.message 
+        });
+        setEntityRestorationStatus('success');
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      setEntityRestorationStatus('error');
+      toast({ variant: 'destructive', title: 'Restoration Failed', description: error.message });
+    } finally {
+      setTimeout(() => setEntityRestorationStatus('idle'), 2500);
+    }
+  };
+
     return (
+
         <div className="h-full overflow-y-auto w-full">
             <div className="space-y-12 pb-32 w-full">
             
@@ -238,6 +290,47 @@ export default function SeedsClient() {
                     />
                 </div>
             </section>
+
+            {/* Data Restoration (FER-03) */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground text-left">Entity Status Restoration (FER-03)</h3>
+                    <p className="text-muted-foreground font-medium text-left">Modernize the platform by restoring all entities to "active" status by default.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                    <SimpleMigrationCard
+                        title="❤️ Restore Entities Hub"
+                        description="Fetches all universal identity records (entities) and operational links (workspace_entities) and restores them to status: 'active'. This ensures full visibility in the modernized hub."
+                        onSync={handleEntityRestoration}
+                        status={entityRestorationStatus}
+                        icon={Heart}
+                        syncLabel="Restore Active Hub"
+                        buttonClassName="bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20 ring-2 ring-rose-500 ring-offset-2 ring-offset-background"
+                    />
+                </div>
+            </section>
+
+            {/* Meeting Infrastructure (FER) */}
+            <section className="space-y-8">
+                <div className="flex flex-col gap-1 items-start">
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground text-left">Meeting Infrastructure (FER)</h3>
+                    <p className="text-muted-foreground font-medium text-left">Modernize meeting protocols: enrich slugs, registration defaults, and migrate registrant URLs to the new Waiting Room architecture.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                    <SimpleMigrationCard
+                        title="🚀 Modernize Meeting Protocols"
+                        description="Fetches all meetings and enriches them with V3 defaults (meetingSlug, heroLayout, bannerType, brandingEnabled). Also migrates all registrant personalizedMeetingUrl values to the new /join waiting room route. Safe to re-run."
+                        onSync={handleMeetingFer}
+                        status={meetingFerStatus}
+                        icon={Globe}
+                        syncLabel={meetingFerStatus === 'success' ? (meetingFerMessage || 'Done') : 'Execute Meeting FER'}
+                        buttonClassName="bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20 ring-2 ring-indigo-500 ring-offset-2 ring-offset-background"
+                    />
+                </div>
+            </section>
+
         </div>
     </div>
   );

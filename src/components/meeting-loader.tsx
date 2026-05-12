@@ -1,0 +1,281 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import dynamic from 'next/dynamic';
+
+import { useFirestore } from '@/firebase';
+import type { Meeting, Entity } from '@/lib/types';
+import { MEETING_TYPES } from '@/lib/types';
+import MeetingHero from '@/components/meeting-hero';
+import { Skeleton } from '@/components/ui/skeleton';
+import AppDownloadSection from '@/components/app-download-section';
+import HelpSection from './help-section';
+import BrochureDownloadSection from './brochure-download-section';
+import SetupProfileSection from './setup-profile-section';
+import TestimonialsSection from './testimonials-section';
+import WelcomeSection from './welcome-section';
+import KickoffMeetingHero from './kickoff-meeting-hero';
+import TrainingMeetingHero from './training-meeting-hero';
+import WebinarMeetingHero from './webinar-meeting-hero';
+import MeetingNotFound from './meeting-not-found';
+import RecordingSection from './recording-section';
+import { MeetingThemeProvider } from './meeting-theme-provider';
+
+// Corrected relative paths for dynamic imports from src/components/
+const ActivityTimeline = dynamic(() => import('../app/admin/components/ActivityTimeline'), {
+    loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
+});
+
+const LogActivityModal = dynamic(() => import('../app/admin/entities/components/LogActivityModal'), { ssr: false });
+
+function MeetingPageSkeleton() {
+  return (
+    <div className="container grid grid-cols-1 items-center gap-12 py-10 md:py-20 lg:gap-20">
+        <div className="flex flex-col items-center text-center md:items-start md:text-left">
+            <div className="mb-6 flex items-center gap-4">
+                <Skeleton className="h-16 w-16 rounded-full" />
+                <div>
+                    <Skeleton className="h-7 w-48" />
+                    <Skeleton className="mt-2 h-5 w-32" />
+                </div>
+            </div>
+            <Skeleton className="h-12 w-full max-w-lg" />
+            <Skeleton className="mt-4 h-6 w-full max-w-md" />
+            <Skeleton className="mt-4 h-6 w-full max-w-sm" />
+            <div className="my-10 w-full max-w-lg">
+                <div className="grid grid-cols-4 gap-2 sm:gap-5 justify-center">
+                    <Skeleton className="h-24 w-24 rounded-lg" />
+                    <Skeleton className="h-24 w-24 rounded-lg" />
+                    <Skeleton className="h-24 w-24 rounded-lg" />
+                    <Skeleton className="h-24 w-24 rounded-lg" />
+                </div>
+            </div>
+            <Skeleton className="h-16 w-48 rounded-full" />
+        </div>
+        <div className="relative flex items-center justify-center min-h-[400px] w-full order-first md:order-last">
+            <div className="relative flex items-center justify-center">
+                <Skeleton className="relative w-[640px] h-[640px] object-contain" />
+            </div>
+        </div>
+    </div>
+  )
+}
+
+const ParentEngagementLayout = ({ entity, meeting }: { entity: any | null, meeting: Meeting }) => {
+  const helpVideos = [
+      'https://youtu.be/4zchas6SKtE',
+      'https://youtu.be/1p5ICDnyzjk',
+      'https://youtu.be/XuixxYGw02g',
+      'https://youtu.be/qlK8TVipyDs',
+      'https://youtu.be/akt0jFWqqPs',
+      'https://youtu.be/XmP7rNPSRDc',
+      'https://youtu.be/ORUNmDdXMZQ',
+      'https://youtu.be/BNJ8jAw3MRE',
+      'https://youtu.be/Ft7ViVtzX3U',
+    ];
+  return (
+    <>
+      <MeetingHero entity={entity} meeting={meeting} />
+      <WelcomeSection />
+      <AppDownloadSection />
+      <SetupProfileSection />
+      {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+      <HelpSection helpVideos={helpVideos} />
+      <TestimonialsSection />
+    </>
+  )
+}
+
+const KickoffLayout = ({ entity, meeting }: { entity: any | null, meeting: Meeting }) => {
+  return (
+    <>
+      <KickoffMeetingHero entity={entity} meeting={meeting} />
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
+  )
+}
+
+const TrainingLayout = ({ entity, meeting }: { entity: any | null, meeting: Meeting }) => {
+  return (
+    <>
+      <TrainingMeetingHero entity={entity} meeting={meeting} />
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
+  )
+}
+
+const WebinarLayout = ({ entity, meeting }: { entity: any | null, meeting: Meeting }) => {
+  return (
+    <>
+      <WebinarMeetingHero entity={entity} meeting={meeting} />
+      {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
+  )
+}
+
+interface MeetingLoaderProps {
+    slug: string;
+    typeSlug: string;
+}
+
+/**
+ * MeetingLoader — V3 public meeting page resolver.
+ *
+ * Resolution order:
+ * 1. Primary: query by `meetingSlug` + `type.slug` (new V3 meetings)
+ * 2. Fallback: query by `entitySlug` (legacy meetings — backward compat)
+ *
+ * Entity resolution: only if `meeting.entityId` is set.
+ * Standalone meetings (no entity) are fully supported — entity is null.
+ */
+export default function MeetingLoader({ slug, typeSlug }: MeetingLoaderProps) {
+    const firestore = useFirestore();
+    const [entity, setEntity] = useState<any | null>(null);
+    const [meeting, setMeeting] = useState<Meeting | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!firestore || !slug || !typeSlug) {
+            return;
+        };
+
+        const fetchData = async () => {
+          setIsLoading(true);
+          setEntity(null);
+          setMeeting(null);
+          setError(null);
+
+          try {
+            const meetingsCol = collection(firestore, 'meetings');
+            let allMeetings: Meeting[] = [];
+
+            // ── Step 1: Try meetingSlug (V3 meetings) ────────────
+            const slugQuery = query(
+                meetingsCol, 
+                where('meetingSlug', '==', slug.toLowerCase())
+            );
+            const slugSnapshot = await getDocs(slugQuery);
+
+            if (!slugSnapshot.empty) {
+                allMeetings = slugSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
+            } else {
+                // ── Step 2: Fallback to entitySlug (legacy) ──────
+                const legacyQuery = query(
+                    meetingsCol,
+                    where('entitySlug', '==', slug.toLowerCase())
+                );
+                const legacySnapshot = await getDocs(legacyQuery);
+                
+                if (legacySnapshot.empty) {
+                    setError(`Meeting not found for: ${slug}`);
+                    setIsLoading(false);
+                    return;
+                }
+                allMeetings = legacySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
+            }
+
+            // Filter by type
+            const meetingsForType = allMeetings.filter(m => {
+                const mTypeSlug = m.type?.slug || '';
+                return mTypeSlug === typeSlug || (typeSlug === 'parent-engagement' && m.type?.id === 'parent');
+            });
+
+            if (meetingsForType.length === 0) {
+                setError(`No ${typeSlug} session found.`);
+                setIsLoading(false);
+                return;
+            }
+
+            // Sort: upcoming first, then nearest in the past
+            const now = new Date();
+            const sorted = meetingsForType.sort((a, b) => {
+                const dateA = new Date(a.meetingTime).getTime();
+                const dateB = new Date(b.meetingTime).getTime();
+                const isAUpcoming = dateA >= now.getTime();
+                const isBUpcoming = dateB >= now.getTime();
+                if (isAUpcoming && !isBUpcoming) return -1;
+                if (!isAUpcoming && isBUpcoming) return 1;
+                return Math.abs(dateA - now.getTime()) - Math.abs(dateB - now.getTime());
+            });
+
+            const bestMeeting = sorted[0];
+            setMeeting(bestMeeting);
+
+            // ── Entity resolution (optional — only if entityId exists) ──
+            if (bestMeeting.entityId) {
+                const entityRef = doc(firestore, 'entities', bestMeeting.entityId);
+                const entitySnap = await getDoc(entityRef);
+                
+                if (entitySnap.exists()) {
+                    const data = entitySnap.data();
+                    setEntity({
+                        id: entitySnap.id,
+                        name: data.name,
+                        slug: data.slug || slug,
+                        logoUrl: data.institutionData?.logoUrl || data.logoUrl,
+                        slogan: data.institutionData?.slogan || data.slogan,
+                        contacts: data.contacts || []
+                    });
+                } else {
+                    // Entity referenced but not found — continue without entity (don't block)
+                    setEntity(null);
+                }
+            } else {
+                // Standalone meeting — no entity linked
+                setEntity(null);
+            }
+
+          } catch (e: any) {
+            console.error("MeetingLoader: Critical error", e);
+            setError("Communication failure with database.");
+          } finally {
+            setIsLoading(false);
+          }
+        };
+
+        fetchData();
+    }, [firestore, slug, typeSlug]);
+      
+    if (isLoading) {
+        return (
+            <section className="w-full bg-background min-h-screen flex items-center justify-center">
+                <MeetingPageSkeleton />
+            </section>
+        );
+    }
+
+    if (error || !meeting) {
+        return (
+            <div className="container py-20 min-h-screen flex flex-col items-center justify-center">
+                <MeetingNotFound />
+            </div>
+        );
+    }
+
+    // entity is allowed to be null for standalone meetings
+    const isTraining = typeSlug === 'training';
+
+    return (
+      <MeetingThemeProvider forceDark={isTraining}>
+        {(() => {
+          switch(typeSlug) {
+            case 'parent-engagement':
+              return <ParentEngagementLayout entity={entity} meeting={meeting} />;
+            case 'kickoff':
+              return <KickoffLayout entity={entity} meeting={meeting} />;
+            case 'training':
+              return <TrainingLayout entity={entity} meeting={meeting} />;
+            case 'webinar':
+              return <WebinarLayout entity={entity} meeting={meeting} />;
+            default:
+              return <div className="container py-20 text-center text-destructive font-black uppercase tracking-widest">Unsupported Protocol.</div>;
+          }
+        })()}
+      </MeetingThemeProvider>
+    );
+}

@@ -56,7 +56,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                                 disabled 
                                 placeholder={question.placeholder || (
                                     question.type === 'email' ? 'email@example.com' : 
-                                    question.type === 'phone' ? '+1 555-0123' : 
+                                    question.type === 'phone' ? '+233 24 123 4567' : 
                                     question.type === 'number' ? 'e.g. 42' : 
                                     question.type === 'link' ? 'https://example.com' : 
                                     "Type your answer here..."

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 export default function MeetingsLayout({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" forcedTheme="light" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       {children}
     </ThemeProvider>
   );

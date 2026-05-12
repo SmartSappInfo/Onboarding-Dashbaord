@@ -18,7 +18,7 @@ import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';
 import MeetingJoinSection from '@/components/meeting-join-section';
 
 interface KickoffMeetingHeroProps {
-  entity: Entity | School;
+  entity: Entity | School | null;
   meeting: Meeting;
 }
 
@@ -27,10 +27,12 @@ const DEFAULT_HERO = "https://firebasestorage.googleapis.com/v0/b/studio-9220106
 export default function KickoffMeetingHero({ entity, meeting }: KickoffMeetingHeroProps) {
   const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
 
-  // Helper to get entity properties (works for both Entity and School types)
-  const entityName = (entity as any).displayName || (entity as any).name || '';
-  const entityLogo = (entity as any).logoUrl;
-  const entitySlogan = (entity as any).slogan;
+  // V3: Branding resolution
+  const resolvedLogo = meeting.logoUrl || (entity as any)?.logoUrl || null;
+  const entityName = entity ? ((entity as any).displayName || (entity as any).name || '') : '';
+  const entitySlogan = entity ? ((entity as any).slogan || '') : '';
+  const showBranding = meeting.brandingEnabled !== false && (resolvedLogo || entityName);
+  const showFormLayout = meeting.heroLayout === 'form' && meeting.registrationEnabled;
 
   useEffect(() => {
     const checkMeetingState = () => {
@@ -78,20 +80,24 @@ export default function KickoffMeetingHero({ entity, meeting }: KickoffMeetingHe
           {/* Left Column */}
           <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">
             
-            {entityLogo && (
+            {showBranding && (
               <div className="mb-8 md:mb-16 flex items-center gap-4">
-                <div className="relative w-16 h-16">
-                  <Image
-                    src={entityLogo}
-                    alt={`${entityName} logo`}
-                    fill
-                    className="rounded-full bg-white p-1 shadow-md object-contain"
-                  />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold uppercase tracking-tight">{entityName}</h2>
-                  {entitySlogan && <p className="text-foreground/80 font-medium italic">{entitySlogan}</p>}
-                </div>
+                {resolvedLogo && (
+                  <div className="relative w-16 h-16">
+                    <Image
+                      src={resolvedLogo}
+                      alt={`${entityName || 'Meeting'} logo`}
+                      fill
+                      className="rounded-full bg-white p-1 shadow-md object-contain"
+                    />
+                  </div>
+                )}
+                {entityName && (
+                  <div>
+                    <h2 className="text-2xl font-bold uppercase tracking-tight">{entityName}</h2>
+                    {entitySlogan && <p className="text-foreground/80 font-medium italic">{entitySlogan}</p>}
+                  </div>
+                )}
               </div>
             )}
 
@@ -120,8 +126,8 @@ export default function KickoffMeetingHero({ entity, meeting }: KickoffMeetingHe
               {meetingState === 'UPCOMING' && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
             </div>
             
-            {meetingState === 'UPCOMING' && (
-              <MeetingJoinSection meeting={meeting} entityId={entity.id} />
+            {meetingState === 'UPCOMING' && !showFormLayout && (
+              <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
             )}
             
             {meetingState === 'ENDED_NO_RECORDING' && (
@@ -142,24 +148,35 @@ export default function KickoffMeetingHero({ entity, meeting }: KickoffMeetingHe
 
           </div>
 
-          {/* Right Column */}
+          {/* Right Column — V3: Supports 'image' or 'form' layout mode */}
           <div className="relative flex items-center justify-center min-h-[280px] md:min-h-[400px] w-full order-first md:order-last">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="relative flex items-center justify-center w-full max-w-[640px]"
-              >
+              {showFormLayout && meetingState === 'UPCOMING' ? (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="w-full max-w-lg"
+                >
+                  <MeetingJoinSection meeting={meeting} entityId={entity?.id} />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="relative flex items-center justify-center w-full max-w-[640px]"
+                >
                   <div className="relative aspect-square w-full">
                       <Image
                           src={meeting.heroImageUrl || DEFAULT_HERO}
-                          alt={`Hero image for ${entityName}`}
+                          alt={`Hero image for ${entityName || 'meeting'}`}
                           fill
                           className="object-contain relative z-10 drop-shadow-[0_20px_50px_rgba(59,95,255,0.3)]"
                           priority
                       />
                   </div>
-              </motion.div>
+                </motion.div>
+              )}
           </div>
         </div>
       </div>

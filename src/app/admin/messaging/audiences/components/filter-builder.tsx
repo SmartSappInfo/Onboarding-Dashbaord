@@ -4,6 +4,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import type { Pipeline, Automation } from '@/lib/types';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
 import type { AudienceFilter, AudienceFilterField, Tag } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,8 @@ import { cn } from '@/lib/utils';
 import {
     Plus, X, Search, Users, Loader2, Filter, ChevronDown, Eye, Trash2,
 } from 'lucide-react';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 
 // ─── Field + Operator Config ──────────────────────────────────────────────────
 
@@ -23,7 +26,7 @@ interface FieldConfig {
     label: string;
     group: string;
     operators: { value: string; label: string }[];
-    valueType: 'tags' | 'select' | 'text' | 'none';
+    valueType: 'tags' | 'select' | 'text' | 'textList' | 'roles' | 'pipelines' | 'stages' | 'automations' | 'none';
     options?: { value: string; label: string }[];
 }
 
@@ -93,11 +96,155 @@ const FIELD_CONFIG: Record<string, FieldConfig> = {
         ],
         valueType: 'text',
     },
+    dealPipeline: {
+        label: 'Deal Pipeline',
+        group: 'CRM & Automation',
+        operators: [
+            { value: 'any_of', label: 'is in any of' },
+            { value: 'is_not', label: 'is not in' },
+        ],
+        valueType: 'pipelines',
+    },
+    dealStage: {
+        label: 'Deal Stage',
+        group: 'CRM & Automation',
+        operators: [
+            { value: 'any_of', label: 'is in any of' },
+            { value: 'is_not', label: 'is not in' },
+        ],
+        valueType: 'stages',
+    },
+    automationId: {
+        label: 'Automation',
+        group: 'CRM & Automation',
+        operators: [
+            { value: 'any_of', label: 'enrolled in any of' },
+            { value: 'is_not', label: 'not enrolled in' },
+        ],
+        valueType: 'automations',
+    },
+    automationStatus: {
+        label: 'Automation Status',
+        group: 'CRM & Automation',
+        operators: [
+            { value: 'is', label: 'is' },
+            { value: 'is_not', label: 'is not' },
+        ],
+        valueType: 'select',
+        options: [
+            { value: 'running', label: 'Currently Running' },
+            { value: 'completed', label: 'Completed' },
+            { value: 'failed', label: 'Failed' },
+        ],
+    },
 };
 
-const FIELD_GROUPS = ['Contact', 'Location'];
+const FIELD_GROUPS = ['Contact', 'Location', 'CRM & Automation'];
 
 // ─── Tag Picker (refactored from TagAudienceSelector — R3 fix) ───────────────
+
+// ─── Pipeline Picker ──────────────────────────────────────────────────────────
+
+function PipelineValuePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+    const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace() as any;
+
+    const pipelinesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+
+    const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+
+    const options = React.useMemo(() =>
+        (pipelines || []).map(p => ({ label: p.name, value: p.id })),
+    [pipelines]);
+
+    return (
+        <div className="w-[200px]">
+            <MultiSelect
+                options={options}
+                value={value}
+                onChange={onChange}
+                placeholder="Select pipelines..."
+                className="h-8 min-h-8 py-0.5 px-2 text-[10px] font-bold bg-card border-border/50 rounded-xl"
+                maxCount={2}
+            />
+        </div>
+    );
+}
+
+// ─── Stage Picker ─────────────────────────────────────────────────────────────
+
+function StageValuePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+    const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace() as any;
+
+    const pipelinesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+
+    const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+
+    // Aggregate all stages across all workspace pipelines
+    const options = React.useMemo(() => {
+        if (!pipelines) return [];
+        const stageMap = new Map<string, string>();
+        pipelines.forEach(p => {
+            (p.stageIds || []).forEach(stageId => {
+                if (!stageMap.has(stageId)) {
+                    stageMap.set(stageId, `${stageId} (${p.name})`);
+                }
+            });
+        });
+        return Array.from(stageMap.entries()).map(([v, label]) => ({ label, value: v }));
+    }, [pipelines]);
+
+    return (
+        <div className="w-[200px]">
+            <MultiSelect
+                options={options}
+                value={value}
+                onChange={onChange}
+                placeholder="Select stages..."
+                className="h-8 min-h-8 py-0.5 px-2 text-[10px] font-bold bg-card border-border/50 rounded-xl"
+                maxCount={2}
+            />
+        </div>
+    );
+}
+
+// ─── Automation Picker ────────────────────────────────────────────────────────
+
+function AutomationValuePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+    const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace() as any;
+
+    const automationsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'automations'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+
+    const { data: automations } = useCollection<Automation>(automationsQuery);
+
+    const options = React.useMemo(() =>
+        (automations || []).map(a => ({ label: a.name, value: a.id })),
+    [automations]);
+
+    return (
+        <div className="w-[200px]">
+            <MultiSelect
+                options={options}
+                value={value}
+                onChange={onChange}
+                placeholder="Select automations..."
+                className="h-8 min-h-8 py-0.5 px-2 text-[10px] font-bold bg-card border-border/50 rounded-xl"
+                maxCount={2}
+            />
+        </div>
+    );
+}
 
 function TagValuePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
     const firestore = useFirestore();
@@ -222,6 +369,24 @@ const FilterRow = React.memo(function FilterRow({
             {needsValue && config?.valueType === 'text' && (
                 <Input value={filter.value || ''} onChange={e => onUpdate({ ...filter, value: e.target.value })} placeholder="Value..." className="h-8 w-[130px] rounded-xl text-[10px] font-bold bg-card border-border/50" />
             )}
+            {needsValue && config?.valueType === 'pipelines' ? (
+                <PipelineValuePicker
+                    value={Array.isArray(filter.value) ? filter.value : []}
+                    onChange={(v) => onUpdate({ ...filter, value: v })}
+                />
+            ) : null}
+            {needsValue && config?.valueType === 'stages' ? (
+                <StageValuePicker
+                    value={Array.isArray(filter.value) ? filter.value : []}
+                    onChange={(v) => onUpdate({ ...filter, value: v })}
+                />
+            ) : null}
+            {needsValue && config?.valueType === 'automations' ? (
+                <AutomationValuePicker
+                    value={Array.isArray(filter.value) ? filter.value : []}
+                    onChange={(v) => onUpdate({ ...filter, value: v })}
+                />
+            ) : null}
 
             {/* Remove */}
             <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-destructive shrink-0">
@@ -238,13 +403,17 @@ interface FilterBuilderProps {
     filterLogic: 'AND' | 'OR';
     onChange: (filters: AudienceFilter[], logic: 'AND' | 'OR') => void;
     className?: string;
+    contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
+    channel?: 'email' | 'sms';
+    showPreview?: boolean;
 }
 
-export function FilterBuilder({ filters, filterLogic, onChange, className }: FilterBuilderProps) {
+export function FilterBuilder({ filters, filterLogic, onChange, className, contactScope = 'all', channel, showPreview = true }: FilterBuilderProps) {
     const { activeWorkspaceId } = useWorkspace() as any;
     const [isPreviewing, setIsPreviewing] = React.useState(false);
     const [previewResult, setPreviewResult] = React.useState<{
         count: number;
+        contactCount: number;
         preview: { id: string; name: string; tags: string[] }[];
     } | null>(null);
     const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -271,7 +440,7 @@ export function FilterBuilder({ filters, filterLogic, onChange, className }: Fil
 
     // Debounced preview (800ms — R2 fix)
     const fetchPreview = React.useCallback(() => {
-        if (!activeWorkspaceId || filters.length === 0) {
+        if (!activeWorkspaceId || !showPreview) {
             setPreviewResult(null);
             return;
         }
@@ -284,15 +453,21 @@ export function FilterBuilder({ filters, filterLogic, onChange, className }: Fil
                     filters: filters as any,
                     filterLogic,
                     limit: 5,
+                    contactScope,
+                    channel,
                 });
                 if (result.success) {
-                    setPreviewResult({ count: result.count ?? 0, preview: result.preview ?? [] });
+                    setPreviewResult({ 
+                        count: result.count ?? 0, 
+                        contactCount: result.contactCount ?? 0, 
+                        preview: result.preview ?? [] 
+                    });
                 }
             } finally {
                 setIsPreviewing(false);
             }
         }, 800);
-    }, [activeWorkspaceId, filters, filterLogic]);
+    }, [activeWorkspaceId, filters, filterLogic, contactScope, channel]);
 
     React.useEffect(() => {
         fetchPreview();
@@ -312,12 +487,17 @@ export function FilterBuilder({ filters, filterLogic, onChange, className }: Fil
                 </div>
                 {/* Live count */}
                 <div aria-live="polite" className="flex items-center gap-2">
-                    {isPreviewing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                    {previewResult && !isPreviewing && (
-                        <Badge variant="outline" className="h-7 px-3 font-bold text-xs gap-1.5 rounded-xl">
-                            <Users className="h-3.5 w-3.5" />
-                            {previewResult.count.toLocaleString()} recipient{previewResult.count !== 1 ? 's' : ''}
-                        </Badge>
+                    {showPreview && isPreviewing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    {showPreview && previewResult && !isPreviewing && (
+                        <div className="flex gap-2">
+                            <Badge variant="outline" className="h-7 px-3 font-bold text-xs gap-1.5 rounded-xl border-primary/20 text-primary">
+                                <Users className="h-3.5 w-3.5" />
+                                {previewResult.count.toLocaleString()} entity{previewResult.count !== 1 ? 'ies' : ''}
+                            </Badge>
+                            <Badge variant="secondary" className="h-7 px-3 font-bold text-xs gap-1.5 rounded-xl">
+                                {previewResult.contactCount.toLocaleString()} contact{previewResult.contactCount !== 1 ? 's' : ''}
+                            </Badge>
+                        </div>
                     )}
                 </div>
             </div>
@@ -345,7 +525,7 @@ export function FilterBuilder({ filters, filterLogic, onChange, className }: Fil
             </Button>
 
             {/* Preview sample */}
-            {previewResult && previewResult.preview.length > 0 && filters.length > 0 && (
+            {showPreview && previewResult && previewResult.preview.length > 0 && filters.length > 0 && (
                 <>
                     <Separator className="bg-border/30" />
                     <div className="space-y-2">

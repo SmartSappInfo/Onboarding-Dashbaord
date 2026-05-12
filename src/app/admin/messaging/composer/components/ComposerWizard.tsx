@@ -11,8 +11,9 @@ import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
 import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
+import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
-import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt } from '@/lib/messaging-actions';
+import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt, type ResolvedRecipient } from '@/lib/messaging-actions';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
@@ -522,22 +523,42 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 setIsSending(true);
                 setSendProgress({ sent: 0, total: data.selectedEntityIds.length, currentEntity: '' });
                 const results: any = { success: true, totalSent: 0, totalFailed: 0, failedEntities: [], logIds: [] };
+                const entityMap = new Map(workspaceEntities.map(e => [e.id, e]));
+
                 for (let i = 0; i < data.selectedEntityIds.length; i++) {
                     const entityId = data.selectedEntityIds[i];
                     setSendProgress(p => ({ ...p, currentEntity: entityId }));
                     try {
+                        const cachedEntity = entityMap.get(entityId);
+                        let entityName = cachedEntity ? (cachedEntity as any).displayName : undefined;
+                        
+                        if (!entityName || entityName === 'Unknown Entity') {
+                            const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
+                            entityName = contactRes?.name || 'Unknown Entity';
+                        }
+
                         const recipients = await resolveRecipientContacts({
                             entityId, workspaceId: activeWorkspace?.id,
                             contactScope: data.contactScope,
                             contactTypeFilter: data.contactTypeFilter,
                             channel: data.channel,
                         });
-                        if (!recipients.length) { results.totalFailed++; results.failedEntities.push({ entityId, error: 'No contacts for scope/channel.' }); continue; }
+                        if (!recipients.length) { 
+                            results.totalFailed++; 
+                            results.failedEntities.push({ 
+                                entityId, 
+                                entityName,
+                                error: 'No contacts for scope/channel.' 
+                            }); 
+                            continue; 
+                        }
                         
                         const { sendRawMessage, sendMessage } = await import('@/lib/messaging-engine');
 
-                        for (const recipient of recipients) {
+                        for (const recipientObj of (recipients as any[])) {
+                            const r = recipientObj as ResolvedRecipient;
                             let res;
+                            const recipient = r.contact;
                             if (data.messageSourceType === 'template') {
                                 res = await sendMessage({
                                     templateId: data.templateId!, senderProfileId: data.senderProfileId!,
@@ -562,9 +583,26 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     updateEntityLastContactedAt(entityId, activeWorkspace.id).catch(() => {});
                                 }
                             }
-                            else { results.totalFailed++; results.failedEntities.push({ entityId: `${entityId} (${recipient})`, error: res.error || 'Unknown' }); }
+                            else { 
+                                results.totalFailed++; 
+                                results.failedEntities.push({ 
+                                    entityId, 
+                                    entityName: r.entityName || entityName,
+                                    contactName: r.contactName,
+                                    contactDetail: recipient,
+                                    error: res.error || 'Unknown' 
+                                }); 
+                            }
                         }
-                    } catch (e: any) { results.totalFailed++; results.failedEntities.push({ entityId, error: e.message }); }
+                    } catch (e: any) { 
+                        results.totalFailed++; 
+                            const errorEntity = entityMap.get(entityId);
+                            results.failedEntities.push({ 
+                                entityId, 
+                                entityName: errorEntity ? (errorEntity as any).displayName : 'Unknown Entity',
+                                error: e.message 
+                            }); 
+                    }
                     setSendProgress(p => ({ ...p, sent: i + 1 }));
                     if (i < data.selectedEntityIds.length - 1) await new Promise(r => setTimeout(r, 500));
                 }
@@ -1255,12 +1293,17 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <Label className="text-xs font-bold text-red-900 uppercase tracking-widest ml-1">Error Logs</Label>
                                     <div className="max-h-36 overflow-y-auto rounded-xl border border-red-200 bg-red-50/50 p-2">
                                         <div className="space-y-2">
-                                            {sendSummary.failedEntities.map((f, i: number) => (
+                                            {sendSummary.failedEntities.map((f: any, i: number) => (
                                                 <div key={i} className="p-2.5 rounded-lg bg-card border border-red-200 space-y-0.5 shadow-sm">
                                                     <div className="flex items-center gap-1.5">
                                                         <Building className="h-3 w-3 text-red-600" />
-                                                        <span className="text-xs font-bold text-red-900">{f.entityId || 'Unknown'}</span>
+                                                        <span className="text-xs font-bold text-red-900">
+                                                            {f.entityName}{f.contactName && f.contactName !== f.entityName ? ` - ${f.contactName}` : ''}
+                                                        </span>
                                                     </div>
+                                                    {f.contactDetail ? (
+                                                        <p className="text-[9px] font-semibold text-muted-foreground pl-4 uppercase tracking-tighter opacity-70">{f.contactDetail}</p>
+                                                    ) : null}
                                                     <p className="text-[10px] text-red-700 pl-4">{f.error}</p>
                                                 </div>
                                             ))}

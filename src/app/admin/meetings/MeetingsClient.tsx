@@ -64,6 +64,8 @@ import { useTenant } from '@/context/TenantContext'; // Added useTenant import
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MeetingCalendar from './components/MeetingCalendar';
+import MeetingQRDialog from './components/MeetingQRDialog';
+import { QrCode } from 'lucide-react';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -83,6 +85,11 @@ export default function MeetingsHubClient() {
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState('list');
+  const [meetingForQR, setMeetingForQR] = useState<Meeting | null>(null);
+  const [meetingForTemplate, setMeetingForTemplate] = useState<Meeting | null>(null);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDesc, setTemplateDesc] = useState('');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const { singular, plural } = useTerminology();
 
@@ -143,7 +150,10 @@ export default function MeetingsHubClient() {
                 return entity.assignedTo?.userId === assignedUserId;
             }).map(s => s.entityId)
         );
-        temp = temp.filter(m => m.entityId && filteredEntityIds.has(m.entityId));
+        temp = temp.filter(m => {
+            if (!m.entityId) return assignedUserId === 'all' || !assignedUserId; // Standalone meetings only show if no specific user filter or 'all'
+            return filteredEntityIds.has(m.entityId);
+        });
     }
 
     // Then filter by type
@@ -191,10 +201,47 @@ export default function MeetingsHubClient() {
  return <div className="text-destructive p-8 text-left">Error loading meetings: {error.message}</div>;
   }
 
+  const handleSaveAsTemplate = async () => {
+    if (!meetingForTemplate || !firestore || !activeWorkspaceId) return;
+    setIsSavingTemplate(true);
+    try {
+        const templatesRef = collection(firestore, 'custom_meeting_templates');
+        await addDoc(templatesRef, {
+            title: templateName,
+            description: templateDesc,
+            typeId: meetingForTemplate.type.id,
+            workspaceId: activeWorkspaceId,
+            createdAt: new Date().toISOString(),
+            defaults: {
+                heroTitle: meetingForTemplate.heroTitle || '',
+                heroDescription: meetingForTemplate.heroDescription || '',
+                heroTagline: meetingForTemplate.heroTagline || '',
+                heroCtaLabel: meetingForTemplate.heroCtaLabel || '',
+                logoUrl: meetingForTemplate.logoUrl || '',
+                brandingEnabled: meetingForTemplate.brandingEnabled ?? true,
+                heroLayout: meetingForTemplate.heroLayout || 'image',
+                registrationEnabled: meetingForTemplate.registrationEnabled ?? false,
+                registrationRequiredToJoin: meetingForTemplate.registrationRequiredToJoin ?? false,
+                registrationMode: meetingForTemplate.registrationMode || 'open',
+                registrationFields: meetingForTemplate.registrationFields || [],
+                registrationSuccessMessage: meetingForTemplate.registrationSuccessMessage || '',
+                capacityLimit: meetingForTemplate.capacityLimit || 0,
+                waitlistEnabled: meetingForTemplate.waitlistEnabled ?? false,
+            }
+        });
+        toast({ title: "Template Saved", description: "You can now use this layout for new sessions." });
+        setMeetingForTemplate(null);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: "Failed to save template", description: error.message });
+    } finally {
+        setIsSavingTemplate(false);
+    }
+  };
+
   const renderActions = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
     const entityEmail = meeting.entityId ? entityEmailMap.get(meeting.entityId) : undefined;
-    const publicUrl = `/meetings/${type.slug}/${meeting.entitySlug}`;
+    const publicUrl = `/meetings/${type.slug}/${meeting.meetingSlug || meeting.entitySlug}`;
 
     return (
  <div className="flex items-center justify-end gap-1">
@@ -288,6 +335,20 @@ export default function MeetingsHubClient() {
                     </Link>
                 </DropdownMenuItem>
             )}
+            <DropdownMenuItem onClick={() => setMeetingForQR(meeting)}>
+                <QrCode className="mr-2 h-4 w-4" />
+                <span>Generate QR Code</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => {
+                setMeetingForTemplate(meeting);
+                setTemplateName(meeting.heroTitle || (meeting.entityName ? `${meeting.entityName} Layout` : 'New Template'));
+                setTemplateDesc(`Custom layout based on ${meeting.heroTitle || 'previous session'}.`);
+              }}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              <span>Save as Template</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
  className="text-destructive focus:text-destructive-foreground focus:bg-destructive/10"
@@ -309,7 +370,7 @@ export default function MeetingsHubClient() {
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex flex-col items-start">
                             <h1 className="text-3xl font-bold text-foreground">
-                                Session Registry
+                                Meetings and Webinars
                             </h1>
                             <p className="text-muted-foreground text-sm mt-1">
                                 Scheduled meetings, webinars, and attendance data
@@ -382,9 +443,9 @@ export default function MeetingsHubClient() {
                                 ))
                             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                                 filteredMeetings.map((meeting) => {
-                                const type = meeting.type || MEETING_TYPES[0];
+                                 const type = meeting.type || MEETING_TYPES[0];
                                  const logoUrl = meeting.entityId ? entityLogoMap.get(meeting.entityId) : undefined;
-                                 const safeEntityName = meeting.entityName || (entities?.find(e => e.entityId === meeting.entityId)?.displayName) || 'Unknown Entity';
+                                 const safeEntityName = meeting.entityName || (meeting.entityId ? entities?.find(e => e.entityId === meeting.entityId)?.displayName : null) || meeting.heroTitle || 'Standalone Session';
                                 return (
                                 <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
@@ -438,20 +499,79 @@ export default function MeetingsHubClient() {
                 </div>
             </div>
 
-      <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
- <AlertDialogContent className="rounded-[2.5rem]">
-          <AlertDialogHeader>
- <AlertDialogTitle className="font-semibold tracking-tight">Purge Session Architecture?</AlertDialogTitle>
- <AlertDialogDescription className="text-sm font-medium">
- This will permanently remove the scheduled session for <span className="font-bold text-foreground">"{meetingToDelete?.entityName}"</span> and its attendance logic.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
- <AlertDialogFooter className="mt-4">
- <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
- <AlertDialogAction onClick={handleDeleteMeeting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-semibold px-8 shadow-xl">Delete Protocol</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
+          <AlertDialogContent className="rounded-[2.5rem]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-semibold tracking-tight">Purge Session Architecture?</AlertDialogTitle>
+              <AlertDialogDescription className="text-sm font-medium">
+                This will permanently remove the scheduled session for <span className="font-bold text-foreground">"{meetingToDelete?.entityName}"</span> and its attendance logic.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-4">
+              <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteMeeting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-semibold px-8 shadow-xl">Delete Protocol</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {meetingForQR && (
+            <MeetingQRDialog
+                open={!!meetingForQR}
+                onOpenChange={(open) => !open && setMeetingForQR(null)}
+                meetingTitle={meetingForQR.heroTitle || meetingForQR.entityName || meetingForQR.type.name}
+                publicUrl={meetingForQR.meetingSlug 
+                    ? `/meetings/${meetingForQR.type?.slug || 'session'}/${meetingForQR.meetingSlug}` 
+                    : `/sessions/${meetingForQR.entitySlug || meetingForQR.id}/${meetingForQR.type?.slug || 'session'}`
+                }
+            />
+        )}
+
+        {/* Save as Template Dialog */}
+        <AlertDialog open={!!meetingForTemplate} onOpenChange={(open) => !open && setMeetingForTemplate(null)}>
+            <AlertDialogContent className="rounded-[2rem]">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <PlusCircle className="h-5 w-5 text-primary" />
+                        Save as Meeting Template
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Convert this session&apos;s layout, branding, and registration settings into a reusable template.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Template Name</label>
+                        <input 
+                            value={templateName}
+                            onChange={(e) => setTemplateName(e.target.value)}
+                            placeholder="e.g. Annual Parent Conference"
+                            className="w-full h-12 px-4 rounded-xl border-none bg-muted/30 focus:ring-1 focus:ring-primary/20 font-semibold"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Short Description</label>
+                        <textarea 
+                            value={templateDesc}
+                            onChange={(e) => setTemplateDesc(e.target.value)}
+                            placeholder="Describe when to use this template..."
+                            className="w-full p-4 rounded-xl border-none bg-muted/30 focus:ring-1 focus:ring-primary/20 font-medium text-sm min-h-[100px] resize-none"
+                        />
+                    </div>
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+                    <Button 
+                        onClick={handleSaveAsTemplate} 
+                        disabled={isSavingTemplate || !templateName} 
+                        className="rounded-xl font-bold px-8 shadow-lg"
+                    >
+                        {isSavingTemplate && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Template
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         </TooltipProvider>
   );
 }

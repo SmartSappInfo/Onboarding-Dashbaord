@@ -1094,9 +1094,22 @@ export interface Invoice {
 
 export interface Meeting {
   id: string;
+  // ── V3: Standalone URL routing ──────────────────
+  meetingSlug: string; // Unique slug for public URL: /meetings/[type]/[meetingSlug]
+  // ── V3: Branding controls ──────────────────────
+  logoUrl?: string; // Per-meeting logo override (falls back to entity logo)
+  brandingName?: string; // Manual branding name override
+  brandingSlogan?: string; // Manual branding slogan override
+  brandingEnabled?: boolean; // Default true; false hides logo, entity name, slogan
+  heroLayout?: 'image' | 'form'; // 'image' = hero image right (default), 'form' = registration form right
+  // ── V3: Banner controls ──────────────────────
+  bannerType?: 'none' | 'image' | 'embed'; // 'none' (default)
+  bannerImageUrl?: string;
+  bannerEmbedCode?: string;
+  // ── Entity reference (now optional) ─────────────
   entityId?: string; // Unified entity reference
   entityName?: string | null; // Snapshot of entity name
-  entitySlug?: string; // URL slug for public page routing
+  entitySlug?: string; // Legacy URL slug (kept for backward compat)
   entityType?: EntityType; // Type of entity
   workspaceIds: string[]; // Shared
   meetingTime: string;
@@ -1159,6 +1172,106 @@ export interface MeetingRegistrant {
   lastInviteSentAt?: string;
   lastReminderSentAt?: string;
 }
+
+/**
+ * Meeting Template — used in the template gallery for creating meetings.
+ * Built-in templates are read-only; custom templates are workspace-scoped.
+ */
+export interface MeetingTemplate {
+  id: string;
+  name: string;
+  description: string;
+  thumbnailUrl?: string;
+  typeId: string; // Maps to MEETING_TYPES[n].id
+  typeName: string;
+  isBuiltIn: boolean;
+  workspaceId?: string; // null for built-ins; workspace-scoped for custom
+  organizationId?: string;
+  defaults: {
+    heroTitle?: string;
+    heroDescription?: string;
+    heroTagline?: string;
+    heroCtaLabel?: string;
+    heroImageUrl?: string;
+    brandingEnabled?: boolean;
+    heroLayout?: 'image' | 'form';
+    registrationEnabled?: boolean;
+    registrationFields?: MeetingRegistrationField[];
+    registrationSuccessMessage?: string;
+    capacityLimit?: number;
+  };
+  createdAt: string;
+  createdBy?: string;
+}
+
+/** Built-in meeting templates (static data, not Firestore) */
+export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
+  {
+    id: 'builtin-parent-engagement',
+    name: 'Parent Engagement',
+    description: 'Engage parents with school updates, Q&A sessions, and collaborative discussions.',
+    typeId: 'parent',
+    typeName: 'Parent Engagement',
+    isBuiltIn: true,
+    defaults: {
+      heroTitle: 'Parent Engagement Session',
+      heroDescription: 'Join us for an interactive session to discuss your child\'s progress and school initiatives.',
+      heroCtaLabel: 'Join Session',
+      brandingEnabled: true,
+      heroLayout: 'image',
+    },
+    createdAt: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'builtin-kickoff',
+    name: 'School Kickoff',
+    description: 'Welcome session to introduce new programs, staff, and term objectives.',
+    typeId: 'kickoff',
+    typeName: 'Kickoff',
+    isBuiltIn: true,
+    defaults: {
+      heroTitle: 'Kickoff Meeting',
+      heroDescription: 'Let\'s kick off the new term together. Join us for important updates and introductions.',
+      heroCtaLabel: 'Join Kickoff',
+      brandingEnabled: true,
+      heroLayout: 'image',
+    },
+    createdAt: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'builtin-training',
+    name: 'Staff Training',
+    description: 'Training sessions for staff development, tool onboarding, and skill building.',
+    typeId: 'training',
+    typeName: 'Training',
+    isBuiltIn: true,
+    defaults: {
+      heroTitle: 'Training Session',
+      heroDescription: 'Professional development session to enhance your skills and knowledge.',
+      heroCtaLabel: 'Join Training',
+      brandingEnabled: true,
+      heroLayout: 'image',
+    },
+    createdAt: '2025-01-01T00:00:00Z',
+  },
+  {
+    id: 'builtin-webinar',
+    name: 'Public Webinar',
+    description: 'Public-facing webinar with registration, capacity limits, and audience engagement.',
+    typeId: 'webinar',
+    typeName: 'Webinar',
+    isBuiltIn: true,
+    defaults: {
+      heroTitle: 'Live Webinar',
+      heroDescription: 'Register for our upcoming webinar and join the conversation.',
+      heroCtaLabel: 'Register Now',
+      brandingEnabled: true,
+      heroLayout: 'form',
+      registrationEnabled: true,
+    },
+    createdAt: '2025-01-01T00:00:00Z',
+  },
+];
 
 export interface MediaAsset {
   id: string;
@@ -2024,8 +2137,8 @@ export interface AudienceDefinition {
   excludeTagIds?: string[];
   /** Manually selected entity IDs */
   entityIds?: string[];
-  /** Contact scope within entities */
-  contactScope?: 'primary' | 'signatories' | 'all';
+  /** Contact scope within entities (can be broad scope or a specific contact role key) */
+  contactScope?: 'primary' | 'signatories' | 'all' | (string & {});
   /** Optional contact type filter (e.g. 'father', 'mother') */
   contactTypeFilter?: string | null;
   /** Reference to a saved audience definition (Phase 4) */
@@ -2039,7 +2152,7 @@ export interface AudienceDefinition {
 /**
  * Typed filter field options for the audience builder.
  * MVP set: tags, status, entityType, assignedTo, location.
- * Phase 5-6 expansion: dealStage, surveyCompletion, messageActivity.
+ * Phase 5-6 expansion: dealPipeline, dealStage, automationId, automationStatus.
  */
 export type AudienceFilterField =
   | 'tags'
@@ -2051,6 +2164,10 @@ export type AudienceFilterField =
   | 'locationDistrict'
   | 'lifecycleStatus'
   | 'lastContactedAt'
+  | 'dealPipeline'
+  | 'dealStage'
+  | 'automationId'
+  | 'automationStatus'
   | (string & {}); // Backward-compatible escape hatch
 
 /**
@@ -2406,7 +2523,7 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid';
 
 export interface PageBlock {
   id: string;

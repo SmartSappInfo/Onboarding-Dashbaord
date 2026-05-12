@@ -77,7 +77,7 @@ const generateSchema = (elements: SurveyElement[]) => {
         if (q.type === 'phone') {
             // Basic phone regex: allows +, digits, spaces, parens, hyphens
             schema = z.string().regex(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/im, {
-                message: "Please enter a valid phone number (e.g. +1 555-0123)"
+                message: "Please enter a valid phone number (e.g. +233 24 123 4567)"
             });
         }
 
@@ -374,7 +374,7 @@ const ElementRenderer = ({
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || (
                                     question.type === 'email' ? 'email@example.com' : 
-                                    question.type === 'phone' ? '+1 555-0123' : 
+                                    question.type === 'phone' ? '+233 24 123 4567' : 
                                     question.type === 'number' ? 'e.g. 42' : 
                                     question.type === 'link' ? 'https://example.com' : 
                                     "Type your answer here..."
@@ -739,7 +739,7 @@ const getRequiredMessage = (type: string) => {
     return 'This field is required.';
 };
 
-function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant = 'full' }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, variant?: 'full' | 'simple' }) {
+function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant = 'full', isPageVisible = () => true }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, variant?: 'full' | 'simple', isPageVisible?: (idx: number) => boolean }) {
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
@@ -775,9 +775,12 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant
         <div className="w-full mb-0 pt-2 pb-0 no-scrollbar overflow-x-auto">
             <div className="w-full flex items-start justify-center gap-1 sm:gap-4 px-2 min-w-fit">
                 {displayPages.map((page, index) => {
-                    const section = page[0] as SurveyLayoutBlock;
-                    const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
                     const actualIdx = index + (hasCover ? 1 : 0);
+                    if (!isPageVisible(actualIdx)) return null;
+
+                    const section = page[0] as SurveyLayoutBlock;
+                    const isSectionVisible = section ? (elementStates[section.id]?.isVisible ?? !section.hidden) : true;
+                    const title = (isSectionVisible ? (section?.stepperTitle || section?.title) : null) || `Step ${index + 1}`;
                     const isCompleted = actualIdx < currentIndex;
                     const isActive = actualIdx === currentIndex;
                     const isInvalid = !pageStatuses[actualIdx].isValid;
@@ -987,6 +990,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
         const initialStates: Record<string, ElementState> = getInitialElementStates(survey.elements);
         let newSubmitDisabled = false;
         const logicBlocks = survey.elements.filter(isLogic);
+        
+        // 1. Apply Logic Rules
         logicBlocks.forEach(block => {
           block.rules.forEach(rule => {
             const answer = watchedValues[rule.sourceQuestionId];
@@ -1001,9 +1006,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             }
           });
         });
+
         setElementStates(initialStates);
         setIsSubmitDisabled(newSubmitDisabled);
-      }, [watchedValues, survey.elements]);
+    }, [watchedValues, survey.elements]);
+
+    const isPageVisible = React.useCallback((pageIndex: number) => {
+        const pageElements = pages[pageIndex];
+        if (!pageElements || pageElements.length === 0) return true; // Cover page or intro is usually visible
+        return pageElements.some(el => {
+            if (isLogic(el)) return false;
+            return elementStates[el.id]?.isVisible ?? !el.hidden;
+        });
+    }, [pages, elementStates]);
 
     const calculateScore = (data: any) => {
         if (!survey.scoringEnabled) return undefined;
@@ -1378,10 +1393,25 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
             }
             if (jumpAction) break;
         }
+
+        // Skip invisible pages
+        while (nextPageIndex < pages.length && !isPageVisible(nextPageIndex)) {
+            nextPageIndex++;
+        }
+
         if (nextPageIndex < pages.length) { setCurrentPageIndex(nextPageIndex); scrollToStepper(false); }
     };
 
-    const handlePrev = () => { setCurrentPageIndex(prev => prev - 1); scrollToStepper(false); };
+    const handlePrev = () => { 
+        let prevPageIndex = currentPageIndex - 1;
+        while (prevPageIndex >= 0 && !isPageVisible(prevPageIndex)) {
+            prevPageIndex--;
+        }
+        if (prevPageIndex >= 0) {
+            setCurrentPageIndex(prevPageIndex); 
+            scrollToStepper(false); 
+        }
+    };
 
     const handleStepClick = (targetIndex: number) => {
         if (targetIndex === currentPageIndex) return;
@@ -1509,10 +1539,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                             )}
 
                             <div ref={stepperRef}>
-                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} />
+                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} />
                             </div>
 
-                            {pageSection && (pageSection.showSectionHeader ?? true) && (
+                             {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                     <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                                     {pageSection.description && (

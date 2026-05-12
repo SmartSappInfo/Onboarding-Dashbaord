@@ -29,6 +29,7 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
     const [newNote, setNewNote] = React.useState('');
     const [noteType, setNoteType] = React.useState<EntityNote['noteType']>('general');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [showAddNote, setShowAddNote] = React.useState(false);
 
     const noteTypes = [
         { id: 'general', icon: MessageSquare, color: 'text-primary' },
@@ -106,50 +107,57 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                     <h3 className="text-sm font-bold tracking-tight">Recent Notes</h3>
                 </div>
                 {notes && notes.length > 0 && (
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold px-2 rounded-lg text-primary hover:bg-primary/10" onClick={onViewAll}>
-                        View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold px-2 rounded-lg text-primary hover:bg-primary/10" onClick={() => setShowAddNote(!showAddNote)}>
+                            {showAddNote ? 'Cancel' : 'Add Note'}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold px-2 rounded-lg text-primary hover:bg-primary/10" onClick={onViewAll}>
+                            View All <ArrowRight className="h-3 w-3 ml-1" />
+                        </Button>
+                    </div>
                 )}
             </div>
 
             <div className="p-4 space-y-4 text-left">
                 {/* Quick Add */}
-                <div className="space-y-2">
-                    <div className="flex gap-1">
-                        {noteTypes.map((type) => (
-                            <Button
-                                key={type.id}
-                                variant="ghost"
+                {showAddNote && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex gap-1">
+                            {noteTypes.map((type) => (
+                                <Button
+                                    key={type.id}
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setNoteType(type.id as EntityNote['noteType'])}
+                                    className={cn(
+                                        "h-6 w-6 rounded-md transition-all",
+                                        noteType === type.id ? "bg-primary/10 " + type.color : "text-muted-foreground opacity-50 hover:opacity-100"
+                                    )}
+                                    title={type.id.charAt(0).toUpperCase() + type.id.slice(1)}
+                                >
+                                    <type.icon className="h-3.5 w-3.5" />
+                                </Button>
+                            ))}
+                        </div>
+                        <div className="relative">
+                            <Textarea 
+                                placeholder={noteType === 'call' ? "Call outcome…" : "Quick note…"}
+                                value={newNote}
+                                onChange={(e) => setNewNote(e.target.value)}
+                                className="min-h-[60px] text-xs resize-none rounded-xl border-border/50 bg-background focus-visible:ring-1 focus-visible:ring-primary/20 pr-10"
+                            />
+                            <Button 
                                 size="icon"
-                                onClick={() => setNoteType(type.id as EntityNote['noteType'])}
-                                className={cn(
-                                    "h-6 w-6 rounded-md transition-all",
-                                    noteType === type.id ? "bg-primary/10 " + type.color : "text-muted-foreground opacity-50 hover:opacity-100"
-                                )}
-                                title={type.id.charAt(0).toUpperCase() + type.id.slice(1)}
+                                variant="ghost"
+                                onClick={() => { handleAddNote(); setShowAddNote(false); }} 
+                                disabled={!newNote.trim() || isSubmitting}
+                                className="absolute bottom-2 right-2 h-6 w-6 rounded-lg text-primary hover:bg-primary/10"
                             >
-                                <type.icon className="h-3.5 w-3.5" />
+                                {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                             </Button>
-                        ))}
+                        </div>
                     </div>
-                    <div className="relative">
-                        <Textarea 
-                            placeholder={noteType === 'call' ? "Call outcome…" : "Quick note…"}
-                            value={newNote}
-                            onChange={(e) => setNewNote(e.target.value)}
-                            className="min-h-[60px] text-xs resize-none rounded-xl border-border/50 bg-background focus-visible:ring-1 focus-visible:ring-primary/20 pr-10"
-                        />
-                        <Button 
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleAddNote()} 
-                            disabled={!newNote.trim() || isSubmitting}
-                            className="absolute bottom-2 right-2 h-6 w-6 rounded-lg text-primary hover:bg-primary/10"
-                        >
-                            {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                        </Button>
-                    </div>
-                </div>
+                )}
 
                 {/* List */}
                 <div className="space-y-3">
@@ -163,27 +171,27 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                     ) : displayNotes && displayNotes.length > 0 ? (
                         displayNotes.map(note => (
                             <div key={note.id} className={cn(
-                                "p-3 rounded-xl border transition-all relative",
-                                note.isPinned ? "bg-amber-500/5 border-amber-500/20" : "bg-muted/30 border-border/30"
+                                "p-3 rounded-xl border-l-4 border-amber-400 bg-amber-50/50 transition-all relative border-t-0 border-r-0 border-b-0",
+                                note.isPinned ? "shadow-md ring-1 ring-amber-500/10" : "shadow-sm hover:shadow-md"
                             )}>
                                 {note.isPinned && (
                                     <Pin className="absolute -top-1.5 -right-1.5 h-3 w-3 text-amber-500 fill-current" />
                                 )}
-                                <div className="flex items-center gap-1.5 mb-1.5">
-                                    <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">
+                                <div className="flex items-center gap-1.5 mb-1.5 opacity-60">
+                                    <div className="h-4 w-4 rounded-full bg-amber-200/50 flex items-center justify-center text-[8px] font-medium text-amber-700">
                                         {note.createdByName ? note.createdByName.charAt(0).toUpperCase() : '?'}
                                     </div>
-                                    <span className="text-[10px] font-bold truncate max-w-[80px]">{note.createdByName || 'Unknown User'}</span>
+                                    <span className="text-[9px] font-medium text-amber-900/70 truncate max-w-[80px]">{note.createdByName || 'Unknown User'}</span>
                                     {note.noteType && note.noteType !== 'general' && (
-                                        <Badge variant="outline" className="text-[7px] px-1 h-3 font-bold uppercase border-primary/20 text-primary">
-                                            {note.noteType}
-                                        </Badge>
+                                        <span className="text-[8px] font-medium text-amber-900/50 uppercase tracking-tighter">
+                                            • {note.noteType}
+                                        </span>
                                     )}
-                                    <span className="text-[9px] text-muted-foreground ml-auto">
+                                    <span className="text-[8px] text-amber-900/40 ml-auto">
                                         {format(new Date(note.createdAt), 'MMM d')}
                                     </span>
                                 </div>
-                                <p className="text-xs text-foreground/80 line-clamp-3 leading-tight whitespace-pre-wrap">{note.content}</p>
+                                <p className="text-xs text-amber-950/80 line-clamp-3 leading-tight whitespace-pre-wrap font-normal">{note.content}</p>
                             </div>
                         ))
                     ) : (

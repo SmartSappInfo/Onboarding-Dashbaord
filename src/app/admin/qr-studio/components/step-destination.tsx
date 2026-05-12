@@ -357,7 +357,11 @@ function SmartSappResourceSelector({
       case 'form': return `${origin}/f/${item.id}`;
       case 'landing_page': return `${origin}/p/${item.slug || item.id}`;
       case 'doc_signing': return `${origin}/forms/${item.id}`;
-      case 'meeting': return `${origin}/meetings/${item.id}`;
+      case 'meeting': {
+        const typeSlug = item.type?.slug || 'session';
+        if (item.meetingSlug) return `${origin}/meetings/${typeSlug}/${item.meetingSlug}`;
+        return `${origin}/sessions/${item.entitySlug || item.id}/${typeSlug}`;
+      }
       case 'invoice': return `${origin}/pay/${item.id}`;
       default: return '';
     }

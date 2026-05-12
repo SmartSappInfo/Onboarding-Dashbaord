@@ -42,7 +42,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     description: 'Phone number of the primary contact',
     dataType: 'string',
     context: 'common',
-    exampleValue: '+1 555-123-4567',
+    exampleValue: '+233 24 123 4567',
     isDynamic: false,
     isComputed: false,
   },

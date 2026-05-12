@@ -12,6 +12,12 @@
       "skillPath": "skills/brainstorming/SKILL.md",
       "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
     },
+    "build-zoom-meeting-app": {
+      "source": "anthropics/knowledge-work-plugins",
+      "sourceType": "github",
+      "skillPath": "partner-built/zoom-plugin/skills/build-zoom-meeting-app/SKILL.md",
+      "computedHash": "488e8f05a3cef529bfbd22a57c1211b040ccfbc18a4a66db5da46a744a47a763"
+    },
     "clean-data-xls": {
       "source": "anthropics/financial-services-plugins",
       "sourceType": "github",
@@ -144,6 +150,12 @@
       "sourceType": "github",
       "computedHash": "1459a31d3c87df7fd601a99479363a7f66da1cd2089f08405a7d4854d0da3a93"
     },
+    "template-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/content/template-page/SKILL.md",
+      "computedHash": "6ff4bbc1a15ac8a0a732c6313bd922ee0a932c56a6199a942c9fd669c1c1c47e"
+    },
     "test-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",
@@ -187,6 +199,12 @@
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    },
+    "webinars-virtual-events": {
+      "source": "dmend3z/tribo-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/webinars-virtual-events/skills/webinars-virtual-events/SKILL.md",
+      "computedHash": "167a957210781a2306be5a044b492450ccf960a94b9b722bb76fdefb6b8709b3"
     },
     "writing-plans": {
       "source": "obra/superpowers",
