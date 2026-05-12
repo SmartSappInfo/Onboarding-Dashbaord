@@ -4,7 +4,7 @@ import { adminDb } from './firebase-admin';
 import { resolveAndRender } from './template-resolver';
 import { sendMessage } from './messaging-engine';
 import { computeScheduledAt } from './template-variable-utils';
-import type { Meeting, ScheduledMessage, TemplateCategory } from './types';
+import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot } from './types';
 import { REMINDER_OFFSETS } from './types';
 
 // ---------------------------------------------------------------------------
@@ -307,4 +307,201 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
   }
 
   return { sent, failed };
+}
+
+// ---------------------------------------------------------------------------
+// scheduleMessagingConfigReminders  (Phase 8 — slot-based)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates ScheduledMessage docs from the messagingConfig.reminders[] slots.
+ * Each enabled slot with a valid templateId is scheduled at
+ * meetingTime – offsetMinutes for ALL registrants of the meeting.
+ */
+export async function scheduleMessagingConfigReminders(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  orgId: string,
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  if (!config?.reminders?.length || !meeting.meetingTime) return;
+
+  const enabledSlots = config.reminders.filter(s => s.enabled && s.channels.length > 0);
+  if (enabledSlots.length === 0) return;
+
+  // Gather registrant contacts
+  const regSnap = await adminDb
+    .collection('meeting_registrants')
+    .where('meetingId', '==', meeting.id)
+    .where('status', 'in', ['registered', 'approved'])
+    .get();
+
+  if (regSnap.empty) return;
+
+  const recipients: Array<{ contact: string; channel: 'email' | 'sms' }> = [];
+  for (const doc of regSnap.docs) {
+    const reg = doc.data();
+    if (reg.email) recipients.push({ contact: reg.email, channel: 'email' });
+    if (reg.phone) recipients.push({ contact: reg.phone, channel: 'sms' });
+  }
+
+  if (recipients.length === 0) return;
+
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+
+  for (const slot of enabledSlots) {
+    const scheduledAt = computeScheduledAt(meeting.meetingTime, slot.offsetMinutes);
+    if (new Date(scheduledAt) <= new Date()) continue;
+
+    for (const ch of slot.channels) {
+      const templateId = ch === 'email' ? slot.emailTemplateId : slot.smsTemplateId;
+      if (!templateId) continue;
+
+      const matchingRecipients = recipients.filter(r => r.channel === ch);
+      for (const { contact } of matchingRecipients) {
+        const docRef = adminDb.collection('scheduled_messages').doc();
+        const msg: Omit<ScheduledMessage, 'id'> = {
+          organizationId: orgId,
+          templateId,
+          channel: ch,
+          recipientContact: contact,
+          variables: { meetingId: meeting.id },
+          scheduledAt,
+          status: 'pending',
+          reminderType: `messaging_slot_${slot.id}`,
+          sourceEventId: meeting.id,
+          sourceEventType: 'meeting',
+          retryCount: 0,
+          createdAt: now,
+        };
+        batch.set(docRef, msg);
+      }
+    }
+  }
+
+  await batch.commit();
+}
+
+// ---------------------------------------------------------------------------
+// scheduleRegistrationAck  (Phase 8 — instant confirmation)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends immediate acknowledgement to a registrant after signup,
+ * using the template configured in messagingConfig.
+ */
+export async function scheduleRegistrationAck(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  registrantEmail: string | undefined,
+  registrantPhone: string | undefined,
+  orgId: string,
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  if (!config?.registrationAckEnabled) return;
+
+  const channels = config.registrationAckChannels || [];
+  if (channels.length === 0) return;
+
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+
+  for (const ch of channels) {
+    const contact = ch === 'email' ? registrantEmail : registrantPhone;
+    const templateId = ch === 'email'
+      ? config.registrationAckEmailTemplateId
+      : config.registrationAckSmsTemplateId;
+
+    if (!contact || !templateId) continue;
+
+    const docRef = adminDb.collection('scheduled_messages').doc();
+    const msg: Omit<ScheduledMessage, 'id'> = {
+      organizationId: orgId,
+      templateId,
+      channel: ch,
+      recipientContact: contact,
+      variables: { meetingId: meeting.id },
+      scheduledAt: now, // immediate
+      status: 'pending',
+      reminderType: 'registration_ack',
+      sourceEventId: meeting.id,
+      sourceEventType: 'meeting',
+      retryCount: 0,
+      createdAt: now,
+    };
+    batch.set(docRef, msg);
+  }
+
+  await batch.commit();
+}
+
+// ---------------------------------------------------------------------------
+// scheduleFacilitatorAlerts  (Phase 8 — internal team)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends facilitator alerts (pre-event or post-event) to the configured
+ * facilitator team members. Uses workspace_users to resolve contact info.
+ */
+export async function scheduleFacilitatorAlerts(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  orgId: string,
+  alertType: 'pre_event' | 'post_event',
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  if (!config?.facilitatorUserIds?.length) return;
+
+  // Check if the requested alert type is enabled
+  if (alertType === 'pre_event' && !config.facilitatorRemindersEnabled) return;
+  if (alertType === 'post_event' && !config.facilitatorPostEventEnabled) return;
+
+  // Resolve facilitator contacts from workspace_users
+  const contacts: Array<{ email?: string; phone?: string }> = [];
+  for (const userId of config.facilitatorUserIds) {
+    const userSnap = await adminDb.collection('users').doc(userId).get();
+    if (userSnap.exists) {
+      const u = userSnap.data()!;
+      contacts.push({ email: u.email, phone: u.phone });
+    }
+  }
+
+  if (contacts.length === 0) return;
+
+  const batch = adminDb.batch();
+  const now = new Date().toISOString();
+  const channels = config.facilitatorChannels || ['email'];
+
+  // For pre-event: schedule 1 hour before. For post-event: schedule immediately.
+  const scheduledAt = alertType === 'pre_event' && meeting.meetingTime
+    ? computeScheduledAt(meeting.meetingTime, 60) // 1 hour before
+    : now;
+
+  // Skip past pre-event alerts
+  if (alertType === 'pre_event' && new Date(scheduledAt) <= new Date()) return;
+
+  for (const ch of channels) {
+    // Use a generic facilitator template — resolved at send time
+    for (const c of contacts) {
+      const contact = ch === 'email' ? c.email : c.phone;
+      if (!contact) continue;
+
+      const docRef = adminDb.collection('scheduled_messages').doc();
+      const msg: Omit<ScheduledMessage, 'id'> = {
+        organizationId: orgId,
+        templateId: `facilitator_${alertType}`, // resolved by template engine
+        channel: ch as 'email' | 'sms',
+        recipientContact: contact,
+        variables: { meetingId: meeting.id, alertType },
+        scheduledAt,
+        status: 'pending',
+        reminderType: `facilitator_${alertType}`,
+        sourceEventId: meeting.id,
+        sourceEventType: 'meeting',
+        retryCount: 0,
+        createdAt: now,
+      };
+      batch.set(docRef, msg);
+    }
+  }
+
+  await batch.commit();
 }

@@ -28,7 +28,14 @@ import {
     Clock,
     LayoutGrid,
     CheckCircle2,
-    PlusCircle
+    PlusCircle,
+    MessageSquare,
+    Zap,
+    Rocket,
+    Copy,
+    QrCode,
+    Link2,
+    Users
 } from 'lucide-react';
 import { MEETING_TEMPLATES } from '../constants/templates';
 
@@ -66,9 +73,12 @@ import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { scheduleRemindersForMeeting } from '@/lib/reminder-actions';
+import { scheduleRemindersForMeeting, scheduleMessagingConfigReminders, scheduleFacilitatorAlerts } from '@/lib/reminder-actions';
+import { scheduleMeetingPostEvent } from '@/app/actions/meeting-post-event-action';
 import { Checkbox } from '@/components/ui/checkbox';
 import MeetingPreviewPanel from '../components/MeetingPreviewPanel';
+import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
+import MeetingMessagingTab from '../components/MeetingMessagingTab';
 
 const formSchema = z.object({
   // V3: Entity is now optional — standalone meetings supported
@@ -126,6 +136,27 @@ const formSchema = z.object({
   
   entityId: z.string().optional(),
   entityType: z.enum(['institution', 'family', 'person']).optional(),
+
+  // Lead Capture (Phase 4)
+  createEntity: z.boolean().default(false),
+  entityMapping: z.object({
+    nameField: z.string().default(''),
+    focalPersonField: z.string().optional().default(''),
+    emailField: z.string().optional().default(''),
+    phoneField: z.string().optional().default(''),
+    additionalMappings: z.array(z.object({
+      sourceField: z.string(),
+      targetProperty: z.string(),
+    })).default([]),
+  }).default({}),
+  autoTags: z.array(z.string()).default([]),
+  autoAutomations: z.array(z.string()).default([]),
+
+  // Messaging Config (Phase 5)
+  messagingConfig: z.any().optional(),
+
+  // Publish Status (Phase 7)
+  publishStatus: z.enum(['draft', 'published', 'archived']).default('draft'),
 }).refine((data) => {
   // If branding is enabled and no entity is selected, we require logo, name, and slogan
   if (data.brandingEnabled && !data.entity) {
@@ -142,11 +173,14 @@ type FormData = z.infer<typeof formSchema>;
 const WIZARD_STEPS = [
   { id: 'template', label: 'Template', icon: LayoutGrid, description: 'Choose your base' },
   { id: 'config', label: 'Configuration', icon: Calendar, description: 'Setup & timing' },
-  { id: 'branding', label: 'Branding', icon: Palette, description: 'Logo & layout' },
-  { id: 'registration', label: 'Registration', icon: ClipboardCheck, description: 'Signup & capacity' },
-  { id: 'hero', label: 'Hero Content', icon: Type, description: 'Public messaging' },
-  { id: 'options', label: 'Options', icon: Bell, description: 'Advanced features' },
+  { id: 'branding', label: 'Branding', icon: Palette, description: 'Theme, hero & preview' },
+  { id: 'registration', label: 'Registration', icon: ClipboardCheck, description: 'Signup, capacity & leads' },
+  { id: 'messaging', label: 'Messaging', icon: MessageSquare, description: 'Automated comms' },
+  { id: 'automations', label: 'Automations', icon: Zap, description: 'Workflows & alerts' },
+  { id: 'publish', label: 'Publish', icon: Rocket, description: 'Go live' },
 ] as const;
+
+const stepIndex = (id: string) => WIZARD_STEPS.findIndex(s => s.id === id);
 
 export default function NewMeetingPage() {
   const { toast } = useToast();
@@ -416,6 +450,18 @@ export default function NewMeetingPage() {
             
             // Reminders (Task 12.1)
             enabledReminders: data.enabledReminders || [],
+
+            // Phase 4: Lead Capture
+            createEntity: data.createEntity || false,
+            entityMapping: data.entityMapping || {},
+            autoTags: data.autoTags || [],
+            autoAutomations: data.autoAutomations || [],
+
+            // Phase 5: Messaging Config
+            messagingConfig: data.messagingConfig || null,
+
+            // Phase 7: Publish Status
+            publishStatus: data.publishStatus || 'draft',
         };
 
         const docRef = await addDoc(meetingsRef, meetingData);
@@ -469,6 +515,31 @@ export default function NewMeetingPage() {
             ).catch(err => console.warn("Reminder scheduling deferred:", err.message));
         }
 
+        // Phase 8: Schedule messaging config reminders if present
+        if (data.messagingConfig?.reminders?.length > 0) {
+            scheduleMessagingConfigReminders(
+                { id: docRef.id, ...meetingData } as any,
+                activeOrganizationId
+            ).catch(err => console.warn('Messaging reminders deferred:', err.message));
+        }
+
+        // Phase 8: Schedule facilitator pre-event alerts
+        if (data.messagingConfig?.facilitatorUserIds?.length > 0) {
+            scheduleFacilitatorAlerts(
+                { id: docRef.id, ...meetingData } as any,
+                activeOrganizationId,
+                'pre_event'
+            ).catch(err => console.warn('Facilitator alerts deferred:', err.message));
+        }
+
+        // Phase 8: Schedule post-event follow-up
+        if (data.messagingConfig?.postEventEnabled) {
+            scheduleMeetingPostEvent(
+                { id: docRef.id, ...meetingData } as any,
+                activeOrganizationId
+            ).catch(err => console.warn('Post-event scheduling deferred:', err.message));
+        }
+
         router.push('/admin/meetings');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Schedule failed', description: error.message });
@@ -480,20 +551,17 @@ export default function NewMeetingPage() {
   const handleNext = async () => {
     let isValid = false;
     
-    // Validate current step before proceeding
-    if (currentStep === 0) {
-      // Template step: always valid to skip or go forward if already selected
+    if (currentStep === stepIndex('template')) {
       isValid = true; 
-    } else if (currentStep === 1) {
-      // V3: entity is optional, so don't validate it. meetingSlug replaces entitySlug
+    } else if (currentStep === stepIndex('config')) {
       isValid = await form.trigger(['meetingSlug', 'meetingTime', 'type', 'meetingLink']);
-    } else if (currentStep === 2) {
-      // V3: Branding step — all fields have defaults, always valid
-      isValid = await form.trigger(['logoUrl', 'brandingEnabled', 'heroLayout']);
-    } else if (currentStep === 3) {
+    } else if (currentStep === stepIndex('branding')) {
+      isValid = await form.trigger(['logoUrl', 'brandingEnabled', 'heroLayout', 'heroTitle', 'heroDescription', 'heroTagline', 'heroCtaLabel', 'heroImageUrl']);
+    } else if (currentStep === stepIndex('registration')) {
       isValid = await form.trigger(['registrationEnabled', 'registrationRequiredToJoin', 'capacityLimit']);
-    } else if (currentStep === 4) {
-      isValid = await form.trigger(['heroTitle', 'heroDescription', 'heroTagline', 'heroCtaLabel', 'heroImageUrl']);
+    } else {
+      // messaging, automations, publish — no required validation
+      isValid = true;
     }
     
     if (isValid && currentStep < WIZARD_STEPS.length - 1) {
@@ -588,7 +656,7 @@ export default function NewMeetingPage() {
   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-12">
             
             {/* ──────── STEP 0: Template Selection ──────── */}
-            {currentStep === 0 && (
+            {currentStep === stepIndex('template') && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {allTemplates.map((template) => {
@@ -654,7 +722,7 @@ export default function NewMeetingPage() {
             )}
 
             {/* ──────── STEP 1: Configuration ──────── */}
-            {currentStep === 1 && (
+            {currentStep === stepIndex('config') && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -817,7 +885,7 @@ export default function NewMeetingPage() {
             )}
 
             {/* ──────── STEP 2: Branding (V3) ──────── */}
-            {currentStep === 2 && (
+            {currentStep === stepIndex('branding') && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -1032,12 +1100,102 @@ export default function NewMeetingPage() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Hero Content Card (merged from old Step 4) */}
+                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-muted/30 border-b pb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
+                                    <div>
+                                        <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
+                                        <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-8 bg-background">
+                                <FormField control={form.control} name="heroTitle" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Title</FormLabel>
+                                        <FormControl><Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="heroDescription" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Description</FormLabel>
+                                        <FormControl><Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <Separator className="bg-border/50" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="heroTagline" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Tagline</FormLabel>
+                                            <FormControl><Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="heroCtaLabel" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{registrationEnabled ? 'Register Button Label' : 'CTA Button Label'}</FormLabel>
+                                            <FormControl><Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                                <Separator className="bg-border/50" />
+                                <FormField control={form.control} name="heroImageUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media</FormLabel>
+                                        <FormControl><MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-2xl" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Live Preview (Right Column) */}
+                    <div className="space-y-6">
+                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
+                            <CardHeader className="bg-muted/30 border-b pb-4">
+                                <CardTitle className="text-sm font-semibold tracking-tight flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Live Preview</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 space-y-3">
+                                {form.watch('logoUrl') && (
+                                    <div className="w-10 h-10 rounded-lg bg-muted/30 overflow-hidden">
+                                        <img src={form.watch('logoUrl')} alt="Logo" className="w-full h-full object-contain" />
+                                    </div>
+                                )}
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-[9px] font-semibold text-muted-foreground">
+                                    {watchedType?.name || 'Meeting'}
+                                </div>
+                                <h3 className="text-lg font-semibold tracking-tight leading-tight">
+                                    {form.watch('heroTitle') || 'Hero Title Will Appear Here'}
+                                </h3>
+                                <p className="text-xs text-muted-foreground font-medium leading-relaxed line-clamp-4">
+                                    {form.watch('heroDescription') || 'Hero description text will appear here...'}
+                                </p>
+                                {form.watch('heroTagline') && <p className="text-[10px] font-bold text-primary tracking-wider">{form.watch('heroTagline')}</p>}
+                                {form.watch('heroImageUrl') && (
+                                    <div className="rounded-xl overflow-hidden border bg-muted/20 mt-2">
+                                        <img src={form.watch('heroImageUrl')} alt="Hero" className="w-full h-32 object-cover" />
+                                    </div>
+                                )}
+                                <div className="pt-2">
+                                    <div className="h-9 rounded-lg bg-primary/80 flex items-center justify-center">
+                                        <span className="text-[10px] font-bold text-white">{form.watch('heroCtaLabel') || (registrationEnabled ? 'Register Now' : 'Join Session')}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             )}
 
             {/* ──────── STEP 3: Registration ──────── */}
-            {currentStep === 3 && (
+            {currentStep === stepIndex('registration') && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
  <div className="lg:col-span-2 space-y-8">
  <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -1200,6 +1358,11 @@ export default function NewMeetingPage() {
                                             </FormItem>
                                         )}
                                     />
+
+                                    <Separator className="bg-border/50" />
+
+                                    {/* Lead Capture Section */}
+                                    <MeetingLeadCaptureSection registrationFields={form.watch('registrationFields') || []} />
                                 </CardContent>
                             ) : (
  <CardContent className="p-12 flex flex-col items-center justify-center text-center opacity-40">
@@ -1213,249 +1376,271 @@ export default function NewMeetingPage() {
                 </div>
             )}
 
-            {/* ──────── STEP 4: Hero Content ──────── */}
-            {currentStep === 4 && (
+            {/* ──────── STEP 4: Messaging ──────── */}
+            {currentStep === stepIndex('messaging') && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <MeetingMessagingTab />
+                </div>
+            )}
+
+            {/* ──────── STEP 5: Automations ──────── */}
+            {currentStep === stepIndex('automations') && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
- <div className="lg:col-span-2 space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-violet-500/10 rounded-xl"><Type className="h-5 w-5 text-violet-600" /></div>
+                    <div className="lg:col-span-2 space-y-8">
+                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-muted/30 border-b pb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-amber-500/10 rounded-xl"><Zap className="h-5 w-5 text-amber-600" /></div>
                                     <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Hero Content</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Customize the public-facing messaging shown on the meeting page.</CardDescription>
+                                        <CardTitle className="text-lg font-semibold tracking-tight">Automations & Advanced</CardTitle>
+                                        <CardDescription className="text-xs font-medium text-left">Recording, brochure, and workflow configuration.</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
-                                <FormField
-                                    control={form.control}
-                                    name="heroTitle"
-                                    render={({ field }) => (
-                                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Title</FormLabel>
-                                            <FormControl>
- <Input {...field} placeholder="e.g. Join Our Transformation Journey" className="h-14 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="heroDescription"
-                                    render={({ field }) => (
-                                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Hero Description</FormLabel>
-                                            <FormControl>
- <Textarea {...field} placeholder="Supporting text..." rows={4} className="rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium resize-none" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
- <Separator className="bg-border/50" />
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="heroTagline"
-                                        render={({ field }) => (
-                                            <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Tagline</FormLabel>
-                                                <FormControl>
- <Input {...field} placeholder="e.g. Free for all parents" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="heroCtaLabel"
-                                        render={({ field }) => (
-                                            <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">{registrationEnabled ? 'Register Button Label' : 'CTA Button Label'}</FormLabel>
-                                                <FormControl>
- <Input {...field} placeholder={registrationEnabled ? 'Register Now' : 'Join Session'} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
- <Separator className="bg-border/50" />
-                                <FormField
-                                    control={form.control}
-                                    name="heroImageUrl"
-                                    render={({ field }) => (
-                                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2"><ImageIcon className="h-3.5 w-3.5" /> Hero Spotlight Media</FormLabel>
-                                            <FormControl>
- <MediaSelect value={field.value} onValueChange={field.onChange} className="rounded-2xl" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                            <CardContent className="p-6 space-y-8 bg-background">
+                                {/* ── Legacy Reminders (only when messagingConfig absent) ── */}
+                                {!form.watch('messagingConfig')?.reminders?.length && (
+                                    <>
+                                        <Separator className="bg-border/50" />
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-500/10 rounded-xl"><Clock className="h-5 w-5 text-blue-600" /></div>
+                                                <div>
+                                                    <h3 className="text-sm font-semibold tracking-tight">Legacy Reminders</h3>
+                                                    <p className="text-xs text-muted-foreground">Quick-toggle reminders. For advanced messaging, use the Messaging tab.</p>
+                                                </div>
+                                            </div>
+                                            <FormField control={form.control} name="enabledReminders" render={({ field }) => (
+                                                <FormItem>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {[
+                                                            { id: 'meeting_reminder_15min', label: '15 minutes before', offset: REMINDER_OFFSETS.FIFTEEN_MINUTES },
+                                                            { id: 'meeting_reminder_1hour', label: '1 hour before', offset: REMINDER_OFFSETS.ONE_HOUR },
+                                                            { id: 'meeting_reminder_2hours', label: '2 hours before', offset: REMINDER_OFFSETS.TWO_HOURS },
+                                                            { id: 'meeting_reminder_1day', label: '1 day before', offset: REMINDER_OFFSETS.ONE_DAY },
+                                                            { id: 'meeting_time_up', label: 'At meeting time', offset: REMINDER_OFFSETS.TIME_UP },
+                                                        ].map((reminder) => (
+                                                            <div key={reminder.id} className="flex items-center space-x-3 p-3 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors">
+                                                                <Checkbox
+                                                                    id={reminder.id}
+                                                                    checked={field.value?.includes(reminder.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        const updated = checked
+                                                                            ? [...(field.value || []), reminder.id]
+                                                                            : (field.value || []).filter((id) => id !== reminder.id);
+                                                                        field.onChange(updated);
+                                                                    }}
+                                                                />
+                                                                <label htmlFor={reminder.id} className="text-sm font-medium cursor-pointer flex-1">
+                                                                    {reminder.label}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* ── Modern Override Banner ── */}
+                                {form.watch('messagingConfig')?.reminders?.length > 0 && (
+                                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 flex items-start gap-3">
+                                        <Clock className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-800 dark:text-blue-400">Reminders managed via Messaging tab</p>
+                                            <p className="text-[10px] text-blue-600/80 dark:text-blue-400/60 mt-0.5">
+                                                {form.watch('messagingConfig').reminders.filter((r: any) => r.enabled).length} active reminder(s) configured.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
+
+                        {/* ── Legacy InternalNotificationConfig (conditional) ── */}
+                        {!form.watch('messagingConfig')?.facilitatorUserIds?.length ? (
+                            <InternalNotificationConfig prefix="adminAlert" />
+                        ) : (
+                            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                                <CardContent className="p-4 flex items-start gap-3">
+                                    <Users className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-foreground">Facilitator alerts managed via Messaging tab</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                                            {form.watch('messagingConfig').facilitatorUserIds.length} facilitator(s) configured.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
-                    {/* Preview Sidebar */}
                     <div className="space-y-6">
-                        <MeetingPreviewPanel 
-                            data={{
-                                heroTitle: form.watch('heroTitle'),
-                                heroDescription: form.watch('heroDescription'),
-                                heroTagline: form.watch('heroTagline'),
-                                heroCtaLabel: form.watch('heroCtaLabel'),
-                                heroImageUrl: form.watch('heroImageUrl'),
-                                logoUrl: form.watch('logoUrl'),
-                                brandingEnabled: form.watch('brandingEnabled'),
-                                heroLayout: form.watch('heroLayout'),
-                                type: form.watch('type'),
-                                entityName: form.watch('entity')?.displayName,
-                                registrationEnabled: form.watch('registrationEnabled'),
-                            }}
-                        />
+                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
+                            <CardContent className="p-6 space-y-3">
+                                <div className="flex items-center gap-2 text-amber-600">
+                                    <Zap className="h-4 w-4" />
+                                    <h4 className="text-xs font-bold">Automation Tips</h4>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                    {form.watch('messagingConfig')
+                                      ? 'This panel handles workflow configuration. Recording and brochure have moved to the Publish tab.'
+                                      : 'Legacy reminders here work alongside the new Messaging tab. For fine-grained control with custom templates, use the Messaging tab instead.'
+                                    }
+                                </p>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             )}
 
-            {/* ──────── STEP 5: Options ──────── */}
-            {currentStep === 5 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
- <div className="lg:col-span-2 space-y-8">
- <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
- <CardHeader className="bg-muted/30 border-b pb-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl"><Settings2 className="h-5 w-5 text-primary" /></div>
-                                    <div>
- <CardTitle className="text-lg font-semibold tracking-tight">Advanced Options</CardTitle>
- <CardDescription className="text-xs font-medium text-left">Recording, brochure, and notifications.</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
- <CardContent className="p-6 space-y-8 bg-background">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="recordingUrl"
-                                        render={({ field }) => (
-                                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
-                                            <FormControl>
- <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="brochureUrl"
-                                        render={({ field }) => (
-                                            <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
-                                                <FormControl>
- <BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+            {/* ──────── STEP 6: Publish ──────── */}
+            {currentStep === stepIndex('publish') && (
+                <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
- <Separator className="bg-border/50" />
+                    {/* ── Assets Card: Recording & Brochure ── */}
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-muted/30 border-b pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-500/10 rounded-xl"><Video className="h-4 w-4 text-blue-600" /></div>
+                                <div>
+                                    <CardTitle className="text-sm font-semibold tracking-tight">Meeting Assets</CardTitle>
+                                    <CardDescription className="text-[10px] font-medium text-left">Attach recording and brochure for attendees.</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-4 bg-background">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="recordingUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
+                                        <FormControl><Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="brochureUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
+                                        <FormControl><BrochureSelect value={field.value} onValueChange={field.onChange} className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                                {/* Reminder Configuration (Task 12.1) */}
- <div className="space-y-4">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-blue-500/10 rounded-xl"><Clock className="h-5 w-5 text-blue-600" /></div>
-                                        <div>
- <h3 className="text-sm font-semibold tracking-tight">Automated Reminders</h3>
- <p className="text-xs text-muted-foreground">Send automatic reminders to attendees before the meeting</p>
+                    {/* ── Publish Card ── */}
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                        <CardHeader className="bg-muted/30 border-b pb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-500/10 rounded-xl"><Rocket className="h-5 w-5 text-emerald-600" /></div>
+                                <div>
+                                    <CardTitle className="text-lg font-semibold tracking-tight">Launch Your Session</CardTitle>
+                                    <CardDescription className="text-xs font-medium text-left">Review and create your meeting.</CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 space-y-6 bg-background">
+                            {/* Publish Status */}
+                            <FormField
+                                control={form.control}
+                                name="publishStatus"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Meeting Status</FormLabel>
+                                        <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                            {[
+                                                { value: 'draft', label: 'Draft', icon: '📝' },
+                                                { value: 'published', label: 'Published', icon: '🚀' },
+                                                { value: 'archived', label: 'Archived', icon: '📦' },
+                                            ].map(opt => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => field.onChange(opt.value)}
+                                                    className={cn(
+                                                        "h-11 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                                                        field.value === opt.value
+                                                            ? "bg-card shadow-md text-primary"
+                                                            : "text-muted-foreground opacity-60 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <span>{opt.icon}</span> {opt.label}
+                                                </button>
+                                            ))}
                                         </div>
-                                    </div>
-                                    <FormField
-                                        control={form.control}
-                                        name="enabledReminders"
-                                        render={({ field }) => (
-                                            <FormItem>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    {[
-                                                        { id: 'meeting_reminder_15min', label: '15 minutes before', offset: REMINDER_OFFSETS.FIFTEEN_MINUTES },
-                                                        { id: 'meeting_reminder_1hour', label: '1 hour before', offset: REMINDER_OFFSETS.ONE_HOUR },
-                                                        { id: 'meeting_reminder_2hours', label: '2 hours before', offset: REMINDER_OFFSETS.TWO_HOURS },
-                                                        { id: 'meeting_reminder_1day', label: '1 day before', offset: REMINDER_OFFSETS.ONE_DAY },
-                                                        { id: 'meeting_time_up', label: 'At meeting time', offset: REMINDER_OFFSETS.TIME_UP },
-                                                    ].map((reminder) => (
- <div key={reminder.id} className="flex items-center space-x-3 p-3 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors">
-                                                            <Checkbox
-                                                                id={reminder.id}
-                                                                checked={field.value?.includes(reminder.id)}
-                                                                onCheckedChange={(checked) => {
-                                                                    const updated = checked
-                                                                        ? [...(field.value || []), reminder.id]
-                                                                        : (field.value || []).filter((id) => id !== reminder.id);
-                                                                    field.onChange(updated);
-                                                                }}
-                                                            />
- <label htmlFor={reminder.id} className="text-sm font-medium cursor-pointer flex-1">
-                                                                {reminder.label}
-                                                            </label>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <InternalNotificationConfig prefix="adminAlert" />
-                    </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
- <div className="space-y-8">
- <div className="pt-4 sticky top-24">
-                             <Button 
-                                 type="button" 
-                                 onClick={() => form.handleSubmit(onSubmit)()}
-                                 size="lg" 
-                                 disabled={form.formState.isSubmitting} 
-                                 className="w-full h-16 rounded-2xl font-semibold text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95 "
-                             >
- {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
-                                Launch Session
-                            </Button>
-                        </div>
-                    </div>
+                            {publicUrl && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <Link2 className="h-4 w-4 text-primary" />
+                                        <h4 className="text-sm font-bold tracking-tight">Public URL Preview</h4>
+                                    </div>
+                                    <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border">
+                                        <code className="flex-1 text-xs font-mono text-primary truncate">{publicUrl}</code>
+                                    </div>
+                                </div>
+                            )}
+
+                            <Separator className="bg-border/50" />
+
+                            {/* Create Actions */}
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    size="lg"
+                                    disabled={form.formState.isSubmitting}
+                                    onClick={() => form.setValue('publishStatus', 'draft')}
+                                    className="flex-1 h-14 rounded-xl font-bold gap-2"
+                                >
+                                    {form.formState.isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                                    Save as Draft
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    disabled={form.formState.isSubmitting}
+                                    onClick={() => form.setValue('publishStatus', 'published')}
+                                    className="flex-1 h-14 rounded-xl font-bold gap-2 shadow-lg shadow-primary/20"
+                                >
+                                    {form.formState.isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Rocket className="h-5 w-5" />}
+                                    Create & Launch Session
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
             {/* ──────── Wizard Navigation ──────── */}
- <div className="flex items-center justify-between pt-4 border-t">
- <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0} className="rounded-xl font-bold gap-2 h-12 px-6">
- <ChevronLeft className="h-4 w-4" /> Previous
-              </Button>
-
- <div className="hidden sm:flex items-center gap-1.5">
-                {WIZARD_STEPS.map((_, index) => (
- <div key={index} className={cn("h-1.5 rounded-full transition-all duration-300", index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20")} />
-                ))}
-              </div>
-
-              {currentStep < WIZARD_STEPS.length - 1 ? (
- <Button type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
- Next Step <ChevronRight className="h-4 w-4" />
+            <div className="flex items-center justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={handlePrev} disabled={currentStep === 0} className="rounded-xl font-bold gap-2 h-12 px-6">
+                    <ChevronLeft className="h-4 w-4" /> Previous
                 </Button>
-              ) : (
- <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
- {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Launch Session
-                </Button>
-              )}
+
+                <div className="hidden sm:flex items-center gap-1.5">
+                    {WIZARD_STEPS.map((_, index) => (
+                        <div key={index} className={cn("h-1.5 rounded-full transition-all duration-300", index === currentStep ? "w-8 bg-primary" : "w-1.5 bg-muted-foreground/20")} />
+                    ))}
+                </div>
+
+                {currentStep < WIZARD_STEPS.length - 1 ? (
+                    <Button type="button" onClick={handleNext} className="rounded-xl font-bold gap-2 h-12 px-6">
+                        Next Step <ChevronRight className="h-4 w-4" />
+                    </Button>
+                ) : (
+                    <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold gap-2 h-12 px-6 shadow-lg">
+                        {form.formState.isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                        Launch Session
+                    </Button>
+                )}
             </div>
 
           </form>
@@ -1464,3 +1649,4 @@ export default function NewMeetingPage() {
     </div>
   )
 }
+

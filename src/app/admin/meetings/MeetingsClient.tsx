@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting, WorkspaceEntity, Entity } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -27,7 +27,19 @@ import {
     LayoutList, 
     Users,
     ClipboardCheck,
-    LayoutGrid
+    LayoutGrid,
+    Loader2,
+    Plus,
+    Calendar,
+    Search,
+    Filter,
+    MoreVertical,
+    Edit3,
+    Save,
+    Check,
+    School,
+    Video,
+    Globe
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -209,7 +221,7 @@ export default function MeetingsHubClient() {
         await addDoc(templatesRef, {
             title: templateName,
             description: templateDesc,
-            typeId: meetingForTemplate.type.id,
+            typeId: meetingForTemplate.type?.id || '',
             workspaceId: activeWorkspaceId,
             createdAt: new Date().toISOString(),
             defaults: {
@@ -450,7 +462,7 @@ export default function MeetingsHubClient() {
                                 <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
                                     <TableCell className="pl-6">
                                         <AsyncEntityAvatar 
-                                            entityId={meeting.entityId}
+                                            entityId={meeting.entityId || ''}
                                             src={logoUrl} 
                                             name={safeEntityName} 
                                             className="h-10 w-10 ring-2 ring-border/50 shadow-sm"

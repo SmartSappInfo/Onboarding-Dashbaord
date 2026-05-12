@@ -1139,6 +1139,64 @@ export interface Meeting {
   adminAlertSmsTemplateId?: string;
   // Reminder configuration (Task 12)
   enabledReminders?: string[]; // Array of reminder type IDs (e.g., ['meeting_reminder_15min', 'meeting_reminder_1hour'])
+
+  // ── Lead Capture ───────────────────────────────────────────────────────
+  createEntity?: boolean;
+  entityMapping?: MeetingEntityMapping;
+  autoTags?: string[];           // Tag IDs to auto-apply to new/matched entities
+  autoAutomations?: string[];    // Automation IDs to trigger for new entities
+
+  // ── Messaging ──────────────────────────────────────────────────────────
+  messagingConfig?: MeetingMessagingConfig;
+
+  // ── Publishing ─────────────────────────────────────────────────────────
+  publishStatus?: 'draft' | 'published';
+}
+
+// ── Meeting Entity Mapping ─────────────────────────────────────────────────
+export interface MeetingEntityMapping {
+  entityNameFieldKey?: string;      // registration field key for entity name
+  contactNameFieldKey?: string;     // registration field key for contact name
+  contactEmailFieldKey?: string;    // registration field key for email
+  contactPhoneFieldKey?: string;    // registration field key for phone
+  additionalMappings?: { fieldKey: string; targetField: string }[];
+}
+
+// ── Meeting Reminder Slot ──────────────────────────────────────────────────
+export interface MeetingReminderSlot {
+  id: string;
+  offsetMinutes: number;
+  offsetLabel: string;
+  emailTemplateId?: string;
+  smsTemplateId?: string;
+  channels: ('email' | 'sms')[];
+  enabled: boolean;
+}
+
+// ── Meeting Messaging Config ───────────────────────────────────────────────
+export interface MeetingMessagingConfig {
+  // Registration Ack (to registrant)
+  registrationAckEnabled: boolean;
+  registrationAckEmailTemplateId?: string;
+  registrationAckSmsTemplateId?: string;
+  registrationAckChannels: ('email' | 'sms')[];
+
+  // Facilitators (internal team)
+  facilitatorUserIds: string[];
+  facilitatorRemindersEnabled: boolean;
+  facilitatorPostEventEnabled: boolean;
+  facilitatorChannels: ('email' | 'sms')[];
+
+  // Custom Reminders (to registrants)
+  reminders: MeetingReminderSlot[];
+
+  // Post-Event Follow-Up
+  postEventEnabled: boolean;
+  postEventDelayMinutes: number;
+  postEventAudience: 'all_registrants' | 'attendees_only';
+  postEventEmailTemplateId?: string;
+  postEventSmsTemplateId?: string;
+  postEventChannels: ('email' | 'sms')[];
 }
 
 export interface MeetingRegistrationField {

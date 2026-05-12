@@ -140,10 +140,52 @@ const TEMPLATES: TemplateDef[] = [
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
   },
   {
+    name: 'Meeting Reminder – 1 Day (SMS)', category: 'reminders', templateType: 'meeting_reminder_1day', channel: 'sms',
+    body: '📅 Reminder: {{meeting_title}} is tomorrow at {{meeting_time}}. Join: {{meeting_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Starting Now (Email)', category: 'reminders', templateType: 'meeting_time_up', channel: 'email',
+    subject: 'Starting Now: {{meeting_title}}',
+    body: `Hi {{contact_name}},\n\n{{meeting_title}} is starting right now!\n\n🔗 Join immediately: {{meeting_link}}\n\nDon't miss out!\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'organization_name'],
+    reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
+  },
+  {
     name: 'Meeting Time Up (SMS)', category: 'reminders', templateType: 'meeting_time_up', channel: 'sms',
     body: '🔔 {{meeting_title}} is starting now! Join: {{meeting_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_link'],
     reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
+  },
+
+  // ── Post-Event Follow-Up ────────────────────────────────────────────────
+  {
+    name: 'Post-Meeting Follow-Up (Email)', category: 'meetings', templateType: 'meeting_post_event', channel: 'email',
+    subject: 'Thank you for attending {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nThank you for attending {{meeting_title}}. We hope you found the session valuable.\n\nIf you have any questions or need further information, please don't hesitate to reach out.\n\nWe look forward to seeing you at future events.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'organization_name'],
+  },
+  {
+    name: 'Post-Meeting Follow-Up (SMS)', category: 'meetings', templateType: 'meeting_post_event', channel: 'sms',
+    body: 'Thank you for attending {{meeting_title}}! We hope you found it valuable. — {{organization_name}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'organization_name'],
+  },
+
+  // ── Facilitator Templates ───────────────────────────────────────────────
+  {
+    name: 'Facilitator Pre-Event Briefing (Email)', category: 'meetings', templateType: 'facilitator_reminder', channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Facilitator Briefing: {{meeting_title}}',
+    body: `Hi {{user_name}},\n\nThis is your facilitator reminder for {{meeting_title}}.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🔗 Meeting Link: {{meeting_link}}\n📊 Registrants: {{registrant_count}}\n\nPlease ensure you are prepared and available to join 5 minutes early.\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'registrant_count', 'organization_name'],
+  },
+  {
+    name: 'Facilitator Post-Event Debrief (Email)', category: 'meetings', templateType: 'facilitator_debrief', channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Debrief: {{meeting_title}} Complete',
+    body: `Hi {{user_name}},\n\n{{meeting_title}} has concluded.\n\nAttendance Summary:\n• Total Registrations: {{registrant_count}}\n• Attended: {{attendee_count}}\n• No-Shows: {{no_show_count}}\n\nPlease review the registrant list and follow up with any action items.\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'registrant_count', 'attendee_count', 'no_show_count', 'organization_name'],
   },
 
   // ── Forms ─────────────────────────────────────────────────────────────────

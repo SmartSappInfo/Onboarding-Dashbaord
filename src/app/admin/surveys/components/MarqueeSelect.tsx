@@ -35,11 +35,11 @@ export function MarqueeSelect({ children, containerRef, onSelectionChange, itemS
         target.closest('[data-marquee-ignore="true"]') ||
         target.closest('a')) return;
 
-    const container = containerRef.current;
-    if (!container) return;
+    const r = wrapperRef.current?.getBoundingClientRect();
+    if (!r) return;
 
-    const x = e.clientX;
-    const y = e.clientY;
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
     
     startPos.current = { x, y };
     const initialState = { startX: x, startY: y, endX: x, endY: y };
@@ -47,11 +47,12 @@ export function MarqueeSelect({ children, containerRef, onSelectionChange, itemS
     setMarquee(initialState);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!r) return;
         const updatedState = { 
             startX: startPos.current!.x, 
             startY: startPos.current!.y, 
-            endX: moveEvent.clientX, 
-            endY: moveEvent.clientY 
+            endX: moveEvent.clientX - r.left, 
+            endY: moveEvent.clientY - r.top 
         };
         marqueeRef.current = updatedState;
         setMarquee(updatedState);
@@ -59,30 +60,22 @@ export function MarqueeSelect({ children, containerRef, onSelectionChange, itemS
 
     const handleMouseUp = (upEvent: MouseEvent) => {
         window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
         
-        const finalMarquee = marqueeRef.current;
-        if (finalMarquee) {
-            const mL = Math.min(finalMarquee.startX, finalMarquee.endX);
-            const mT = Math.min(finalMarquee.startY, finalMarquee.endY);
-            const mR = Math.max(finalMarquee.startX, finalMarquee.endX);
-            const mB = Math.max(finalMarquee.startY, finalMarquee.endY);
-
-            // Small drag threshold
-            if (Math.abs(finalMarquee.endX - finalMarquee.startX) > 5 || Math.abs(finalMarquee.endY - finalMarquee.startY) > 5) {
-                const selectedIds: string[] = [];
-                container.querySelectorAll(itemSelector).forEach(el => {
-                    const id = el.getAttribute('data-block-id');
-                    if (!id) return;
-                    const rect = el.getBoundingClientRect();
-                    if (!(rect.left > mR || rect.right < mL || rect.top > mB || rect.bottom < mT)) {
-                        selectedIds.push(id);
-                    }
-                });
-                onSelectionChange(selectedIds, upEvent.shiftKey || upEvent.metaKey || upEvent.ctrlKey);
-            }
+        if (marqueeRef.current) {
+            const finalMarquee = {
+                ...marqueeRef.current,
+                endX: upEvent.clientX - r.left,
+                endY: upEvent.clientY - r.top
+            };
+            
+            // Convert relative marquee to absolute for selection logic if needed, 
+            // or update selection logic to use relative coords.
+            // Selection logic probably uses getBoundingClientRect of items, 
+            // so we should use absolute viewport coords for selection but relative for rendering.
+            
+            performSelection(finalMarquee, upEvent.shiftKey || upEvent.metaKey || upEvent.ctrlKey);
         }
-
+        
         setMarquee(null);
         marqueeRef.current = null;
         startPos.current = null;
@@ -92,14 +85,44 @@ export function MarqueeSelect({ children, containerRef, onSelectionChange, itemS
     window.addEventListener('mouseup', handleMouseUp, { once: true });
   };
 
-  // Map viewport coordinates to wrapper-relative coordinates for rendering the visual box
+  const performSelection = (m: MarqueeState, isAccumulating: boolean) => {
+    const r = wrapperRef.current?.getBoundingClientRect();
+    if (!r) return;
+
+    // Convert relative to absolute for selection
+    const absStart = { x: m.startX + r.left, y: m.startY + r.top };
+    const absEnd = { x: m.endX + r.left, y: m.endY + r.top };
+
+    const x1 = Math.min(absStart.x, absEnd.x);
+    const x2 = Math.max(absStart.x, absEnd.x);
+    const y1 = Math.min(absStart.y, absEnd.y);
+    const y2 = Math.max(absStart.y, absEnd.y);
+
+    const items = document.querySelectorAll(itemSelector);
+    const selectedIds: string[] = [];
+
+    items.forEach((item: Element) => {
+      const rect = item.getBoundingClientRect();
+      const id = item.getAttribute('data-block-id');
+      
+      if (id && 
+          rect.left < x2 && 
+          rect.right > x1 && 
+          rect.top < y2 && 
+          rect.bottom > y1) {
+        selectedIds.push(id);
+      }
+    });
+
+    onSelectionChange(selectedIds, isAccumulating);
+  };
+
+  // Map relative coordinates for rendering the visual box
   const getRenderStyle = () => {
-    if (!marquee || !wrapperRef.current) return {};
-    const r = wrapperRef.current.getBoundingClientRect();
+    if (!marquee) return {};
     
-    // Calculate position relative to the wrapper's current viewport position
-    const left = Math.min(marquee.startX, marquee.endX) - r.left;
-    const top = Math.min(marquee.startY, marquee.endY) - r.top;
+    const left = Math.min(marquee.startX, marquee.endX);
+    const top = Math.min(marquee.startY, marquee.endY);
     const width = Math.abs(marquee.endX - marquee.startX);
     const height = Math.abs(marquee.endY - marquee.startY);
 

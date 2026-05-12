@@ -11,10 +11,10 @@ export function MetricsRow({
 }) {
   return (
     <>
-      <MetricCard label={`Total ${terminology.plural}`} value={data.totalSchools} href="/admin/entities" icon={School} />
-      <MetricCard label="Upcoming Meetings" value={data.upcomingMeetings} href="/admin/meetings" icon={CalendarDays} />
-      <MetricCard label="Published Surveys" value={data.publishedSurveys} href="/admin/surveys" icon={FileText} />
-      <MetricCard label="Data Metrics" value={data.totalResponses} href="/admin/surveys" icon={BarChart2} />
+      <MetricCard title={`Total ${terminology.plural}`} value={data.totalSchools} href="/admin/entities" icon={School} />
+      <MetricCard title="Upcoming Meetings" value={data.upcomingMeetings} href="/admin/meetings" icon={CalendarDays} />
+      <MetricCard title="Published Surveys" value={data.publishedSurveys} href="/admin/surveys" icon={FileText} />
+      <MetricCard title="Data Metrics" value={data.totalResponses} href="/admin/surveys" icon={BarChart2} />
     </>
   )
 }

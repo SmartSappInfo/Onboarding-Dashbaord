@@ -739,7 +739,7 @@ const getRequiredMessage = (type: string) => {
     return 'This field is required.';
 };
 
-function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant = 'full', isPageVisible = () => true }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, variant?: 'full' | 'simple', isPageVisible?: (idx: number) => boolean }) {
+function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, elementStates, variant = 'full', isPageVisible = () => true }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, elementStates: Record<string, ElementState>, variant?: 'full' | 'simple', isPageVisible?: (idx: number) => boolean }) {
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
@@ -780,7 +780,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, variant
 
                     const section = page[0] as SurveyLayoutBlock;
                     const isSectionVisible = section ? (elementStates[section.id]?.isVisible ?? !section.hidden) : true;
-                    const title = (isSectionVisible ? (section?.stepperTitle || section?.title) : null) || `Step ${index + 1}`;
+                    const title: string = (isSectionVisible ? (section?.stepperTitle || section?.title || null) : null) || `Step ${index + 1}`;
                     const isCompleted = actualIdx < currentIndex;
                     const isActive = actualIdx === currentIndex;
                     const isInvalid = !pageStatuses[actualIdx].isValid;
@@ -1539,7 +1539,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false, sou
                             )}
 
                             <div ref={stepperRef}>
-                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} />
+                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} elementStates={elementStates} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} />
                             </div>
 
                              {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (

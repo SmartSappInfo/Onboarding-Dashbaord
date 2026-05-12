@@ -29,6 +29,12 @@
       "sourceType": "github",
       "computedHash": "18da189464fd9a53133a1372599369ac4b7f3a9da653a907762e20e89cdb2102"
     },
+    "creating-dashboards": {
+      "source": "ancoleman/ai-design-components",
+      "sourceType": "github",
+      "skillPath": "skills/creating-dashboards/SKILL.md",
+      "computedHash": "862bd9352dc13200ad09210312c47105a575d4ec00203aea7c7a35ad6ab67f55"
+    },
     "crm-builder": {
       "source": "customware-ai/skills",
       "sourceType": "github",

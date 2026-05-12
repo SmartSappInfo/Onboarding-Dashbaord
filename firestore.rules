@@ -640,6 +640,17 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('dashboard_manage'));
     }
 
+    match /dashboards/{docId} {
+      allow get: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+    }
+
     // --- App Fields / Variable Registry ---
     match /app_fields/{fieldId} {
       allow get: if isAuthorized();
@@ -793,6 +804,17 @@ service cloud.firestore {
         (hasPermission('schools_edit') &&
          resource.data.workspaceId in getUserData().workspaceIds)
       );
+    }
+
+    match /workspace_users/{docId} {
+      allow read, list: if isAuthorized();
+      allow write: if isSystemAdmin();
+    }
+
+    match /meeting_registrants/{docId} {
+      allow create: if true;
+      allow read, list, update: if isAuthorized();
+      allow delete: if isSystemAdmin();
     }
 
     // --- Industry-Specific Collections ---
