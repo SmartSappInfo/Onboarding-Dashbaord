@@ -11,8 +11,11 @@
 !.yarn/versions
 
 # skills adn agents
-/.agents
-/rules
+#/.agents
+#/rules
+#/.kilo
+#/.kiro
+
 
 # testing
 /coverage
@@ -35,22 +38,22 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # vercel
-.vercel
+#.vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-.genkit/*
-.env*
+#.genkit/*
+#.env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
 # Sentry Config File
-.env.sentry-build-plugin
+#.env.sentry-build-plugin
 
 # Secret credentials - never commit
-serviceAccountKey.json
-*serviceAccount*.json
-*service-account*.json
+#serviceAccountKey.json
+#*serviceAccount*.json
+#*service-account*.json
