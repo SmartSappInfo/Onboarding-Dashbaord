@@ -15,7 +15,7 @@ import { INDUSTRY_CONFIG } from '@/lib/industry-config';
 export interface Terminology {
   singular: string;
   plural: string;
-  focalPerson: string;
+  primaryContact: string;
   addNew: string;
   importBulk: string;
   noFound: string;
@@ -60,7 +60,7 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
         return {
             singular: s,
             plural: p,
-            focalPerson: 'Focal Person',
+            primaryContact: 'Primary Contact',
             addNew: `Add New ${s}`,
             importBulk: `Bulk Import ${p}`,
             noFound: `No ${p.toLowerCase()} found for the active workspace.`,
@@ -85,7 +85,7 @@ export function resolveTerminologyFromWorkspace(workspace: any): Terminology {
     return {
         singular: s,
         plural: p,
-        focalPerson: 'Focal Person',
+        primaryContact: 'Primary Contact',
         addNew: `Add New ${s}`,
         importBulk: `Bulk Import ${p}`,
         noFound: `No ${p.toLowerCase()} found for the active workspace.`,

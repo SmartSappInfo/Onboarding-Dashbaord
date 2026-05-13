@@ -147,7 +147,7 @@ export async function validateImportBatch(
 
     // 3a. Derive entity name & Contact Name Sync
     let entityName = '';
-    let contactName = mapped.focalPerson_name || mapped.contactName || '';
+    let contactName = mapped.contact_name || mapped.contactName || '';
 
     if (entityType === 'person') {
       entityName = `${mapped.firstName || ''} ${mapped.lastName || ''}`.trim();
@@ -170,8 +170,8 @@ export async function validateImportBatch(
       }
     } else {
       entityName = mapped.name || contactName || '';
-      if (!entityName && (mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone)) {
-        entityName = `[Placeholder] ${mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone}`;
+      if (!entityName && (mapped.contact_email || mapped.contact_phone || mapped.email || mapped.phone)) {
+        entityName = `[Placeholder] ${mapped.contact_email || mapped.contact_phone || mapped.email || mapped.phone}`;
       }
     }
 
@@ -183,8 +183,8 @@ export async function validateImportBatch(
 
     // 3b2. Contact policy check — enforce workspace identifier requirements
     if (rowValid) {
-      const rowPhone = mapped.phone || mapped.focalPerson_phone || mapped.guardian1_phone || '';
-      const rowEmail = mapped.email || mapped.focalPerson_email || mapped.guardian1_email || '';
+      const rowPhone = mapped.phone || mapped.contact_phone || mapped.guardian1_phone || '';
+      const rowEmail = mapped.email || mapped.contact_email || mapped.guardian1_email || '';
       const policyResult = validateContactIdentifier(rowPhone, rowEmail, contactPolicy);
       if (!policyResult.valid) {
         errors.push({ rowNumber: rowNum, reason: policyResult.reason || 'Missing required identifier per workspace policy' });
@@ -197,8 +197,8 @@ export async function validateImportBatch(
       errors.push({ rowNumber: rowNum, reason: `Invalid email format: "${mapped.email}"` });
       rowValid = false;
     }
-    if (mapped.focalPerson_email && !isValidEmail(mapped.focalPerson_email)) {
-      errors.push({ rowNumber: rowNum, reason: `Invalid focal person email: "${mapped.focalPerson_email}"` });
+    if (mapped.contact_email && !isValidEmail(mapped.contact_email)) {
+      errors.push({ rowNumber: rowNum, reason: `Invalid contact email: "${mapped.contact_email}"` });
       rowValid = false;
     }
     if (mapped.guardian1_email && !isValidEmail(mapped.guardian1_email)) {
@@ -216,13 +216,13 @@ export async function validateImportBatch(
         mapped.phone = parsed.e164 || mapped.phone;
       }
     }
-    if (mapped.focalPerson_phone) {
-      const parsed = normalizePhoneNumber(mapped.focalPerson_phone, defaultCountryCode);
+    if (mapped.contact_phone) {
+      const parsed = normalizePhoneNumber(mapped.contact_phone, defaultCountryCode);
       if (!parsed.isValid) {
-        errors.push({ rowNumber: rowNum, reason: `Invalid focal person phone format: "${mapped.focalPerson_phone}"` });
+        errors.push({ rowNumber: rowNum, reason: `Invalid contact phone format: "${mapped.contact_phone}"` });
         rowValid = false;
       } else {
-        mapped.focalPerson_phone = parsed.e164 || mapped.focalPerson_phone;
+        mapped.contact_phone = parsed.e164 || mapped.contact_phone;
       }
     }
     if (mapped.guardian1_phone) {
@@ -489,7 +489,7 @@ function buildEntityPayload(
   stageId?: string
 ): any | null {
   // Sync Contact Name <-> Entity Name generically
-  const contactName = mapped.focalPerson_name || mapped.contactName || '';
+  const contactName = mapped.contact_name || mapped.contactName || '';
 
   if (entityType === 'person') {
     let fName = mapped.firstName;
@@ -612,25 +612,25 @@ function buildEntityPayload(
 
   if (entityType === 'institution') {
     let instName = mapped.name || contactName || '';
-    if (!instName && (mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone)) {
-      instName = `[Placeholder] ${mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone}`;
+    if (!instName && (mapped.contact_email || mapped.contact_phone || mapped.email || mapped.phone)) {
+      instName = `[Placeholder] ${mapped.contact_email || mapped.contact_phone || mapped.email || mapped.phone}`;
     }
     if (!instName) return null;
 
-    const fpName = mapped.focalPerson_name || contactName || 'Primary Contact';
+    const primaryName = mapped.contact_name || contactName || 'Primary Contact';
 
     const contacts: any[] = [];
-    if (fpName || mapped.focalPerson_email || mapped.focalPerson_phone || mapped.email || mapped.phone) {
-      const rawPhone = mapped.focalPerson_phone || mapped.phone || '';
+    if (primaryName || mapped.contact_email || mapped.contact_phone || mapped.email || mapped.phone) {
+      const rawPhone = mapped.contact_phone || mapped.phone || '';
       const parsedPhone = rawPhone ? normalizePhoneNumber(rawPhone, defaultCountryCode) : null;
       contacts.push({
-        name: fpName,
+        name: primaryName,
         phone: parsedPhone?.e164 || rawPhone,
         countryCode: parsedPhone?.countryCode,
         callingCode: parsedPhone?.callingCode,
-        email: mapped.focalPerson_email || mapped.email || '',
-        typeKey: mapped.focalPerson_type?.toLowerCase() || 'focal_person',
-        typeLabel: mapped.focalPerson_type || 'Focal Person',
+        email: mapped.contact_email || mapped.email || '',
+        typeKey: mapped.contact_role?.toLowerCase().replace(/\s+/g, '_') || 'contact',
+        typeLabel: mapped.contact_role || 'Contact',
         isPrimary: true,
         isSignatory: true,
       });

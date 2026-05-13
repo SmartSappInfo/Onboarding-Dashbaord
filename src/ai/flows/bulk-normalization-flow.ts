@@ -20,11 +20,11 @@ const BulkNormalizationInputSchema = z.object({
 });
 export type BulkNormalizationInput = z.infer<typeof BulkNormalizationInputSchema>;
 
-const FocalPersonSchema = z.object({
+const ContactSchema = z.object({
   name: z.string(),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
-  type: z.string().describe('Role at the school.'),
+  role: z.string().describe('Role at the institution.'),
   isSignatory: z.boolean().describe('True if this is the primary legal representative.'),
 });
 
@@ -45,7 +45,7 @@ const BulkNormalizationOutputSchema = z.object({
     billingAddress: z.string().optional(),
     currency: z.string().optional().default('GHS'),
     moduleIds: z.array(z.string()).optional().describe('Array of resolved module IDs.'),
-    focalPersons: z.array(FocalPersonSchema),
+    contacts: z.array(ContactSchema),
     implementationDate: z.string().optional().describe('ISO date string.'),
     referee: z.string().optional(),
     includeDroneFootage: z.boolean().optional(),

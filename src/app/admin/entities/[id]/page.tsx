@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
-import type { WorkspaceEntity, Entity, FocalPerson, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
+import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';

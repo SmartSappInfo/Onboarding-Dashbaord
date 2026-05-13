@@ -80,6 +80,7 @@ import { scheduleMeetingPostEvent, cancelMeetingPostEvent } from '@/app/actions/
 import { Checkbox } from '@/components/ui/checkbox';
 import MeetingLeadCaptureSection from '../../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../../components/MeetingMessagingTab';
+import { MeetingFacilitatorsSection } from '../../components/MeetingFacilitatorsSection';
 
 const formSchema = z.object({
   entity: z.custom<WorkspaceEntity>().optional().nullable(),
@@ -137,7 +138,7 @@ const formSchema = z.object({
   createEntity: z.boolean().default(false),
   entityMapping: z.object({
     nameField: z.string().default(''),
-    focalPersonField: z.string().optional().default(''),
+    primaryContactField: z.string().optional().default(''),
     emailField: z.string().optional().default(''),
     phoneField: z.string().optional().default(''),
     additionalMappings: z.array(z.object({
@@ -146,7 +147,18 @@ const formSchema = z.object({
     })).default([]),
   }).default({}),
   autoTags: z.array(z.string()).default([]),
-  autoAutomations: z.array(z.string()).default([]),
+  
+  facilitators: z.array(z.object({
+    id: z.string(),
+    type: z.enum(['workspace_user', 'custom']),
+    userId: z.string().optional(),
+    name: z.string(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    image: z.string().optional(),
+    joinLink: z.string()
+  })).default([]),
 
   // Messaging Config (Phase 5)
   messagingConfig: z.any().optional(),
@@ -170,7 +182,6 @@ const WIZARD_STEPS = [
   { id: 'branding', label: 'Branding', icon: Palette, description: 'Theme, hero & preview' },
   { id: 'registration', label: 'Registration', icon: ClipboardCheck, description: 'Signup, capacity & leads' },
   { id: 'messaging', label: 'Messaging', icon: MessageSquare, description: 'Automated comms' },
-  { id: 'automations', label: 'Automations', icon: Zap, description: 'Workflows & alerts' },
   { id: 'publish', label: 'Publish', icon: Rocket, description: 'Go live' },
 ] as const;
 
@@ -310,13 +321,6 @@ export default function EditMeetingPage() {
         heroCtaLabel: meeting.heroCtaLabel || '',
         recordingUrl: meeting.recordingUrl || '',
         brochureUrl: meeting.brochureUrl || '',
-        adminAlertsEnabled: meeting.adminAlertsEnabled || false,
-        adminAlertChannel: meeting.adminAlertChannel || 'both',
-        adminAlertNotifyManager: meeting.adminAlertNotifyManager ?? true,
-        adminAlertSpecificUserIds: meeting.adminAlertSpecificUserIds || [],
-        adminAlertEmailTemplateId: meeting.adminAlertEmailTemplateId || '',
-        adminAlertSmsTemplateId: meeting.adminAlertSmsTemplateId || '',
-        enabledReminders: meeting.enabledReminders || [],
       });
       setHasInitialized(true);
     }
@@ -385,21 +389,12 @@ export default function EditMeetingPage() {
             // Options
             recordingUrl: data.recordingUrl || '',
             brochureUrl: data.brochureUrl || '',
-            adminAlertsEnabled: data.adminAlertsEnabled,
-            adminAlertChannel: data.adminAlertChannel,
-            adminAlertNotifyManager: data.adminAlertNotifyManager,
-            adminAlertSpecificUserIds: data.adminAlertSpecificUserIds || [],
-            adminAlertEmailTemplateId: data.adminAlertEmailTemplateId || '',
-            adminAlertSmsTemplateId: data.adminAlertSmsTemplateId || '',
             
-            // Reminders (Task 12.1)
-            enabledReminders: data.enabledReminders || [],
-
             // Phase 4: Lead Capture
             createEntity: data.createEntity || false,
             entityMapping: data.entityMapping || {},
             autoTags: data.autoTags || [],
-            autoAutomations: data.autoAutomations || [],
+            facilitators: data.facilitators || [],
 
             // Phase 5: Messaging Config
             messagingConfig: data.messagingConfig || null,
@@ -407,6 +402,15 @@ export default function EditMeetingPage() {
             // Phase 7: Publish Status
             publishStatus: data.publishStatus || 'draft',
         };
+
+        // Clean up legacy properties by removing them from payload if present
+        delete (meetingData as any).adminAlertsEnabled;
+        delete (meetingData as any).adminAlertChannel;
+        delete (meetingData as any).adminAlertNotifyManager;
+        delete (meetingData as any).adminAlertSpecificUserIds;
+        delete (meetingData as any).adminAlertEmailTemplateId;
+        delete (meetingData as any).adminAlertSmsTemplateId;
+        delete (meetingData as any).enabledReminders;
 
         const docRef = doc(firestore, 'meetings', meetingId);
         
@@ -425,30 +429,9 @@ export default function EditMeetingPage() {
             metadata: { meetingId }
         }).catch(err => console.warn("Activity log deferred:", err.message));
 
-        if (data.adminAlertsEnabled && !meeting?.adminAlertsEnabled) {
-             triggerInternalNotification({
-                entityId: data.entity?.id || '',
-                notifyManager: data.adminAlertNotifyManager,
-                specificUserIds: data.adminAlertSpecificUserIds,
-                emailTemplateId: data.adminAlertEmailTemplateId,
-                smsTemplateId: data.adminAlertSmsTemplateId,
-                channel: data.adminAlertChannel,
-                variables: {
-                    school_name: data.entity?.displayName || data.heroTitle || 'Standalone Session',
-                    meeting_type: data.type.name,
-                    date: format(data.meetingTime, 'PPPP'),
-                    time: format(data.meetingTime, 'p'),
-                    link: data.meetingLink,
-                    event_type: 'Session Setup Configured'
-                }
-            }).catch(err => console.warn("Notification deferred:", err.message));
-        }
-
-        // Task 12.3: Reschedule reminders if meeting time changed or reminders changed
+        // Task 12.3: Reschedule reminders if meeting time changed
         const timeChanged = meeting?.meetingTime !== data.meetingTime.toISOString();
-        const remindersChanged = JSON.stringify(meeting?.enabledReminders || []) !== JSON.stringify(data.enabledReminders || []);
-        
-        if (timeChanged || remindersChanged) {
+        if (timeChanged) {
             rescheduleRemindersForMeeting(
                 { id: meetingId, ...meetingData } as any,
                 activeOrganizationId
@@ -518,7 +501,7 @@ export default function EditMeetingPage() {
     }
   };
 
-  if (isLoadingMeeting || isLoadingEntities) {
+  if (isLoadingMeeting || isLoadingEntities || !hasInitialized) {
     return (
  <div className="h-full overflow-y-auto  space-y-8 bg-background">
  <Card className="max-w-3xl mx-auto shadow-sm border-none ring-1 ring-border rounded-2xl">
@@ -630,13 +613,17 @@ export default function EditMeetingPage() {
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Context {singular}</FormLabel>
                                         <Select
                                             onValueChange={(entityId: string) => {
+                                                if (entityId === 'no_entity') {
+                                                    field.onChange(null);
+                                                    return;
+                                                }
                                                 const entity = entities?.find((s) => s.id === entityId);
                                                 field.onChange(entity);
                                                 if (entity && !form.getValues('meetingSlug')) {
                                                     form.setValue('meetingSlug', entity.slug || '', { shouldValidate: true });
                                                 }
                                             }}
-                                            value={field.value?.id || ""}
+                                            value={field.value?.id || "no_entity"}
                                         >
                                             <FormControl>
  <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
@@ -644,6 +631,7 @@ export default function EditMeetingPage() {
                                                 </SelectTrigger>
                                             </FormControl>
  <SelectContent className="rounded-xl">
+                                                <SelectItem value="no_entity">No Entity Context Binding</SelectItem>
                                                 {entities?.map((entity) => (
                                                     <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
                                                 ))}
@@ -662,7 +650,7 @@ export default function EditMeetingPage() {
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Session Category</FormLabel>
                                         <Select
                                             onValueChange={(typeId: string) => field.onChange(MEETING_TYPES.find(t => t.id === typeId))}
-                                            value={field.value?.id || ""}
+                                            value={field.value?.id}
                                         >
                                             <FormControl>
  <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
@@ -739,6 +727,10 @@ export default function EditMeetingPage() {
                                     </FormItem>
                                 )}
                             />
+                            
+                            <Separator className="bg-border/50" />
+                            
+                            <MeetingFacilitatorsSection />
                             </CardContent>
                         </Card>
                     </div>
@@ -1267,122 +1259,7 @@ export default function EditMeetingPage() {
                     </div>
                 </div>
 
-            {/* ──────── STEP 5: Automations ──────── */}
-                <div className={cn(currentStep !== stepIndex('automations') && "hidden")}>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">
-                            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                                <CardHeader className="bg-muted/30 border-b pb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-amber-500/10 rounded-xl"><Zap className="h-5 w-5 text-amber-600" /></div>
-                                        <div>
-                                            <CardTitle className="text-lg font-semibold tracking-tight">Automations & Advanced</CardTitle>
-                                            <CardDescription className="text-xs font-medium text-left">Recording, brochure, and workflow configuration.</CardDescription>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-6 space-y-8 bg-background">
-                                    {/* ── Legacy Reminders (only when messagingConfig absent) ── */}
-                                    {!form.watch('messagingConfig')?.reminders?.length && (
-                                        <>
-                                            <Separator className="bg-border/50" />
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-blue-500/10 rounded-xl"><Clock className="h-5 w-5 text-blue-600" /></div>
-                                                    <div>
-                                                        <h3 className="text-sm font-semibold tracking-tight">Legacy Reminders</h3>
-                                                        <p className="text-xs text-muted-foreground">Quick-toggle reminders. For advanced messaging, use the Messaging tab.</p>
-                                                    </div>
-                                                </div>
-                                                <FormField
-                                                    control={form.control}
-                                                    name="enabledReminders"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                                {[
-                                                                    { id: 'meeting_reminder_15min', label: '15 minutes before', offset: REMINDER_OFFSETS.FIFTEEN_MINUTES },
-                                                                    { id: 'meeting_reminder_1hour', label: '1 hour before', offset: REMINDER_OFFSETS.ONE_HOUR },
-                                                                    { id: 'meeting_reminder_2hours', label: '2 hours before', offset: REMINDER_OFFSETS.TWO_HOURS },
-                                                                    { id: 'meeting_reminder_1day', label: '1 day before', offset: REMINDER_OFFSETS.ONE_DAY },
-                                                                    { id: 'meeting_time_up', label: 'At meeting time', offset: REMINDER_OFFSETS.TIME_UP },
-                                                                ].map((reminder) => (
-                                                                    <div key={reminder.id} className="flex items-center space-x-3 p-3 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors">
-                                                                        <Checkbox
-                                                                            id={reminder.id}
-                                                                            checked={field.value?.includes(reminder.id)}
-                                                                            onCheckedChange={(checked) => {
-                                                                                const updated = checked
-                                                                                    ? [...(field.value || []), reminder.id]
-                                                                                    : (field.value || []).filter((id) => id !== reminder.id);
-                                                                                field.onChange(updated);
-                                                                            }}
-                                                                        />
-                                                                        <label htmlFor={reminder.id} className="text-sm font-medium cursor-pointer flex-1">
-                                                                            {reminder.label}
-                                                                        </label>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
-                                        </>
-                                    )}
 
-                                    {/* ── Modern Override Banner (when messaging tab is populated) ── */}
-                                    {form.watch('messagingConfig')?.reminders?.length > 0 && (
-                                        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 flex items-start gap-3">
-                                            <Clock className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs font-bold text-blue-800 dark:text-blue-400">Reminders managed via Messaging tab</p>
-                                                <p className="text-[10px] text-blue-600/80 dark:text-blue-400/60 mt-0.5">
-                                                    {form.watch('messagingConfig').reminders.filter((r: any) => r.enabled).length} active reminder(s) configured. Edit them in the Messaging step.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* ── Legacy InternalNotificationConfig (only when messagingConfig.facilitatorUserIds absent) ── */}
-                            {!form.watch('messagingConfig')?.facilitatorUserIds?.length ? (
-                                <InternalNotificationConfig prefix="adminAlert" />
-                            ) : (
-                                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                                    <CardContent className="p-4 flex items-start gap-3">
-                                        <Users className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-xs font-bold text-foreground">Facilitator alerts managed via Messaging tab</p>
-                                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                {form.watch('messagingConfig').facilitatorUserIds.length} facilitator(s) configured. Edit them in the Messaging step.
-                                            </p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </div>
-
-                        <div className="space-y-6">
-                            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
-                                <CardContent className="p-6 space-y-3">
-                                    <div className="flex items-center gap-2 text-amber-600">
-                                        <Zap className="h-4 w-4" />
-                                        <h4 className="text-xs font-bold">Automation Tips</h4>
-                                    </div>
-                                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                        {form.watch('messagingConfig')
-                                          ? 'This panel handles workflow configuration. Recording and brochure have moved to the Publish tab.'
-                                          : 'Legacy reminders here work alongside the new Messaging tab. For fine-grained control with custom templates, use the Messaging tab instead.'
-                                        }
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
 
             {/* ──────── STEP 6: Publish ──────── */}
                 <div className={cn(currentStep !== stepIndex('publish') && "hidden")}>

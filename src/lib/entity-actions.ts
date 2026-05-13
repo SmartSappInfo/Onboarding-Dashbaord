@@ -6,10 +6,8 @@ import { revalidatePath } from 'next/cache';
 import type { School, OnboardingStage, EntityType, EntityContact } from './types';
 import crypto from 'crypto';
 import {
-  focalPersonToEntityContact,
   enforceContactConstraints,
   extractPrimaryContactFields,
-  entityContactToFocalPerson,
   normalizeContactType,
 } from './entity-contact-helpers';
 import { findDuplicateEntities } from './entity-duplicate-detection';
@@ -228,8 +226,19 @@ export async function createEntityAction(
           
           return contact as EntityContact;
         }
-        // Legacy FocalPerson shape — convert
-        const legacyContact = focalPersonToEntityContact(c, i);
+        // Non-EntityContact shape — treat as raw and build
+        const legacyContact: EntityContact = {
+          id: c.id || `ec_${crypto.randomUUID().substring(0, 8)}`,
+          name: c.name || '',
+          typeKey: normalizeContactType(c.type || 'other'),
+          typeLabel: c.type || 'Other',
+          isPrimary: c.isPrimary ?? (i === 0),
+          isSignatory: c.isSignatory ?? false,
+          order: i,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        };
+        if (c.email) legacyContact.email = c.email;
         if (phone) {
             legacyContact.phone = phone;
             legacyContact.countryCode = countryCode;
@@ -243,7 +252,7 @@ export async function createEntityAction(
     const entityContacts = enforceContactConstraints(rawContacts);
 
     // Extract denormalized primary fields
-    const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts, contacts: [] });
+    const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
 
     // 2.5 Duplicate Detection (Requirement: Strict Duplicate Prevention unless forced)
     if (!forceCreate) {
@@ -464,7 +473,20 @@ export async function updateEntityAction(
             
             return contact as EntityContact;
           }
-          return focalPersonToEntityContact(c, i);
+          // Non-EntityContact shape — build directly
+          const contact: EntityContact = {
+            id: c.id || `ec_${crypto.randomUUID().substring(0, 8)}`,
+            name: c.name || '',
+            typeKey: normalizeContactType(c.type || 'other'),
+            typeLabel: c.type || 'Other',
+            isPrimary: c.isPrimary ?? (i === 0),
+            isSignatory: c.isSignatory ?? false,
+            order: i,
+            updatedAt: timestamp,
+          };
+          if (c.email) contact.email = c.email;
+          if (c.phone) contact.phone = c.phone;
+          return contact;
         }
       );
       entityContacts = enforceContactConstraints(rawContacts);
@@ -575,7 +597,7 @@ export async function updateEntityAction(
         
         // FER-01: Sync entityContacts and denormalized fields
         if (entityContacts) {
-            const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts, contacts: [] });
+            const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields({ entityContacts });
             weUpdate.primaryContactName = primaryContactName;
             weUpdate.primaryEmail = primaryEmail;
             weUpdate.primaryPhone = primaryPhone;

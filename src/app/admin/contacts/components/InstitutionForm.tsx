@@ -5,7 +5,7 @@ import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Building, Banknote, Users, MapPin, Calendar } from 'lucide-react';
-import type { Entity, FocalPerson } from '@/lib/types';
+import type { Entity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,

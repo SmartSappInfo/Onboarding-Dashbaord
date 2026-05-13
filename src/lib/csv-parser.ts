@@ -268,14 +268,14 @@ function validateRowData(
     }
   }
 
-  // Validate focal person email if provided (institution)
-  if (row.focalPerson_email && row.focalPerson_email.trim()) {
-    if (!isValidEmail(row.focalPerson_email)) {
+  // Validate contact email if provided (institution)
+  if (row.contact_email && row.contact_email.trim()) {
+    if (!isValidEmail(row.contact_email)) {
       errors.push({
         row: rowNumber,
-        field: 'focalPerson_email',
+        field: 'contact_email',
         reason: 'Invalid email format',
-        value: row.focalPerson_email,
+        value: row.contact_email,
       });
     }
   }

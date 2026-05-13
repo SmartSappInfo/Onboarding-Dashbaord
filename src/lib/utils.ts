@@ -34,8 +34,9 @@ export function toTitleCase(str: string): string {
 export function resolveVariableValue(key: string, school?: any): string | null {
     if (!school) return null;
     
-    // 1. Resolve Signatory Context
-    const signatory = (school.focalPersons || []).find((p: any) => p.isSignatory);
+    // 1. Resolve Signatory Context from entityContacts
+    const contacts = school.entityContacts || [];
+    const signatory = contacts.find((c: any) => c.isSignatory) || contacts[0];
     
     const currency = school.currency || 'GHS';
     const rate = school.subscriptionRate || 0;

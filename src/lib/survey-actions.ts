@@ -8,7 +8,7 @@ import { triggerInternalNotification, triggerExternalNotification } from './noti
 import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
 
-import type { Survey, SurveyResponse, Webhook, FocalPerson, EntityType, ContactIdentifierPolicy, IndustryVertical } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { canUser } from './workspace-permissions';

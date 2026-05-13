@@ -18,11 +18,11 @@ const ExtractSchoolDataOutputSchema = z.object({
   slogan: z.string().optional().describe('School motto or slogan.'),
   location: z.string().optional().describe('Physical address or general area.'),
   nominalRoll: z.number().optional().describe('Estimated total student population.'),
-  focalPersons: z.array(z.object({
+  contacts: z.array(z.object({
     name: z.string().describe('Full name of the contact or office department.'),
     email: z.string().email().describe('Professional email address.'),
     phone: z.string().describe('Contact number.'),
-    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']).describe('Organizational role.')
+    role: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']).describe('Organizational role.')
   })).optional().describe('All stakeholders and office contact points identified in the text.'),
   suggestedModuleNames: z.array(z.string()).optional().describe('Names of SmartSapp modules mentioned or implied (e.g. Billing, Attendance, Security).'),
   explanation: z.string().describe('Brief summary of what was extracted and why.'),

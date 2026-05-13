@@ -30,8 +30,7 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
-/** @deprecated Use EntityContact.typeKey instead. Will be removed after contact migration. */
-export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
+
 
 export type SchoolStatusState = 'Active' | 'Inactive' | 'Archived' | 'archived';
 
@@ -402,18 +401,7 @@ export interface Child {
   enrollmentStatus?: string;
 }
 
-/** @deprecated Use EntityContact instead. Will be removed after contact migration. */
-export interface FocalPerson {
-  name: string;
-  phone: string;
-  email: string;
-  type: FocalPersonType;
-  isSignatory: boolean;
-  notes?: FocalPersonNote[];
-  attachments?: FocalPersonAttachment[];
-}
-
-export interface FocalPersonNote {
+export interface ContactNote {
   id: string;
   content: string;
   createdAt: string;
@@ -443,7 +431,7 @@ export interface EntityNote {
   replyCount?: number;
 }
 
-export interface FocalPersonAttachment {
+export interface ContactAttachment {
   id: string;
   name: string;
   url: string;
@@ -476,8 +464,8 @@ export interface EntityContact {
   isPrimary: boolean;
   isSignatory: boolean;
   order: number;
-  notes?: FocalPersonNote[];
-  attachments?: FocalPersonAttachment[];
+  notes?: ContactNote[];
+  attachments?: ContactAttachment[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -629,6 +617,13 @@ export interface UserProfile {
 
   /** Backoffice roles for platform control plane access */
   backofficeRoles?: import('./backoffice/backoffice-types').BackofficeRole[];
+
+  // Facilitator Profile (used in Meeting templates and presenter cards)
+  /** Public-facing presenter role title, e.g. "Keynote Speaker", "Lead Trainer" */
+  facilitatorRole?: string;
+  /** Short biography shown on meeting pages and join screens */
+  facilitatorBio?: string;
+
   createdAt: string;
 }
 
@@ -662,7 +657,7 @@ export interface School {
   workspaceId?: string; // Singular for backward compatibility
   status: SchoolStatusState;
   schoolStatus: string;
-  focalPersons?: any[]; // @deprecated - legacy focal persons
+
   entityContacts?: EntityContact[]; // Canonical contact data (FER-01)
   pipelineId: string;
   zone?: Zone;
@@ -1131,14 +1126,8 @@ export interface Meeting {
   waitlistEnabled?: boolean;
   recordingUrl?: string;
   brochureUrl?: string;
-  adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'both';
-  adminAlertNotifyManager?: boolean;
-  adminAlertSpecificUserIds?: string[];
-  adminAlertEmailTemplateId?: string;
-  adminAlertSmsTemplateId?: string;
-  // Reminder configuration (Task 12)
-  enabledReminders?: string[]; // Array of reminder type IDs (e.g., ['meeting_reminder_15min', 'meeting_reminder_1hour'])
+  // ── Facilitators ───────────────────────────────────────────────────────
+  facilitators?: MeetingFacilitator[];
 
   // ── Lead Capture ───────────────────────────────────────────────────────
   createEntity?: boolean;
@@ -1151,6 +1140,19 @@ export interface Meeting {
 
   // ── Publishing ─────────────────────────────────────────────────────────
   publishStatus?: 'draft' | 'published';
+}
+
+// ── Meeting Facilitator ────────────────────────────────────────────────────
+export interface MeetingFacilitator {
+  id: string; // Unique ID for this facilitator mapping
+  type: 'workspace_user' | 'custom';
+  userId?: string; // If workspace_user
+  name: string;
+  role?: string;
+  email?: string;
+  phone?: string;
+  image?: string; // photoURL or custom uploaded image
+  joinLink: string; // unique join link
 }
 
 // ── Meeting Entity Mapping ─────────────────────────────────────────────────
@@ -1182,9 +1184,13 @@ export interface MeetingMessagingConfig {
   registrationAckChannels: ('email' | 'sms')[];
 
   // Facilitators (internal team)
-  facilitatorUserIds: string[];
   facilitatorRemindersEnabled: boolean;
+  facilitatorRemindersEmailTemplateId?: string;
+  facilitatorRemindersSmsTemplateId?: string;
+  
   facilitatorPostEventEnabled: boolean;
+  facilitatorPostEventEmailTemplateId?: string;
+  facilitatorPostEventSmsTemplateId?: string;
   facilitatorChannels: ('email' | 'sms')[];
 
   // Custom Reminders (to registrants)
@@ -1197,6 +1203,11 @@ export interface MeetingMessagingConfig {
   postEventEmailTemplateId?: string;
   postEventSmsTemplateId?: string;
   postEventChannels: ('email' | 'sms')[];
+
+  // Absentee Follow-Up
+  postEventAbsenteeEnabled: boolean;
+  postEventAbsenteeEmailTemplateId?: string;
+  postEventAbsenteeSmsTemplateId?: string;
 }
 
 export interface MeetingRegistrationField {
@@ -1879,9 +1890,9 @@ export interface AutomationAction {
   templateCategory?: TemplateCategory;
   templateType?: string;
   senderProfileId?: string;
-  recipientType?: 'fixed' | 'manager' | 'focal_person';
+  recipientType?: 'fixed' | 'manager' | 'contact';
   fixedRecipient?: string;
-  focalPersonType?: string;
+  contactRole?: string;
   taskTitle?: string;
   taskDescription?: string;
   taskPriority?: TaskPriority;

@@ -17,10 +17,10 @@ export interface InstitutionImportRow {
   billingAddress?: string;
   currency?: string;
   subscriptionPackageId?: string;
-  focalPerson_name?: string;
-  focalPerson_phone?: string;
-  focalPerson_email?: string;
-  focalPerson_type?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_role?: string;
 }
 
 // Family CSV columns (Requirement 20.8)

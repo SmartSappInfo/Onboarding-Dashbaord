@@ -24,6 +24,7 @@ import {
   Mail,
   Phone,
   User,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
@@ -32,6 +33,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { createTagAction } from '@/lib/tag-actions';
 import { saveAutomationAction } from '@/lib/automation-actions';
+import { createFieldAction } from '@/lib/fields-actions';
 import type { MeetingRegistrationField } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -88,10 +90,54 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
   const entityMapping = watch('entityMapping') || {};
   const additionalMappings = entityMapping.additionalMappings || [];
 
+  // ── Entity Custom Fields (for mapping target) ──
+  const entityFieldsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'app_fields'),
+      where('workspaceId', '==', activeWorkspaceId),
+      where('status', '==', 'active')
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: entityFields } = useCollection<any>(entityFieldsQuery);
+
+  const entityFieldOptions = React.useMemo(() => {
+    // Build known entity root-level properties
+    const builtInOptions = [
+      { label: 'Name', value: 'name', group: 'Identity' },
+      { label: 'Initials', value: 'initials', group: 'Identity' },
+      { label: 'Location String', value: 'locationString', group: 'Identity' },
+      { label: 'Nominal Roll', value: 'nominalRoll', group: 'Identity' },
+      { label: 'First Name', value: 'personData.firstName', group: 'Person' },
+      { label: 'Last Name', value: 'personData.lastName', group: 'Person' },
+      { label: 'Company', value: 'personData.company', group: 'Person' },
+      { label: 'Job Title', value: 'personData.jobTitle', group: 'Person' },
+      { label: 'Lead Source', value: 'personData.leadSource', group: 'Person' },
+    ];
+
+    // Add workspace custom fields from app_fields
+    const customOptions = (entityFields || []).map((f: any) => ({
+      label: f.label || f.name,
+      value: `customData.${f.variableName}`,
+      group: 'Custom Fields',
+    }));
+
+    const combined = [...builtInOptions, ...customOptions];
+    
+    // Deduplicate by value to prevent React key warnings
+    const seen = new Set<string>();
+    return combined.filter(opt => {
+      if (seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+  }, [entityFields]);
+
   // ── Dialog states ──
   const [isCreateTagOpen, setIsCreateTagOpen] = React.useState(false);
   const [isCreateAutomationOpen, setIsCreateAutomationOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isCreatingField, setIsCreatingField] = React.useState(false);
 
   // ── Handlers ──
   const handleAddMapping = React.useCallback(() => {
@@ -113,6 +159,90 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
     current[index] = { ...current[index], [key]: value };
     setValue('entityMapping.additionalMappings', current);
   }, [additionalMappings, setValue]);
+
+  const handleCreateEntityField = React.useCallback(async (fieldLabel: string, index: number) => {
+    if (!fieldLabel.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
+    setIsCreatingField(true);
+
+    const variableName = fieldLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+
+    try {
+      const result = await createFieldAction({
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId,
+        name: fieldLabel.trim(),
+        label: fieldLabel.trim(),
+        variableName,
+        type: 'short_text',
+        section: 'custom_marketing',
+        isNative: false,
+        compatibilityScope: ['common'],
+        status: 'active',
+      }, user.uid);
+
+      if (result.success) {
+        handleUpdateMapping(index, 'targetProperty', `customData.${variableName}`);
+        toast({ title: 'Custom Field Created', description: `"${fieldLabel}" is now available as an entity field across your workspace.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create field.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsCreatingField(false);
+    }
+  }, [user, activeWorkspaceId, activeOrganizationId, handleUpdateMapping, toast]);
+
+  const handleCreateInlineTag = React.useCallback(async (tagName: string) => {
+    if (!tagName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
+    
+    try {
+      const result = await createTagAction({
+        name: tagName.trim(),
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId,
+        category: 'custom',
+        color: '#6366f1',
+        userId: user.uid,
+      });
+
+      if (result.success && result.data) {
+        toast({ title: 'Tag created', description: `"${tagName}" is now available and applied.` });
+        const currentTags = watch('autoTags') || [];
+        setValue('autoTags', [...currentTags, result.data.id]);
+      } else {
+        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create tag.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  }, [user, activeWorkspaceId, activeOrganizationId, watch, setValue, toast]);
+
+  const handleCreateInlineAutomation = React.useCallback(async (autoName: string) => {
+    if (!autoName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
+    
+    try {
+      const result = await saveAutomationAction(null, {
+        name: autoName.trim(),
+        workspaceIds: [activeWorkspaceId],
+        organizationId: activeOrganizationId,
+        status: 'draft',
+        isActive: false,
+        trigger: 'manual',
+        actions: [],
+      } as any, user.uid);
+
+      if (result.success && result.id) {
+        toast({ title: 'Automation created', description: `"${autoName}" saved as draft and selected.` });
+        const currentAutos = watch('autoAutomations') || [];
+        setValue('autoAutomations', [...currentAutos, result.id]);
+      } else {
+        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create automation.' });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    }
+  }, [user, activeWorkspaceId, activeOrganizationId, watch, setValue, toast]);
 
   return (
     <div className="space-y-6">
@@ -172,11 +302,11 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
 
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-semibold text-muted-foreground/60 flex items-center gap-1.5">
-                    <User className="h-3 w-3" /> Focal Person <span className="text-primary/50">(optional)</span>
+                    <User className="h-3 w-3" /> Primary Contact <span className="text-primary/50">(optional)</span>
                   </Label>
                   <Select
-                    value={entityMapping.focalPersonField || ''}
-                    onValueChange={(v) => setValue('entityMapping.focalPersonField', v)}
+                    value={entityMapping.primaryContactField || ''}
+                    onValueChange={(v) => setValue('entityMapping.primaryContactField', v)}
                   >
                     <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none text-xs font-bold">
                       <SelectValue placeholder="Select field..." />
@@ -267,40 +397,17 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
               {additionalMappings.length > 0 ? (
                 <div className="space-y-2">
                   {additionalMappings.map((mapping: any, index: number) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-muted/20 rounded-xl border">
-                      <Select
-                        value={mapping.sourceField || ''}
-                        onValueChange={(v) => handleUpdateMapping(index, 'sourceField', v)}
-                      >
-                        <SelectTrigger className="h-8 rounded-lg bg-card border text-[10px] font-bold flex-1">
-                          <SelectValue placeholder="Registration field..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {fieldOptions.map((f) => (
-                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-
-                      <Input
-                        value={mapping.targetProperty || ''}
-                        onChange={(e) => handleUpdateMapping(index, 'targetProperty', e.target.value)}
-                        placeholder="e.g. personData.grade"
-                        className="h-8 rounded-lg text-[10px] font-bold bg-card border flex-1"
-                      />
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMapping(index)}
-                        className="h-7 w-7 p-0 shrink-0 text-destructive/60 hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <CustomMappingRow
+                      key={index}
+                      index={index}
+                      mapping={mapping}
+                      fieldOptions={fieldOptions}
+                      entityFieldOptions={entityFieldOptions}
+                      onUpdateMapping={handleUpdateMapping}
+                      onRemoveMapping={handleRemoveMapping}
+                      onCreateField={handleCreateEntityField}
+                      isCreatingField={isCreatingField}
+                    />
                   ))}
                 </div>
               ) : (
@@ -357,6 +464,7 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
                 options={tagOptions}
                 value={watch('autoTags') || []}
                 onChange={(val) => setValue('autoTags', val)}
+                onCreate={handleCreateInlineTag}
                 placeholder="Select tags to apply..."
                 className="rounded-xl"
               />
@@ -397,6 +505,7 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
                 options={automationOptions}
                 value={watch('autoAutomations') || []}
                 onChange={(val) => setValue('autoAutomations', val)}
+                onCreate={handleCreateInlineAutomation}
                 placeholder="Select automations to trigger..."
                 className="rounded-xl"
               />
@@ -455,14 +564,20 @@ function CreateTagDialog({ open, onOpenChange, workspaceId, organizationId, user
     if (!newTagName.trim()) return;
     setIsSubmitting(true);
     try {
-      await createTagAction({
+      const result = await createTagAction({
         name: newTagName.trim(),
         workspaceId,
         organizationId,
-        category: 'general' as any,
+        category: 'custom',
         color: '#6366f1',
         userId,
       });
+      
+      if (!result.success) {
+        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create tag.' });
+        return;
+      }
+      
       toast({ title: 'Tag created', description: `"${newTagName}" is now available.` });
       setNewTagName('');
       onOpenChange(false);
@@ -508,7 +623,7 @@ function CreateAutomationDialog({ open, onOpenChange, workspaceId, organizationI
     if (!newAutoName.trim()) return;
     setIsSubmitting(true);
     try {
-      await saveAutomationAction(null, {
+      const result = await saveAutomationAction(null, {
         name: newAutoName.trim(),
         workspaceIds: [workspaceId],
         organizationId,
@@ -517,6 +632,12 @@ function CreateAutomationDialog({ open, onOpenChange, workspaceId, organizationI
         trigger: 'manual',
         actions: [],
       } as any, userId);
+      
+      if (!result.success) {
+        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create automation.' });
+        return;
+      }
+      
       toast({ title: 'Automation created', description: `"${newAutoName}" saved as draft.` });
       setNewAutoName('');
       onOpenChange(false);
@@ -552,5 +673,149 @@ function CreateAutomationDialog({ open, onOpenChange, workspaceId, organizationI
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Custom Field Mapping Row ────────────────────────────────────────
+
+interface CustomMappingRowProps {
+  index: number;
+  mapping: { sourceField: string; targetProperty: string };
+  fieldOptions: { label: string; value: string }[];
+  entityFieldOptions: { label: string; value: string; group: string }[];
+  onUpdateMapping: (index: number, key: string, value: string) => void;
+  onRemoveMapping: (index: number) => void;
+  onCreateField: (label: string, index: number) => void;
+  isCreatingField: boolean;
+}
+
+function CustomMappingRow({
+  index,
+  mapping,
+  fieldOptions,
+  entityFieldOptions,
+  onUpdateMapping,
+  onRemoveMapping,
+  onCreateField,
+  isCreatingField,
+}: CustomMappingRowProps) {
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [newFieldLabel, setNewFieldLabel] = React.useState('');
+
+  // Group entity fields by category for display
+  const groupedFields = React.useMemo(() => {
+    const groups: Record<string, { label: string; value: string }[]> = {};
+    for (const f of entityFieldOptions) {
+      if (!groups[f.group]) groups[f.group] = [];
+      groups[f.group].push({ label: f.label, value: f.value });
+    }
+    return groups;
+  }, [entityFieldOptions]);
+
+  const handleCreate = () => {
+    if (!newFieldLabel.trim()) return;
+    onCreateField(newFieldLabel.trim(), index);
+    setNewFieldLabel('');
+    setIsCreating(false);
+  };
+
+  return (
+    <div className="flex items-center gap-2 p-2 bg-muted/20 rounded-xl border">
+      {/* Source: Registration field */}
+      <Select
+        value={mapping.sourceField || ''}
+        onValueChange={(v) => onUpdateMapping(index, 'sourceField', v)}
+      >
+        <SelectTrigger className="h-8 rounded-lg bg-card border text-[10px] font-bold flex-1">
+          <SelectValue placeholder="Registration field..." />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl">
+          {fieldOptions.map((f) => (
+            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+
+      {/* Target: Entity field selector or inline create */}
+      {isCreating ? (
+        <div className="flex items-center gap-1 flex-1">
+          <Input
+            value={newFieldLabel}
+            onChange={(e) => setNewFieldLabel(e.target.value)}
+            placeholder="Field name..."
+            className="h-8 rounded-lg text-[10px] font-bold bg-card border flex-1"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreate(); } }}
+            autoFocus
+          />
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-7 px-2 text-[9px] font-bold rounded-md shrink-0"
+            onClick={handleCreate}
+            disabled={isCreatingField || !newFieldLabel.trim()}
+          >
+            {isCreatingField ? '...' : 'Save'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 shrink-0 text-muted-foreground"
+            onClick={() => { setIsCreating(false); setNewFieldLabel(''); }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : (
+        <Select
+          value={mapping.targetProperty || ''}
+          onValueChange={(v) => {
+            if (v === '__create_new__') {
+              setIsCreating(true);
+            } else {
+              onUpdateMapping(index, 'targetProperty', v);
+            }
+          }}
+        >
+          <SelectTrigger className="h-8 rounded-lg bg-card border text-[10px] font-bold flex-1">
+            <SelectValue placeholder="Select entity field..." />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl max-h-64">
+            {Object.entries(groupedFields).map(([group, fields]) => (
+              <React.Fragment key={group}>
+                <div className="px-2 py-1 text-[8px] font-black text-muted-foreground/50 uppercase tracking-widest mt-1 first:mt-0">
+                  {group}
+                </div>
+                {fields.map((f) => (
+                  <SelectItem key={f.value} value={f.value} className="text-[10px]">
+                    {f.label}
+                  </SelectItem>
+                ))}
+              </React.Fragment>
+            ))}
+            <div className="border-t mt-1 pt-1">
+              <SelectItem value="__create_new__" className="text-[10px] text-primary font-bold">
+                <span className="flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Create Custom Field...
+                </span>
+              </SelectItem>
+            </div>
+          </SelectContent>
+        </Select>
+      )}
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => onRemoveMapping(index)}
+        className="h-7 w-7 p-0 shrink-0 text-destructive/60 hover:text-destructive"
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
+    </div>
   );
 }

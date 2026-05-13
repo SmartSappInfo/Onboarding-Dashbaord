@@ -33,13 +33,12 @@ function resolvePdfVariables(text: string, school?: School): string {
     if (!text || !school) return text;
     
     // Pre-compute contact variables using FER-01 helpers
-    const { getContactVariables, resolveEntityContacts, focalPersonToEntityContact } = require('./entity-contact-helpers');
+    const { getContactVariables } = require('./entity-contact-helpers');
     
     // Build an entity-shaped object for the helper
-    const entityContacts = (school as any).entityContacts 
-        || (school.focalPersons || []).map((fp: any, i: number) => focalPersonToEntityContact(fp, i));
+    const entityContacts = (school as any).entityContacts || [];
     
-    const contactVars = getContactVariables({ entityContacts, contacts: [] });
+    const contactVars = getContactVariables({ entityContacts });
     
     return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
         const cleanKey = key.trim();

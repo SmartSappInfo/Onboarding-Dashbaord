@@ -79,6 +79,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import MeetingPreviewPanel from '../components/MeetingPreviewPanel';
 import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../components/MeetingMessagingTab';
+import { MeetingFacilitatorsSection } from '../components/MeetingFacilitatorsSection';
 
 const formSchema = z.object({
   // V3: Entity is now optional — standalone meetings supported
@@ -141,7 +142,7 @@ const formSchema = z.object({
   createEntity: z.boolean().default(false),
   entityMapping: z.object({
     nameField: z.string().default(''),
-    focalPersonField: z.string().optional().default(''),
+    primaryContactField: z.string().optional().default(''),
     emailField: z.string().optional().default(''),
     phoneField: z.string().optional().default(''),
     additionalMappings: z.array(z.object({
@@ -150,7 +151,18 @@ const formSchema = z.object({
     })).default([]),
   }).default({}),
   autoTags: z.array(z.string()).default([]),
-  autoAutomations: z.array(z.string()).default([]),
+  
+  facilitators: z.array(z.object({
+    id: z.string(),
+    type: z.enum(['workspace_user', 'custom']),
+    userId: z.string().optional(),
+    name: z.string(),
+    role: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    image: z.string().optional(),
+    joinLink: z.string()
+  })).default([]),
 
   // Messaging Config (Phase 5)
   messagingConfig: z.any().optional(),
@@ -176,7 +188,6 @@ const WIZARD_STEPS = [
   { id: 'branding', label: 'Branding', icon: Palette, description: 'Theme, hero & preview' },
   { id: 'registration', label: 'Registration', icon: ClipboardCheck, description: 'Signup, capacity & leads' },
   { id: 'messaging', label: 'Messaging', icon: MessageSquare, description: 'Automated comms' },
-  { id: 'automations', label: 'Automations', icon: Zap, description: 'Workflows & alerts' },
   { id: 'publish', label: 'Publish', icon: Rocket, description: 'Go live' },
 ] as const;
 
@@ -455,7 +466,7 @@ export default function NewMeetingPage() {
             createEntity: data.createEntity || false,
             entityMapping: data.entityMapping || {},
             autoTags: data.autoTags || [],
-            autoAutomations: data.autoAutomations || [],
+            facilitators: data.facilitators || [],
 
             // Phase 5: Messaging Config
             messagingConfig: data.messagingConfig || null,
@@ -763,7 +774,7 @@ export default function NewMeetingPage() {
                                                 </SelectTrigger>
                                             </FormControl>
  <SelectContent className="rounded-xl">
-                                                <SelectItem value="__none__"><span className="text-muted-foreground italic">None (Standalone Meeting)</span></SelectItem>
+                                                <SelectItem value="__none__">No Entity Context Binding</SelectItem>
                                                 {entities?.map((entity) => (
                                                     <SelectItem key={entity.id} value={entity.id}>{entity.displayName}</SelectItem>
                                                 ))}
@@ -782,7 +793,7 @@ export default function NewMeetingPage() {
  <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1">Session Category</FormLabel>
                                         <Select
                                             onValueChange={(typeId: string) => field.onChange(MEETING_TYPES.find(t => t.id === typeId))}
-                                            value={field.value?.id || ""}
+                                            value={field.value?.id}
                                         >
                                             <FormControl>
  <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
@@ -859,6 +870,10 @@ export default function NewMeetingPage() {
                                     </FormItem>
                                 )}
                             />
+                            
+                            <Separator className="bg-border/50" />
+                            
+                            <MeetingFacilitatorsSection />
                             </CardContent>
                         </Card>
                     </div>
@@ -1383,118 +1398,7 @@ export default function NewMeetingPage() {
                 </div>
             )}
 
-            {/* ──────── STEP 5: Automations ──────── */}
-            {currentStep === stepIndex('automations') && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-amber-500/10 rounded-xl"><Zap className="h-5 w-5 text-amber-600" /></div>
-                                    <div>
-                                        <CardTitle className="text-lg font-semibold tracking-tight">Automations & Advanced</CardTitle>
-                                        <CardDescription className="text-xs font-medium text-left">Recording, brochure, and workflow configuration.</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-6 space-y-8 bg-background">
-                                {/* ── Legacy Reminders (only when messagingConfig absent) ── */}
-                                {!form.watch('messagingConfig')?.reminders?.length && (
-                                    <>
-                                        <Separator className="bg-border/50" />
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-500/10 rounded-xl"><Clock className="h-5 w-5 text-blue-600" /></div>
-                                                <div>
-                                                    <h3 className="text-sm font-semibold tracking-tight">Legacy Reminders</h3>
-                                                    <p className="text-xs text-muted-foreground">Quick-toggle reminders. For advanced messaging, use the Messaging tab.</p>
-                                                </div>
-                                            </div>
-                                            <FormField control={form.control} name="enabledReminders" render={({ field }) => (
-                                                <FormItem>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {[
-                                                            { id: 'meeting_reminder_15min', label: '15 minutes before', offset: REMINDER_OFFSETS.FIFTEEN_MINUTES },
-                                                            { id: 'meeting_reminder_1hour', label: '1 hour before', offset: REMINDER_OFFSETS.ONE_HOUR },
-                                                            { id: 'meeting_reminder_2hours', label: '2 hours before', offset: REMINDER_OFFSETS.TWO_HOURS },
-                                                            { id: 'meeting_reminder_1day', label: '1 day before', offset: REMINDER_OFFSETS.ONE_DAY },
-                                                            { id: 'meeting_time_up', label: 'At meeting time', offset: REMINDER_OFFSETS.TIME_UP },
-                                                        ].map((reminder) => (
-                                                            <div key={reminder.id} className="flex items-center space-x-3 p-3 rounded-xl bg-muted/20 border hover:bg-muted/30 transition-colors">
-                                                                <Checkbox
-                                                                    id={reminder.id}
-                                                                    checked={field.value?.includes(reminder.id)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        const updated = checked
-                                                                            ? [...(field.value || []), reminder.id]
-                                                                            : (field.value || []).filter((id) => id !== reminder.id);
-                                                                        field.onChange(updated);
-                                                                    }}
-                                                                />
-                                                                <label htmlFor={reminder.id} className="text-sm font-medium cursor-pointer flex-1">
-                                                                    {reminder.label}
-                                                                </label>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                        </div>
-                                    </>
-                                )}
 
-                                {/* ── Modern Override Banner ── */}
-                                {form.watch('messagingConfig')?.reminders?.length > 0 && (
-                                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/20 flex items-start gap-3">
-                                        <Clock className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-800 dark:text-blue-400">Reminders managed via Messaging tab</p>
-                                            <p className="text-[10px] text-blue-600/80 dark:text-blue-400/60 mt-0.5">
-                                                {form.watch('messagingConfig').reminders.filter((r: any) => r.enabled).length} active reminder(s) configured.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* ── Legacy InternalNotificationConfig (conditional) ── */}
-                        {!form.watch('messagingConfig')?.facilitatorUserIds?.length ? (
-                            <InternalNotificationConfig prefix="adminAlert" />
-                        ) : (
-                            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-                                <CardContent className="p-4 flex items-start gap-3">
-                                    <Users className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-xs font-bold text-foreground">Facilitator alerts managed via Messaging tab</p>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                                            {form.watch('messagingConfig').facilitatorUserIds.length} facilitator(s) configured.
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </div>
-
-                    <div className="space-y-6">
-                        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden sticky top-24">
-                            <CardContent className="p-6 space-y-3">
-                                <div className="flex items-center gap-2 text-amber-600">
-                                    <Zap className="h-4 w-4" />
-                                    <h4 className="text-xs font-bold">Automation Tips</h4>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                    {form.watch('messagingConfig')
-                                      ? 'This panel handles workflow configuration. Recording and brochure have moved to the Publish tab.'
-                                      : 'Legacy reminders here work alongside the new Messaging tab. For fine-grained control with custom templates, use the Messaging tab instead.'
-                                    }
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-            )}
 
             {/* ──────── STEP 6: Publish ──────── */}
             {currentStep === stepIndex('publish') && (

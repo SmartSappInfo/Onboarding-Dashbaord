@@ -210,6 +210,12 @@ service cloud.firestore {
       }
     }
 
+    match /custom_meeting_templates/{templateId} {
+      allow read: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     match /invoices/{invoiceId} {
       allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
       allow list: if isAuthorized();
@@ -653,6 +659,23 @@ service cloud.firestore {
 
     // --- App Fields / Variable Registry ---
     match /app_fields/{fieldId} {
+      allow get: if isAuthorized();
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && request.resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && resource.data.workspaceId in getUserData().workspaceIds)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasPermission('studios_edit') && resource.data.workspaceId in getUserData().workspaceIds)
+      );
+    }
+
+    match /field_groups/{groupId} {
       allow get: if isAuthorized();
       allow list: if isAuthorized();
       allow create: if isAuthorized() && (

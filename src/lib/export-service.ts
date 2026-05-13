@@ -142,14 +142,14 @@ function extractInstitutionField(entity: Entity, column: string): string {
       return financeData.currency || '';
     case 'subscriptionPackageId':
       return financeData.subscriptionPackageId || '';
-    case 'focalPerson_name':
-      return entity.entityContacts?.[0]?.name || entity.contacts?.[0]?.name || '';
-    case 'focalPerson_phone':
-      return entity.entityContacts?.[0]?.phone || entity.contacts?.[0]?.phone || '';
-    case 'focalPerson_email':
-      return entity.entityContacts?.[0]?.email || entity.contacts?.[0]?.email || '';
-    case 'focalPerson_type':
-      return entity.entityContacts?.[0]?.typeLabel || entity.contacts?.[0]?.type || '';
+    case 'contact_name':
+      return entity.entityContacts?.[0]?.name || '';
+    case 'contact_phone':
+      return entity.entityContacts?.[0]?.phone || '';
+    case 'contact_email':
+      return entity.entityContacts?.[0]?.email || '';
+    case 'contact_role':
+      return entity.entityContacts?.[0]?.typeLabel || '';
     default:
       return '';
   }
@@ -201,9 +201,9 @@ function extractPersonField(entity: Entity, column: string): string {
     case 'leadSource':
       return data.leadSource || '';
     case 'phone':
-      return entity.contacts?.[0]?.phone || '';
+      return entity.entityContacts?.[0]?.phone || '';
     case 'email':
-      return entity.contacts?.[0]?.email || '';
+      return entity.entityContacts?.[0]?.email || '';
     default:
       return '';
   }

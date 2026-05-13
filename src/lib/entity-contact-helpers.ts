@@ -8,13 +8,11 @@
  * - Core resolvers (getPrimaryContact, getSignatoryContact, getContactByType)
  * - Variable generators (getContactVariables, normalizeContactType)
  * - Enforcement (ensureSinglePrimary, ensureSingleSignatory)
- * - Migration bridge (focalPersonToEntityContact, entityContactToFocalPerson)
  */
 
 import type {
   Entity,
   EntityContact,
-  FocalPerson,
   WorkspaceEntity,
   School,
 } from './types';
@@ -40,7 +38,7 @@ export function normalizeContactType(label: string): string {
 
 /**
  * Resolves entityContacts from any entity-shaped object.
- * Falls back to legacy `contacts` / `focalPersons` if `entityContacts` is not populated.
+ * Resolves entity contacts from the entityContacts array.
  */
 export function resolveEntityContacts(
   entity: Partial<Entity>
@@ -91,7 +89,7 @@ export function getSignatoryContact(
  * Gets the first contact matching a typeKey, sorted by order ascending.
  */
 export function getContactByType(
-  entity: Partial<Entity> & { contacts?: FocalPerson[]; entityContacts?: EntityContact[] },
+  entity: Partial<Entity> & { entityContacts?: EntityContact[] },
   typeKey: string
 ): EntityContact | undefined {
   const contacts = resolveEntityContacts(entity);
@@ -105,7 +103,7 @@ export function getContactByType(
  * Gets all contacts matching a typeKey, sorted by order ascending.
  */
 export function getAllContactsByType(
-  entity: Partial<Entity> & { contacts?: FocalPerson[]; entityContacts?: EntityContact[] },
+  entity: Partial<Entity> & { entityContacts?: EntityContact[] },
   typeKey: string
 ): EntityContact[] {
   const contacts = resolveEntityContacts(entity);
@@ -127,7 +125,7 @@ export function getAllContactsByType(
  * - Legacy aliases:     school_phone, school_email, contact_name
  */
 export function getContactVariables(
-  entity: Partial<Entity> & { contacts?: FocalPerson[]; entityContacts?: EntityContact[] }
+  entity: Partial<Entity> & { entityContacts?: EntityContact[] }
 ): Record<string, string> {
   const vars: Record<string, string> = {};
   const contacts = resolveEntityContacts(entity);
@@ -254,68 +252,12 @@ export function enforceContactConstraints(contacts: EntityContact[]): EntityCont
   return ensureSingleSignatory(ensureSinglePrimary(contacts));
 }
 
-// ─── Migration Bridge ─────────────────────────────────────────────────
-
-/**
- * Converts a legacy FocalPerson to an EntityContact.
- * Used during migration and for backward-compat reads.
- */
-export function focalPersonToEntityContact(
-  fp: FocalPerson,
-  index: number
-): EntityContact {
-  const typeLabel = fp.type || 'Other';
-  const typeKey = normalizeContactType(typeLabel);
-
-  // Generate deterministic ID based on contact data for idempotency
-  // Use a simple hash of name + email + phone to ensure same input = same ID
-  const idSeed = `${fp.name || ''}_${fp.email || ''}_${fp.phone || ''}_${index}`;
-  const idHash = idSeed.split('').reduce((acc, char) => {
-    return ((acc << 5) - acc) + char.charCodeAt(0);
-  }, 0);
-  const deterministicId = Math.abs(idHash).toString(36);
-
-  const contact: EntityContact = {
-    id: `ec_migrated_${index}_${deterministicId}`,
-    name: fp.name || '',
-    typeKey,
-    typeLabel,
-    isPrimary: index === 0, // First contact defaults to primary
-    isSignatory: fp.isSignatory || false,
-    order: index,
-  };
-
-  // Do not attach undefined values (rejected by Firestore admin SDK)
-  if (fp.email) contact.email = fp.email;
-  if (fp.phone) contact.phone = fp.phone;
-  if (fp.notes !== undefined) contact.notes = fp.notes;
-  if (fp.attachments !== undefined) contact.attachments = fp.attachments;
-
-  return contact;
-}
-
-/**
- * Converts an EntityContact back to a FocalPerson.
- * Used for backward compatibility with legacy code paths.
- */
-export function entityContactToFocalPerson(ec: EntityContact): FocalPerson {
-  return {
-    name: ec.name,
-    phone: ec.phone || '',
-    email: ec.email || '',
-    type: ec.typeLabel || ec.typeKey || 'Other',
-    isSignatory: ec.isSignatory,
-    notes: ec.notes,
-    attachments: ec.attachments,
-  };
-}
-
 /**
  * Extracts denormalized primary contact fields from entityContacts.
  * Used for workspace_entities denormalization.
  */
 export function extractPrimaryContactFields(
-  entity: Partial<Entity> & { contacts?: FocalPerson[]; entityContacts?: EntityContact[] }
+  entity: Partial<Entity> & { entityContacts?: EntityContact[] }
 ): { primaryContactName: string; primaryEmail: string; primaryPhone: string } {
   const primary = getPrimaryContact(entity);
   return {

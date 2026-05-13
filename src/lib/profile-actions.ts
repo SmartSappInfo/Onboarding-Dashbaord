@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { FocalPerson, EntityType } from './types';
+import type { EntityContact, EntityType } from './types';
 
 /**
  * Profile Update Actions
@@ -19,7 +19,7 @@ interface UpdateProfileInput {
   updates: {
     // Identity fields (go to entities)
     name?: string;
-    contacts?: FocalPerson[];
+    contacts?: EntityContact[];
     globalTags?: string[];
     
     // Operational fields (go to workspace_entities)
@@ -111,7 +111,7 @@ export async function updateEntityIdentity(
   entityId: string,
   updates: {
     name?: string;
-    contacts?: FocalPerson[];
+    contacts?: EntityContact[];
     globalTags?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {

@@ -78,7 +78,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
           csvData: results.data as Record<string, string>[],
           headers,
           // Auto-infer entity type loosely by headers
-          entityType: headers.some(h => /nominalRoll|focalperson/i.test(h)) 
+          entityType: headers.some(h => /nominalRoll|contact_name/i.test(h)) 
             ? 'institution' 
             : headers.some(h => /family|guardian/i.test(h))
               ? 'family'
@@ -127,9 +127,9 @@ export function UploadStep({ state, updateState, onNext }: Props) {
 
   // Determine which phone/email fields are policy-required based on type
   const policyRequiredFields = (() => {
-    const phoneField = activeType === 'institution' ? 'focalPerson_phone' 
+    const phoneField = activeType === 'institution' ? 'contact_phone' 
       : activeType === 'family' ? 'guardian1_phone' : 'phone';
-    const emailField = activeType === 'institution' ? 'focalPerson_email'
+    const emailField = activeType === 'institution' ? 'contact_email'
       : activeType === 'family' ? 'guardian1_email' : 'email';
     
     if (contactPolicy === 'phone_only') return [phoneField];

@@ -58,10 +58,10 @@ const FAMILY_FIELDS: FieldDef[] = [
 
 const INSTITUTION_FIELDS: FieldDef[] = [
   { value: 'name', label: 'Institution Name', required: true },
-  { value: 'focalPerson_name', label: 'Focal Person Name', required: true },
-  { value: 'focalPerson_phone', label: 'Focal Person Phone' },
-  { value: 'focalPerson_email', label: 'Focal Person Email' },
-  { value: 'focalPerson_type', label: 'Focal Person Role' },
+  { value: 'contact_name', label: 'Primary Contact Name', required: true },
+  { value: 'contact_phone', label: 'Primary Contact Phone' },
+  { value: 'contact_email', label: 'Primary Contact Email' },
+  { value: 'contact_role', label: 'Primary Contact Role' },
   { value: 'nominalRoll', label: 'Nominal Roll', industries: ['SchoolEnrollment'] },
   { value: 'billingAddress', label: 'Billing Address' },
   { value: 'currency', label: 'Currency' },
@@ -75,9 +75,9 @@ const INSTITUTION_FIELDS: FieldDef[] = [
 
 /** Determine which phone/email field keys are policy-required */
 function getPolicyRequiredFields(entityType: string, policy: ContactIdentifierPolicy): string[] {
-  const phoneField = entityType === 'institution' ? 'focalPerson_phone'
+  const phoneField = entityType === 'institution' ? 'contact_phone'
     : entityType === 'family' ? 'guardian1_phone' : 'phone';
-  const emailField = entityType === 'institution' ? 'focalPerson_email'
+  const emailField = entityType === 'institution' ? 'contact_email'
     : entityType === 'family' ? 'guardian1_email' : 'email';
 
   if (policy === 'phone_only') return [phoneField];

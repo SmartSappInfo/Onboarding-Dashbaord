@@ -1,60 +1,133 @@
 {
   "indexes": [
     {
-      "collectionGroup": "workspace_users",
+      "collectionGroup": "custom_meeting_templates",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "workspaceId", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "field_groups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "order",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "workspace_users",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "organizationId", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "displayName",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "workspace_users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "displayName",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "message_templates",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "organizationId", "order": "ASCENDING" },
-        { "fieldPath": "category", "order": "ASCENDING" }
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "category",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "meeting_registrants",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "meetingId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "meetingId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "scheduled_messages",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "scheduledAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scheduledAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "scheduled_messages",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "sourceEventId", "order": "ASCENDING" },
-        { "fieldPath": "sourceEventType", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "sourceEventId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sourceEventType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "meetings",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "type.slug", "order": "ASCENDING" },
-        { "fieldPath": "meetingSlug", "order": "ASCENDING" }
+        {
+          "fieldPath": "type.slug",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "meetingSlug",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
@@ -2334,26 +2407,6 @@
       ]
     },
     {
-      "collectionGroup": "responses",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "submittedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "summaries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "message_templates",
       "queryScope": "COLLECTION",
       "fields": [
@@ -2772,16 +2825,6 @@
       ]
     },
     {
-      "collectionGroup": "qr_codes",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "shortPath",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "qr_scan_events",
       "queryScope": "COLLECTION",
       "fields": [
@@ -2791,26 +2834,6 @@
         },
         {
           "fieldPath": "scannedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "qr_scan_events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "scannedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "qr_code_templates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]

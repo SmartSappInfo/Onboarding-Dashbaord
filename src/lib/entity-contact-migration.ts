@@ -12,7 +12,7 @@
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { focalPersonToEntityContact, enforceContactConstraints, extractPrimaryContactFields } from './entity-contact-helpers';
+import { enforceContactConstraints, extractPrimaryContactFields } from './entity-contact-helpers';
 import { syncDenormalizedFieldsToWorkspaceEntities } from './denormalization-sync';
 
 // -- 1. BACKUP --
@@ -39,7 +39,17 @@ export async function normalizeContactsAction() {
 
         if (legacyContacts && legacyContacts.length > 0 && hasNoCanonicalContacts) {
             // 1. Convert to EntityContact[]
-            const rawEntityContacts = legacyContacts.map((fp: any, idx: number) => focalPersonToEntityContact(fp, idx));
+            const rawEntityContacts = legacyContacts.map((fp: any, idx: number) => ({
+              id: `ec_migration_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+              name: fp.name || '',
+              phone: fp.phone || '',
+              email: fp.email || '',
+              typeKey: (fp.type || fp.role || 'contact').toLowerCase().replace(/\s+/g, '_'),
+              typeLabel: fp.type || fp.role || 'Contact',
+              isPrimary: idx === 0,
+              isSignatory: fp.isSignatory || idx === 0,
+              order: idx,
+            }));
 
             // 2. Enforce canonical rules
             const validatedContacts = enforceContactConstraints(rawEntityContacts);

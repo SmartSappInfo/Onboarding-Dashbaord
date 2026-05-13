@@ -182,14 +182,18 @@ export async function checkEntityExists(
  * Parse institution row to entity data
  */
 export function parseInstitutionRow(row: InstitutionImportRow, organizationId: string): Partial<Entity> {
-  const contacts = [];
-  if (row.focalPerson_name) {
-    contacts.push({
-      name: row.focalPerson_name,
-      phone: row.focalPerson_phone || '',
-      email: row.focalPerson_email || '',
-      type: (row.focalPerson_type as any) || 'Other',
-      isSignatory: false,
+  const entityContacts = [];
+  if (row.contact_name) {
+    entityContacts.push({
+      id: `ec_import_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
+      name: row.contact_name,
+      phone: row.contact_phone || '',
+      email: row.contact_email || '',
+      typeKey: (row.contact_role || 'contact').toLowerCase().replace(/\s+/g, '_'),
+      typeLabel: row.contact_role || 'Contact',
+      isPrimary: true,
+      isSignatory: true,
+      order: 0,
     });
   }
 
@@ -197,7 +201,7 @@ export function parseInstitutionRow(row: InstitutionImportRow, organizationId: s
     organizationId,
     entityType: 'institution',
     name: row.name,
-    contacts,
+    entityContacts,
     globalTags: [],
     status: 'active',
     // Map to fields expected by createEntityAction (or directly as Entity fields)

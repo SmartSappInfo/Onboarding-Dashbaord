@@ -299,7 +299,7 @@ export async function fetchContextualData(entity: string, id: string, parentId?:
             displayName: contact.name,
             email: getContactEmail(contact),
             phone: getContactPhone(contact),
-            focalPerson: contact.contacts?.find(c => c.isSignatory) || contact.contacts?.[0]
+            primaryContact: contact.contacts?.find(c => c.isSignatory) || contact.contacts?.[0]
           };
         }
       } else {

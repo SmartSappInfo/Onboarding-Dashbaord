@@ -14,7 +14,7 @@ interface LeadCaptureInput {
   /** Mapping config from the meeting's lead capture settings */
   entityMapping: {
     nameField: string;           // e.g. "parent_name"
-    focalPersonField?: string;   // e.g. "child_name"
+    primaryContactField?: string; // e.g. "child_name"
     emailField?: string;         // e.g. "email"
     phoneField?: string;         // e.g. "phone"
     additionalMappings?: Array<{
@@ -62,8 +62,8 @@ export async function createEntityFromRegistration(
 
     // ── Step 1: Extract identity from registration data ──
     const entityName = registrationData[entityMapping.nameField] || '';
-    const focalPerson = entityMapping.focalPersonField
-      ? registrationData[entityMapping.focalPersonField] || ''
+    const primaryContact = entityMapping.primaryContactField
+      ? registrationData[entityMapping.primaryContactField] || ''
       : '';
     const email = entityMapping.emailField
       ? (registrationData[entityMapping.emailField] || '').toString().toLowerCase().trim()
@@ -79,6 +79,7 @@ export async function createEntityFromRegistration(
     // ── Step 2: Dedup — find existing entity ──
     const entitiesRef = adminDb.collection('workspace_entities');
     let existingEntityId: string | null = null;
+    let existingEntityData: any = null;
 
     // Priority 1: Match by email (most reliable)
     if (email) {
@@ -89,6 +90,7 @@ export async function createEntityFromRegistration(
         .get();
       if (!emailSnap.empty) {
         existingEntityId = emailSnap.docs[0].id;
+        existingEntityData = emailSnap.docs[0].data();
       }
     }
 
@@ -101,13 +103,14 @@ export async function createEntityFromRegistration(
         .get();
       if (!phoneSnap.empty) {
         existingEntityId = phoneSnap.docs[0].id;
+        existingEntityData = phoneSnap.docs[0].data();
       }
     }
 
     const now = new Date().toISOString();
 
-    // ── Step 3a: Existing entity — link + merge tags ──
-    if (existingEntityId) {
+    // ── Step 3a: Existing entity — link + smart merge ──
+    if (existingEntityId && existingEntityData) {
       const updatePromises: Promise<any>[] = [];
 
       // Link registrant to entity
@@ -120,29 +123,46 @@ export async function createEntityFromRegistration(
           .update({ entityId: existingEntityId, linkedAt: now })
       );
 
-      // Additive tag merge (never remove existing tags)
-      if (autoTags.length > 0) {
-        updatePromises.push(
-          entitiesRef.doc(existingEntityId).update({
-            tagIds: FieldValue.arrayUnion(...autoTags),
-            updatedAt: now,
-          })
-        );
+      // Build smart updates payload
+      const updates: Record<string, any> = { updatedAt: now };
+
+      // Fill missing email or phone
+      if (email && !existingEntityData.contactEmail) {
+        updates.contactEmail = email;
+      }
+      if (phone && !existingEntityData.contactPhone) {
+        updates.contactPhone = phone;
       }
 
-      // Apply additional field mappings
+      // Additive tag merge (never remove existing tags)
+      if (autoTags.length > 0) {
+        updates.tagIds = FieldValue.arrayUnion(...autoTags);
+      }
+
+      // Apply additional field mappings safely
       const additionalData = buildAdditionalMappings(
         entityMapping.additionalMappings,
         registrationData
       );
+      
+      // Protect name fields from being overwritten during a merge
+      const protectedNameFields = [
+        'name', 
+        'displayName', 
+        'personData.firstName', 
+        'personData.lastName', 
+        'primaryContactName'
+      ];
+      protectedNameFields.forEach(field => delete additionalData[field]);
+
       if (Object.keys(additionalData).length > 0) {
-        updatePromises.push(
-          entitiesRef.doc(existingEntityId).update({
-            ...additionalData,
-            updatedAt: now,
-          })
-        );
+        Object.assign(updates, additionalData);
       }
+
+      // Execute entity update
+      updatePromises.push(
+        entitiesRef.doc(existingEntityId).update(updates)
+      );
 
       await Promise.all(updatePromises);
 
@@ -171,7 +191,7 @@ export async function createEntityFromRegistration(
       organizationId,
       contactEmail: email,
       contactPhone: phone,
-      focalPersonName: focalPerson,
+      primaryContactName: primaryContact,
       tagIds: autoTags,
       source: 'meeting_registration',
       sourceMeetingId: meetingId,

@@ -16,176 +16,186 @@ interface TemplateDef {
   reminderConfig?: ReminderConfig;
 }
 
+// ── Canonical Meeting Variable Registry (Risk 2 mitigation: Variable Name Drift) ──
+const MEETING_VARIABLES = {
+  participant: ['contact_name', 'contact_email', 'contact_phone', 'entity_name'],
+  event: ['meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type'],
+  links: ['meeting_link', 'calendar_link', 'dashboard_link', 'recording_link', 'resource_link', 'feedback_form_link'],
+  facilitator: ['user_name', 'registrant_count', 'attendee_count', 'no_show_count', 'registration_time'],
+  system: ['organization_name', 'support_contact'],
+} as const;
+
 const TEMPLATES: TemplateDef[] = [
-  // ── Meetings ──────────────────────────────────────────────────────────────
-  {
-    name: 'Meeting Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation', channel: 'email',
-    subject: "You're invited: {{meeting_title}}",
-    body: `Hi {{contact_name}},\n\nYou are invited to join {{meeting_title}}.\n\n📅 Date & Time: {{meeting_time}}\n🔗 Join Link: {{meeting_link}}\n👤 Organizer: {{organizer_name}}\n\nWe look forward to seeing you there.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organizer_name', 'organization_name'],
-  },
-  {
-    name: 'Meeting Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation', channel: 'sms',
-    body: "Hi {{contact_name}}, you're invited to {{meeting_title}} on {{meeting_time}}. Join: {{meeting_link}}",
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link'],
-  },
-  {
-    name: 'Meeting Confirmation (Email)', category: 'meetings', templateType: 'meeting_confirmation', channel: 'email',
-    subject: 'Confirmed: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nYour attendance for {{meeting_title}} has been confirmed.\n\n📅 Date & Time: {{meeting_time}}\n🔗 Join Link: {{meeting_link}}\n\nSee you there!\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
-  },
-  {
-    name: 'Meeting Cancellation (Email)', category: 'meetings', templateType: 'meeting_cancellation', channel: 'email',
-    subject: 'Cancelled: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nWe regret to inform you that {{meeting_title}} scheduled for {{meeting_time}} has been cancelled.\n\n{{cancellation_reason}}\n\nWe apologise for any inconvenience. We will be in touch to reschedule.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'cancellation_reason', 'organization_name'],
-  },
-  {
-    name: 'Meeting Cancellation (SMS)', category: 'meetings', templateType: 'meeting_cancellation', channel: 'sms',
-    body: "Hi {{contact_name}}, {{meeting_title}} on {{meeting_time}} has been cancelled. We'll be in touch to reschedule.",
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time'],
-  },
-  {
-    name: 'Meeting Update (Email)', category: 'meetings', templateType: 'meeting_update', channel: 'email',
-    subject: 'Updated: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nThe details for {{meeting_title}} have been updated.\n\nPrevious time: {{old_meeting_time}}\nNew time: {{new_meeting_time}}\n🔗 Join Link: {{meeting_link}}\n\nPlease update your calendar accordingly.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link', 'organization_name'],
-  },
-  {
-    name: 'Meeting Update (SMS)', category: 'meetings', templateType: 'meeting_update', channel: 'sms',
-    body: 'Hi {{contact_name}}, {{meeting_title}} rescheduled from {{old_meeting_time}} to {{new_meeting_time}}. Link: {{meeting_link}}',
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link'],
-  },
+  // ══════════════════════════════════════════════════════════════════════════
+  // ── MEETING LIFECYCLE TEMPLATES (22 total: 11 email + 11 SMS) ──────────
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ── Meeting Registration Confirmation ──────────────────────────────────
+  // ── 1. Registration Acknowledgement ────────────────────────────────────
   {
-    name: 'Meeting Registration Confirmation (Email)', category: 'meetings', templateType: 'meeting_registration_confirmation', channel: 'email',
+    name: 'Registration Acknowledgement (Email)', category: 'meetings', templateType: 'meeting_registration_ack', channel: 'email',
+    recipientType: 'external_alert',
     subject: 'Registration Confirmed: {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nThank you for registering for {{meeting_title}}.\n\nYour registration has been received successfully, and we're excited to have you join us.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n📍 Platform: {{meeting_type}}\n🔗 Access Link: {{meeting_link}}\n\nPlease save this information for easy access on the day of the session.\n\nIf there are any updates or additional instructions before the event, we will share them with you.\n\nWe look forward to having you participate.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_type', 'meeting_link', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nThank you for registering for {{meeting_title}}.\n\nYour registration has been confirmed successfully.\n\nEvent Details\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n📍 Platform: {{meeting_type}}\n🔗 Join Link: {{meeting_link}}\n\n📆 Add to Calendar: {{calendar_link}}\n\nPlease save this information for easy access on the day of the session.\n\nWe look forward to having you participate.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_type', 'meeting_link', 'calendar_link', 'organization_name'],
   },
   {
-    name: 'Meeting Registration Confirmation – Short (Email)', category: 'meetings', templateType: 'meeting_registration_confirmation_short', channel: 'email',
-    subject: 'Confirmed: {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nYour registration for {{meeting_title}} has been confirmed successfully.\n\n📅 {{meeting_date}}\n⏰ {{meeting_time}}\n🔗 {{meeting_link}}\n\nWe look forward to having you join us.\n\nRegards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'organization_name'],
-  },
-  {
-    name: 'Meeting Registration Confirmation (SMS)', category: 'meetings', templateType: 'meeting_registration_confirmation', channel: 'sms',
-    body: `Hello {{contact_name}}, thank you for registering for {{meeting_title}}. Your registration has been confirmed successfully.\n\nDate: {{meeting_date}}\nTime: {{meeting_time}}\nJoin here: {{meeting_link}}\n\nWe look forward to having you join us.\n\n— {{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'organization_name'],
+    name: 'Registration Acknowledgement (SMS)', category: 'meetings', templateType: 'meeting_registration_ack', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, your registration for {{meeting_title}} is confirmed. {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{meeting_link}} — {{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_link', 'organization_name'],
   },
 
-  // ── Meeting Internal Team Notification ─────────────────────────────────
+  // ── 2. Facilitator: New Registration Alert ─────────────────────────────
   {
-    name: 'New Meeting Registration Alert (Email)', category: 'meetings', templateType: 'meeting_new_registration_alert', channel: 'email',
+    name: 'New Registration Alert (Email)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'New Registration: {{meeting_title}}',
-    body: `Dear {{organizer_name}},\n\nA new registration has been received for {{meeting_title}}.\n\nRegistrant Details:\n\n• Name: {{contact_name}}\n• Phone: {{contact_phone}}\n• Email: {{contact_email}}\n• Organization: {{entity_name}}\n• Registration Date: {{current_date}}\n\nPlease review and follow up if necessary.\n\nRegards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['organizer_name', 'meeting_title', 'contact_name', 'contact_phone', 'contact_email', 'entity_name', 'current_date', 'organization_name'],
+    body: `Dear {{user_name}},\n\nA new registration has been received for {{meeting_title}}.\n\nRegistrant Details:\n• Name: {{contact_name}}\n• Email: {{contact_email}}\n• Phone: {{contact_phone}}\n• Organization: {{entity_name}}\n• Registration Time: {{registration_time}}\n\nTotal Registrations: {{registrant_count}}\n\n🔗 Dashboard: {{dashboard_link}}\n\nRegards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'contact_name', 'contact_email', 'contact_phone', 'entity_name', 'registration_time', 'registrant_count', 'dashboard_link', 'organization_name'],
   },
   {
-    name: 'New Meeting Registration Alert (SMS)', category: 'meetings', templateType: 'meeting_new_registration_alert', channel: 'sms',
+    name: 'New Registration Alert (SMS)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'sms',
     recipientType: 'internal_alert',
-    body: `New registration for {{meeting_title}}.\n\nName: {{contact_name}}\nPhone: {{contact_phone}}\nEmail: {{contact_email}}\nOrganization: {{entity_name}}`,
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'contact_name', 'contact_phone', 'contact_email', 'entity_name'],
+    body: `New registration for {{meeting_title}}: {{contact_name}} ({{contact_email}}). Total: {{registrant_count}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'contact_name', 'contact_email', 'registrant_count'],
   },
 
-  // ── Meeting Reminders ─────────────────────────────────────────────────────
+  // ── 3. Pre-Event Reminders (all use category='meetings' + recipientType='external_alert') ──
+  // Note: templateTypePrefix='meeting_reminder' isolates these in ReminderSlotRow dropdowns
   {
-    name: 'Meeting Reminder – 15 Minutes (Email)', category: 'reminders', templateType: 'meeting_reminder_15min', channel: 'email',
-    subject: 'Starting in 15 minutes: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nYour meeting {{meeting_title}} starts in 15 minutes.\n\n🔗 Join now: {{meeting_link}}\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'organization_name'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
+    name: 'Meeting Reminder – 2 Days (Email)', category: 'meetings', templateType: 'meeting_reminder_2days', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'In 2 Days: {{meeting_title}}',
+    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is coming up in 2 days.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: {{meeting_link}}\n\n📆 Add to Calendar: {{calendar_link}}\n\nWe look forward to seeing you.\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_link', 'calendar_link', 'organization_name'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 2880, offsetLabel: '2 days before', eventType: 'meeting' },
   },
   {
-    name: 'Meeting Reminder – 15 Minutes (SMS)', category: 'reminders', templateType: 'meeting_reminder_15min', channel: 'sms',
-    body: '⏰ {{meeting_title}} starts in 15 minutes. Join: {{meeting_link}}',
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_link'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
+    name: 'Meeting Reminder – 2 Days (SMS)', category: 'meetings', templateType: 'meeting_reminder_2days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: '📅 Reminder: {{meeting_title}} is in 2 days — {{meeting_date}} at {{meeting_time}}. Join: {{meeting_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time', 'meeting_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 2880, offsetLabel: '2 days before', eventType: 'meeting' },
   },
   {
-    name: 'Meeting Reminder – 1 Hour (Email)', category: 'reminders', templateType: 'meeting_reminder_1hour', channel: 'email',
-    subject: 'Starting in 1 hour: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nA reminder that {{meeting_title}} starts in 1 hour.\n\n📅 Time: {{meeting_time}}\n🔗 Join Link: {{meeting_link}}\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
-  },
-  {
-    name: 'Meeting Reminder – 1 Hour (SMS)', category: 'reminders', templateType: 'meeting_reminder_1hour', channel: 'sms',
-    body: '⏰ {{meeting_title}} starts in 1 hour at {{meeting_time}}. Join: {{meeting_link}}',
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_link'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
-  },
-  {
-    name: 'Meeting Reminder – 2 Hours (Email)', category: 'reminders', templateType: 'meeting_reminder_2hours', channel: 'email',
-    subject: 'Starting in 2 hours: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nA reminder that {{meeting_title}} starts in 2 hours.\n\n📅 Time: {{meeting_time}}\n🔗 Join Link: {{meeting_link}}\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 120, offsetLabel: '2 hours before', eventType: 'meeting' },
-  },
-  {
-    name: 'Meeting Reminder – 2 Hours (SMS)', category: 'reminders', templateType: 'meeting_reminder_2hours', channel: 'sms',
-    body: '⏰ {{meeting_title}} starts in 2 hours at {{meeting_time}}. Join: {{meeting_link}}',
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_link'],
-    reminderConfig: { triggerType: 'before_event', offsetMinutes: 120, offsetLabel: '2 hours before', eventType: 'meeting' },
-  },
-  {
-    name: 'Meeting Reminder – 1 Day (Email)', category: 'reminders', templateType: 'meeting_reminder_1day', channel: 'email',
+    name: 'Meeting Reminder – 1 Day (Email)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'email',
+    recipientType: 'external_alert',
     subject: 'Tomorrow: {{meeting_title}}',
-    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is scheduled for tomorrow.\n\n📅 Time: {{meeting_time}}\n🔗 Join Link: {{meeting_link}}\n\nWe look forward to seeing you.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_link', 'organization_name'],
+    body: `Hi {{contact_name}},\n\nThis is a reminder that {{meeting_title}} is scheduled for tomorrow.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🌍 Time Zone: {{meeting_timezone}}\n🔗 Join Link: {{meeting_link}}\n\n📆 Add to Calendar: {{calendar_link}}\n\nWe look forward to seeing you.\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_link', 'calendar_link', 'organization_name'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
   },
   {
-    name: 'Meeting Reminder – 1 Day (SMS)', category: 'reminders', templateType: 'meeting_reminder_1day', channel: 'sms',
+    name: 'Meeting Reminder – 1 Day (SMS)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'sms',
+    recipientType: 'external_alert',
     body: '📅 Reminder: {{meeting_title}} is tomorrow at {{meeting_time}}. Join: {{meeting_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_link'],
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
   },
   {
-    name: 'Meeting Starting Now (Email)', category: 'reminders', templateType: 'meeting_time_up', channel: 'email',
+    name: 'Meeting Reminder – 1 Hour (Email)', category: 'meetings', templateType: 'meeting_reminder_1hour', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Starting in 1 hour: {{meeting_title}}',
+    body: `Hi {{contact_name}},\n\nA reminder that {{meeting_title}} starts in 1 hour.\n\n📅 Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Join Link: {{meeting_link}}\n\n📆 Add to Calendar: {{calendar_link}}\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_time', 'meeting_timezone', 'meeting_link', 'calendar_link', 'organization_name'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Reminder – 1 Hour (SMS)', category: 'meetings', templateType: 'meeting_reminder_1hour', channel: 'sms',
+    recipientType: 'external_alert',
+    body: '⏰ {{meeting_title}} starts in 1 hour at {{meeting_time}}. Join: {{meeting_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Reminder – 15 Minutes (Email)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'Starting in 15 minutes: {{meeting_title}}',
+    body: `Hi {{contact_name}},\n\n{{meeting_title}} starts in 15 minutes.\n\n🔗 Join now: {{meeting_link}}\n\nDon't miss it!\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'organization_name'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Reminder – 15 Minutes (SMS)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'sms',
+    recipientType: 'external_alert',
+    body: '⏰ {{meeting_title}} starts in 15 minutes. Join: {{meeting_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Starting Now (Email)', category: 'meetings', templateType: 'meeting_time_up', channel: 'email',
+    recipientType: 'external_alert',
     subject: 'Starting Now: {{meeting_title}}',
     body: `Hi {{contact_name}},\n\n{{meeting_title}} is starting right now!\n\n🔗 Join immediately: {{meeting_link}}\n\nDon't miss out!\n\n{{organization_name}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_link', 'organization_name'],
     reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
   },
   {
-    name: 'Meeting Time Up (SMS)', category: 'reminders', templateType: 'meeting_time_up', channel: 'sms',
+    name: 'Meeting Starting Now (SMS)', category: 'meetings', templateType: 'meeting_time_up', channel: 'sms',
+    recipientType: 'external_alert',
     body: '🔔 {{meeting_title}} is starting now! Join: {{meeting_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_link'],
     reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
   },
 
-  // ── Post-Event Follow-Up ────────────────────────────────────────────────
+  // ── 4. Post-Event: Thank You (Attendees) ────────────────────────────────
   {
-    name: 'Post-Meeting Follow-Up (Email)', category: 'meetings', templateType: 'meeting_post_event', channel: 'email',
+    name: 'Post-Event Thank You (Email)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'email',
+    recipientType: 'external_alert',
     subject: 'Thank you for attending {{meeting_title}}',
-    body: `Dear {{contact_name}},\n\nThank you for attending {{meeting_title}}. We hope you found the session valuable.\n\nIf you have any questions or need further information, please don't hesitate to reach out.\n\nWe look forward to seeing you at future events.\n\nBest regards,\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'organization_name'],
+    body: `Dear {{contact_name}},\n\nThank you for attending {{meeting_title}}. We hope you found the session valuable.\n\n📹 Recording: {{recording_link}}\n📂 Resources: {{resource_link}}\n📝 Share Your Feedback: {{feedback_form_link}}\n\nIf you have any questions, please don't hesitate to reach out.\n\nWe look forward to seeing you at future events.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'feedback_form_link', 'organization_name'],
   },
   {
-    name: 'Post-Meeting Follow-Up (SMS)', category: 'meetings', templateType: 'meeting_post_event', channel: 'sms',
-    body: 'Thank you for attending {{meeting_title}}! We hope you found it valuable. — {{organization_name}}',
-    variableContext: 'meeting', declaredVariables: ['meeting_title', 'organization_name'],
+    name: 'Post-Event Thank You (SMS)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'sms',
+    recipientType: 'external_alert',
+    body: 'Thank you for attending {{meeting_title}}! Recording: {{recording_link}} — {{organization_name}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'recording_link', 'organization_name'],
   },
 
-  // ── Facilitator Templates ───────────────────────────────────────────────
+  // ── 5. Post-Event: Absentee Follow-Up ───────────────────────────────────
   {
-    name: 'Facilitator Pre-Event Briefing (Email)', category: 'meetings', templateType: 'facilitator_reminder', channel: 'email',
-    recipientType: 'internal_alert',
-    subject: 'Facilitator Briefing: {{meeting_title}}',
-    body: `Hi {{user_name}},\n\nThis is your facilitator reminder for {{meeting_title}}.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}}\n🔗 Meeting Link: {{meeting_link}}\n📊 Registrants: {{registrant_count}}\n\nPlease ensure you are prepared and available to join 5 minutes early.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_link', 'registrant_count', 'organization_name'],
+    name: 'Absentee Follow-Up (Email)', category: 'meetings', templateType: 'meeting_post_event_absentee', channel: 'email',
+    recipientType: 'external_alert',
+    subject: 'We missed you at {{meeting_title}}',
+    body: `Dear {{contact_name}},\n\nWe noticed you were unable to attend {{meeting_title}}. We understand things come up, and we wanted to make sure you don't miss out.\n\n📹 Recording: {{recording_link}}\n📂 Resources: {{resource_link}}\n\nWe hope to see you at our next session.\n\nBest regards,\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'resource_link', 'organization_name'],
   },
   {
-    name: 'Facilitator Post-Event Debrief (Email)', category: 'meetings', templateType: 'facilitator_debrief', channel: 'email',
+    name: 'Absentee Follow-Up (SMS)', category: 'meetings', templateType: 'meeting_post_event_absentee', channel: 'sms',
+    recipientType: 'external_alert',
+    body: 'Hi {{contact_name}}, we missed you at {{meeting_title}}. Catch the recording: {{recording_link}} — {{organization_name}}',
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'organization_name'],
+  },
+
+  // ── 6. Facilitator: Pre-Event Briefing ──────────────────────────────────
+  {
+    name: 'Facilitator Pre-Event Briefing (Email)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Facilitator Briefing: {{meeting_title}}',
+    body: `Hi {{user_name}},\n\nThis is your facilitator reminder for {{meeting_title}}.\n\n📅 Date: {{meeting_date}}\n⏰ Time: {{meeting_time}} ({{meeting_timezone}})\n🔗 Meeting Link: {{meeting_link}}\n📊 Registrants: {{registrant_count}}\n\nPlease ensure you are prepared and available to join 5 minutes early.\n\n🔗 Dashboard: {{dashboard_link}}\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_link', 'registrant_count', 'dashboard_link', 'organization_name'],
+  },
+  {
+    name: 'Facilitator Pre-Event Briefing (SMS)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: 'Facilitator alert: {{meeting_title}} starts at {{meeting_time}}. {{registrant_count}} registered. Join: {{meeting_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_count', 'meeting_link'],
+  },
+
+  // ── 7. Facilitator: Post-Event Debrief ──────────────────────────────────
+  {
+    name: 'Facilitator Post-Event Debrief (Email)', category: 'meetings', templateType: 'meeting_facilitator_post_event', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Debrief: {{meeting_title}} Complete',
-    body: `Hi {{user_name}},\n\n{{meeting_title}} has concluded.\n\nAttendance Summary:\n• Total Registrations: {{registrant_count}}\n• Attended: {{attendee_count}}\n• No-Shows: {{no_show_count}}\n\nPlease review the registrant list and follow up with any action items.\n\n{{organization_name}}`,
-    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'registrant_count', 'attendee_count', 'no_show_count', 'organization_name'],
+    body: `Hi {{user_name}},\n\n{{meeting_title}} has concluded.\n\nAttendance Summary:\n• Total Registrations: {{registrant_count}}\n• Attended: {{attendee_count}}\n• No-Shows: {{no_show_count}}\n\nPlease review the registrant list and follow up with any action items.\n\n🔗 Dashboard: {{dashboard_link}}\n\n{{organization_name}}`,
+    variableContext: 'meeting', declaredVariables: ['user_name', 'meeting_title', 'registrant_count', 'attendee_count', 'no_show_count', 'dashboard_link', 'organization_name'],
+  },
+  {
+    name: 'Facilitator Post-Event Debrief (SMS)', category: 'meetings', templateType: 'meeting_facilitator_post_event', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: '{{meeting_title}} complete. Attended: {{attendee_count}}/{{registrant_count}}. No-shows: {{no_show_count}}.',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'attendee_count', 'registrant_count', 'no_show_count'],
   },
 
   // ── Forms ─────────────────────────────────────────────────────────────────

@@ -184,6 +184,69 @@ Please update your calendar accordingly.
     declaredVariables: ['contact_name', 'meeting_title', 'old_meeting_time', 'new_meeting_time', 'meeting_link'],
   },
 
+  {
+    name: 'Facilitator Pre-Event Reminder (Email)',
+    category: 'meetings',
+    templateType: 'facilitator_pre_event',
+    channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Starting Soon: {{meeting_title}}',
+    body: `Hello Facilitator,
+
+This is a reminder that {{meeting_title}} is starting soon.
+
+📅 Date & Time: {{meeting_time}}
+🔗 Your Facilitator Join Link: {{join_link}}
+
+Please join a few minutes early to prepare.
+
+Best,
+{{organization_name}}`,
+    variableContext: 'meeting',
+    declaredVariables: ['meeting_title', 'meeting_time', 'join_link', 'organization_name'],
+  },
+
+  {
+    name: 'Facilitator Pre-Event Reminder (SMS)',
+    category: 'meetings',
+    templateType: 'facilitator_pre_event',
+    channel: 'sms',
+    recipientType: 'internal_alert',
+    body: '⏰ {{meeting_title}} starts soon at {{meeting_time}}. Your join link: {{join_link}}',
+    variableContext: 'meeting',
+    declaredVariables: ['meeting_title', 'meeting_time', 'join_link'],
+  },
+
+  {
+    name: 'Facilitator Post-Event Debrief (Email)',
+    category: 'meetings',
+    templateType: 'facilitator_post_event',
+    channel: 'email',
+    recipientType: 'internal_alert',
+    subject: 'Post-Event Debrief: {{meeting_title}}',
+    body: `Hello Facilitator,
+
+Thank you for running {{meeting_title}}.
+
+Please remember to complete any necessary follow-ups and review the event analytics.
+
+Best,
+{{organization_name}}`,
+    variableContext: 'meeting',
+    declaredVariables: ['meeting_title', 'organization_name'],
+  },
+
+  {
+    name: 'Facilitator Post-Event Debrief (SMS)',
+    category: 'meetings',
+    templateType: 'facilitator_post_event',
+    channel: 'sms',
+    recipientType: 'internal_alert',
+    body: 'Thanks for running {{meeting_title}}! Please complete your post-event follow-ups.',
+    variableContext: 'meeting',
+    declaredVariables: ['meeting_title'],
+  },
+
   // ── Meeting Reminders ─────────────────────────────────────────────────────
 
   {

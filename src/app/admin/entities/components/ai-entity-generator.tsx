@@ -111,7 +111,7 @@ export default function AiEntityGenerator() {
                 zone: zones?.[0] ? { id: zones[0].id, name: zones[0].name } : undefined,
             },
             interests: mappedModules,
-            entityContacts: (result.focalPersons || []).map((p: any, index: number) => {
+            entityContacts: (result.contacts || []).map((p: any, index: number) => {
                 const typeLabel = p.role || 'Contact';
                 const typeKey = typeLabel.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
                 const ec: any = {

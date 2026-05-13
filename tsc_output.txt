@@ -1,0 +1,22 @@
+src/app/admin/meetings/[id]/edit/page.tsx(324,37): error TS2339: Property 'adminAlertsEnabled' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(325,36): error TS2339: Property 'adminAlertChannel' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(326,42): error TS2339: Property 'adminAlertNotifyManager' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(327,44): error TS2339: Property 'adminAlertSpecificUserIds' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(328,44): error TS2339: Property 'adminAlertEmailTemplateId' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(329,42): error TS2339: Property 'adminAlertSmsTemplateId' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(330,35): error TS2339: Property 'enabledReminders' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(439,50): error TS2339: Property 'adminAlertsEnabled' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/edit/page.tsx(460,58): error TS2339: Property 'enabledReminders' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/page.tsx(198,22): error TS2339: Property 'enabledReminders' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/[id]/page.tsx(198,50): error TS2339: Property 'enabledReminders' does not exist on type 'WithId<Meeting>'.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(10,31): error TS2307: Cannot find module '@/lib/firebase/hooks' or its corresponding type declarations.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(12,30): error TS2307: Cannot find module '@/lib/firebase/context' or its corresponding type declarations.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(14,30): error TS2307: Cannot find module '@/components/workspace-provider' or its corresponding type declarations.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(16,30): error TS7016: Could not find a declaration file for module 'uuid'. '/Users/josephaidoo/Desktop/Codes/vibe Coding/Onboarding-Dashbaord-main/node_modules/.pnpm/uuid@10.0.0/node_modules/uuid/dist/esm-browser/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(44,43): error TS7006: Parameter 'u' implicitly has an 'any' type.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(80,9): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/app/admin/meetings/components/MeetingFacilitatorsSection.tsx(105,58): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/app/admin/meetings/components/MeetingMessagingTab.tsx(38,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/lib/reminder-actions.ts(451,16): error TS2339: Property 'facilitatorUserIds' does not exist on type 'MeetingMessagingConfig'.
+src/lib/reminder-actions.ts(459,31): error TS2339: Property 'facilitatorUserIds' does not exist on type 'MeetingMessagingConfig'.

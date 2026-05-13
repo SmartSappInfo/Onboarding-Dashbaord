@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact, EntityContact } from './types';
-import { resolveEntityContacts, entityContactToFocalPerson, focalPersonToEntityContact } from './entity-contact-helpers';
+import { resolveEntityContacts } from './entity-contact-helpers';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -191,7 +191,6 @@ async function resolveFromEntity(
 
     // FER-01: Resolve canonical entityContacts
     const entityContacts = resolveEntityContacts(entity);
-    const legacyContacts = entityContacts.map(entityContactToFocalPerson);
 
     // Construct virtual school data if this is an institution
     let virtualSchoolData: School | undefined;
@@ -209,7 +208,7 @@ async function resolveFromEntity(
         workspaceIds: [workspaceId],
         status: (workspaceEntity?.status || 'active') as any,
         schoolStatus: workspaceEntity?.lifecycleStatus || 'Lead',
-        focalPersons: legacyContacts, // Derived from entityContacts (FER-01)
+        entityContacts, // Canonical contacts
         nominalRoll: ind.capacity || (entity as any).institutionData?.nominalRoll || 0,
         subscriptionPackageId: fin.planType || (entity as any).institutionData?.subscriptionPackageId,
         subscriptionRate: fin.subscriptionRate || (entity as any).institutionData?.subscriptionRate,
@@ -231,7 +230,7 @@ async function resolveFromEntity(
       name: entity.name,
       slug: entity.slug,
       logoUrl: entity.logoUrl || (entity as any).institutionData?.logoUrl,
-      contacts: legacyContacts, // Legacy backward compat
+      contacts: entityContacts, // Canonical contacts
       entityContacts, // Canonical (FER-01)
       assignedTo: workspaceEntity?.assignedTo,
       status: workspaceEntity?.status,
@@ -285,7 +284,7 @@ async function resolveFromSchool(
     name: schoolData.name,
     slug: schoolData.slug,
     logoUrl: schoolData.logoUrl,
-    contacts: schoolData.focalPersons || [],
+    contacts: (schoolData as any).entityContacts || [],
     pipelineId: schoolData.pipelineId,
     stageId: schoolData.stage?.id,
     stageName: schoolData.stage?.name,
@@ -293,7 +292,7 @@ async function resolveFromSchool(
     status: schoolData.status,
     tags: schoolData.tags || [],
     migrationStatus: forceLegacy ? 'legacy' : (schoolData.migrationStatus || 'legacy'),
-    entityContacts: (schoolData.focalPersons || []).map(focalPersonToEntityContact),
+    entityContacts: (schoolData as any).entityContacts || [],
     schoolData,
   };
 
@@ -320,8 +319,7 @@ async function resolveFromSchool(
  * @returns Entity with SaaSInstitutionData
  */
 export async function mapSchoolToSaaSEntity(school: School): Promise<Entity> {
-  const entityContacts = school.entityContacts || 
-    (school.focalPersons || []).map(focalPersonToEntityContact);
+  const entityContacts = school.entityContacts || [];
 
   const saasIndustryData: import('./types').SaaSInstitutionData = {
     industry: 'SaaS',

@@ -195,7 +195,7 @@ export default function MeetingDetailPage() {
             </Card>
 
             {/* Task 12.5: Scheduled Reminders Display */}
-            {meeting.enabledReminders && meeting.enabledReminders.length > 0 && (
+            {(isLoadingReminders || (reminders && reminders.length > 0)) && (
               <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
                 <CardHeader className="bg-muted/30 border-b">
                   <CardTitle className="text-lg font-semibold tracking-tight flex items-center gap-2">

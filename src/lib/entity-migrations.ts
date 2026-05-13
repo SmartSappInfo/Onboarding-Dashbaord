@@ -81,7 +81,7 @@ export async function migrateSchoolsToEntities(firestore: Firestore): Promise<Mi
                         currency: school.currency || 'GHS',
                         subscriptionPackageId: school.subscriptionPackageId || '',
                         subscriptionRate: school.subscriptionRate || 0,
-                        focalPersons: school.focalPersons || []
+                        entityContacts: (school as any).entityContacts || []
                     },
                     createdAt: school.createdAt || timestamp,
                     updatedAt: timestamp

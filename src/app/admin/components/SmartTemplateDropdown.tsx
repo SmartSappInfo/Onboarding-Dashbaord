@@ -27,6 +27,8 @@ interface SmartTemplateDropdownProps {
     category: TemplateCategory;
     recipientType: RecipientType;
     channel: MessageChannel;
+    /** Optional prefix to further filter templates by their templateType field (client-side). */
+    templateTypePrefix?: string;
     value?: string;
     onValueChange: (value: string) => void;
     onSelect?: (template: MessageTemplate) => void;
@@ -42,6 +44,7 @@ export function SmartTemplateDropdown({
     category,
     recipientType,
     channel,
+    templateTypePrefix,
     value,
     onValueChange,
     onSelect,
@@ -70,15 +73,19 @@ export function SmartTemplateDropdown({
                 workspaceId: activeWorkspaceId || undefined,
                 organizationId: activeOrganizationId || undefined
             });
-            setTemplates(result);
-            return result;
+            // Apply optional client-side templateType prefix filter (rerender-derived-state)
+            const filtered = templateTypePrefix
+                ? result.filter(t => t.templateType?.startsWith(templateTypePrefix))
+                : result;
+            setTemplates(filtered);
+            return filtered;
         } catch (error) {
             console.error('Failed to load filtered templates:', error);
             return [];
         } finally {
             setIsLoading(false);
         }
-    }, [category, recipientType, channel, activeWorkspaceId, activeOrganizationId]);
+    }, [category, recipientType, channel, templateTypePrefix, activeWorkspaceId, activeOrganizationId]);
 
     React.useEffect(() => {
         fetchTemplates();

@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { SmartTemplateDropdown } from '@/app/admin/components/SmartTemplateDropdown';
+import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 import {
   Mail,
   Smartphone,
@@ -23,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   MessageSquare,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -35,7 +37,6 @@ import type { MeetingMessagingConfig, MeetingReminderSlot } from '@/lib/types';
 const DEFAULT_CONFIG: MeetingMessagingConfig = {
   registrationAckEnabled: false,
   registrationAckChannels: ['email'],
-  facilitatorUserIds: [],
   facilitatorRemindersEnabled: false,
   facilitatorPostEventEnabled: false,
   facilitatorChannels: ['email'],
@@ -44,6 +45,7 @@ const DEFAULT_CONFIG: MeetingMessagingConfig = {
   postEventDelayMinutes: 60,
   postEventAudience: 'attendees_only',
   postEventChannels: ['email'],
+  postEventAbsenteeEnabled: false,
 };
 
 // ─── Main Component ──────────────────────────────────────────────
@@ -51,6 +53,25 @@ export default function MeetingMessagingTab() {
   const { watch, setValue } = useFormContext();
   const { activeWorkspaceId } = useWorkspace();
   const firestore = useFirestore();
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeWorkspaceId) return null;
+    return query(
+      collection(firestore, 'workspace_users'),
+      where('workspaceId', '==', activeWorkspaceId)
+    );
+  }, [firestore, activeWorkspaceId]);
+  const { data: workspaceUsers } = useCollection<any>(usersQuery);
+
+  const userOptions = React.useMemo(() => {
+    const sortedUsers = [...(workspaceUsers || [])].sort((a: any, b: any) => 
+      (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')
+    );
+    return sortedUsers.map((u: any) => ({
+      label: u.displayName || u.email || 'Unknown',
+      value: u.userId || u.id,
+    }));
+  }, [workspaceUsers]);
 
   // Get messaging config from form, defaulting if absent
   const config: MeetingMessagingConfig = watch('messagingConfig') || DEFAULT_CONFIG;
@@ -62,23 +83,7 @@ export default function MeetingMessagingTab() {
     setValue('messagingConfig', { ...config, [key]: value }, { shouldDirty: true });
   }, [config, setValue]);
 
-  // Fetch workspace users for facilitator selection
-  const usersQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'workspace_users'),
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('displayName', 'asc')
-    );
-  }, [firestore, activeWorkspaceId]);
-  const { data: workspaceUsers } = useCollection<any>(usersQuery);
 
-  const userOptions = React.useMemo(() => {
-    return (workspaceUsers || []).map((u: any) => ({
-      label: u.displayName || u.email || 'Unknown',
-      value: u.userId || u.id,
-    }));
-  }, [workspaceUsers]);
 
   // ── Collapsible section state ──
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
@@ -176,10 +181,11 @@ export default function MeetingMessagingTab() {
                     <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                       <Mail className="h-2.5 w-2.5" /> Email Template
                     </span>
-                    <SmartTemplateDropdown
+                    <MessagingTemplateSelector
                       category="meetings"
                       recipientType="external_alert"
                       channel="email"
+                      templateTypePrefix="meeting_registration_ack"
                       value={config.registrationAckEmailTemplateId || ''}
                       onValueChange={(v) => updateConfig('registrationAckEmailTemplateId', v)}
                       placeholder="Select email template..."
@@ -192,10 +198,11 @@ export default function MeetingMessagingTab() {
                     <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                       <Smartphone className="h-2.5 w-2.5" /> SMS Template
                     </span>
-                    <SmartTemplateDropdown
+                    <MessagingTemplateSelector
                       category="meetings"
                       recipientType="external_alert"
                       channel="sms"
+                      templateTypePrefix="meeting_registration_ack"
                       value={config.registrationAckSmsTemplateId || ''}
                       onValueChange={(v) => updateConfig('registrationAckSmsTemplateId', v)}
                       placeholder="Select SMS template..."
@@ -218,28 +225,23 @@ export default function MeetingMessagingTab() {
         iconBg="bg-violet-500/10"
         isOpen={openSections.facilitators}
         onToggle={() => toggleSection('facilitators')}
-        badge={config.facilitatorUserIds.length > 0 ? `${config.facilitatorUserIds.length} users` : undefined}
+        badge={watch('facilitators')?.length > 0 ? `${watch('facilitators').length} assigned` : undefined}
       >
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-semibold text-muted-foreground/60">Select Facilitators</Label>
-            <MultiSelect
-              options={userOptions}
-              value={config.facilitatorUserIds}
-              onChange={(v) => updateConfig('facilitatorUserIds', v)}
-              placeholder="Select team members..."
-              className="rounded-xl"
+          {(!watch('facilitators') || watch('facilitators').length === 0) && (
+            <div className="p-3 bg-muted/30 border rounded-xl text-xs text-muted-foreground mb-4">
+              <span className="font-bold">No facilitators assigned.</span> You can assign facilitators in the Configuration tab.
+            </div>
+          )}
+
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+            <ChannelToggle
+              channels={config.facilitatorChannels}
+              onChange={(v) => updateConfig('facilitatorChannels', v)}
             />
-          </div>
 
-          {config.facilitatorUserIds.length > 0 && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-              <ChannelToggle
-                channels={config.facilitatorChannels}
-                onChange={(v) => updateConfig('facilitatorChannels', v)}
-              />
-
-              <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border">
+            <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-xs font-bold">Pre-Event Reminders</Label>
                   <p className="text-[9px] text-muted-foreground">Notify facilitators before the meeting starts</p>
@@ -249,8 +251,49 @@ export default function MeetingMessagingTab() {
                   onCheckedChange={(v) => updateConfig('facilitatorRemindersEnabled', v)}
                 />
               </div>
+              
+              {config.facilitatorRemindersEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-border/50">
+                    {config.facilitatorChannels.includes('email') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Mail className="h-2.5 w-2.5" /> Pre-Event Email
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="internal_alert"
+                          channel="email"
+                          templateTypePrefix="meeting_facilitator_pre_event"
+                          value={config.facilitatorRemindersEmailTemplateId || ''}
+                          onValueChange={(v) => updateConfig('facilitatorRemindersEmailTemplateId', v)}
+                          placeholder="Select pre-event template..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
+                    {config.facilitatorChannels.includes('sms') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Smartphone className="h-2.5 w-2.5" /> Pre-Event SMS
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="internal_alert"
+                          channel="sms"
+                          templateTypePrefix="meeting_facilitator_pre_event"
+                          value={config.facilitatorRemindersSmsTemplateId || ''}
+                          onValueChange={(v) => updateConfig('facilitatorRemindersSmsTemplateId', v)}
+                          placeholder="Select SMS template..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
+                  </div>
+              )}
+            </div>
 
-              <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border">
+            <div className="p-4 bg-muted/20 rounded-xl border space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-xs font-bold">Post-Event Debrief</Label>
                   <p className="text-[9px] text-muted-foreground">Send summary after the meeting ends</p>
@@ -260,8 +303,47 @@ export default function MeetingMessagingTab() {
                   onCheckedChange={(v) => updateConfig('facilitatorPostEventEnabled', v)}
                 />
               </div>
+              
+              {config.facilitatorPostEventEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-border/50">
+                    {config.facilitatorChannels.includes('email') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Mail className="h-2.5 w-2.5" /> Post-Event Email
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="internal_alert"
+                          channel="email"
+                          templateTypePrefix="meeting_facilitator_post_event"
+                          value={config.facilitatorPostEventEmailTemplateId || ''}
+                          onValueChange={(v) => updateConfig('facilitatorPostEventEmailTemplateId', v)}
+                          placeholder="Select debrief template..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
+                    {config.facilitatorChannels.includes('sms') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Smartphone className="h-2.5 w-2.5" /> Post-Event SMS
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="internal_alert"
+                          channel="sms"
+                          templateTypePrefix="meeting_facilitator_post_event"
+                          value={config.facilitatorPostEventSmsTemplateId || ''}
+                          onValueChange={(v) => updateConfig('facilitatorPostEventSmsTemplateId', v)}
+                          placeholder="Select SMS template..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
+                  </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </CollapsibleSection>
 
@@ -313,6 +395,7 @@ export default function MeetingMessagingTab() {
               { label: '15 min', offset: 15 },
               { label: '1 hour', offset: 60 },
               { label: '1 day', offset: 1440 },
+              { label: '2 days', offset: 2880 },
             ].map(preset => {
               const exists = config.reminders.some(r => r.offsetMinutes === preset.offset);
               return (
@@ -415,10 +498,11 @@ export default function MeetingMessagingTab() {
                     <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                       <Mail className="h-2.5 w-2.5" /> Email Template
                     </span>
-                    <SmartTemplateDropdown
+                    <MessagingTemplateSelector
                       category="meetings"
                       recipientType="external_alert"
                       channel="email"
+                      templateTypePrefix="meeting_post_event_thankyou"
                       value={config.postEventEmailTemplateId || ''}
                       onValueChange={(v) => updateConfig('postEventEmailTemplateId', v)}
                       placeholder="Select follow-up template..."
@@ -431,15 +515,69 @@ export default function MeetingMessagingTab() {
                     <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                       <Smartphone className="h-2.5 w-2.5" /> SMS Template
                     </span>
-                    <SmartTemplateDropdown
+                    <MessagingTemplateSelector
                       category="meetings"
                       recipientType="external_alert"
                       channel="sms"
+                      templateTypePrefix="meeting_post_event_thankyou"
                       value={config.postEventSmsTemplateId || ''}
                       onValueChange={(v) => updateConfig('postEventSmsTemplateId', v)}
                       placeholder="Select follow-up SMS..."
                       className="h-9 rounded-xl text-[10px] font-bold"
                     />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Absentee Follow-Up Sub-Section ── */}
+              <div className="p-4 bg-muted/20 rounded-xl border space-y-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold">Absentee Follow-Up</Label>
+                    <p className="text-[9px] text-muted-foreground">Send recording & resources to no-shows</p>
+                  </div>
+                  <Switch
+                    checked={config.postEventAbsenteeEnabled}
+                    onCheckedChange={(v) => updateConfig('postEventAbsenteeEnabled', v)}
+                  />
+                </div>
+
+                {config.postEventAbsenteeEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-border/50">
+                    {config.postEventChannels.includes('email') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Mail className="h-2.5 w-2.5" /> Absentee Email
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="external_alert"
+                          channel="email"
+                          templateTypePrefix="meeting_post_event_absentee"
+                          value={config.postEventAbsenteeEmailTemplateId || ''}
+                          onValueChange={(v) => updateConfig('postEventAbsenteeEmailTemplateId', v)}
+                          placeholder="Select absentee template..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
+                    {config.postEventChannels.includes('sms') && (
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
+                          <Smartphone className="h-2.5 w-2.5" /> Absentee SMS
+                        </span>
+                        <MessagingTemplateSelector
+                          category="meetings"
+                          recipientType="external_alert"
+                          channel="sms"
+                          templateTypePrefix="meeting_post_event_absentee"
+                          value={config.postEventAbsenteeSmsTemplateId || ''}
+                          onValueChange={(v) => updateConfig('postEventAbsenteeSmsTemplateId', v)}
+                          placeholder="Select absentee SMS..."
+                          className="h-9 rounded-xl text-[10px] font-bold"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -510,5 +648,101 @@ function CollapsibleSection({
         </CardContent>
       )}
     </Card>
+  );
+}
+
+// ─── Messaging Template Selector Wrapper ───
+
+interface MessagingTemplateSelectorProps {
+  category: 'meetings';
+  recipientType: 'external_alert' | 'internal_alert';
+  channel: 'email' | 'sms';
+  templateTypePrefix?: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+function MessagingTemplateSelector({
+  category,
+  recipientType,
+  channel,
+  templateTypePrefix,
+  value,
+  onValueChange,
+  placeholder,
+  className
+}: MessagingTemplateSelectorProps) {
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingTemplateId, setEditingTemplateId] = React.useState<string | undefined>();
+
+  const handleCreateNew = () => {
+    setEditingTemplateId(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleEdit = () => {
+    if (value) {
+      setEditingTemplateId(value);
+      setDialogOpen(true);
+    }
+  };
+
+  const handleTemplateCreated = (template: any) => {
+    onValueChange(template.id);
+  };
+
+  return (
+    <div className="flex items-center gap-2 w-full animate-in fade-in zoom-in-95 duration-300">
+      <div className="flex-1 min-w-0">
+        <SmartTemplateDropdown
+          category={category}
+          recipientType={recipientType}
+          channel={channel}
+          templateTypePrefix={templateTypePrefix}
+          value={value}
+          onValueChange={onValueChange}
+          placeholder={placeholder}
+          className={className}
+        />
+      </div>
+      
+      {value && (
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="icon" 
+          className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+          onClick={handleEdit}
+          title="Preview & Edit Template"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+      )}
+      
+      <Button 
+        type="button" 
+        variant="outline" 
+        size="icon" 
+        className="h-9 w-9 shrink-0 rounded-xl border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
+        onClick={handleCreateNew}
+        title="Create New Template"
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+
+      {dialogOpen && (
+        <QuickTemplateDialog
+           open={dialogOpen}
+           onOpenChange={setDialogOpen}
+           onCreated={handleTemplateCreated}
+           category={category}
+           channel={channel}
+           recipientType={recipientType}
+           templateId={editingTemplateId}
+        />
+      )}
+    </div>
   );
 }

@@ -36,6 +36,24 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import MediaSelectorTrigger from './MediaSelectorTrigger';
 
+// ── IANA Timezone List (hoisted per server-hoist-static-io, advanced-init-once) ──
+const IANA_TIMEZONES: string[] = (() => {
+    try {
+        return Intl.supportedValuesOf('timeZone');
+    } catch {
+        // Fallback for older browsers
+        return ['UTC', 'Africa/Accra', 'Africa/Lagos', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney'];
+    }
+})();
+
+const getBrowserTimezone = (): string => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+        return 'UTC';
+    }
+};
+
 interface OrganizationManagementDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -110,7 +128,7 @@ export default function OrganizationManagementDialog({
             setPhone('');
             setAddress('');
             setDefaultCurrency('USD');
-            setDefaultTimezone('UTC');
+            setDefaultTimezone(getBrowserTimezone());
             setDefaultLanguage('en');
             setDefaultCountryCode('GH');
             setDefaultRoleId('');
@@ -332,12 +350,18 @@ export default function OrganizationManagementDialog({
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
                                                 Timezone
                                             </Label>
-                                            <Input 
-                                                value={defaultTimezone} 
-                                                onChange={e => setDefaultTimezone(e.target.value)} 
-                                                placeholder="UTC" 
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4" 
-                                            />
+                                            <select 
+                                                value={defaultTimezone}
+                                                onChange={e => setDefaultTimezone(e.target.value)}
+                                                className="h-11 w-full rounded-xl bg-muted/20 border-none shadow-inner font-medium px-4 text-sm"
+                                            >
+                                                {IANA_TIMEZONES.map(tz => (
+                                                    <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[9px] text-muted-foreground ml-1 font-bold">
+                                                Used for formatting event dates and times in notifications.
+                                            </p>
                                         </div>
 
                                         <div className="space-y-2">

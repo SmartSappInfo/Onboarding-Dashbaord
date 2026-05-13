@@ -134,7 +134,7 @@ export async function createTagAction(data: {
       organizationId: data.organizationId,
       name: data.name.trim(),
       slug,
-      description: data.description?.trim(),
+      description: data.description?.trim() || '',
       category: data.category,
       color: data.color,
       isSystem: false,

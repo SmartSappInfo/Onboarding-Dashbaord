@@ -20,10 +20,10 @@ export const INSTITUTION_TEMPLATE_COLUMNS = [
   'billingAddress',
   'currency',
   'subscriptionPackageId',
-  'focalPerson_name',
-  'focalPerson_phone',
-  'focalPerson_email',
-  'focalPerson_type',
+  'contact_name',
+  'contact_phone',
+  'contact_email',
+  'contact_role',
 ] as const;
 
 /**
@@ -72,10 +72,10 @@ export const FIELD_DESCRIPTIONS: Record<string, string> = {
   billingAddress: 'Billing address for invoices',
   currency: 'Currency code (e.g., USD, GBP, ZAR)',
   subscriptionPackageId: 'Subscription package identifier',
-  focalPerson_name: 'Primary contact person name',
-  focalPerson_phone: 'Primary contact phone number',
-  focalPerson_email: 'Primary contact email address',
-  focalPerson_type: 'Contact type (Champion, Principal, Administrator, etc.)',
+  contact_name: 'Primary contact person name',
+  contact_phone: 'Primary contact phone number',
+  contact_email: 'Primary contact email address',
+  contact_role: 'Contact role (Champion, Principal, Administrator, etc.)',
   
   // Family fields
   familyName: 'Family surname (required)',

@@ -8,10 +8,10 @@
 
 export interface InstitutionImportRow {
   name: string;
-  focalPerson_name: string;
-  focalPerson_phone?: string;
-  focalPerson_email?: string;
-  focalPerson_type?: string;
+  contact_name: string;
+  contact_phone?: string;
+  contact_email?: string;
+  contact_role?: string;
   nominalRoll?: string;
   billingAddress?: string;
   currency?: string;
@@ -22,15 +22,15 @@ export interface InstitutionImportRow {
 }
 
 /** Required field keys (for UI indicators) */
-export const INSTITUTION_REQUIRED_FIELDS = ['name', 'focalPerson_name'];
+export const INSTITUTION_REQUIRED_FIELDS = ['name', 'contact_name'];
 
 /** All CSV columns — required first, then optional */
 export const INSTITUTION_CSV_COLUMNS = [
   'name',
-  'focalPerson_name',
-  'focalPerson_phone',
-  'focalPerson_email',
-  'focalPerson_type',
+  'contact_name',
+  'contact_phone',
+  'contact_email',
+  'contact_role',
   'nominalRoll',
   'billingAddress',
   'currency',
@@ -60,10 +60,10 @@ export const INSTITUTION_SAMPLE_ROW = [
 /** Field-level instructions for the import instructions panel */
 export const INSTITUTION_FIELD_INSTRUCTIONS = [
   { field: 'name', description: 'Institution/School name (required)', required: true },
-  { field: 'focalPerson_name', description: 'Primary contact person name (required)', required: true },
-  { field: 'focalPerson_phone', description: 'Contact phone number (required per policy)' },
-  { field: 'focalPerson_email', description: 'Contact email address (required per policy)' },
-  { field: 'focalPerson_type', description: 'Contact role, e.g. Principal, Admin' },
+  { field: 'contact_name', description: 'Primary contact person name (required)', required: true },
+  { field: 'contact_phone', description: 'Contact phone number (required per policy)' },
+  { field: 'contact_email', description: 'Contact email address (required per policy)' },
+  { field: 'contact_role', description: 'Contact role, e.g. Principal, Admin' },
   { field: 'nominalRoll', description: 'Number of students/users' },
   { field: 'billingAddress', description: 'Billing address for invoices' },
   { field: 'currency', description: 'Currency code, e.g. GHS, USD' },

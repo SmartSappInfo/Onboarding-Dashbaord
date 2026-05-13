@@ -339,13 +339,15 @@ function buildInstitutionData(row: InstitutionImportRow): InstitutionData {
 function buildInstitutionContacts(row: InstitutionImportRow) {
   const contacts = [];
 
-  if (row.focalPerson_name) {
+  if (row.contact_name) {
     contacts.push({
-      name: row.focalPerson_name,
-      phone: row.focalPerson_phone || '',
-      email: row.focalPerson_email || '',
-      type: row.focalPerson_type || 'Contact',
-      isSignatory: false,
+      name: row.contact_name,
+      phone: row.contact_phone || '',
+      email: row.contact_email || '',
+      typeKey: (row.contact_role || 'contact').toLowerCase().replace(/\s+/g, '_'),
+      typeLabel: row.contact_role || 'Contact',
+      isPrimary: true,
+      isSignatory: true,
     });
   }
 

@@ -22,7 +22,7 @@ export function serializeInstitutionEntity(
   workspaceEntity?: WorkspaceEntity
 ): InstitutionImportRow {
   const contacts = entity.entityContacts || [];
-  const focalPerson = contacts[0];
+  const primaryContact = contacts[0];
 
   return {
     name: entity.name,
@@ -30,10 +30,10 @@ export function serializeInstitutionEntity(
     billingAddress: entity.financeData?.billingAddress || (entity as any).institutionData?.billingAddress,
     currency: entity.financeData?.currency || (entity as any).institutionData?.currency,
     subscriptionPackageId: entity.financeData?.planType || (entity as any).institutionData?.subscriptionPackageId,
-    focalPerson_name: focalPerson?.name,
-    focalPerson_phone: focalPerson?.phone,
-    focalPerson_email: focalPerson?.email,
-    focalPerson_type: focalPerson?.typeLabel || focalPerson?.typeKey || 'Contact',
+    contact_name: primaryContact?.name,
+    contact_phone: primaryContact?.phone,
+    contact_email: primaryContact?.email,
+    contact_role: primaryContact?.typeLabel || primaryContact?.typeKey || 'Contact',
   };
 }
 

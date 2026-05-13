@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
-import type { FocalPerson, InstitutionData, EntityContact } from './types';
+import type { InstitutionData, EntityContact } from './types';
 
 /**
  * @fileOverview Server actions for signup flow using unified entity architecture.

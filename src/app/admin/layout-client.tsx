@@ -395,7 +395,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 flex flex-col overflow-auto relative pt-8 px-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 flex flex-col overflow-auto relative w-full">
           {children}
         </main>
         {isOperationsPage && <QuickComposeButton />}

@@ -12,7 +12,6 @@ import type { School, WorkspaceEntity, EntityContact } from './types';
 import {
   getPrimaryContact as getNewPrimaryContact,
   resolveEntityContacts,
-  entityContactToFocalPerson,
 } from './entity-contact-helpers';
 
 /**
@@ -24,7 +23,7 @@ export function getPrimaryContact(entity: School | WorkspaceEntity): { name: str
     // WorkspaceEntity branch — resolve from entityContacts first
     const workspaceEntity = entity as WorkspaceEntity;
     if (workspaceEntity.entityContacts && workspaceEntity.entityContacts.length > 0) {
-      const primary = getNewPrimaryContact({ entityContacts: workspaceEntity.entityContacts, contacts: [] });
+      const primary = getNewPrimaryContact({ entityContacts: workspaceEntity.entityContacts });
       if (primary) {
         return {
           name: primary.name,
@@ -43,14 +42,16 @@ export function getPrimaryContact(entity: School | WorkspaceEntity): { name: str
     };
   }
 
-  // Legacy School branch
+  // Legacy School branch — use entityContacts if available
   const school = entity as School;
-  if (!school.focalPersons || school.focalPersons.length === 0) {
+  const contacts = (school as any).entityContacts || [];
+  if (contacts.length === 0) {
     return undefined;
   }
   
-  const signatory = school.focalPersons.find(fp => fp.isSignatory);
-  return signatory || school.focalPersons?.[0];
+  const signatory = contacts.find((c: any) => c.isSignatory);
+  const primary = signatory || contacts[0];
+  return primary ? { name: primary.name, email: primary.email, phone: primary.phone, isSignatory: primary.isSignatory } : undefined;
 }
 
 /**
@@ -60,7 +61,7 @@ export function getEntityEmail(entity: School | WorkspaceEntity): string | undef
   if ('entityId' in entity) {
     const we = entity as WorkspaceEntity;
     if (we.entityContacts && we.entityContacts.length > 0) {
-      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts, contacts: [] });
+      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts });
       return primary?.email;
     }
     return we.primaryEmail;
@@ -76,7 +77,7 @@ export function getEntityPhone(entity: School | WorkspaceEntity): string | undef
   if ('entityId' in entity) {
     const we = entity as WorkspaceEntity;
     if (we.entityContacts && we.entityContacts.length > 0) {
-      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts, contacts: [] });
+      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts });
       return primary?.phone;
     }
     return we.primaryPhone;
@@ -92,7 +93,7 @@ export function getContactPerson(entity: School | WorkspaceEntity): string | und
   if ('entityId' in entity) {
     const we = entity as WorkspaceEntity;
     if (we.entityContacts && we.entityContacts.length > 0) {
-      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts, contacts: [] });
+      const primary = getNewPrimaryContact({ entityContacts: we.entityContacts });
       return primary?.name;
     }
     return we.primaryContactName;
@@ -115,10 +116,11 @@ export function getAllEntityEmails(entity: School | WorkspaceEntity): string[] {
     return workspaceEntity.primaryEmail ? [workspaceEntity.primaryEmail] : [];
   }
   const school = entity as School;
-  if (!school.focalPersons) return [];
-  return school.focalPersons
-    .map(fp => fp.email)
-    .filter((email): email is string => !!email);
+  const contacts = (school as any).entityContacts || [];
+  if (contacts.length === 0) return [];
+  return contacts
+    .map((c: any) => c.email)
+    .filter((email: any): email is string => !!email);
 }
 
 /**

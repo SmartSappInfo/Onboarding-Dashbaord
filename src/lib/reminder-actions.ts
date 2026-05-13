@@ -448,21 +448,19 @@ export async function scheduleFacilitatorAlerts(
   alertType: 'pre_event' | 'post_event',
 ): Promise<void> {
   const config = meeting.messagingConfig;
-  if (!config?.facilitatorUserIds?.length) return;
+  const facilitators = meeting.facilitators || [];
+  if (!facilitators.length || !config) return;
 
   // Check if the requested alert type is enabled
   if (alertType === 'pre_event' && !config.facilitatorRemindersEnabled) return;
   if (alertType === 'post_event' && !config.facilitatorPostEventEnabled) return;
 
-  // Resolve facilitator contacts from workspace_users
-  const contacts: Array<{ email?: string; phone?: string }> = [];
-  for (const userId of config.facilitatorUserIds) {
-    const userSnap = await adminDb.collection('users').doc(userId).get();
-    if (userSnap.exists) {
-      const u = userSnap.data()!;
-      contacts.push({ email: u.email, phone: u.phone });
-    }
-  }
+  // Resolve facilitator contacts from meeting.facilitators
+  const contacts = facilitators.map(f => ({
+    email: f.email,
+    phone: f.phone,
+    joinLink: f.joinLink
+  }));
 
   if (contacts.length === 0) return;
 
