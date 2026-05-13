@@ -1373,6 +1373,29 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             )}
                                         />
                                     </div>
+                                    {element.type === 'video' && (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                                    Video Thumbnail (Optional)
+                                                </Label>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-50">
+                                                    Replaces Auto-Thumbnail
+                                                </Badge>
+                                            </div>
+                                            <Controller
+                                                name={`elements.${index}.thumbnailUrl`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <MediaSelect 
+                                                        value={field.value} 
+                                                        onValueChange={field.onChange}
+                                                        filterType="image"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-4">
                                         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                                             {element.type === 'image' ? 'Alt Text' : 'Caption'}

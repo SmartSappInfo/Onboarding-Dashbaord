@@ -109,6 +109,9 @@ const BlockEditor = React.memo(function BlockEditor({ block, sectionId, onUpdate
                                 </SelectContent>
                             </Select>
                         </Field>
+                        <Field label="Thumbnail URL">
+                            <Input placeholder="https://..." value={block.props.thumbnailUrl || ''} onChange={(e) => update({ thumbnailUrl: e.target.value })} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50" />
+                        </Field>
                     </>
                 )}
 

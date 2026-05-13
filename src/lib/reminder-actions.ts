@@ -17,6 +17,7 @@ const REMINDER_TYPE_TO_OFFSET: Record<string, number> = {
   meeting_reminder_1hour:   REMINDER_OFFSETS.ONE_HOUR.offsetMinutes,
   meeting_reminder_2hours:  REMINDER_OFFSETS.TWO_HOURS.offsetMinutes,
   meeting_reminder_1day:    REMINDER_OFFSETS.ONE_DAY.offsetMinutes,
+  meeting_reminder_2days:   REMINDER_OFFSETS.TWO_DAYS.offsetMinutes,
   meeting_time_up:          REMINDER_OFFSETS.TIME_UP.offsetMinutes,
 };
 
@@ -69,14 +70,14 @@ export async function scheduleRemindersForMeeting(
     let channel: 'email' | 'sms' = 'email';
     try {
       const template = await resolveAndRender(
-        'reminders' as TemplateCategory,
+        'meetings' as TemplateCategory,
         reminderType,
         orgId,
         { meetingId: meeting.id, entityId: meeting.entityId },
       );
       // We need the raw template for the ID — re-query to get it
       const { resolveTemplateForOrg } = await import('./template-resolver');
-      const tpl = await resolveTemplateForOrg('reminders' as TemplateCategory, reminderType, orgId);
+      const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, reminderType, orgId);
       templateId = tpl.id;
       channel = (tpl.channel === 'email' || tpl.channel === 'sms') ? tpl.channel : 'email';
       void template; // used for side-effect validation only
@@ -330,8 +331,7 @@ export async function scheduleMessagingConfigReminders(
 
   // Gather registrant contacts
   const regSnap = await adminDb
-    .collection('meeting_registrants')
-    .where('meetingId', '==', meeting.id)
+    .collection('meetings').doc(meeting.id).collection('registrants')
     .where('status', 'in', ['registered', 'approved'])
     .get();
 
@@ -476,8 +476,24 @@ export async function scheduleFacilitatorAlerts(
   // Skip past pre-event alerts
   if (alertType === 'pre_event' && new Date(scheduledAt) <= new Date()) return;
 
-  for (const ch of channels) {
-    // Use a generic facilitator template — resolved at send time
+    for (const ch of channels) {
+    // Resolve the correct facilitator template from the seed library
+    const templateType = alertType === 'pre_event'
+      ? 'meeting_facilitator_pre_event'
+      : 'meeting_facilitator_post_event';
+
+    let templateId: string | undefined;
+    try {
+      const { resolveTemplateForOrg } = await import('./template-resolver');
+      const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, templateType, orgId);
+      // Only use templates matching this channel
+      if (tpl.channel !== ch) continue;
+      templateId = tpl.id;
+    } catch {
+      // No template found for this channel — skip
+      continue;
+    }
+
     for (const c of contacts) {
       const contact = ch === 'email' ? c.email : c.phone;
       if (!contact) continue;
@@ -485,7 +501,7 @@ export async function scheduleFacilitatorAlerts(
       const docRef = adminDb.collection('scheduled_messages').doc();
       const msg: Omit<ScheduledMessage, 'id'> = {
         organizationId: orgId,
-        templateId: `facilitator_${alertType}`, // resolved by template engine
+        templateId: templateId!,
         channel: ch as 'email' | 'sms',
         recipientContact: contact,
         variables: { meetingId: meeting.id, alertType },
@@ -502,4 +518,182 @@ export async function scheduleFacilitatorAlerts(
   }
 
   await batch.commit();
+}
+
+// ---------------------------------------------------------------------------
+// sendFacilitatorNewRegistrationAlert  (Phase 2 — instant notification)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends an immediate notification to all facilitators when a new registrant
+ * signs up. Uses the `meeting_facilitator_new_registration` template.
+ */
+export async function sendFacilitatorNewRegistrationAlert(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  registrantData: { name: string; email: string; phone?: string; entityName?: string },
+  orgId: string,
+): Promise<void> {
+  const config = meeting.messagingConfig;
+  const facilitators = meeting.facilitators || [];
+  // Reuse the facilitator reminders toggle — if they get pre-event alerts, they get registration alerts
+  if (!config?.facilitatorRemindersEnabled || facilitators.length === 0) return;
+
+  const channels = config.facilitatorChannels || ['email'];
+  const now = new Date().toISOString();
+
+  // Count current registrants (async-defer-await: start early)
+  const countPromise = adminDb.collection('meetings').doc(meeting.id).collection('registrants')
+    .where('status', 'in', ['registered', 'approved'])
+    .get();
+
+  const batch = adminDb.batch();
+
+  for (const ch of channels) {
+    const templateType = 'meeting_facilitator_new_registration';
+    let templateId: string | undefined;
+    try {
+      const { resolveTemplateForOrg } = await import('./template-resolver');
+      const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, templateType, orgId);
+      if (tpl.channel !== ch) continue;
+      templateId = tpl.id;
+    } catch {
+      continue;
+    }
+
+    const regSnap = await countPromise;
+
+    for (const f of facilitators) {
+      const contact = ch === 'email' ? f.email : f.phone;
+      if (!contact) continue;
+
+      const docRef = adminDb.collection('scheduled_messages').doc();
+      const msg: Omit<ScheduledMessage, 'id'> = {
+        organizationId: orgId,
+        templateId: templateId!,
+        channel: ch as 'email' | 'sms',
+        recipientContact: contact,
+        variables: {
+          meetingId: meeting.id,
+          contact_name: registrantData.name,
+          contact_email: registrantData.email,
+          contact_phone: registrantData.phone || '',
+          entity_name: registrantData.entityName || '',
+          registration_time: now,
+          registrant_count: String(regSnap.size),
+        },
+        scheduledAt: now, // immediate
+        status: 'pending',
+        reminderType: 'facilitator_new_registration',
+        sourceEventId: meeting.id,
+        sourceEventType: 'meeting',
+        retryCount: 0,
+        createdAt: now,
+      };
+      batch.set(docRef, msg);
+    }
+  }
+
+  await batch.commit();
+}
+
+// ---------------------------------------------------------------------------
+// schedulePostEventMessages  (Phase 3 — post-event dispatch)
+// ---------------------------------------------------------------------------
+
+/**
+ * Schedules post-event thank-you messages to attendees and (optionally)
+ * absentee follow-up messages to no-shows.
+ *
+ * Also triggers the facilitator post-event debrief alert.
+ */
+export async function schedulePostEventMessages(
+  meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
+  orgId: string,
+): Promise<{ thankYouCount: number; absenteeCount: number }> {
+  const config = meeting.messagingConfig;
+  if (!config?.postEventEnabled) return { thankYouCount: 0, absenteeCount: 0 };
+
+  const channels = config.postEventChannels || ['email'];
+  const delayMs = (config.postEventDelayMinutes || 60) * 60 * 1000;
+  const scheduledAt = new Date(Date.now() + delayMs).toISOString();
+  const now = new Date().toISOString();
+
+  // Fetch all registrants
+  const regSnap = await adminDb.collection('meetings').doc(meeting.id).collection('registrants')
+    .where('status', 'in', ['registered', 'approved', 'attended'])
+    .get();
+
+  if (regSnap.empty) return { thankYouCount: 0, absenteeCount: 0 };
+
+  const allRegs = regSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Array<{
+    id: string; email?: string; phone?: string; status?: string;
+  }>;
+
+  // Split by attendance
+  const attended = config.postEventAudience === 'all_registrants'
+    ? allRegs
+    : allRegs.filter(r => r.status === 'attended');
+  const absentees = config.postEventAbsenteeEnabled
+    ? allRegs.filter(r => r.status !== 'attended')
+    : [];
+
+  const batch = adminDb.batch();
+  let thankYouCount = 0;
+  let absenteeCount = 0;
+
+  // Helper to schedule a batch of messages
+  const scheduleGroup = async (
+    recipients: typeof allRegs,
+    templateType: string,
+    counter: 'thankyou' | 'absentee',
+  ) => {
+    for (const ch of channels) {
+      let templateId: string | undefined;
+      try {
+        const { resolveTemplateForOrg } = await import('./template-resolver');
+        const tpl = await resolveTemplateForOrg('meetings' as TemplateCategory, templateType, orgId);
+        if (tpl.channel !== ch) continue;
+        templateId = tpl.id;
+      } catch {
+        continue;
+      }
+
+      for (const reg of recipients) {
+        const contact = ch === 'email' ? reg.email : reg.phone;
+        if (!contact) continue;
+
+        const docRef = adminDb.collection('scheduled_messages').doc();
+        const msg: Omit<ScheduledMessage, 'id'> = {
+          organizationId: orgId,
+          templateId: templateId!,
+          channel: ch as 'email' | 'sms',
+          recipientContact: contact,
+          variables: { meetingId: meeting.id },
+          scheduledAt,
+          status: 'pending',
+          reminderType: `post_event_${counter}`,
+          sourceEventId: meeting.id,
+          sourceEventType: 'meeting',
+          retryCount: 0,
+          createdAt: now,
+        };
+        batch.set(docRef, msg);
+        if (counter === 'thankyou') thankYouCount++;
+        else absenteeCount++;
+      }
+    }
+  };
+
+  // Schedule thank-you and absentee messages
+  await scheduleGroup(attended, 'meeting_post_event_thankyou', 'thankyou');
+  if (absentees.length > 0) {
+    await scheduleGroup(absentees, 'meeting_post_event_absentee', 'absentee');
+  }
+
+  await batch.commit();
+
+  // Trigger facilitator post-event debrief (non-blocking)
+  void scheduleFacilitatorAlerts(meeting, orgId, 'post_event');
+
+  return { thankYouCount, absenteeCount };
 }

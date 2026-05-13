@@ -174,7 +174,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                 <Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="cover" />
             </div>
         ) : null;
-        case 'video': return block.url ? <div className={cn("my-10 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/50", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} /></div> : null;
+        case 'video': return block.url ? <div className={cn("my-10 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/50", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
         case 'audio': return block.url ? <div className="my-8 p-6 bg-muted/20 border-2 border-muted/50 rounded-2xl"><audio controls src={block.url} className="w-full" /></div> : null;
         case 'document': return block.url ? (
             <div className={alignmentClass}>

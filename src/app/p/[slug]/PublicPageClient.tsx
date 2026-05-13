@@ -25,6 +25,7 @@ import Footer from '@/components/footer';
 import SUBSCRIPTION_PAYMENT_DATA from './payment-guide-data.json';
 import { sendReceiptAcknowledgementAction } from '@/lib/notification-actions';
 import Link from 'next/link';
+import VideoEmbed from '@/components/video-embed';
 
 
 
@@ -515,21 +516,8 @@ export default function PublicPageClient({ slug }: { slug: string }) {
                                                     )}
 
                                                     {block.type === 'video' && block.props.url && (
-                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black">
-                                                            {(() => {
-                                                                const url = block.props.url;
-                                                                let embedUrl = url;
-                                                                // YouTube
-                                                                const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/);
-                                                                if (ytMatch) embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
-                                                                // Vimeo
-                                                                const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-                                                                if (vimeoMatch) embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-                                                                // Loom
-                                                                const loomMatch = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
-                                                                if (loomMatch) embedUrl = `https://www.loom.com/embed/${loomMatch[1]}`;
-                                                                return <iframe src={embedUrl} className="w-full h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />;
-                                                            })()}
+                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black group relative">
+                                                            <VideoEmbed url={block.props.url} thumbnailUrl={block.props.thumbnailUrl} />
                                                         </div>
                                                     )}
 

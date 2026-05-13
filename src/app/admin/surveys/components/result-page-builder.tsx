@@ -82,7 +82,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                                         )
                                     )}
  {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-card bg-card"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
- {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} /></div>}
+                                    {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div>}
                                     {block.type === 'audio' && block.url && <div className="w-full p-6 bg-card border rounded-2xl shadow-sm"><audio controls src={block.url} className="w-full" /></div>}
  {block.type === 'button' && <Button size="lg" variant={block.style?.variant as any} className="h-14 px-8 text-lg font-semibold rounded-xl shadow-lg">{block.title} <ArrowRight className="ml-2 h-5 w-5"/></Button>}
  {block.type === 'quote' && <div className="p-8 bg-card border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
@@ -252,13 +252,25 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                     </div>
                 )}
                 {['image', 'video', 'audio'].includes(block.type) && (
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground">Media URL</Label>
-                        <MediaSelect 
-                            value={block.url} 
-                            onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.url`, val, { shouldDirty: true })}
-                            filterType={block.type as any}
-                        />
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Media URL</Label>
+                            <MediaSelect 
+                                value={block.url} 
+                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.url`, val, { shouldDirty: true })}
+                                filterType={block.type as any}
+                            />
+                        </div>
+                        {block.type === 'video' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Video Thumbnail (Optional)</Label>
+                                <MediaSelect 
+                                    value={block.thumbnailUrl} 
+                                    onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.thumbnailUrl`, val, { shouldDirty: true })}
+                                    filterType="image"
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
                 {block.type === 'button' && (

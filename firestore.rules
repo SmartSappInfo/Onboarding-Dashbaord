@@ -211,7 +211,7 @@ service cloud.firestore {
     }
 
     match /custom_meeting_templates/{templateId} {
-      allow read: if isAuthorized();
+      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
@@ -676,8 +676,7 @@ service cloud.firestore {
     }
 
     match /field_groups/{groupId} {
-      allow get: if isAuthorized();
-      allow list: if isAuthorized();
+      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && request.resource.data.workspaceId in getUserData().workspaceIds)

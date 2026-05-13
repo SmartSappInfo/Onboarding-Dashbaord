@@ -101,6 +101,11 @@ const generateSchema = (elements: SurveyElement[]) => {
             ]);
         }
 
+        // Checkboxes without allowOther stores string[]
+        if (q.type === 'checkboxes' && !q.allowOther) {
+            schema = z.array(z.string());
+        }
+
         // Checkboxes with allowOther stores {options: string[], other: string}
         if (q.type === 'checkboxes' && q.allowOther) {
             schema = z.union([
@@ -679,7 +684,7 @@ const ElementRenderer = ({
                     </div>
                 ) : null;
             case 'video':
-                 return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
+                 return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
             case 'audio':
                 return block.url ? <div className="my-6 p-6 bg-muted/10 border border-border/30 rounded-xl"><audio controls src={block.url} className="w-full text-sm">Your browser does not support the audio element.</audio></div> : null;
             case 'document':

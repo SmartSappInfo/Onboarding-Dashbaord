@@ -243,6 +243,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                     org_address: org.address || '',
                     org_website: org.website || '',
                     current_year: new Date().getFullYear().toString(),
+                    meeting_timezone: org.settings?.defaultTimezone || 'UTC',
                 };
                 // Only set if not already provided by the caller
                 Object.entries(orgVars).forEach(([k, v]) => {

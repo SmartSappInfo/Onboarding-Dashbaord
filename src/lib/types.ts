@@ -1534,6 +1534,7 @@ export interface SurveyLayoutBlock extends SurveyElement {
   stepperTitle?: string;
   description?: string; // For section descriptions
   showSectionHeader?: boolean; // Controls visibility of section title/description on client (defaults to true)
+  thumbnailUrl?: string;
 }
 
 export interface SurveyLogicBlock extends SurveyElement {
@@ -1590,6 +1591,7 @@ export interface SurveyResultBlock {
     padding?: string;
     width?: string;
   };
+  thumbnailUrl?: string;
 }
 
 export interface SurveyResponse {
@@ -2083,6 +2085,7 @@ export const REMINDER_OFFSETS = {
   ONE_HOUR:        { offsetMinutes: 60,   offsetLabel: '1 hour before' },
   TWO_HOURS:       { offsetMinutes: 120,  offsetLabel: '2 hours before' },
   ONE_DAY:         { offsetMinutes: 1440, offsetLabel: '1 day before' },
+  TWO_DAYS:        { offsetMinutes: 2880, offsetLabel: '2 days before' },
   TIME_UP:         { offsetMinutes: 0,    offsetLabel: 'At event time' },
 } as const;
 

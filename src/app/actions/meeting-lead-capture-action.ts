@@ -2,6 +2,8 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { sendFacilitatorNewRegistrationAlert } from '@/lib/reminder-actions';
+import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface LeadCaptureInput {
@@ -167,6 +169,10 @@ export async function createEntityFromRegistration(
       await Promise.all(updatePromises);
 
       // NOTE: Automations are NOT re-triggered for existing entities
+
+      // Fire facilitator new-registration alert (non-blocking)
+      void fireFacilitatorRegistrationAlert(meetingId, { name: entityName, email, phone, entityName }, organizationId);
+
       return { success: true, entityId: existingEntityId, isNew: false };
     }
 
@@ -222,6 +228,9 @@ export async function createEntityFromRegistration(
 
     await Promise.all(postCreatePromises);
 
+    // Fire facilitator new-registration alert (non-blocking)
+    void fireFacilitatorRegistrationAlert(meetingId, { name: entityName, email, phone, entityName }, organizationId);
+
     return { success: true, entityId: newEntityId, isNew: true };
   } catch (error: any) {
     console.error('[createEntityFromRegistration] Failed:', error);
@@ -272,4 +281,21 @@ async function queueAutomations(
   }
 
   await batch.commit();
+}
+
+/** Fetches the meeting doc and fires a facilitator new-registration alert */
+async function fireFacilitatorRegistrationAlert(
+  meetingId: string,
+  registrantData: { name: string; email: string; phone?: string; entityName?: string },
+  organizationId: string,
+): Promise<void> {
+  try {
+    const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
+    if (!meetingSnap.exists) return;
+    const meeting = { id: meetingSnap.id, ...meetingSnap.data() } as Meeting & { messagingConfig?: MeetingMessagingConfig };
+    await sendFacilitatorNewRegistrationAlert(meeting, registrantData, organizationId);
+  } catch (err) {
+    // Non-critical — log but don't throw
+    console.warn('[fireFacilitatorRegistrationAlert] Skipped:', (err as Error).message);
+  }
 }

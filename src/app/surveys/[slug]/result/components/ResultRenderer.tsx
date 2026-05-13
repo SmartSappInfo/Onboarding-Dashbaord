@@ -145,7 +145,7 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
                 </div>
             ) : null;
         case 'video':
-            return block.url ? <div className={containerClasses}><VideoEmbed url={block.url} /></div> : null;
+            return block.url ? <div className={containerClasses}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
         case 'button':
             return (
                 <div className={containerClasses}>

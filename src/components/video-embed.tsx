@@ -8,30 +8,47 @@ import { Play } from 'lucide-react';
 
 function extractYouTubeID(url?: string): string | null {
   if (!url) return null;
-  // Support standard watch URLs, embed URLs, youtu.be, and shorts
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
 }
 
+function extractVimeoID(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/vimeo\.com\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+function extractLoomID(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
+}
+
 interface VideoEmbedProps {
   url?: string;
+  thumbnailUrl?: string;
   className?: string;
 }
 
-const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
+const VideoEmbed = ({ url, thumbnailUrl, className }: VideoEmbedProps) => {
   const [isPlaying, setIsPlaying] = React.useState(false);
-  const [thumbUrl, setThumbUrl] = React.useState<string | null>(null);
+  const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
+  
   const videoId = extractYouTubeID(url);
+  const vimeoId = extractVimeoID(url);
+  const loomId = extractLoomID(url);
   const isDirectFile = url?.match(/\.(mp4|webm|ogg)$/i);
 
   React.useEffect(() => {
-    if (videoId) {
+    if (thumbnailUrl) {
+      setThumbUrl(thumbnailUrl);
+    } else if (videoId) {
       setThumbUrl(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
     }
-  }, [videoId]);
+  }, [videoId, thumbnailUrl]);
 
-  if (!videoId && !isDirectFile) {
+  if (!videoId && !vimeoId && !loomId && !isDirectFile) {
     return (
         <div className={cn("aspect-video w-full rounded-xl bg-muted/30 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-border/50", className)}>
             <Play className="w-12 h-12 text-muted-foreground/20 mb-4" />
@@ -53,8 +70,8 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
     );
   }
 
-  // YouTube logic
-  if (!isPlaying && videoId) {
+  // Click-to-play thumbnail logic
+  if (!isPlaying && (videoId || vimeoId || loomId)) {
     return (
       <div 
         className={cn(
@@ -63,8 +80,8 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
         )}
         onClick={() => setIsPlaying(true)}
       >
-        {/* Background Thumbnail with Next.js Image Optimization */}
-        {thumbUrl && (
+        {/* Background Thumbnail */}
+        {thumbUrl ? (
           <Image 
             src={thumbUrl} 
             alt="Video thumbnail"
@@ -72,11 +89,15 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
             priority
             className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-80"
             onError={() => {
-              if (thumbUrl.includes('maxresdefault')) {
+              if (thumbUrl.includes('maxresdefault') && videoId) {
                 setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
               }
             }}
           />
+        ) : (
+            <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
+                <Play className="w-20 h-20 text-white/20" />
+            </div>
         )}
         
         {/* Overlay Gradient */}
@@ -85,11 +106,8 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
         {/* Premium Play Button */}
         <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
-                {/* Pulsing rings */}
                 <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
                 <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                
-                {/* Main Button */}
                 <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)] transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_60px_rgba(59,95,255,0.6)]">
                     <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
                 </div>
@@ -109,13 +127,18 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
     );
   }
 
+  let embedUrl = "";
+  if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
+  if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1`;
+  if (loomId) embedUrl = `https://www.loom.com/embed/${loomId}?autoplay=1`;
+
   return (
     <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
       <iframe
         width="100%"
         height="100%"
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-        title="YouTube video player"
+        src={embedUrl}
+        title="Video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen

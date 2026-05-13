@@ -103,6 +103,43 @@ export async function buildVariableMap(
         : '';
       vars['meeting_type'] = meeting.type?.name ?? '';
       vars['organizer_name'] = meeting.assignedTo?.name ?? '';
+
+      // ── New variables (Phase 8 enrichment) ──────────────────────
+      vars['recording_link'] = meeting.recordingUrl ?? '';
+      vars['resource_link'] = meeting.resourceUrl ?? '';
+      vars['feedback_form_link'] = meeting.feedbackFormUrl ?? '';
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+      vars['dashboard_link'] = `${baseUrl}/admin/meetings/${resolutionCtx.meetingId}`;
+
+      // Calendar link (computed)
+      if (meeting.meetingTime) {
+        const { generateCalendarLinkFromMeeting } = await import('./calendar-utils');
+        vars['calendar_link'] = generateCalendarLinkFromMeeting(meeting);
+      }
+
+      // Timezone from org settings + registrant stats (parallel fetch per async-parallel)
+      const orgId = meeting.organizationId ?? '';
+      const [orgSnap, regSnap] = await Promise.all([
+        orgId ? adminDb.collection('organizations').doc(orgId).get() : Promise.resolve(null),
+        adminDb.collection('meetings').doc(resolutionCtx.meetingId).collection('registrants')
+          .where('status', 'in', ['registered', 'approved', 'attended'])
+          .get(),
+      ]);
+
+      if (orgSnap?.exists) {
+        const orgData = orgSnap.data()!;
+        vars['meeting_timezone'] = orgData.settings?.defaultTimezone ?? 'UTC';
+      } else {
+        vars['meeting_timezone'] = 'UTC';
+      }
+
+      // Registrant/attendee counts
+      const allRegs = regSnap?.docs ?? [];
+      vars['registrant_count'] = String(allRegs.length);
+      const attendedCount = allRegs.filter(d => d.data().status === 'attended').length;
+      vars['attendee_count'] = String(attendedCount);
+      vars['no_show_count'] = String(allRegs.length - attendedCount);
     }
   }
 

@@ -46,7 +46,11 @@ import {
     ArrowLeft,
     ChevronRight,
     Edit3,
-    X
+    X,
+    AlertTriangle,
+    Calendar,
+    Video,
+    Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -237,6 +241,28 @@ export default function QuickTemplateDialog({
         const defs = generateContactVariableDefinitions('institution');
         return groupContactVariableDefinitions(defs);
     }, []);
+
+    // Meeting-specific variables (Phase 8)
+    const meetingVariables: VariableDefinition[] = React.useMemo(() => {
+        if (category !== 'meetings') return [];
+        return [
+            { id: 'mv_title', key: 'meeting_title', label: 'Meeting Title', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.heroTitle', type: 'string' },
+            { id: 'mv_date', key: 'meeting_date', label: 'Meeting Date', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.meetingTime', type: 'date' },
+            { id: 'mv_time', key: 'meeting_time', label: 'Meeting Time', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.meetingTime', type: 'time' },
+            { id: 'mv_timezone', key: 'meeting_timezone', label: 'Meeting Timezone', entity: 'Meeting', source: 'static', category: 'meetings', path: 'org.settings.defaultTimezone', type: 'string' },
+            { id: 'mv_link', key: 'meeting_link', label: 'Meeting Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.meetingLink', type: 'url' },
+            { id: 'mv_cal', key: 'calendar_link', label: 'Calendar Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+            { id: 'mv_type', key: 'meeting_type', label: 'Meeting Type', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.type.name', type: 'string' },
+            { id: 'mv_organizer', key: 'organizer_name', label: 'Organizer Name', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.assignedTo.name', type: 'string' },
+            { id: 'mv_recording', key: 'recording_link', label: 'Recording Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.recordingUrl', type: 'url' },
+            { id: 'mv_feedback', key: 'feedback_form_link', label: 'Feedback Form Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.feedbackFormUrl', type: 'url' },
+            { id: 'mv_resource', key: 'resource_link', label: 'Resource Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'meeting.resourceUrl', type: 'url' },
+            { id: 'mv_dashboard', key: 'dashboard_link', label: 'Dashboard Link', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'url' },
+            { id: 'mv_reg_count', key: 'registrant_count', label: 'Registrant Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
+            { id: 'mv_att_count', key: 'attendee_count', label: 'Attendee Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
+            { id: 'mv_noshow', key: 'no_show_count', label: 'No-Show Count', entity: 'Meeting', source: 'static', category: 'meetings', path: 'computed', type: 'number' },
+        ];
+    }, [category]);
 
     const handleAiArchitect = async () => {
         if (!aiPrompt.trim()) return;
@@ -566,6 +592,34 @@ export default function QuickTemplateDialog({
                                             <Zap className="h-12 w-12 text-primary" />
                                         </div>
                                     </div>
+
+                                    {/* SMS Character Counter */}
+                                    {channel === 'sms' && (
+                                        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-muted/50 border border-border/50">
+                                            <div className="flex items-center gap-2">
+                                                <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span className="text-[10px] font-bold text-muted-foreground">
+                                                    {body.length} characters · {Math.max(1, Math.ceil(body.length / 160))} segment{Math.ceil(body.length / 160) !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
+                                            {body.length > 320 ? (
+                                                <div className="flex items-center gap-1.5 text-red-500">
+                                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                                    <span className="text-[9px] font-bold">Very long — consider shortening</span>
+                                                </div>
+                                            ) : body.length > 160 ? (
+                                                <div className="flex items-center gap-1.5 text-amber-500">
+                                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                                    <span className="text-[9px] font-bold">Multi-segment SMS</span>
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                    {channel === 'sms' && (
+                                        <p className="text-[9px] text-muted-foreground/60 font-medium px-1">
+                                            Variables like {`{{contact_name}}`} expand to real values at send time and may increase the final character count.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -612,6 +666,15 @@ export default function QuickTemplateDialog({
                                     <VariableSection title="Primary Contact" icon={UserCheck} items={contactGroups.primary} badge="Dynamic" onInsert={handleInsert} />
                                     <VariableSection title="Signatory Contact" icon={ShieldCheck} items={contactGroups.signatory} badge="Dynamic" onInsert={handleInsert} />
                                     <VariableSection title="Role-Based Contacts" icon={Users} items={contactGroups.roles} onInsert={handleInsert} />
+
+                                    {/* Meeting variables (Phase 8) */}
+                                    {category === 'meetings' && (
+                                        <>
+                                            <VariableSection title="Meeting Details" icon={Calendar} items={meetingVariables.slice(0, 8)} badge="Meeting" onInsert={handleInsert} />
+                                            <VariableSection title="Post-Event Links" icon={Video} items={meetingVariables.slice(8, 12)} onInsert={handleInsert} />
+                                            <VariableSection title="Attendance Stats" icon={Clock} items={meetingVariables.slice(12)} onInsert={handleInsert} />
+                                        </>
+                                    )}
 
                                     {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId ? (
                                         <div className="py-10 text-center opacity-40 space-y-2 border-t mt-4 pt-4">
