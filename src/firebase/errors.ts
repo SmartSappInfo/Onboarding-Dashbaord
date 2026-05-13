@@ -7,6 +7,7 @@ type SecurityRuleContext = {
   requestResourceData?: any;
 };
 
+
 interface FirebaseAuthToken {
   name: string | null;
   email: string | null;
